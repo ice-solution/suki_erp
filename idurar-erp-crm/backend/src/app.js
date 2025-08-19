@@ -46,7 +46,8 @@ app.use(
       'https://sukierp.ice-solution.hk',
       'http://localhost:3000',
       'http://localhost:3001',
-      'http://localhost:8888'
+      'http://localhost:8888',
+      'http://localhost:5555'
     ],
     credentials: true,
   })
