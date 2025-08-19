@@ -1,5 +1,5 @@
 import { Space, Layout, Divider, Typography } from 'antd';
-import logo from '@/style/images/suki-logo.svg';
+import logo from '@/style/images/supermax-logo.svg';
 import useLanguage from '@/locale/useLanguage';
 import { useSelector } from 'react-redux';
 
