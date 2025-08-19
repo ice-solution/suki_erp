@@ -42,7 +42,12 @@ const app = express();
 
 app.use(
   cors({
-    origin: true,
+    origin: [
+      'https://sukierp.ice-solution.hk',
+      'http://localhost:3000',
+      'http://localhost:3001',
+      'http://localhost:8888'
+    ],
     credentials: true,
   })
 );
