@@ -29,7 +29,7 @@ export default function SideContent() {
         />
 
         <Title level={1} style={{ fontSize: 28 }}>
-          Suki ERP 工程管理系統
+          Supermax ERP 工程管理系統
         </Title>
         <Text>
           專業的工程項目管理平台 <b /> 提供完整的項目追蹤和管理解決方案
