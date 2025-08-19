@@ -1,5 +1,5 @@
 import { Space, Layout, Divider, Typography } from 'antd';
-import logo from '@/style/images/idurar-crm-erp.svg';
+import logo from '@/style/images/suki-logo.svg';
 import useLanguage from '@/locale/useLanguage';
 import { useSelector } from 'react-redux';
 
@@ -29,10 +29,10 @@ export default function SideContent() {
         />
 
         <Title level={1} style={{ fontSize: 28 }}>
-          Free Open Source ERP / CRM
+          Suki ERP 工程管理系統
         </Title>
         <Text>
-          Accounting / Invoicing / Quote App <b /> based on Node.js React.js Ant Design
+          專業的工程項目管理平台 <b /> 提供完整的項目追蹤和管理解決方案
         </Text>
 
         <div className="space20"></div>
