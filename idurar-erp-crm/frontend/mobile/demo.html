@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移動端項目管理系統 - 演示</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 20px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .demo-section {
+            margin-bottom: 30px;
+        }
+
+        .demo-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .project-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .project-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .project-info {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s ease;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .status-in_progress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .demo-info {
+            background: #e3f2fd;
+            border: 1px solid #bbdefb;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .demo-info h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+
+        .demo-info p {
+            color: #424242;
+            font-size: 14px;
+            margin-bottom: 8px;
+        }
+
+        .feature-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .feature-list li {
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            color: #424242;
+        }
+
+        .feature-list li:last-child {
+            border-bottom: none;
+        }
+
+        .feature-list li:before {
+            content: "✅ ";
+            margin-right: 8px;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+            margin-bottom: 10px;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #495057 100%);
+        }
+
+        .demo-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>員工工程管理系統</h1>
+            <p>移動端項目管理演示</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <div class="demo-info">
+                <h3>📱 移動端功能演示</h3>
+                <p>這是一個完整的移動端項目管理系統演示，包含以下功能：</p>
+                <ul class="feature-list">
+                    <li>員工手機號碼登入</li>
+                    <li>查看分配的項目列表</li>
+                    <li>項目詳情和進度追蹤</li>
+                    <li>工序管理和進度記錄</li>
+                    <li>工作時數統計</li>
+                    <li>工程照片上傳</li>
+                    <li>個人資料管理</li>
+                </ul>
+            </div>
+
+            <div class="demo-section">
+                <div class="demo-title">📊 系統統計</div>
+                <div class="demo-stats">
+                    <div class="stat-card">
+                        <div class="stat-number">12</div>
+                        <div class="stat-label">活躍項目</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">8</div>
+                        <div class="stat-label">進行中</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">3</div>
+                        <div class="stat-label">已完成</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">1</div>
+                        <div class="stat-label">待開始</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <div class="demo-title">🏗️ 我的項目</div>
+                
+                <div class="project-card">
+                    <div class="project-title">香港灣仔商業大廈裝修工程</div>
+                    <div class="project-info">客戶：香港地產發展有限公司</div>
+                    <div class="project-info">開始日期：2024-01-15</div>
+                    <div class="project-info">
+                        職位：工程師
+                        <span class="status-badge status-in_progress">進行中</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 65%"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; text-align: right;">
+                        進度：65%
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-title">九龍灣工業大廈翻新工程</div>
+                    <div class="project-info">客戶：九龍工業集團</div>
+                    <div class="project-info">開始日期：2024-02-01</div>
+                    <div class="project-info">
+                        職位：工程師
+                        <span class="status-badge status-pending">待開始</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; text-align: right;">
+                        進度：0%
+                    </div>
+                </div>
+
+                <div class="project-card">
+                    <div class="project-title">中環寫字樓電氣系統升級</div>
+                    <div class="project-info">客戶：中環地產集團</div>
+                    <div class="project-info">開始日期：2023-11-01</div>
+                    <div class="project-info">
+                        職位：高級工程師
+                        <span class="status-badge status-completed">已完成</span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" style="width: 100%"></div>
+                    </div>
+                    <div style="font-size: 12px; color: #666; text-align: right;">
+                        進度：100%
+                    </div>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <div class="demo-title">🔧 技術特點</div>
+                <div class="demo-info">
+                    <h3>前端技術</h3>
+                    <ul class="feature-list">
+                        <li>原生JavaScript (ES6+)</li>
+                        <li>響應式設計</li>
+                        <li>PWA支持</li>
+                        <li>離線功能</li>
+                        <li>圖片上傳</li>
+                    </ul>
+                </div>
+                
+                <div class="demo-info">
+                    <h3>後端API</h3>
+                    <ul class="feature-list">
+                        <li>Node.js + Express</li>
+                        <li>MongoDB數據庫</li>
+                        <li>JWT認證</li>
+                        <li>RESTful API</li>
+                        <li>文件上傳</li>
+                    </ul>
+                </div>
+            </div>
+
+            <div class="demo-section">
+                <div class="demo-title">🚀 下一步</div>
+                <button class="btn" onclick="window.open('index.html', '_blank')">
+                    打開完整移動端應用
+                </button>
+                <button class="btn btn-secondary" onclick="window.open('test-mobile.html', '_blank')">
+                    功能測試頁面
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 添加一些交互效果
+        document.querySelectorAll('.project-card').forEach(card => {
+            card.addEventListener('click', function() {
+                alert('點擊項目卡片可以查看項目詳情！\n\n在完整版本中，這會導航到項目詳情頁面。');
+            });
+        });
+
+        // 添加動畫效果
+        window.addEventListener('load', function() {
+            const cards = document.querySelectorAll('.project-card, .stat-card');
+            cards.forEach((card, index) => {
+                card.style.opacity = '0';
+                card.style.transform = 'translateY(20px)';
+                setTimeout(() => {
+                    card.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+                    card.style.opacity = '1';
+                    card.style.transform = 'translateY(0)';
+                }, index * 100);
+            });
+        });
+    </script>
+</body>
+</html>
+

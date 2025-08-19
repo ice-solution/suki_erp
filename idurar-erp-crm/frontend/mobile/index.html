@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>員工工程管理系統</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif;
+            background-color: #f5f5f5;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 60px 20px 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .login-section, .main-section {
+            display: none;
+        }
+
+        .login-section.active, .main-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #333;
+        }
+
+        input[type="text"], input[type="password"], input[type="tel"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
+        }
+
+        .attendance-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .attendance-info {
+            margin-top: 15px;
+        }
+
+        .attendance-info p {
+            margin: 8px 0;
+            font-size: 14px;
+        }
+
+        .attendance-actions {
+            margin-top: 20px;
+        }
+
+        .attendance-actions .btn {
+            margin-bottom: 10px;
+        }
+
+        .attendance-complete {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            color: #6c757d;
+        }
+
+        .status-success {
+            color: #28a745;
+            font-weight: bold;
+        }
+
+        .status-pending {
+            color: #ffc107;
+            font-weight: bold;
+        }
+
+        .project-header {
+            cursor: pointer;
+        }
+
+        .project-actions {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 14px;
+        }
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .project-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .project-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+
+        .project-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+        }
+
+        .project-info {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 4px;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 8px 0;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            transition: width 0.3s ease;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-left: 8px;
+        }
+
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .status-in_progress {
+            background: #d1ecf1;
+            color: #0c5460;
+        }
+
+        .status-completed {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-on_hold {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .status-cancelled {
+            background: #f5c6cb;
+            color: #721c24;
+        }
+
+        .status-draft {
+            background: #e2e3e5;
+            color: #383d41;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .profile-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .profile-info {
+            margin-top: 12px;
+        }
+
+        .profile-info p {
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .navbar {
+            display: flex;
+            background: white;
+            border-top: 1px solid #eee;
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            border: none;
+            background: none;
+            cursor: pointer;
+            font-size: 12px;
+            color: #666;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+        }
+
+        .nav-item i {
+            display: block;
+            font-size: 20px;
+            margin-bottom: 4px;
+        }
+
+        .page {
+            display: none;
+            padding-bottom: 80px;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .error {
+            color: #dc3545;
+            background: #f8d7da;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 14px;
+        }
+
+        .file-input {
+            margin-bottom: 12px;
+        }
+
+        .image-preview {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .fab {
+            position: fixed;
+            bottom: 100px;
+            right: 20px;
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .fab.show {
+            display: block;
+        }
+
+        @media (max-width: 480px) {
+            .container {
+                max-width: 100%;
+            }
+            
+            .navbar {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <button class="back-btn" id="backBtn" style="display: none;">← 返回</button>
+            <h1 id="headerTitle">員工工程管理系統</h1>
+            <p id="headerSubtitle">請輸入手機號碼登入</p>
+        </div>
+
+        <!-- Content -->
+        <div class="content">
+            <!-- Login Section -->
+            <div class="login-section active" id="loginSection">
+                <div id="message"></div>
+                
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="phone">手機號碼</label>
+                        <input type="tel" id="phone" name="phone" placeholder="請輸入手機號碼" required>
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            例如：98765432 或 +85298765432
+                        </div>
+                    </div>
+                    <button type="submit" class="btn">登入</button>
+                </form>
+
+                <div style="margin-top: 20px; text-align: center; font-size: 14px; color: #666;">
+                    只需輸入註冊的手機號碼即可登入
+                </div>
+            </div>
+
+            <!-- Main Section -->
+            <div class="main-section" id="mainSection">
+                <!-- Projects Page -->
+                <div class="page active" id="projectsPage">
+                    <div id="projectsList"></div>
+                </div>
+
+                <!-- Project Detail Page -->
+                <div class="page" id="projectDetailPage">
+                    <div id="projectDetail"></div>
+                </div>
+
+                <!-- Progress Record Page -->
+                <div class="page" id="progressPage">
+                    <form id="progressForm">
+                        <div class="form-group">
+                            <label for="workProcess">選擇工序</label>
+                            <select id="workProcess" class="form-control" required>
+                                <option value="">請選擇工序</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="workDescription">工作描述</label>
+                            <textarea id="workDescription" rows="3" placeholder="簡述今天的主要工作內容" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="completedWork">完成的工作</label>
+                            <textarea id="completedWork" rows="4" placeholder="詳細描述已完成的具體工作項目" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="progressIncrement">進度增量 (%)</label>
+                            <input type="number" id="progressIncrement" min="0" max="100" placeholder="本次完成的進度百分比">
+                        </div>
+                        <div class="form-group">
+                            <label for="hoursWorked">工作時數</label>
+                            <input type="number" id="hoursWorked" min="0" max="24" step="0.5" placeholder="本次工作時數" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="location">工作地點</label>
+                            <input type="text" id="location" placeholder="工作地點">
+                        </div>
+                        <div class="form-group">
+                            <label for="images">上傳工程照片</label>
+                            <input type="file" id="images" class="file-input" multiple accept="image/*">
+                            <div class="image-preview" id="imagePreview"></div>
+                        </div>
+                        <button type="submit" class="btn">提交進度記錄</button>
+                    </form>
+                </div>
+
+                <!-- Profile Page -->
+                <div class="page" id="profilePage">
+                    <div id="profileContent"></div>
+                </div>
+
+                <!-- Attendance Page -->
+                <div class="page" id="attendancePage">
+                    <div id="attendanceContent"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation -->
+        <div class="navbar" id="navbar" style="display: none;">
+            <button class="nav-item active" onclick="showPage('projects')">
+                <i>🏗️</i>
+                <span>項目</span>
+            </button>
+            <button class="nav-item" onclick="showPage('attendance')">
+                <i>✅</i>
+                <span>出席</span>
+            </button>
+            <button class="nav-item" onclick="showPage('progress')">
+                <i>📝</i>
+                <span>記錄</span>
+            </button>
+            <button class="nav-item" onclick="showPage('profile')">
+                <i>👤</i>
+                <span>個人</span>
+            </button>
+        </div>
+
+        <!-- Floating Action Button -->
+        <button class="fab" id="fab" onclick="showPage('progress')">+</button>
+    </div>
+
+    <script src="mobile.js"></script>
+    <script>
+        // 使用真實API
+        console.log('Using real API');
+    </script>
+</body>
+</html>

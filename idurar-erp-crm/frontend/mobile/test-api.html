@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API 測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        .result {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 3px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+        }
+        button {
+            padding: 10px 15px;
+            margin: 5px;
+            border: none;
+            border-radius: 3px;
+            background: #2196f3;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #1976d2;
+        }
+        input {
+            padding: 8px;
+            margin: 5px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            width: 200px;
+        }
+    </style>
+</head>
+<body>
+    <h1>移動端 API 測試</h1>
+    
+    <div class="test-section">
+        <h3>1. 登入測試</h3>
+        <input type="tel" id="phoneInput" placeholder="輸入手機號碼" value="98765432">
+        <button onclick="testLogin()">測試登入</button>
+        <div id="loginResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>2. 獲取項目列表</h3>
+        <input type="text" id="tokenInput" placeholder="輸入JWT Token">
+        <button onclick="testGetProjects()">測試獲取項目</button>
+        <div id="projectsResult" class="result"></div>
+    </div>
+    
+    <div class="test-section">
+        <h3>3. 獲取項目詳情</h3>
+        <input type="text" id="projectIdInput" placeholder="輸入項目ID">
+        <button onclick="testGetProjectDetail()">測試獲取項目詳情</button>
+        <div id="projectDetailResult" class="result"></div>
+    </div>
+
+    <script>
+        const API_BASE = '/api';
+        
+        async function makeRequest(url, options = {}) {
+            try {
+                const response = await fetch(`${API_BASE}${url}`, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+                
+                const data = await response.json();
+                return { success: response.ok, data, status: response.status };
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        async function testLogin() {
+            const phone = document.getElementById('phoneInput').value;
+            const resultDiv = document.getElementById('loginResult');
+            
+            resultDiv.textContent = '正在測試登入...';
+            resultDiv.className = 'result';
+            
+            const result = await makeRequest('/mobile-auth/login', {
+                method: 'POST',
+                body: JSON.stringify({ phone })
+            });
+            
+            if (result.success && result.data.success) {
+                resultDiv.textContent = `登入成功！\nToken: ${result.data.result.token}\n員工: ${result.data.result.employee.name}`;
+                resultDiv.className = 'result success';
+                
+                // 自動填充token輸入框
+                document.getElementById('tokenInput').value = result.data.result.token;
+            } else {
+                resultDiv.textContent = `登入失敗: ${result.data?.message || result.error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testGetProjects() {
+            const token = document.getElementById('tokenInput').value;
+            const resultDiv = document.getElementById('projectsResult');
+            
+            if (!token) {
+                resultDiv.textContent = '請先輸入JWT Token';
+                resultDiv.className = 'result error';
+                return;
+            }
+            
+            resultDiv.textContent = '正在獲取項目列表...';
+            resultDiv.className = 'result';
+            
+            const result = await makeRequest('/mobile-project/my-projects', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (result.success && result.data.success) {
+                const projects = result.data.result.projects;
+                resultDiv.textContent = `獲取成功！\n項目數量: ${projects.length}\n\n項目列表:\n${projects.map(p => `- ${p.orderNumber || p.projectName || '未命名'} (${p.status})`).join('\n')}`;
+                resultDiv.className = 'result success';
+                
+                // 如果有項目，自動填充第一個項目的ID
+                if (projects.length > 0) {
+                    document.getElementById('projectIdInput').value = projects[0]._id;
+                }
+            } else {
+                resultDiv.textContent = `獲取失敗: ${result.data?.message || result.error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testGetProjectDetail() {
+            const token = document.getElementById('tokenInput').value;
+            const projectId = document.getElementById('projectIdInput').value;
+            const resultDiv = document.getElementById('projectDetailResult');
+            
+            if (!token || !projectId) {
+                resultDiv.textContent = '請輸入JWT Token和項目ID';
+                resultDiv.className = 'result error';
+                return;
+            }
+            
+            resultDiv.textContent = '正在獲取項目詳情...';
+            resultDiv.className = 'result';
+            
+            const result = await makeRequest(`/mobile-project/project/${projectId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            
+            if (result.success && result.data.success) {
+                const project = result.data.result.project;
+                const stats = result.data.result.statistics;
+                resultDiv.textContent = `獲取成功！\n\n項目名稱: ${project.orderNumber || project.projectName}\n客戶: ${project.client?.name || '未設定'}\n狀態: ${project.status}\n\n統計信息:\n- 總工序: ${stats?.totalProcesses || 0}\n- 已完成: ${stats?.completedProcesses || 0}\n- 平均進度: ${stats?.averageProgress || 0}%`;
+                resultDiv.className = 'result success';
+            } else {
+                resultDiv.textContent = `獲取失敗: ${result.data?.message || result.error}`;
+                resultDiv.className = 'result error';
+            }
+        }
+    </script>
+</body>
+</html>
+

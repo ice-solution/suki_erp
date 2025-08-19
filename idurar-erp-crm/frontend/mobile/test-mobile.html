@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>移動端功能測試</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-button {
+            background: #2196f3;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        .test-button:hover {
+            background: #1976d2;
+        }
+        .result {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 15px;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            color: #721c24;
+        }
+        .mobile-frame {
+            width: 375px;
+            height: 667px;
+            border: 2px solid #333;
+            border-radius: 20px;
+            overflow: hidden;
+            margin: 20px auto;
+            background: white;
+        }
+        .mobile-frame iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+    <h1>移動端功能測試</h1>
+    
+    <div class="test-container">
+        <h2>API 測試</h2>
+        <button class="test-button" onclick="testMockAPI()">測試模擬API</button>
+        <button class="test-button" onclick="testLogin()">測試登入</button>
+        <button class="test-button" onclick="testProjects()">測試項目列表</button>
+        <button class="test-button" onclick="testProjectDetail()">測試項目詳情</button>
+        <div id="apiResult" class="result"></div>
+    </div>
+    
+    <div class="test-container">
+        <h2>移動端界面測試</h2>
+        <p>點擊下面的按鈕在模擬手機界面中打開移動端應用：</p>
+        <button class="test-button" onclick="openMobileApp()">打開移動端應用</button>
+        <div class="mobile-frame" id="mobileFrame" style="display: none;">
+            <iframe src="index.html" id="mobileIframe"></iframe>
+        </div>
+    </div>
+
+    <script src="mock-api.js"></script>
+    <script>
+        async function testMockAPI() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = '測試模擬API...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await window.mockApiRequest('/mobile-auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ phone: '98765432' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.textContent = `✅ 模擬API工作正常！\n\n登入響應:\n${JSON.stringify(data, null, 2)}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.textContent = `❌ 模擬API失敗: ${data.message}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = `❌ 測試失敗: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = '測試登入功能...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await window.mockApiRequest('/mobile-auth/login', {
+                    method: 'POST',
+                    body: JSON.stringify({ phone: '98765432' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.textContent = `✅ 登入成功！\n\n員工信息:\n姓名: ${data.result.employee.name}\n職位: ${data.result.employee.position}\n公司: ${data.result.employee.contractor.name}\n\nToken: ${data.result.token}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.textContent = `❌ 登入失敗: ${data.message}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = `❌ 測試失敗: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testProjects() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = '測試項目列表...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await window.mockApiRequest('/mobile-project/my-projects');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const projects = data.result.projects;
+                    resultDiv.textContent = `✅ 項目列表獲取成功！\n\n項目數量: ${projects.length}\n\n項目列表:\n${projects.map(p => `- ${p.orderNumber}: ${p.projectName} (${p.status}) - 進度: ${p.progress}%`).join('\n')}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.textContent = `❌ 獲取項目列表失敗: ${data.message}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = `❌ 測試失敗: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        async function testProjectDetail() {
+            const resultDiv = document.getElementById('apiResult');
+            resultDiv.textContent = '測試項目詳情...';
+            resultDiv.className = 'result';
+            
+            try {
+                const response = await window.mockApiRequest('/mobile-project/project/mock_project_001');
+                const data = await response.json();
+                
+                if (data.success) {
+                    const project = data.result.project;
+                    const stats = data.result.statistics;
+                    const processes = data.result.workProcesses;
+                    
+                    resultDiv.textContent = `✅ 項目詳情獲取成功！\n\n項目: ${project.orderNumber} - ${project.projectName}\n客戶: ${project.client.name}\n狀態: ${project.status}\n進度: ${project.progress}%\n\n統計:\n- 總工序: ${stats.totalProcesses}\n- 已完成: ${stats.completedProcesses}\n- 平均進度: ${stats.averageProgress}%\n\n工序列表:\n${processes.map(p => `- ${p.name}: ${p.progress}% (${p.status})`).join('\n')}`;
+                    resultDiv.className = 'result success';
+                } else {
+                    resultDiv.textContent = `❌ 獲取項目詳情失敗: ${data.message}`;
+                    resultDiv.className = 'result error';
+                }
+            } catch (error) {
+                resultDiv.textContent = `❌ 測試失敗: ${error.message}`;
+                resultDiv.className = 'result error';
+            }
+        }
+        
+        function openMobileApp() {
+            const frame = document.getElementById('mobileFrame');
+            const iframe = document.getElementById('mobileIframe');
+            
+            if (frame.style.display === 'none') {
+                frame.style.display = 'block';
+                iframe.src = 'index.html';
+            } else {
+                frame.style.display = 'none';
+            }
+        }
+        
+        // 頁面加載時自動測試模擬API
+        window.addEventListener('load', function() {
+            console.log('頁面加載完成，開始自動測試...');
+            setTimeout(testMockAPI, 1000);
+        });
+    </script>
+</body>
+</html>
+
