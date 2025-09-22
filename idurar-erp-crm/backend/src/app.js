@@ -38,14 +38,34 @@ const app = express();
 
 app.use(
   cors({
-    origin: [
-      'https://sukierp.ice-solution.hk',
-      'http://localhost:3000',
-      'http://localhost:3001',
-      'http://localhost:8888',
-      'http://localhost:5555'
-    ],
+    origin: function (origin, callback) {
+      // 允許沒有origin的請求（如移動應用、Postman等）
+      if (!origin) return callback(null, true);
+      
+      const allowedOrigins = [
+        'https://sukierp.ice-solution.hk',
+        'https://sukierp-api.ice-solution.hk',
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'http://localhost:8888',
+        'http://localhost:5555'
+      ];
+      
+      // 檢查是否在允許列表中
+      if (allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        // 允許所有 ice-solution.hk 的子域名
+        if (origin && origin.endsWith('.ice-solution.hk')) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'));
+        }
+      }
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
   })
 );
 
