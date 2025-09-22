@@ -70,9 +70,14 @@ function Sidebar({ collapsible, isMobile = false }) {
       label: <Link to={'/quote'}>{translate('quote')}</Link>,
     },
     {
-      key: 'project-items',
-      icon: <FileOutlined />,
-      label: <Link to={'/project-items'}>工程項目</Link>,
+      key: 'supplierquote',
+      icon: <FileSyncOutlined />,
+      label: <Link to={'/supplierquote'}>供應商報價</Link>,
+    },
+    {
+      key: 'project',
+      icon: <ProjectOutlined />,
+      label: <Link to={'/project'}>{translate('project_management')}</Link>,
     },
     {
       key: 'contractor',
@@ -88,11 +93,6 @@ function Sidebar({ collapsible, isMobile = false }) {
           label: <Link to={'/contractor-employee'}>{translate('contractor_employees')}</Link>,
         },
       ],
-    },
-    {
-      key: 'project',
-      icon: <ProjectOutlined />,
-      label: <Link to={'/project'}>{translate('project_management')}</Link>,
     },
     {
       key: 'accounting',

@@ -11,13 +11,35 @@ const quoteSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  numberPrefix: {
+    type: String,
+    enum: ['SML', 'QU', 'XX'],
+    default: 'QU',
+    required: true,
+  },
   number: {
-    type: Number,
+    type: String,
     required: true,
   },
   year: {
     type: Number,
     required: true,
+  },
+  type: {
+    type: String,
+    enum: ['人工', '服務', '材料', '服務&材料', '吊船'],
+    required: true,
+  },
+  // 吊船相關字段
+  shipType: {
+    type: String,
+    enum: ['續租', '租貨'],
+  },
+  subcontractorCount: {
+    type: Number,
+  },
+  costPrice: {
+    type: Number,
   },
   content: String,
   date: {
@@ -26,15 +48,34 @@ const quoteSchema = new mongoose.Schema({
   },
   expiredDate: {
     type: Date,
-    required: true,
+    required: false,
+  },
+  isCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  poNumber: {
+    type: String,
+  },
+  contactPerson: {
+    type: String,
+  },
+  address: {
+    type: String,
   },
 
+  // 向後兼容：保留舊的client字段
   client: {
     type: mongoose.Schema.ObjectId,
     ref: 'Client',
-    required: true,
     autopopulate: true,
   },
+  // 新的多客戶字段
+  clients: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Client',
+    autopopulate: true,
+  }],
   project: {
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
@@ -74,13 +115,10 @@ const quoteSchema = new mongoose.Schema({
       },
     },
   ],
-  taxRate: {
-    type: Number,
-  },
   subTotal: {
     type: Number,
   },
-  taxTotal: {
+  discountTotal: {
     type: Number,
   },
   total: {
@@ -115,6 +153,16 @@ const quoteSchema = new mongoose.Schema({
   isExpired: {
     type: Boolean,
     default: false,
+  },
+  converted: {
+    to: {
+      type: String,
+      enum: ['invoice'],
+    },
+    invoice: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Invoice',
+    },
   },
   pdf: {
     type: String,

@@ -36,11 +36,13 @@ function LoadQuoteForm({ subTotal = 0, current = null }) {
   const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
 
   const [total, setTotal] = useState(0);
-  const [taxRate, setTaxRate] = useState(0);
-  const [taxTotal, setTaxTotal] = useState(0);
+  const [discount, setDiscount] = useState(0);
+  const [discountTotal, setDiscountTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
-  const handelTaxChange = (value) => {
-    setTaxRate(value / 100);
+  const [selectedType, setSelectedType] = useState('服務');
+  
+  const handleDiscountChange = (value) => {
+    setDiscount(value || 0);
   };
 
   useEffect(() => {
@@ -68,11 +70,12 @@ function LoadQuoteForm({ subTotal = 0, current = null }) {
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={8}>
           <Form.Item
-            name="client"
-            label={translate('Client')}
+            name="clients"
+            label={translate('Clients')}
             rules={[
               {
                 required: true,
+                message: 'Please select at least one client',
               },
             ]}
           >
@@ -83,6 +86,7 @@ function LoadQuoteForm({ subTotal = 0, current = null }) {
               redirectLabel={'Add New Client'}
               withRedirect
               urlToRedirect={'/customer'}
+              mode="multiple"
             />
           </Form.Item>
         </Col>

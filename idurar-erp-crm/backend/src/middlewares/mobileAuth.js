@@ -16,7 +16,7 @@ const isValidMobileToken = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
       
-      if (decoded.type !== 'mobile_employee') {
+      if (decoded.type !== 'mobile_contractor') {
         return res.status(401).json({
           success: false,
           result: null,
@@ -24,31 +24,20 @@ const isValidMobileToken = async (req, res, next) => {
         });
       }
 
-      // 查找員工
-      const ContractorEmployee = mongoose.model('ContractorEmployee');
-      const employee = await ContractorEmployee.findById(decoded.employeeId)
-        .populate('contractor');
+      // 查找承辦商
+      const Contractor = mongoose.model('Contractor');
+      const contractor = await Contractor.findById(decoded.contractorId);
 
-      if (!employee || employee.removed || !employee.isActive) {
+      if (!contractor || contractor.removed || !contractor.enabled) {
         return res.status(401).json({
           success: false,
           result: null,
-          message: '員工記錄不存在或已停用',
+          message: '承辦商記錄不存在或已停用',
         });
       }
 
-      // 檢查是否被鎖定
-      if (employee.isLocked) {
-        return res.status(423).json({
-          success: false,
-          result: null,
-          message: '帳戶已被鎖定',
-        });
-      }
-
-      // 將員工信息添加到請求對象
-      req.employee = employee;
-      req.contractor = employee.contractor;
+      // 將承辦商信息添加到請求對象
+      req.contractor = contractor;
       
       next();
     } catch (jwtError) {

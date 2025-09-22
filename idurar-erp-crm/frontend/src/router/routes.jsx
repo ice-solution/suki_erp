@@ -13,10 +13,26 @@ const InvoiceCreate = lazy(() => import('@/pages/Invoice/InvoiceCreate'));
 const InvoiceRead = lazy(() => import('@/pages/Invoice/InvoiceRead'));
 const InvoiceUpdate = lazy(() => import('@/pages/Invoice/InvoiceUpdate'));
 const InvoiceRecordPayment = lazy(() => import('@/pages/Invoice/InvoiceRecordPayment'));
+const InvoiceTableCreate = lazy(() => import('@/pages/Invoice/InvoiceTableCreate'));
+const InvoiceTableUpdate = lazy(() => import('@/pages/Invoice/InvoiceTableUpdate'));
 const Quote = lazy(() => import('@/pages/Quote/index'));
 const QuoteCreate = lazy(() => import('@/pages/Quote/QuoteCreate'));
 const QuoteRead = lazy(() => import('@/pages/Quote/QuoteRead'));
 const QuoteUpdate = lazy(() => import('@/pages/Quote/QuoteUpdate'));
+const QuoteTableCreate = lazy(() => import('@/pages/Quote/QuoteTableCreate'));
+const QuoteTableUpdate = lazy(() => import('@/pages/Quote/QuoteTableUpdate'));
+const SupplierQuote = lazy(() => import('@/pages/SupplierQuote/index'));
+const SupplierQuoteRead = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteRead'));
+const SupplierQuoteTableCreate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableCreate'));
+const SupplierQuoteTableUpdate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableUpdate'));
+const Project = lazy(() => import('@/pages/Project/index'));
+const ProjectCreate = lazy(() => import('@/pages/Project/ProjectCreate'));
+const ProjectRead = lazy(() => import('@/pages/Project/ProjectRead'));
+const ProjectUpdate = lazy(() => import('@/pages/Project/ProjectUpdate'));
+const WorkProgressCreate = lazy(() => import('@/pages/WorkProgress/WorkProgressCreate'));
+const WorkProgressRead = lazy(() => import('@/pages/WorkProgress/WorkProgressRead'));
+const WorkProgressUpdate = lazy(() => import('@/pages/WorkProgress/WorkProgressUpdate'));
+const ProjectItem = lazy(() => import('@/pages/ProjectItem'));
 const Payment = lazy(() => import('@/pages/Payment/index'));
 const PaymentRead = lazy(() => import('@/pages/Payment/PaymentRead'));
 const PaymentUpdate = lazy(() => import('@/pages/Payment/PaymentUpdate'));
@@ -33,12 +49,8 @@ const Profile = lazy(() => import('@/pages/Profile'));
 const AdminUserList = lazy(() => import('@/pages/AdminUserList.jsx'));
 
 const About = lazy(() => import('@/pages/About'));
-const ProjectItemList = lazy(() => import('@/pages/ProjectItemList.jsx'));
 const ContractorList = lazy(() => import('@/pages/ContractorList.jsx'));
 const ContractorEmployeeList = lazy(() => import('@/pages/ContractorEmployeeList.jsx'));
-const ProjectList = lazy(() => import('@/pages/ProjectList.jsx'));
-const ProjectDetail = lazy(() => import('@/pages/ProjectDetail.jsx'));
-const WorkProcessList = lazy(() => import('@/pages/WorkProcessList.jsx'));
 const ChartOfAccounts = lazy(() => import('@/pages/ChartOfAccounts.jsx'));
 const JournalEntries = lazy(() => import('@/pages/JournalEntries.jsx'));
 const FinancialReports = lazy(() => import('@/pages/FinancialReports.jsx'));
@@ -86,6 +98,14 @@ let routes = {
       element: <InvoiceUpdate />,
     },
     {
+      path: '/invoice/table/create',
+      element: <InvoiceTableCreate />,
+    },
+    {
+      path: '/invoice/table/update/:id',
+      element: <InvoiceTableUpdate />,
+    },
+    {
       path: '/invoice/pay/:id',
       element: <InvoiceRecordPayment />,
     },
@@ -104,6 +124,58 @@ let routes = {
     {
       path: '/quote/update/:id',
       element: <QuoteUpdate />,
+    },
+    {
+      path: '/quote/table/create',
+      element: <QuoteTableCreate />,
+    },
+    {
+      path: '/quote/table/update/:id',
+      element: <QuoteTableUpdate />,
+    },
+    {
+      path: '/supplierquote',
+      element: <SupplierQuote />,
+    },
+    {
+      path: '/supplierquote/read/:id',
+      element: <SupplierQuoteRead />,
+    },
+    {
+      path: '/supplierquote/table/create',
+      element: <SupplierQuoteTableCreate />,
+    },
+    {
+      path: '/supplierquote/table/update/:id',
+      element: <SupplierQuoteTableUpdate />,
+    },
+    {
+      path: '/project',
+      element: <Project />,
+    },
+    {
+      path: '/project/create',
+      element: <ProjectCreate />,
+    },
+    {
+      path: '/project/read/:id',
+      element: <ProjectRead />,
+    },
+    {
+      path: '/project/update/:id',
+      element: <ProjectUpdate />,
+    },
+    {
+      path: '/workprogress/create',
+      element: <WorkProgressCreate />,
+    },
+    {
+      path: '/workprogress/read/:id',
+      element: <WorkProgressRead />,
+    },
+    {
+      path: '/workprogress/update/:id',
+      element: <WorkProgressUpdate />,
     },
     {
       path: '/payment',
@@ -130,28 +202,12 @@ let routes = {
       element: <InventoryRecordList />,
     },
     {
-      path: '/project-items',
-      element: <ProjectItemList />,
-    },
-    {
       path: '/contractor',
       element: <ContractorList />,
     },
     {
       path: '/contractor-employee',
       element: <ContractorEmployeeList />,
-    },
-    {
-      path: '/project',
-      element: <ProjectList />,
-    },
-    {
-      path: '/project/detail/:id',
-      element: <ProjectDetail />,
-    },
-    {
-      path: '/work-process/:projectId',
-      element: <WorkProcessList />,
     },
     {
       path: '/accounting',
@@ -181,6 +237,10 @@ let routes = {
     {
       path: '/settings/edit/:settingsKey',
       element: <Settings />,
+    },
+    {
+      path: '/projectitem',
+      element: <ProjectItem />,
     },
     {
       path: '/payment/mode',

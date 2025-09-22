@@ -241,6 +241,23 @@ export default function ReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('email')}>{client.email}</Descriptions.Item>
         <Descriptions.Item label={translate('Phone')}>{client.phone}</Descriptions.Item>
       </Descriptions>
+      
+      <Descriptions title={translate('Quote Details')}>
+        <Descriptions.Item label={translate('Number Prefix')}>{currentErp.numberPrefix}</Descriptions.Item>
+        <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
+        <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
+        <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
+        <Descriptions.Item label={translate('P.O Number')}>{currentErp.poNumber}</Descriptions.Item>
+        <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
+        <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
+      </Descriptions>
+      
+      <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>
+        <Col span={12}>
+          <p><strong>{translate('Project Address')}:</strong></p>
+          <p>{currentErp.address || '-'}</p>
+        </Col>
+      </Row>
       <Divider />
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={11}>
@@ -359,12 +376,12 @@ export default function ReadItem({ config, selectedItem }) {
           </Col>
           <Col className="gutter-row" span={12}>
             <p>
-              {translate('Tax Total')} ({currentErp.taxRate} %) :
+              {translate('Discount')} ({currentErp.discount} %) :
             </p>
           </Col>
           <Col className="gutter-row" span={12}>
             <p>
-              {moneyFormatter({ amount: currentErp.taxTotal, currency_code: currentErp.currency })}
+              {moneyFormatter({ amount: currentErp.discountTotal, currency_code: currentErp.currency })}
             </p>
           </Col>
           <Col className="gutter-row" span={12}>

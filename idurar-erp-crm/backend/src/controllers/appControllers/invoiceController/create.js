@@ -19,14 +19,14 @@ const create = async (req, res) => {
     });
   }
 
-  const { items = [], taxRate = 0, discount = 0 } = value;
+  const { items = [], discount = 0 } = value;
 
   // default
   let subTotal = 0;
-  let taxTotal = 0;
+  let discountTotal = 0;
   let total = 0;
 
-  //Calculate the items array with subTotal, total, taxTotal
+  //Calculate the items array with subTotal, total, discountTotal
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
     //sub total
@@ -34,15 +34,15 @@ const create = async (req, res) => {
     //item total
     item['total'] = total;
   });
-  taxTotal = calculate.multiply(subTotal, taxRate / 100);
-  total = calculate.add(subTotal, taxTotal);
+  discountTotal = calculate.multiply(subTotal, discount / 100);
+  total = calculate.sub(subTotal, discountTotal);
 
   body['subTotal'] = subTotal;
-  body['taxTotal'] = taxTotal;
+  body['discountTotal'] = discountTotal;
   body['total'] = total;
   body['items'] = items;
 
-  let paymentStatus = calculate.sub(total, discount) === 0 ? 'paid' : 'unpaid';
+  let paymentStatus = total === 0 ? 'paid' : 'unpaid';
 
   body['paymentStatus'] = paymentStatus;
   body['createdBy'] = req.admin._id;

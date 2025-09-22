@@ -1,0 +1,34 @@
+[
+  {
+    "settingCategory": "supplier_quote_settings",
+    "settingKey": "supplier_quote_entity_name",
+    "settingValue": "Supplier Quotation",
+    "valueType": "string",
+    "isPrivate": false,
+    "isCoreSetting": false
+  },
+  {
+    "settingCategory": "supplier_quote_settings",
+    "settingKey": "supplier_quote_entity_name_plural",
+    "settingValue": "Supplier Quotations",
+    "valueType": "string",
+    "isPrivate": false,
+    "isCoreSetting": false
+  },
+  {
+    "settingCategory": "supplier_quote_settings",
+    "settingKey": "last_supplier_quote_number",
+    "settingValue": 1,
+    "valueType": "number",
+    "isPrivate": false,
+    "isCoreSetting": false
+  },
+  {
+    "settingCategory": "supplier_quote_settings",
+    "settingKey": "supplier_quote_prefix",
+    "settingValue": "SQ",
+    "valueType": "string",
+    "isPrivate": false,
+    "isCoreSetting": false
+  }
+]

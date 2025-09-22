@@ -12,31 +12,27 @@ const coreDownloadRouter = require('./routes/coreRoutes/coreDownloadRouter');
 const corePublicRouter = require('./routes/coreRoutes/corePublicRouter');
 const adminAuth = require('./controllers/coreControllers/adminAuth');
 const adminRouter = require('./routes/admin');
-const projectItemRouter = require('./routes/projectItem');
 const contractorRouter = require('./routes/contractor');
 const contractorEmployeeRouter = require('./routes/contractorEmployee');
-const projectRouter = require('./routes/project');
-const projectTypePublicRouter = require('./routes/projectTypePublic');
-const projectOutboundRouter = require('./routes/projectOutbound');
-const projectReturnRouter = require('./routes/projectReturn');
-const projectInventoryRouter = require('./routes/projectInventory');
-const projectEmployeeRouter = require('./routes/projectEmployee');
-const attendanceRouter = require('./routes/attendance');
-const workProcessRouter = require('./routes/workProcess');
-const workProgressRecordRouter = require('./routes/workProgressRecord');
 const chartOfAccountsRouter = require('./routes/chartOfAccounts');
 const journalEntryRouter = require('./routes/journalEntry');
 const financialReportRouter = require('./routes/financialReport');
 const accountingRouter = require('./routes/accounting');
 const mobileAuthRouter = require('./routes/mobileAuth');
 const mobileProjectRouter = require('./routes/mobileProject');
-const mobileAttendanceRouter = require('./routes/mobileAttendance');
 
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const inventoryRouter = require('./routes/inventory');
 
 const fileUpload = require('express-fileupload');
+
+// 註冊模型
+require('./models/appModels/ContractorEmployee');
+require('./models/appModels/Contractor');
+require('./models/appModels/Project');
+require('./models/appModels/WorkProgress');
+
 // create our Express app
 const app = express();
 
@@ -59,35 +55,34 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(compression());
 
-// // default options
-// app.use(fileUpload());
+// Enable file upload for multipart/form-data
+app.use(fileUpload({
+  createParentPath: true,
+  limits: { 
+    fileSize: 10 * 1024 * 1024 // 10MB max file size
+  },
+  parseNested: true,
+  useTempFiles: false,
+  tempFileDir: '/tmp/',
+  uploadTimeout: 60000,
+  // Handle Chinese filenames properly
+  defCharset: 'utf8',
+  defParamCharset: 'utf8'
+}));
 
 // Here our API Routes
-
-// Public routes (no authentication required)
-app.use('/api/projecttype', projectTypePublicRouter);
 
 // Mobile app routes (use mobile authentication)
 app.use('/api/mobile-auth', mobileAuthRouter);
 app.use('/api/mobile-project', mobileProjectRouter);
-app.use('/api/mobile-attendance', mobileAttendanceRouter);
 
 app.use('/api', coreAuthRouter);
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
 app.use('/api/inventory', inventoryRouter);
 app.use('/api/admin', adminRouter);
-app.use('/api/project-item', projectItemRouter);
 app.use('/api/contractor', contractorRouter);
 app.use('/api/contractor-employee', contractorEmployeeRouter);
-app.use('/api/project', projectRouter);
-app.use('/api/project-outbound', projectOutboundRouter);
-app.use('/api/project-return', projectReturnRouter);
-app.use('/api/project-inventory', projectInventoryRouter);
-app.use('/api/project-employee', projectEmployeeRouter);
-app.use('/api/attendance', attendanceRouter);
-app.use('/api/work-process', workProcessRouter);
-app.use('/api/work-progress-record', workProgressRecordRouter);
 app.use('/api/chart-of-accounts', chartOfAccountsRouter);
 app.use('/api/journal-entry', journalEntryRouter);
 app.use('/api/financial-report', financialReportRouter);
@@ -97,6 +92,12 @@ app.use('/public', corePublicRouter);
 
 // 手機端靜態文件服務
 app.use('/mobile', express.static(path.join(__dirname, '../../frontend/mobile')));
+app.get('/mobile', (req, res) => {
+  res.sendFile(path.join(__dirname, '../../frontend/mobile/index.html'));
+});
+
+// 文件上傳靜態服務
+app.use('/uploads', express.static(path.join(__dirname, 'public/uploads')));
 
 // If that above routes didnt work, we 404 them and forward to error handler
 app.use(errorHandlers.notFound);

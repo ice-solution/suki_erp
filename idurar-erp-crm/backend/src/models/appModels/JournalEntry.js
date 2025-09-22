@@ -79,7 +79,7 @@ const schema = new mongoose.Schema({
   // 來源文件模型
   sourceModel: {
     type: String,
-    enum: ['Invoice', 'Payment', 'Project', 'Inventory', 'ProjectOutbound', 'ProjectReturn']
+    enum: ['Invoice', 'Payment', 'Inventory']
   },
 
   // 來源文件編號

@@ -15,32 +15,31 @@ const login = async (req, res) => {
       });
     }
 
-    // 查找員工
-    const ContractorEmployee = mongoose.model('ContractorEmployee');
-    const employee = await ContractorEmployee.findOne({
+    // 查找承辦商
+    const Contractor = mongoose.model('Contractor');
+    const contractor = await Contractor.findOne({
       phone,
       removed: false,
       enabled: true
-    }).populate('contractor');
+    });
 
-    if (!employee) {
+    if (!contractor) {
       return res.status(404).json({
         success: false,
         result: null,
-        message: '找不到對應的員工記錄，請確認手機號碼是否正確',
+        message: '找不到對應的承辦商記錄，請確認手機號碼是否正確',
       });
     }
 
     // 更新最後登入時間
-    employee.lastLogin = new Date();
-    await employee.save();
+    contractor.lastLogin = new Date();
+    await contractor.save();
 
     // 生成JWT token
     const payload = {
-      employeeId: employee._id,
-      phone: employee.phone,
-      contractorId: employee.contractor._id,
-      type: 'mobile_employee'
+      contractorId: contractor._id,
+      phone: contractor.phone,
+      type: 'mobile_contractor'
     };
 
     const token = jwt.sign(payload, process.env.JWT_SECRET || 'your-secret-key', {
@@ -49,26 +48,26 @@ const login = async (req, res) => {
 
     // 生成refresh token
     const refreshToken = jwt.sign(
-      { employeeId: employee._id, type: 'refresh' },
+      { contractorId: contractor._id, type: 'refresh' },
       process.env.JWT_REFRESH_SECRET || 'your-refresh-secret',
       { expiresIn: '30d' }
     );
 
-    // 返回用戶信息（不包含密碼）
-    const employeeData = {
-      _id: employee._id,
-      name: employee.name,
-      phone: employee.phone,
-      email: employee.email,
-      position: employee.position,
-      contractor: employee.contractor,
-      lastLogin: employee.lastLogin
+    // 返回承辦商信息
+    const contractorData = {
+      _id: contractor._id,
+      name: contractor.name,
+      phone: contractor.phone,
+      email: contractor.email,
+      address: contractor.address,
+      country: contractor.country,
+      lastLogin: contractor.lastLogin
     };
 
     return res.status(200).json({
       success: true,
       result: {
-        employee: employeeData,
+        contractor: contractorData,
         token,
         refreshToken
       },

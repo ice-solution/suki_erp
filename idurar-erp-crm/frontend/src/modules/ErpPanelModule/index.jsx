@@ -9,7 +9,7 @@ import { erp } from '@/redux/erp/actions';
 
 import { useErpContext } from '@/context/erp';
 
-export default function ErpPanel({ config, extra }) {
+export default function ErpPanel({ config, extra, DataTableModule }) {
   const dispatch = useDispatch();
   const { state } = useErpContext();
   const { deleteModal } = state;
@@ -26,9 +26,12 @@ export default function ErpPanel({ config, extra }) {
     };
   }, []);
 
+  // 使用自定義DataTable組件或默認的DataTable組件
+  const TableComponent = DataTableModule || DataTable;
+
   return (
     <>
-      <DataTable config={config} extra={extra} />
+      <TableComponent config={config} extra={extra} />
       <Delete config={config} isOpen={deleteModal.isOpen} />
     </>
   );

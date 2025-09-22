@@ -7,15 +7,15 @@ const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
 
 const create = async (req, res) => {
-  const { items = [], taxRate = 0, discount = 0 } = req.body;
+  const { items = [], discount = 0 } = req.body;
 
   // default
   let subTotal = 0;
-  let taxTotal = 0;
+  let discountTotal = 0;
   let total = 0;
   // let credit = 0;
 
-  //Calculate the items array with subTotal, total, taxTotal
+  //Calculate the items array with subTotal, total, discountTotal
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
     //sub total
@@ -23,13 +23,13 @@ const create = async (req, res) => {
     //item total
     item['total'] = total;
   });
-  taxTotal = calculate.multiply(subTotal, taxRate / 100);
-  total = calculate.add(subTotal, taxTotal);
+  discountTotal = calculate.multiply(subTotal, discount / 100);
+  total = calculate.sub(subTotal, discountTotal);
 
   let body = req.body;
 
   body['subTotal'] = subTotal;
-  body['taxTotal'] = taxTotal;
+  body['discountTotal'] = discountTotal;
   body['total'] = total;
   body['items'] = items;
   body['createdBy'] = req.admin._id;

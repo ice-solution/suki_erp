@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const JournalEntry = mongoose.model('JournalEntry');
 const Invoice = mongoose.model('Invoice');
 const Payment = mongoose.model('Payment');
-const ProjectOutbound = mongoose.model('ProjectOutbound');
 const ChartOfAccounts = mongoose.model('ChartOfAccounts');
 
 const generateAutoEntry = async (req, res) => {
@@ -95,39 +94,6 @@ const generateAutoEntry = async (req, res) => {
         ];
         break;
 
-      case 'project_outbound':
-        sourceDocument = await ProjectOutbound.findById(sourceId).populate(['project', 'items.item']);
-        if (!sourceDocument) {
-          throw new Error('Project outbound not found');
-        }
-
-        sourceModel = 'ProjectOutbound';
-        sourceDocumentNumber = sourceDocument.outboundNumber;
-        description = `項目出庫 - ${sourceDocument.project?.orderNumber}`;
-
-        // 借：工程成本，貸：存貨
-        const projectCostAccount = await ChartOfAccounts.findOne({ accountCode: '5001' }); // 材料成本
-        const inventoryAccount = await ChartOfAccounts.findOne({ accountCode: '1301' }); // 存貨
-
-        if (!projectCostAccount || !inventoryAccount) {
-          throw new Error('Required accounts not found');
-        }
-
-        const totalCost = sourceDocument.items.reduce((sum, item) => sum + (item.quantity * item.unitCost), 0);
-
-        entries = [
-          {
-            debitAccount: projectCostAccount._id,
-            amount: totalCost,
-            description: `項目成本 - ${sourceDocument.project?.orderNumber}`
-          },
-          {
-            creditAccount: inventoryAccount._id,
-            amount: totalCost,
-            description: `出庫存貨 - ${sourceDocument.outboundNumber}`
-          }
-        ];
-        break;
 
       default:
         throw new Error('Unsupported source type');
@@ -135,7 +101,7 @@ const generateAutoEntry = async (req, res) => {
 
     // 創建分錄
     const createEntryData = {
-      transactionDate: sourceDocument.date || sourceDocument.outboundDate || new Date(),
+      transactionDate: sourceDocument.date || new Date(),
       entryType,
       sourceType,
       sourceDocument: sourceId,

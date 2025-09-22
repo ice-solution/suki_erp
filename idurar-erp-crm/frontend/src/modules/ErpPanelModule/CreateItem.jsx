@@ -23,6 +23,8 @@ import {
 } from '@ant-design/icons';
 
 import { useNavigate } from 'react-router-dom';
+import { request } from '@/request';
+import { message } from 'antd';
 
 function SaveForm({ form }) {
   const translate = useLanguage();
@@ -76,7 +78,18 @@ export default function CreateItem({ config, CreateForm }) {
   };
 
   useEffect(() => {
-    if (isSuccess) {
+    if (isSuccess && result) {
+      // 檢查是否需要關聯到項目
+      const shouldLinkToProject = form.getFieldValue('shouldLinkToProject');
+      console.log('🔗 shouldLinkToProject:', shouldLinkToProject);
+      console.log('📄 Created document:', result);
+      
+      if (shouldLinkToProject) {
+        console.log('🚀 Starting project sync...');
+        // 執行項目同步以關聯新創建的文檔
+        handleProjectSync(shouldLinkToProject, result);
+      }
+      
       form.resetFields();
       dispatch(erp.resetAction({ actionType: 'create' }));
       setSubTotal(0);
@@ -84,23 +97,53 @@ export default function CreateItem({ config, CreateForm }) {
       navigate(`/${entity.toLowerCase()}/read/${result._id}`);
     }
     return () => {};
-  }, [isSuccess]);
+  }, [isSuccess, result]);
+
+  // 處理項目同步
+  const handleProjectSync = async (projectId, createdDocument) => {
+    try {
+      const syncResult = await request.sync({ entity: 'project', id: projectId });
+      if (syncResult.success) {
+        message.success(`${entity}已成功關聯到項目！`);
+      }
+    } catch (error) {
+      console.error('項目同步失敗:', error);
+      message.warning(`${entity}創建成功，但關聯到項目時出錯`);
+    }
+  };
 
   const onSubmit = (fieldsValue) => {
     console.log('🚀 ~ onSubmit ~ fieldsValue:', fieldsValue);
     if (fieldsValue) {
-      if (fieldsValue.items) {
-        let newList = [...fieldsValue.items];
+      // 移除shouldLinkToProject字段，這個字段只用於前端邏輯
+      const { shouldLinkToProject, ...dataToSubmit } = fieldsValue;
+      
+      if (dataToSubmit.items) {
+        let newList = [...dataToSubmit.items];
         newList.map((item) => {
           item.total = calculate.multiply(item.quantity, item.price);
         });
-        fieldsValue = {
-          ...fieldsValue,
-          items: newList,
-        };
+        dataToSubmit.items = newList;
       }
+      
+      // Check if this is a supplierquote with actual file objects (not just empty arrays)
+      const hasActualFiles = (dataToSubmit.dmFiles && dataToSubmit.dmFiles.length > 0 && 
+                             dataToSubmit.dmFiles.some(file => file.originFileObj)) || 
+                            (dataToSubmit.invoiceFiles && dataToSubmit.invoiceFiles.length > 0 && 
+                             dataToSubmit.invoiceFiles.some(file => file.originFileObj));
+      
+      if (entity === 'supplierquote' && hasActualFiles) {
+        // Use file upload API for supplierquote with actual files
+        console.log('🔄 Using file upload API');
+        dispatch(erp.createWithFiles({ entity, jsonData: dataToSubmit }));
+      } else {
+        // Use regular API for other entities or supplierquote without files
+        console.log('🔄 Using regular API');
+        dispatch(erp.create({ entity, jsonData: dataToSubmit }));
+      }
+    } else {
+      dispatch(erp.create({ entity, jsonData: fieldsValue }));
     }
-    dispatch(erp.create({ entity, jsonData: fieldsValue }));
   };
 
   return (

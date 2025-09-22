@@ -311,8 +311,8 @@ html
               td(colspan='3') #{translate('SUB TOTAL')}
               td.total #{moneyFormatter({amount:model.subTotal})}
             tr
-              td(colspan='3') #{translate('TAX')} #{model.taxRate} %
-              td.total #{moneyFormatter({amount:model.taxTotal})}
+              td(colspan='3') #{translate('DISCOUNT')} #{model.discount} %
+              td.total #{moneyFormatter({amount:model.discountTotal})}
             tr
               td.grand.total(colspan='3')  #{translate('TOTAL')} 
               td.grand.total #{moneyFormatter({amount:model.total})}

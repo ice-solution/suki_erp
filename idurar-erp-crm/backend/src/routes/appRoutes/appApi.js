@@ -7,6 +7,14 @@ const { routesList } = require('@/models/utils');
 
 const routerApp = (entity, controller) => {
   // 具體路由必須在參數路由之前
+  
+  // Add file upload routes for supplierquote FIRST
+  if (entity === 'supplierquote') {
+    router.route(`/${entity}/create-with-files`).post(catchErrors(controller['create']));
+    router.route(`/${entity}/update-with-files/:id`).patch(catchErrors(controller['update']));
+    router.route(`/${entity}/delete-file/:id`).delete(catchErrors(controller['deleteFile']));
+  }
+
   router.route(`/${entity}/create`).post(catchErrors(controller['create']));
   router.route(`/${entity}/search`).get(catchErrors(controller['search']));
   router.route(`/${entity}/list`).get(catchErrors(controller['list']));
@@ -25,6 +33,15 @@ const routerApp = (entity, controller) => {
   if (entity === 'quote') {
     router.route(`/${entity}/convert/:id`).get(catchErrors(controller['convert']));
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
+  }
+
+  if (entity === 'project') {
+    router.route(`/${entity}/sync/:id`).patch(catchErrors(controller['sync']));
+    router.route(`/${entity}/check/:poNumber`).get(catchErrors(controller['checkByPoNumber']));
+  }
+
+  if (entity === 'workprogress') {
+    router.route(`/${entity}/upload-image`).post(catchErrors(controller['uploadImage']));
   }
 
   // 參數路由必須在所有具體路由之後

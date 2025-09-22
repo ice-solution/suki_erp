@@ -1,69 +1,125 @@
 const mongoose = require('mongoose');
 
-const schema = new mongoose.Schema({
+const projectSchema = new mongoose.Schema({
   removed: {
     type: Boolean,
     default: false,
   },
-  enabled: {
-    type: Boolean,
-    default: true,
-  },
-
-  orderNumber: {
-    type: String,
-    required: true,
-  },
-  type: {
-    type: String,
-    required: true,
-  },
-  client: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Client',
-    required: true,
-    autopopulate: true,
-  },
-
-  startDate: {
-    type: Date,
-    required: true,
-  },
-  endDate: {
-    type: Date,
-    required: true,
-  },
-  cost: {
-    type: Number,
-    required: true,
-  },
-  contractor: {
-    type: mongoose.Schema.ObjectId,
-    ref: 'Contractor',
-    required: true,
-  },
-  contractorCost: {
-    type: Number,
-    required: true,
-  },
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: true },
-  status: {
+
+  // 項目名稱
+  name: {
     type: String,
-    enum: ['pending', 'in_progress', 'completed', 'cancelled'],
-    default: 'pending',
+    required: true,
   },
+
+  // P.O Number - 用於關聯quotations
   poNumber: {
     type: String,
+    required: true,
+    unique: true,
   },
-  actualCost: {
+
+  // 項目狀態
+  status: {
+    type: String,
+    enum: ['draft', 'pending', 'in_progress', 'completed', 'cancelled', 'on hold'],
+    default: 'draft',
+  },
+
+  // 成本承擔方
+  costBy: {
+    type: String,
+    enum: ['對方', '我方'],
+    required: true,
+  },
+
+  // 項目價格
+  projectPrice: {
     type: Number,
     default: 0,
   },
-  projectItems: [{
+
+  // 關聯的供應商
+  suppliers: [{
     type: mongoose.Schema.ObjectId,
-    ref: 'ProjectItem',
+    ref: 'Client',
+    autopopulate: true,
   }],
-  assigned: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
+
+  // 關聯的承包商
+  contractors: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Contractor',
+    autopopulate: true,
+  }],
+
+  // 關聯的quotations
+  quotations: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Quote',
+    autopopulate: true,
+  }],
+
+  // 關聯的supplier quotations
+  supplierQuotations: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'SupplierQuote',
+    autopopulate: true,
+  }],
+
+  // 關聯的invoices
+  invoices: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Invoice',
+    autopopulate: true,
+  }],
+
+  // 毛利
+  grossProfit: {
+    type: Number,
+    default: 0,
+  },
+
+  // S_price (supplier quotations總額)
+  sPrice: {
+    type: Number,
+    default: 0,
+  },
+
+  // 判頭費
+  contractorFee: {
+    type: Number,
+    default: 0,
+  },
+
+  // 成本價 (quotations總額)
+  costPrice: {
+    type: Number,
+    default: 0,
+  },
+
+  // 項目描述
+  description: {
+    type: String,
+  },
+
+  // 項目地址
+  address: {
+    type: String,
+  },
+
+  // 開始日期
+  startDate: {
+    type: Date,
+  },
+
+  // 結束日期
+  endDate: {
+    type: Date,
+  },
+
+  // 創建和更新時間
   created: {
     type: Date,
     default: Date.now,
@@ -74,6 +130,5 @@ const schema = new mongoose.Schema({
   },
 });
 
-schema.plugin(require('mongoose-autopopulate'));
-
-module.exports = mongoose.model('Project', schema); 
+projectSchema.plugin(require('mongoose-autopopulate'));
+module.exports = mongoose.model('Project', projectSchema);

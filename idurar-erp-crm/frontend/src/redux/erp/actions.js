@@ -46,7 +46,7 @@ export const erp = {
 
       if (data.success === true) {
         const result = {
-          items: data.result,
+          items: data.result.items || data.result,
           pagination: {
             current: parseInt(data.pagination.page, 10),
             pageSize: options?.items || 10,
@@ -295,5 +295,90 @@ export const erp = {
     ({ entity, id }) =>
     async () => {
       await request.convert({ entity, id });
+    },
+  sync:
+    ({ entity, id }) =>
+    async (dispatch) => {
+      dispatch({
+        type: actionTypes.REQUEST_LOADING,
+        keyState: 'sync',
+        payload: null,
+      });
+
+      let data = await request.sync({ entity, id });
+
+      if (data.success === true) {
+        dispatch({
+          type: actionTypes.REQUEST_SUCCESS,
+          keyState: 'sync',
+          payload: data.result,
+        });
+        dispatch({
+          type: actionTypes.CURRENT_ITEM,
+          payload: data.result,
+        });
+      } else {
+        dispatch({
+          type: actionTypes.REQUEST_FAILED,
+          keyState: 'sync',
+          payload: null,
+        });
+      }
+    },
+
+  createWithFiles:
+    ({ entity, jsonData }) =>
+    async (dispatch) => {
+      dispatch({
+        type: actionTypes.REQUEST_LOADING,
+        keyState: 'create',
+        payload: null,
+      });
+
+      let data = await request.createWithFiles({ entity, jsonData });
+
+      if (data.success === true) {
+        dispatch({
+          type: actionTypes.REQUEST_SUCCESS,
+          keyState: 'create',
+          payload: data.result,
+        });
+      } else {
+        dispatch({
+          type: actionTypes.REQUEST_FAILED,
+          keyState: 'create',
+          payload: null,
+        });
+      }
+    },
+
+  updateWithFiles:
+    ({ entity, id, jsonData }) =>
+    async (dispatch) => {
+      dispatch({
+        type: actionTypes.REQUEST_LOADING,
+        keyState: 'update',
+        payload: null,
+      });
+
+      let data = await request.updateWithFiles({ entity, id, jsonData });
+
+      if (data.success === true) {
+        dispatch({
+          type: actionTypes.REQUEST_SUCCESS,
+          keyState: 'update',
+          payload: data.result,
+        });
+        dispatch({
+          type: actionTypes.CURRENT_ITEM,
+          payload: data.result,
+        });
+      } else {
+        dispatch({
+          type: actionTypes.REQUEST_FAILED,
+          keyState: 'update',
+          payload: null,
+        });
+      }
     },
 };

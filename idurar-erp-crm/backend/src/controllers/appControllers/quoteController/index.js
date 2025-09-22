@@ -9,9 +9,11 @@ const convertQuoteToInvoice = require('./convertQuoteToInvoice');
 const paginatedList = require('./paginatedList');
 const read = require('./read');
 const linkProject = require('./linkProject');
+const search = require('./search');
 
 methods.list = paginatedList;
 methods.read = read;
+methods.search = search;
 
 methods.mail = sendMail;
 methods.create = create;

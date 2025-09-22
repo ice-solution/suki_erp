@@ -1,13 +1,13 @@
-const getMyProjects = require('./getMyProjects');
-const getProjectDetail = require('./getProjectDetail');
-const getProjectWorkProcesses = require('./getProjectWorkProcesses');
-const recordProgress = require('./recordProgress');
-const getMyProgressRecords = require('./getMyProgressRecords');
+const getContractorProjects = require('./getContractorProjects');
+const getProjectWorkProgress = require('./getProjectWorkProgress');
+const updateWorkProgress = require('./updateWorkProgress');
+const uploadImage = require('./uploadImage');
 
-module.exports = {
-  getMyProjects,
-  getProjectDetail,
-  getProjectWorkProcesses,
-  recordProgress,
-  getMyProgressRecords,
+const methods = {
+  getContractorProjects,
+  getProjectWorkProgress,
+  updateWorkProgress,
+  uploadImage
 };
+
+module.exports = methods;

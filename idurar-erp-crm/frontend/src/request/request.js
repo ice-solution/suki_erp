@@ -225,6 +225,134 @@ const request = {
       return errorHandler(error);
     }
   },
+  sync: async ({ entity, id }) => {
+    try {
+      includeToken();
+      const response = await axios.patch(`${entity}/sync/${id}`);
+      successHandler(response, {
+        notifyOnSuccess: true,
+        notifyOnFailed: true,
+      });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  checkProject: async ({ poNumber }) => {
+    try {
+      includeToken();
+      const response = await axios.get(`project/check/${poNumber}`);
+      return response.data;
+    } catch (error) {
+      // 對於404錯誤（沒找到項目），不要顯示錯誤通知
+      if (error.response && error.response.status === 404) {
+        return { success: false, result: null };
+      }
+      return errorHandler(error);
+    }
+  },
+
+  createWithFiles: async ({ entity, jsonData }) => {
+    try {
+      includeToken();
+      const formData = new FormData();
+      
+      // Add regular form data
+      Object.keys(jsonData).forEach(key => {
+        if (key !== 'dmFiles' && key !== 'invoiceFiles') {
+          if (Array.isArray(jsonData[key])) {
+            // Handle arrays specially
+            formData.append(key, JSON.stringify(jsonData[key]));
+          } else if (typeof jsonData[key] === 'object' && jsonData[key] !== null) {
+            formData.append(key, JSON.stringify(jsonData[key]));
+          } else if (jsonData[key] !== undefined && jsonData[key] !== null) {
+            formData.append(key, jsonData[key]);
+          }
+        }
+      });
+      
+      // Add DM files
+      if (jsonData.dmFiles && jsonData.dmFiles.length > 0) {
+        jsonData.dmFiles.forEach((file) => {
+          formData.append('dmFiles', file.originFileObj);
+        });
+      }
+      
+      // Add Invoice files
+      if (jsonData.invoiceFiles && jsonData.invoiceFiles.length > 0) {
+        jsonData.invoiceFiles.forEach((file) => {
+          formData.append('invoiceFiles', file.originFileObj);
+        });
+      }
+      
+      const response = await axios.post(`${entity}/create-with-files`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      successHandler(response, {
+        notifyOnSuccess: true,
+        notifyOnFailed: true,
+      });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+
+  updateWithFiles: async ({ entity, id, jsonData }) => {
+    try {
+      includeToken();
+      const formData = new FormData();
+      
+      // Add regular form data
+      Object.keys(jsonData).forEach(key => {
+        if (key !== 'dmFiles' && key !== 'invoiceFiles') {
+          if (Array.isArray(jsonData[key])) {
+            // Handle arrays specially
+            formData.append(key, JSON.stringify(jsonData[key]));
+          } else if (typeof jsonData[key] === 'object' && jsonData[key] !== null) {
+            formData.append(key, JSON.stringify(jsonData[key]));
+          } else if (jsonData[key] !== undefined && jsonData[key] !== null) {
+            formData.append(key, jsonData[key]);
+          }
+        }
+      });
+      
+      // Add DM files
+      if (jsonData.dmFiles && jsonData.dmFiles.length > 0) {
+        jsonData.dmFiles.forEach((file) => {
+          if (file.originFileObj) {
+            formData.append('dmFiles', file.originFileObj);
+          }
+        });
+      }
+      
+      // Add Invoice files
+      if (jsonData.invoiceFiles && jsonData.invoiceFiles.length > 0) {
+        jsonData.invoiceFiles.forEach((file) => {
+          if (file.originFileObj) {
+            formData.append('invoiceFiles', file.originFileObj);
+          }
+        });
+      }
+      
+      const response = await axios.patch(`${entity}/update-with-files/${id}`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      
+      successHandler(response, {
+        notifyOnSuccess: true,
+        notifyOnFailed: true,
+      });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
 
   upload: async ({ entity, id, jsonData }) => {
     try {
@@ -291,6 +419,40 @@ const request = {
       const response = await axios.get(`${entity}/convert/${id}`);
       successHandler(response, {
         notifyOnSuccess: true,
+        notifyOnFailed: true,
+      });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+
+  deleteFile: async ({ entity, id, fileId, fileType }) => {
+    try {
+      includeToken();
+      const response = await axios.delete(`${entity}/delete-file/${id}`, {
+        data: { fileId, fileType }
+      });
+      successHandler(response, {
+        notifyOnSuccess: true,
+        notifyOnFailed: true,
+      });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  
+  uploadWorkProgressImage: async (formData) => {
+    try {
+      includeToken();
+      const response = await axios.post('workprogress/upload-image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      successHandler(response, {
+        notifyOnSuccess: false,
         notifyOnFailed: true,
       });
       return response.data;

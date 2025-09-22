@@ -1,6 +1,6 @@
 import NotFound from '@/components/NotFound';
 import { ErpLayout } from '@/layout';
-import ReadItem from '@/modules/ErpPanelModule/ReadItem';
+import InvoiceReadItem from './InvoiceReadItem';
 
 import PageLoader from '@/components/PageLoader';
 import { erp } from '@/redux/erp/actions';
@@ -30,7 +30,7 @@ export default function ReadInvoiceModule({ config }) {
     return (
       <ErpLayout>
         {isSuccess ? (
-          <ReadItem config={config} selectedItem={currentResult} />
+          <InvoiceReadItem config={config} selectedItem={currentResult} />
         ) : (
           <NotFound entity={config.entity} />
         )}

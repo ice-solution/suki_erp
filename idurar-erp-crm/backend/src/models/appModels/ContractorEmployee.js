@@ -18,6 +18,7 @@ const schema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: 'Contractor',
     required: true,
+    autopopulate: true,
   },
   phone: {
     type: String,

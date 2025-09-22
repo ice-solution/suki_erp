@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>員工工程管理系統</title>
+    <title>承包商工程管理系統</title>
     <style>
         * {
             margin: 0;
@@ -65,7 +65,7 @@
             color: #333;
         }
 
-        input[type="text"], input[type="password"], input[type="tel"], textarea {
+        input[type="text"], input[type="password"], input[type="tel"], textarea, select {
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
@@ -74,7 +74,7 @@
             transition: border-color 0.3s;
         }
 
-        input:focus, textarea:focus {
+        input:focus, textarea:focus, select:focus {
             outline: none;
             border-color: #667eea;
             box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
@@ -108,68 +108,14 @@
             background: linear-gradient(135deg, #ffc107 0%, #fd7e14 100%);
         }
 
-        .attendance-card {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-
-        .attendance-info {
-            margin-top: 15px;
-        }
-
-        .attendance-info p {
-            margin: 8px 0;
-            font-size: 14px;
-        }
-
-        .attendance-actions {
-            margin-top: 20px;
-        }
-
-        .attendance-actions .btn {
-            margin-bottom: 10px;
-        }
-
-        .attendance-complete {
-            text-align: center;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            color: #6c757d;
-        }
-
-        .status-success {
-            color: #28a745;
-            font-weight: bold;
-        }
-
-        .status-pending {
-            color: #ffc107;
-            font-weight: bold;
-        }
-
-        .project-header {
-            cursor: pointer;
-        }
-
-        .project-actions {
-            margin-top: 15px;
-            padding-top: 15px;
-            border-top: 1px solid #eee;
+        .btn-danger {
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
         }
 
         .btn-small {
             padding: 8px 16px;
             font-size: 14px;
-        }
-            cursor: not-allowed;
-        }
-
-        .btn-secondary {
-            background: #6c757d;
+            width: auto;
         }
 
         .project-card {
@@ -239,32 +185,7 @@
             color: #155724;
         }
 
-        .status-on_hold {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .status-cancelled {
-            background: #f5c6cb;
-            color: #721c24;
-        }
-
-        .status-draft {
-            background: #e2e3e5;
-            color: #383d41;
-        }
-
-        .status-active {
-            background: #d4edda;
-            color: #155724;
-        }
-
-        .status-inactive {
-            background: #f8d7da;
-            color: #721c24;
-        }
-
-        .profile-card {
+        .workprogress-card {
             background: white;
             border-radius: 12px;
             padding: 16px;
@@ -272,51 +193,35 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .profile-info {
-            margin-top: 12px;
-        }
-
-        .profile-info p {
+        .workprogress-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
             margin-bottom: 8px;
+        }
+
+        .workprogress-info {
             font-size: 14px;
-        }
-
-        .navbar {
-            display: flex;
-            background: white;
-            border-top: 1px solid #eee;
-            position: fixed;
-            bottom: 0;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 100%;
-            max-width: 400px;
-        }
-
-        .nav-item {
-            flex: 1;
-            padding: 12px;
-            text-align: center;
-            border: none;
-            background: none;
-            cursor: pointer;
-            font-size: 12px;
             color: #666;
-        }
-
-        .nav-item.active {
-            color: #667eea;
-        }
-
-        .nav-item i {
-            display: block;
-            font-size: 20px;
             margin-bottom: 4px;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 14px;
         }
 
         .page {
             display: none;
-            padding-bottom: 80px;
+            padding-bottom: 20px;
         }
 
         .page.active {
@@ -358,45 +263,72 @@
             margin-top: 8px;
         }
 
-        .back-btn {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            background: rgba(255,255,255,0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 14px;
+        .image-preview-item {
+            width: 80px;
+            height: 80px;
+            background-size: cover;
+            background-position: center;
+            border-radius: 8px;
+            border: 2px solid #ddd;
         }
 
-        .fab {
-            position: fixed;
-            bottom: 100px;
-            right: 20px;
-            width: 56px;
-            height: 56px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border: none;
-            color: white;
-            font-size: 24px;
-            cursor: pointer;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        .modal {
             display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
         }
 
-        .fab.show {
-            display: block;
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 400px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .form-actions .btn {
+            flex: 1;
         }
 
         @media (max-width: 480px) {
             .container {
-                max-width: 100%;
-            }
-            
-            .navbar {
                 max-width: 100%;
             }
         }
@@ -407,7 +339,7 @@
         <!-- Header -->
         <div class="header">
             <button class="back-btn" id="backBtn" style="display: none;">← 返回</button>
-            <h1 id="headerTitle">員工工程管理系統</h1>
+            <h1 id="headerTitle">承辦商工程管理系統</h1>
             <p id="headerSubtitle">請輸入手機號碼登入</p>
         </div>
 
@@ -440,89 +372,37 @@
                     <div id="projectsList"></div>
                 </div>
 
-                <!-- Project Detail Page -->
-                <div class="page" id="projectDetailPage">
-                    <div id="projectDetail"></div>
+                <!-- WorkProgress Page -->
+                <div class="page" id="workProgressPage">
+                    <div id="workProgressList"></div>
                 </div>
 
-                <!-- Progress Record Page -->
-                <div class="page" id="progressPage">
-                    <form id="progressForm">
+                <!-- Update Progress Modal -->
+                <div class="page" id="updateProgressPage">
+                    <form id="updateProgressForm">
                         <div class="form-group">
-                            <label for="workProcess">選擇工序</label>
-                            <select id="workProcess" class="form-control" required>
-                                <option value="">請選擇工序</option>
-                            </select>
+                            <label for="progressValue">進度百分比 (%)</label>
+                            <input type="number" id="progressValue" min="0" max="100" placeholder="輸入進度百分比" required>
                         </div>
                         <div class="form-group">
-                            <label for="workDescription">工作描述</label>
-                            <textarea id="workDescription" rows="3" placeholder="簡述今天的主要工作內容" required></textarea>
+                            <label for="progressDescription">工作描述</label>
+                            <textarea id="progressDescription" rows="3" placeholder="描述今天完成的工作內容" required></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="completedWork">完成的工作</label>
-                            <textarea id="completedWork" rows="4" placeholder="詳細描述已完成的具體工作項目" required></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="progressIncrement">進度增量 (%)</label>
-                            <input type="number" id="progressIncrement" min="0" max="100" placeholder="本次完成的進度百分比">
-                        </div>
-                        <div class="form-group">
-                            <label for="hoursWorked">工作時數</label>
-                            <input type="number" id="hoursWorked" min="0" max="24" step="0.5" placeholder="本次工作時數" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="location">工作地點</label>
-                            <input type="text" id="location" placeholder="工作地點">
-                        </div>
-                        <div class="form-group">
-                            <label for="images">上傳工程照片</label>
-                            <input type="file" id="images" class="file-input" multiple accept="image/*">
+                            <label for="progressImages">上傳工程照片</label>
+                            <input type="file" id="progressImages" class="file-input" multiple accept="image/*">
                             <div class="image-preview" id="imagePreview"></div>
                         </div>
-                        <button type="submit" class="btn">提交進度記錄</button>
+                        <div class="form-actions">
+                            <button type="button" class="btn btn-warning" onclick="goBack()">取消</button>
+                            <button type="submit" class="btn btn-success">提交進度</button>
+                        </div>
                     </form>
-                </div>
-
-                <!-- Profile Page -->
-                <div class="page" id="profilePage">
-                    <div id="profileContent"></div>
-                </div>
-
-                <!-- Attendance Page -->
-                <div class="page" id="attendancePage">
-                    <div id="attendanceContent"></div>
                 </div>
             </div>
         </div>
-
-        <!-- Navigation -->
-        <div class="navbar" id="navbar" style="display: none;">
-            <button class="nav-item active" onclick="showPage('projects')">
-                <i>🏗️</i>
-                <span>項目</span>
-            </button>
-            <button class="nav-item" onclick="showPage('attendance')">
-                <i>✅</i>
-                <span>出席</span>
-            </button>
-            <button class="nav-item" onclick="showPage('progress')">
-                <i>📝</i>
-                <span>記錄</span>
-            </button>
-            <button class="nav-item" onclick="showPage('profile')">
-                <i>👤</i>
-                <span>個人</span>
-            </button>
-        </div>
-
-        <!-- Floating Action Button -->
-        <button class="fab" id="fab" onclick="showPage('progress')">+</button>
     </div>
 
     <script src="mobile.js"></script>
-    <script>
-        // 使用真實API
-        console.log('Using real API');
-    </script>
 </body>
 </html>
