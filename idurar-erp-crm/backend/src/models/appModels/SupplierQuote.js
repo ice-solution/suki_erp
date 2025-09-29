@@ -107,6 +107,24 @@ const supplierQuoteSchema = new mongoose.Schema({
       },
     },
   ],
+  materials: [
+    {
+      warehouse: {
+        type: String,
+        enum: ['A', 'B', 'C', 'D'],
+        required: true,
+      },
+      itemName: {
+        type: String,
+        required: true,
+      },
+      quantity: {
+        type: Number,
+        required: true,
+        min: 1,
+      },
+    },
+  ],
   subTotal: {
     type: Number,
   },

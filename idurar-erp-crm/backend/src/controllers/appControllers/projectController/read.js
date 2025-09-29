@@ -15,6 +15,10 @@ const read = async (req, res) => {
       .populate('quotations')
       .populate('supplierQuotations')
       .populate('invoices')
+      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee.contractor', 'name')
+      .populate('onboard.contractorEmployee', 'name contractor')
+      .populate('onboard.contractorEmployee.contractor', 'name')
       .exec();
 
     // If no results found, return document not found

@@ -23,6 +23,7 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 import { useMoney, useDate } from '@/settings';
 import { useNavigate } from 'react-router-dom';
 import { request } from '@/request';
+import SalaryManagement from '@/components/SalaryManagement';
 
 const { Title, Text } = Typography;
 
@@ -575,6 +576,13 @@ export default function ProjectReadItem({ config, selectedItem }) {
               locale={{ emptyText: '沒有WorkProgress記錄' }}
             />
           </Card>
+        </Col>
+
+        <Col span={24}>
+          <SalaryManagement 
+            projectId={currentProject._id}
+            workProgressList={workProgressList}
+          />
         </Col>
       </Row>
     </>

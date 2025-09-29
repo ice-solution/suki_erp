@@ -54,6 +54,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   
+  // Materials form states
+  const [materials, setMaterials] = useState([]);
+  const [currentMaterial, setCurrentMaterial] = useState({
+    warehouse: '',
+    itemName: '',
+    quantity: 1
+  });
+  const [warehouseItems, setWarehouseItems] = useState([]);
+  const [materialsLoading, setMaterialsLoading] = useState(false);
+  
   // File upload states
   const [dmFileList, setDmFileList] = useState([]);
   const [invoiceFileList, setInvoiceFileList] = useState([]);
@@ -134,6 +144,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   useEffect(() => {
     fetchProjectItems();
     fetchClients();
+    fetchWarehouseItems();
   }, []);
 
   const fetchClients = async () => {
@@ -221,6 +232,65 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
+  const fetchWarehouseItems = async (selectedWarehouse = null) => {
+    try {
+      setMaterialsLoading(true);
+      console.log('🔍 Fetching Warehouse Items from API...', selectedWarehouse ? `for warehouse ${selectedWarehouse}` : 'all warehouses');
+      
+      // 使用正確的倉庫 API
+      const entity = selectedWarehouse 
+        ? `warehouse?warehouse=${selectedWarehouse}` 
+        : 'warehouse';
+      const response = await request.get({ entity });
+      
+      console.log('📦 Warehouse Items API response:', response);
+      
+      if (response.success && response.result) {
+        // 轉換API數據格式為組件期望的格式
+        const apiWarehouseItems = response.result.map(item => ({
+          itemName: item.itemName,
+          warehouse: item.warehouse,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          description: item.description,
+          _id: item._id
+        }));
+        setWarehouseItems(apiWarehouseItems);
+        console.log(`✅ Loaded ${apiWarehouseItems.length} Warehouse Items from API`);
+      } else {
+        console.warn('❌ Warehouse Items API failed, using fallback mock data');
+        // 如果API失敗，使用備用的模擬數據
+        const fallbackItems = [
+          { itemName: '不鏽鋼板', warehouse: 'A', quantity: 50, unitPrice: 1000, description: '304不鏽鋼板' },
+          { itemName: '鋁合金', warehouse: 'A', quantity: 30, unitPrice: 800, description: '6061鋁合金' },
+          { itemName: '水泥', warehouse: 'B', quantity: 100, unitPrice: 500, description: '高級水泥' },
+          { itemName: '鋼筋', warehouse: 'B', quantity: 80, unitPrice: 800, description: '建築用鋼筋' },
+          { itemName: '磚塊', warehouse: 'C', quantity: 200, unitPrice: 200, description: '紅磚' },
+          { itemName: '玻璃', warehouse: 'C', quantity: 40, unitPrice: 300, description: '建築玻璃' },
+          { itemName: '木材', warehouse: 'D', quantity: 60, unitPrice: 600, description: '建築木材' },
+          { itemName: '油漆', warehouse: 'D', quantity: 25, unitPrice: 150, description: '內牆油漆' },
+        ];
+        setWarehouseItems(fallbackItems);
+      }
+    } catch (error) {
+      console.error('❌ Error fetching Warehouse Items:', error);
+      // 使用備用的模擬數據
+      const fallbackItems = [
+        { itemName: '不鏽鋼板', warehouse: 'A', quantity: 50, unitPrice: 1000, description: '304不鏽鋼板' },
+        { itemName: '鋁合金', warehouse: 'A', quantity: 30, unitPrice: 800, description: '6061鋁合金' },
+        { itemName: '水泥', warehouse: 'B', quantity: 100, unitPrice: 500, description: '高級水泥' },
+        { itemName: '鋼筋', warehouse: 'B', quantity: 80, unitPrice: 800, description: '建築用鋼筋' },
+        { itemName: '磚塊', warehouse: 'C', quantity: 200, unitPrice: 200, description: '紅磚' },
+        { itemName: '玻璃', warehouse: 'C', quantity: 40, unitPrice: 300, description: '建築玻璃' },
+        { itemName: '木材', warehouse: 'D', quantity: 60, unitPrice: 600, description: '建築木材' },
+        { itemName: '油漆', warehouse: 'D', quantity: 25, unitPrice: 150, description: '內牆油漆' },
+      ];
+      setWarehouseItems(fallbackItems);
+    } finally {
+      setMaterialsLoading(false);
+    }
+  };
+
   // 單獨處理current客戶數據，確保客戶選項正確顯示
   useEffect(() => {
     if (current) {
@@ -271,12 +341,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         number, 
         type = '服務',
         items: currentItems = [], 
+        materials: currentMaterials = [],
         clients: currentClients = [], 
         subTotal: currentSubTotal = 0,
-        shipType,
-        subcontractorCount,
-        costPrice,
-        warehouse 
+        shipType
       } = current;
       
       setDiscount(discount);
@@ -284,6 +352,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setLastNumber(number);
       setSelectedType(type);
       setItems(currentItems.map((item, index) => ({ ...item, key: index })));
+      setMaterials(currentMaterials.map((material, index) => ({ ...material, key: index })));
       
       // 計算subTotal或使用現有的subTotal
       let calculatedSubTotal = 0;
@@ -312,12 +381,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setTimeout(() => {
         form.setFieldsValue({ 
           items: currentItems,
+          materials: currentMaterials,
           clients: clientIds,
           type: type,
-          shipType: shipType,
-          subcontractorCount: subcontractorCount,
-          costPrice: costPrice,
-          warehouse: warehouse
+          shipType: shipType
         });
       }, 100);
     }
@@ -336,9 +403,17 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
     setSubTotal(newSubTotal);
     
-    // 更新表單的items字段
-    form.setFieldsValue({ items: items });
+    // 更新表單的items和materials字段
+    form.setFieldsValue({ 
+      items: items,
+      materials: materials 
+    });
   }, [items, form]);
+
+  // 同步materials到表單
+  useEffect(() => {
+    form.setFieldsValue({ materials: materials });
+  }, [materials, form]);
 
   useEffect(() => {
     const discountAmount = calculate.multiply(subTotal, discount / 100);
@@ -432,6 +507,88 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     form.setFieldsValue({ items: updatedItems });
   };
 
+  // 處理材料選擇
+  const handleMaterialSelect = (value, option) => {
+    const selectedMaterial = warehouseItems.find(item => item.itemName === value);
+    if (selectedMaterial) {
+      setCurrentMaterial({
+        ...currentMaterial,
+        itemName: selectedMaterial.itemName,
+        warehouse: selectedMaterial.warehouse
+      });
+    }
+  };
+
+  // 搜索倉庫項目
+  const handleMaterialSearch = (searchText) => {
+    // 如果選擇了倉庫，只顯示該倉庫的項目
+    const filteredItems = currentMaterial.warehouse 
+      ? warehouseItems.filter(item => item.warehouse === currentMaterial.warehouse)
+      : warehouseItems;
+    
+    if (!searchText) {
+      return filteredItems.map(item => ({
+        value: item.itemName,
+        label: `${item.itemName} (倉${item.warehouse}) - 庫存: ${item.quantity}`
+      }));
+    }
+    
+    return filteredItems
+      .filter(item => 
+        item.itemName.toLowerCase().includes(searchText.toLowerCase()) ||
+        (item.description && item.description.toLowerCase().includes(searchText.toLowerCase()))
+      )
+      .map(item => ({
+        value: item.itemName,
+        label: `${item.itemName} (倉${item.warehouse}) - 庫存: ${item.quantity}`
+      }));
+  };
+
+  // 更新當前材料
+  const updateCurrentMaterial = (field, value) => {
+    const updatedMaterial = {
+      ...currentMaterial,
+      [field]: value
+    };
+    
+    setCurrentMaterial(updatedMaterial);
+    
+    // 如果選擇了倉庫，動態加載該倉庫的項目
+    if (field === 'warehouse' && value) {
+      fetchWarehouseItems(value);
+    }
+  };
+
+  // 添加材料到列表
+  const addMaterialToList = () => {
+    if (!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity <= 0) {
+      return;
+    }
+
+    const newMaterial = {
+      ...currentMaterial,
+      key: Date.now(), // 用作唯一標識
+    };
+
+    const updatedMaterials = [...materials, newMaterial];
+    setMaterials(updatedMaterials);
+    form.setFieldsValue({ materials: updatedMaterials });
+
+    // 重置當前材料
+    setCurrentMaterial({
+      warehouse: '',
+      itemName: '',
+      quantity: 1
+    });
+  };
+
+  // 刪除材料
+  const removeMaterial = (key) => {
+    const updatedMaterials = materials.filter(material => material.key !== key);
+    setMaterials(updatedMaterials);
+    form.setFieldsValue({ materials: updatedMaterials });
+  };
+
   // Table columns
   const columns = [
     {
@@ -473,6 +630,40 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       render: (_, record) => (
         <DeleteOutlined 
           onClick={() => removeItem(record.key)} 
+          style={{ color: 'red', cursor: 'pointer' }}
+        />
+      ),
+    },
+  ];
+
+  // Materials table columns
+  const materialColumns = [
+    {
+      title: translate('Warehouse'),
+      dataIndex: 'warehouse',
+      key: 'warehouse',
+      width: '20%',
+      render: (warehouse) => `倉${warehouse}`,
+    },
+    {
+      title: translate('Item'),
+      dataIndex: 'itemName',
+      key: 'itemName',
+      width: '40%',
+    },
+    {
+      title: translate('Quantity'),
+      dataIndex: 'quantity',
+      key: 'quantity',
+      width: '20%',
+    },
+    {
+      title: '',
+      key: 'action',
+      width: '20%',
+      render: (_, record) => (
+        <DeleteOutlined 
+          onClick={() => removeMaterial(record.key)} 
           style={{ color: 'red', cursor: 'pointer' }}
         />
       ),
@@ -649,11 +840,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 ]}
               />
             </Form.Item>
-          ) : (
-            <Form.Item label={translate('Note')} name="notes">
-              <Input />
-            </Form.Item>
-          )}
+          ) : null}
         </Col>
       </Row>
       
@@ -678,54 +865,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <Input />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item 
-            label={translate('Subcontractor Count')} 
-            name="subcontractorCount"
-          >
-            <InputNumber 
-              min={0}
-              placeholder="代工數"
-              style={{ width: '100%' }}
-            />
-          </Form.Item>
-        </Col>
       </Row>
       
-      <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={6}>
-          <Form.Item 
-            label={translate('Cost Price')} 
-            name="costPrice"
-          >
-            <InputNumber 
-              min={0}
-              precision={2}
-              placeholder="成本價"
-              style={{ width: '100%' }}
-              addonBefore="$"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
       
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={12}>
           <Form.Item label={translate('Project Address')} name="address">
             <Input />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('Warehouse')} name="warehouse">
-            <Select
-              placeholder="選擇倉庫"
-              options={[
-                { value: 'A', label: '倉A' },
-                { value: 'B', label: '倉B' },
-                { value: 'C', label: '倉C' },
-                { value: 'D', label: '倉D' },
-              ]}
-            />
           </Form.Item>
         </Col>
       </Row>
@@ -846,8 +992,78 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         locale={{ emptyText: translate('No items added') }}
       />
 
+      <Divider orientation="left">材料管理</Divider>
+
+      {/* Materials Input Form */}
+      <Row gutter={[12, 12]} style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
+        <Col span={24}>
+          <h4>添加材料</h4>
+        </Col>
+        <Col span={6}>
+          <Select
+            placeholder="選擇倉庫"
+            value={currentMaterial.warehouse}
+            onChange={(value) => updateCurrentMaterial('warehouse', value)}
+            style={{ width: '100%' }}
+            options={[
+              { value: 'A', label: '倉A' },
+              { value: 'B', label: '倉B' },
+              { value: 'C', label: '倉C' },
+              { value: 'D', label: '倉D' },
+            ]}
+          />
+        </Col>
+        <Col span={10}>
+          <AutoComplete
+            placeholder="輸入材料名稱搜索..."
+            onSearch={handleMaterialSearch}
+            onSelect={handleMaterialSelect}
+            value={currentMaterial.itemName}
+            onChange={(value) => updateCurrentMaterial('itemName', value)}
+            loading={materialsLoading}
+            showSearch
+            filterOption={false}
+            options={handleMaterialSearch('')}
+            style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={4}>
+          <InputNumber 
+            placeholder="數量"
+            min={1}
+            value={currentMaterial.quantity}
+            onChange={(value) => updateCurrentMaterial('quantity', value)}
+            style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={4}>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={addMaterialToList}
+            disabled={!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity <= 0}
+            style={{ width: '100%' }}
+          >
+            添加
+          </Button>
+        </Col>
+      </Row>
+
+      {/* Materials Table */}
+      <Table
+        dataSource={materials}
+        columns={materialColumns}
+        pagination={false}
+        size="small"
+        rowKey={(record, index) => record.key || index}
+        locale={{ emptyText: '未添加材料' }}
+      />
+
       {/* Hidden Form Items for submission */}
       <Form.Item name="items" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="materials" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
       <Form.Item name="shouldLinkToProject" style={{ display: 'none' }}>

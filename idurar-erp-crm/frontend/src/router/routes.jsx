@@ -25,6 +25,7 @@ const SupplierQuote = lazy(() => import('@/pages/SupplierQuote/index'));
 const SupplierQuoteRead = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteRead'));
 const SupplierQuoteTableCreate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableCreate'));
 const SupplierQuoteTableUpdate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableUpdate'));
+const Warehouse = lazy(() => import('@/pages/Warehouse/index'));
 const Project = lazy(() => import('@/pages/Project/index'));
 const ProjectCreate = lazy(() => import('@/pages/Project/ProjectCreate'));
 const ProjectRead = lazy(() => import('@/pages/Project/ProjectRead'));
@@ -148,6 +149,10 @@ let routes = {
     {
       path: '/supplierquote/table/update/:id',
       element: <SupplierQuoteTableUpdate />,
+    },
+    {
+      path: '/warehouse',
+      element: <Warehouse />,
     },
     {
       path: '/project',

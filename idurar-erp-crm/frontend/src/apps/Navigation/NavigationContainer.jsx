@@ -26,6 +26,7 @@ import {
   ProjectOutlined,
   BuildOutlined,
   CalculatorOutlined,
+  DatabaseOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -72,7 +73,12 @@ function Sidebar({ collapsible, isMobile = false }) {
     {
       key: 'supplierquote',
       icon: <FileSyncOutlined />,
-      label: <Link to={'/supplierquote'}>供應商報價</Link>,
+      label: <Link to={'/supplierquote'}>Supplier Quote(S單)</Link>,
+    },
+    {
+      key: 'warehouse',
+      icon: <DatabaseOutlined />,
+      label: <Link to={'/warehouse'}>存倉管理</Link>,
     },
     {
       key: 'project',

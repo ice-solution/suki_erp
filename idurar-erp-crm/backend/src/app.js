@@ -24,6 +24,7 @@ const mobileProjectRouter = require('./routes/mobileProject');
 const errorHandlers = require('./handlers/errorHandlers');
 const erpApiRouter = require('./routes/appRoutes/appApi');
 const inventoryRouter = require('./routes/inventory');
+const warehouseRouter = require('./routes/warehouse');
 
 const fileUpload = require('express-fileupload');
 
@@ -32,6 +33,8 @@ require('./models/appModels/ContractorEmployee');
 require('./models/appModels/Contractor');
 require('./models/appModels/Project');
 require('./models/appModels/WorkProgress');
+require('./models/appModels/WarehouseInventory');
+require('./models/appModels/WarehouseTransaction');
 
 // create our Express app
 const app = express();
@@ -108,6 +111,7 @@ app.use('/api', coreAuthRouter);
 app.use('/api', adminAuth.isValidAuthToken, coreApiRouter);
 app.use('/api', adminAuth.isValidAuthToken, erpApiRouter);
 app.use('/api/inventory', inventoryRouter);
+app.use('/api/warehouse', warehouseRouter);
 app.use('/api/admin', adminRouter);
 app.use('/api/contractor', contractorRouter);
 app.use('/api/contractor-employee', contractorEmployeeRouter);

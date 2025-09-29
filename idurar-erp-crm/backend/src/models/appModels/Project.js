@@ -75,6 +75,76 @@ const projectSchema = new mongoose.Schema({
     autopopulate: true,
   }],
 
+  // 人工管理
+  salaries: [{
+    contractorEmployee: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'ContractorEmployee',
+      required: true,
+    },
+    dailySalary: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+    workDays: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    totalSalary: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+    notes: {
+      type: String,
+    },
+    created: {
+      type: Date,
+      default: Date.now,
+    },
+    updated: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
+
+  // 打咭記錄
+  onboard: [{
+    contractorEmployee: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'ContractorEmployee',
+      required: true,
+    },
+    checkInDate: {
+      type: Date,
+      required: true,
+    },
+    checkInTime: {
+      type: String, // 格式: "HH:mm"
+      required: true,
+    },
+    checkOutTime: {
+      type: String, // 格式: "HH:mm"，可選
+    },
+    workHours: {
+      type: Number, // 工作時數，自動計算
+      default: 0,
+    },
+    notes: {
+      type: String,
+    },
+    created: {
+      type: Date,
+      default: Date.now,
+    },
+    updated: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
+
   // 毛利
   grossProfit: {
     type: Number,

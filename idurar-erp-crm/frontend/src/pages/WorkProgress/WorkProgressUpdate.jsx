@@ -47,7 +47,6 @@ export default function WorkProgressUpdate() {
           contractorEmployee: data.contractorEmployee?._id,
           startDate: data.startDate ? dayjs(data.startDate) : null,
           expectedEndDate: data.expectedEndDate ? dayjs(data.expectedEndDate) : null,
-          completionDate: data.completionDate ? dayjs(data.completionDate) : null,
           actualEndDate: data.actualEndDate ? dayjs(data.actualEndDate) : null,
         });
       } else {
@@ -88,7 +87,6 @@ export default function WorkProgressUpdate() {
         ...values,
         startDate: values.startDate ? values.startDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
         expectedEndDate: values.expectedEndDate ? values.expectedEndDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
-        completionDate: values.completionDate ? values.completionDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
         actualEndDate: values.actualEndDate ? values.actualEndDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
       };
 
@@ -290,28 +288,6 @@ export default function WorkProgressUpdate() {
                   <Col span={8}>
                     <Form.Item label="預期結束日期" name="expectedEndDate">
                       <DatePicker style={{ width: '100%' }} />
-                    </Form.Item>
-                  </Col>
-
-                  <Col span={8}>
-                    <Form.Item 
-                      label="完工日期" 
-                      name="completionDate"
-                      rules={[{ required: true, message: '請選擇完工日期' }]}
-                    >
-                      <DatePicker 
-                        style={{ width: '100%' }}
-                        onChange={(date) => {
-                          if (date) {
-                            const today = dayjs();
-                            const diffDays = date.diff(today, 'days');
-                            
-                            if (diffDays >= 0 && diffDays <= 3) {
-                              message.warning(`⚠️ 完工日期距離今天只有${diffDays}天，請注意時間安排！`);
-                            }
-                          }
-                        }}
-                      />
                     </Form.Item>
                   </Col>
 

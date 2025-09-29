@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, DatePicker, Card, Typography, AutoComplete } from 'antd';
-import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, DatePicker, Card, Typography, AutoComplete, Modal, message } from 'antd';
+import { PlusOutlined, SearchOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
@@ -23,6 +23,30 @@ export default function ProjectForm({ current = null }) {
   const [searchLoading, setSearchLoading] = useState(false);
   const [contractors, setContractors] = useState([]);
   const [contractorsLoading, setContractorsLoading] = useState(false);
+  const [poNumberChangeWarning, setPoNumberChangeWarning] = useState(null);
+  const [originalPoNumber, setOriginalPoNumber] = useState('');
+
+  // 檢查 P.O Number 變更
+  const checkPoNumberChange = async (newPoNumber) => {
+    if (!current || !newPoNumber || newPoNumber === originalPoNumber) {
+      setPoNumberChangeWarning(null);
+      return;
+    }
+
+    try {
+      const response = await request.get({ 
+        entity: `project/check-po-change?projectId=${current._id}&newPoNumber=${newPoNumber}` 
+      });
+      
+      if (response.success && response.poNumberChanged) {
+        setPoNumberChangeWarning(response);
+      } else {
+        setPoNumberChangeWarning(null);
+      }
+    } catch (error) {
+      console.error('Error checking P.O Number change:', error);
+    }
+  };
 
   // 搜索P.O Numbers
   const searchPoNumbers = async (searchText) => {
@@ -262,14 +286,117 @@ export default function ProjectForm({ current = null }) {
         
         form.setFieldsValue(formData);
         setPoNumber(current.poNumber || '');
+        setOriginalPoNumber(current.poNumber || '');
       }, 100);
       
       return () => clearTimeout(timer);
     }
   }, [current, form, contractors]);
 
+  // P.O Number 變更警告模態框
+  const showPoNumberChangeWarning = () => {
+    if (!poNumberChangeWarning) return null;
+
+    const { affectedRecords } = poNumberChangeWarning;
+    const totalAffected = affectedRecords.quotes.count + affectedRecords.supplierQuotes.count + affectedRecords.invoices.count;
+
+    return (
+      <Modal
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <ExclamationCircleOutlined style={{ color: '#faad14' }} />
+            <span>P.O Number 變更警告</span>
+          </div>
+        }
+        open={!!poNumberChangeWarning}
+        onCancel={() => setPoNumberChangeWarning(null)}
+        footer={[
+          <Button key="cancel" onClick={() => setPoNumberChangeWarning(null)}>
+            取消
+          </Button>,
+          <Button 
+            key="confirm" 
+            type="primary" 
+            danger
+            onClick={() => {
+              setPoNumberChangeWarning(null);
+              // 這裡可以觸發表單提交
+            }}
+          >
+            確認變更並同步相關記錄
+          </Button>
+        ]}
+        width={600}
+      >
+        <div style={{ marginBottom: '16px' }}>
+          <p>
+            <strong>您正在將 P.O Number 從 "{poNumberChangeWarning.oldPoNumber}" 更改為 "{poNumberChangeWarning.newPoNumber}"</strong>
+          </p>
+          <p style={{ color: '#666' }}>
+            此變更將自動同步更新以下相關記錄：
+          </p>
+        </div>
+
+        <div style={{ marginBottom: '16px' }}>
+          <h4>受影響的記錄 ({totalAffected} 項)：</h4>
+          
+          {affectedRecords.quotes.count > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <strong>報價單 ({affectedRecords.quotes.count} 項)：</strong>
+              <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                {affectedRecords.quotes.records.map((quote, index) => (
+                  <li key={index}>
+                    {quote.number} - {quote.status} ({dayjs(quote.date).format('YYYY-MM-DD')})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {affectedRecords.supplierQuotes.count > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <strong>供應商報價 ({affectedRecords.supplierQuotes.count} 項)：</strong>
+              <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                {affectedRecords.supplierQuotes.records.map((sq, index) => (
+                  <li key={index}>
+                    {sq.number} - {sq.status} ({dayjs(sq.date).format('YYYY-MM-DD')})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {affectedRecords.invoices.count > 0 && (
+            <div style={{ marginBottom: '12px' }}>
+              <strong>發票 ({affectedRecords.invoices.count} 項)：</strong>
+              <ul style={{ margin: '8px 0', paddingLeft: '20px' }}>
+                {affectedRecords.invoices.records.map((invoice, index) => (
+                  <li key={index}>
+                    {invoice.number} - {invoice.status} ({dayjs(invoice.date).format('YYYY-MM-DD')})
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+
+        <div style={{ 
+          padding: '12px', 
+          backgroundColor: '#fff7e6', 
+          border: '1px solid #ffd591',
+          borderRadius: '6px'
+        }}>
+          <p style={{ margin: 0, color: '#d46b08' }}>
+            ⚠️ 請確認您要繼續此操作。所有相關記錄的 P.O Number 將被自動更新。
+          </p>
+        </div>
+      </Modal>
+    );
+  };
+
   return (
     <>
+      {showPoNumberChangeWarning()}
       <Row gutter={[16, 16]}>
         <Col span={12}>
           <Card title="項目基本信息" size="small">
@@ -294,6 +421,10 @@ export default function ProjectForm({ current = null }) {
                       setPoNumber(value);
                       if (!value) {
                         setPreviewData(null);
+                        setPoNumberChangeWarning(null);
+                      } else {
+                        // 檢查 P.O Number 變更
+                        checkPoNumberChange(value);
                       }
                     }}
                     style={{ width: '100%' }}

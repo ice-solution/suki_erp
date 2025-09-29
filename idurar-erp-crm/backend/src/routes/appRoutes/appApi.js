@@ -38,6 +38,14 @@ const routerApp = (entity, controller) => {
   if (entity === 'project') {
     router.route(`/${entity}/sync/:id`).patch(catchErrors(controller['sync']));
     router.route(`/${entity}/check/:poNumber`).get(catchErrors(controller['checkByPoNumber']));
+    router.route(`/${entity}/check-po-change`).get(catchErrors(controller['checkPoNumberChange']));
+    router.route(`/${entity}/:projectId/salary`).post(catchErrors(controller['addSalary']));
+    router.route(`/${entity}/:projectId/salary/:salaryId`).patch(catchErrors(controller['updateSalary']));
+    router.route(`/${entity}/:projectId/salary/:salaryId`).delete(catchErrors(controller['deleteSalary']));
+    router.route(`/${entity}/:projectId/attendance`).get(catchErrors(controller['getAttendance']));
+    router.route(`/${entity}/:projectId/attendance`).post(catchErrors(controller['addAttendance']));
+    router.route(`/${entity}/:projectId/attendance/:attendanceId`).patch(catchErrors(controller['updateAttendance']));
+    router.route(`/${entity}/:projectId/attendance/:attendanceId`).delete(catchErrors(controller['deleteAttendance']));
   }
 
   if (entity === 'workprogress') {
