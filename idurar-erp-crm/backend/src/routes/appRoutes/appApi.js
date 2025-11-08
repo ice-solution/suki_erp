@@ -37,8 +37,8 @@ const routerApp = (entity, controller) => {
 
   if (entity === 'project') {
     router.route(`/${entity}/sync/:id`).patch(catchErrors(controller['sync']));
-    router.route(`/${entity}/check/:poNumber`).get(catchErrors(controller['checkByPoNumber']));
-    router.route(`/${entity}/check-po-change`).get(catchErrors(controller['checkPoNumberChange']));
+    router.route(`/${entity}/check/:invoiceNumber`).get(catchErrors(controller['checkByInvoiceNumber']));
+    router.route(`/${entity}/check-invoice-change`).get(catchErrors(controller['checkInvoiceNumberChange']));
     router.route(`/${entity}/:projectId/salary`).post(catchErrors(controller['addSalary']));
     router.route(`/${entity}/:projectId/salary/:salaryId`).patch(catchErrors(controller['updateSalary']));
     router.route(`/${entity}/:projectId/salary/:salaryId`).delete(catchErrors(controller['deleteSalary']));

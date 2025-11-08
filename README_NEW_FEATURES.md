@@ -64,7 +64,7 @@
 - `contractorCost`: 承辦商成本 (必填)
 - `createdBy`: 創建者ID (自動設置為當前登入用戶)
 - `status`: 狀態 (pending/in_progress/completed/cancelled)
-- `poNumber`: P.O.編號
+- `invoiceNumber`: 發票編號（類型 + 編號）
 - `actualCost`: 實際成本
 - `projectItems`: 工程項目ID陣列 (關聯到ProjectItem)
 

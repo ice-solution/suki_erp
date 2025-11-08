@@ -247,7 +247,7 @@ export default function ReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
-        <Descriptions.Item label={translate('P.O Number')}>{currentErp.poNumber}</Descriptions.Item>
+        <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
       </Descriptions>

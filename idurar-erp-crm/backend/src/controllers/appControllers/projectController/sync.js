@@ -19,13 +19,13 @@ const sync = async (req, res) => {
       });
     }
 
-    const { poNumber } = project;
+    const { invoiceNumber } = project;
     
-    // 查找所有相同P.O Number的文檔
+    // 查找所有相同 Invoice Number 的文檔
     const [quotations, supplierQuotations, invoices] = await Promise.all([
-      Quote.find({ poNumber, removed: false }),
-      SupplierQuote.find({ poNumber, removed: false }),
-      Invoice.find({ poNumber, removed: false })
+      Quote.find({ invoiceNumber, removed: false }),
+      SupplierQuote.find({ invoiceNumber, removed: false }),
+      Invoice.find({ invoiceNumber, removed: false })
     ]);
 
     // 找出新的文檔（還沒關聯到項目的）
@@ -83,9 +83,9 @@ const sync = async (req, res) => {
 
     // 更新所有相關文檔，添加項目引用
     await Promise.all([
-      Quote.updateMany({ poNumber, removed: false }, { project: id }),
-      SupplierQuote.updateMany({ poNumber, removed: false }, { project: id }),
-      Invoice.updateMany({ poNumber, removed: false }, { project: id })
+      Quote.updateMany({ invoiceNumber, removed: false }, { project: id }),
+      SupplierQuote.updateMany({ invoiceNumber, removed: false }, { project: id }),
+      Invoice.updateMany({ invoiceNumber, removed: false }, { project: id })
     ]);
 
     // 返回同步結果
@@ -105,7 +105,7 @@ const sync = async (req, res) => {
           grossProfit
         }
       },
-      message: `Successfully synced project with P.O Number ${poNumber}`,
+      message: `Successfully synced project with Invoice Number ${invoiceNumber}`,
     });
 
   } catch (error) {

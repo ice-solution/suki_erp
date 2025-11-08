@@ -15,7 +15,7 @@ const search = async (req, res) => {
   }
 
   const searchTerm = req.query.q;
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['address', 'poNumber'];
+  const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['address', 'invoiceNumber'];
 
   const fields = { $or: [] };
 

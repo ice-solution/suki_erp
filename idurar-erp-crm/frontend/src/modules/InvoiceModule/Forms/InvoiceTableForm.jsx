@@ -57,26 +57,36 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
+  const numberPrefixValue = Form.useWatch('numberPrefix', form);
+  const numberValue = Form.useWatch('number', form);
+
+  useEffect(() => {
+    const computedInvoiceNumber = numberPrefixValue && numberValue ? `${numberPrefixValue}-${numberValue}` : '';
+    if (form && computedInvoiceNumber !== form.getFieldValue('invoiceNumber')) {
+      form.setFieldsValue({ invoiceNumber: computedInvoiceNumber });
+    }
+  }, [numberPrefixValue, numberValue, form]);
   
   const handleDiscountChange = (value) => {
     setDiscount(value || 0);
   };
 
-  // 檢查P.O Number是否對應現有項目
-  const checkExistingProject = async (poNumber) => {
-    if (!poNumber || poNumber.trim() === '') return;
+  // 檢查 Invoice Number 是否對應現有項目
+  const checkExistingProject = async (invoiceNumber) => {
+    if (!invoiceNumber || invoiceNumber.trim() === '') return;
     
     try {
-      const result = await request.checkProject({ poNumber: poNumber.trim() });
+      const result = await request.checkProject({ invoiceNumber: invoiceNumber.trim() });
       if (result.success && result.result) {
         const project = result.result;
         Modal.confirm({
-          title: '發現相同P.O Number的項目',
+          title: '發現相同 Invoice Number 的項目',
           content: (
             <div>
-              <p>發現已存在相同P.O Number的項目：</p>
+              <p>發現已存在相同 Invoice Number 的項目：</p>
               <ul>
-                <li><strong>P.O Number:</strong> {project.poNumber}</li>
+                <li><strong>Invoice Number:</strong> {project.invoiceNumber}</li>
+                <li><strong>P.O Number:</strong> {project.poNumber || '未設定'}</li>
                 <li><strong>描述:</strong> {project.description || '無描述'}</li>
                 <li><strong>狀態:</strong> {project.status}</li>
                 <li><strong>成本承擔方:</strong> {project.costBy}</li>
@@ -470,7 +480,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={3}>
           <Form.Item
-            label={translate('Type')}
+            label="Invoice Type"
             name="numberPrefix"
             initialValue="INV"
             rules={[
@@ -519,7 +529,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={5}>
           <Form.Item
-            label={translate('Type')}
+            label="Service Type"
             name="type"
             initialValue="服務"
             rules={[
@@ -605,8 +615,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('P.O Number')} name="poNumber">
+          <Form.Item label="Invoice Number" name="invoiceNumber">
             <Input onBlur={(e) => checkExistingProject(e.target.value)} />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={5}>
+          <Form.Item label={translate('P.O Number')} name="poNumber">
+            <Input placeholder="輸入P.O Number" />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={5}>

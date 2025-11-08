@@ -65,3 +65,4 @@ const getAttendance = async (req, res) => {
 };
 
 module.exports = getAttendance;
+

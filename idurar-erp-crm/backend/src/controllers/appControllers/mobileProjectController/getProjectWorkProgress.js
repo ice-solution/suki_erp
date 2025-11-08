@@ -31,7 +31,7 @@ const getProjectWorkProgress = async (req, res) => {
       removed: false
     })
     .populate('contractorEmployee', 'name contractor')
-    .populate('project', 'name poNumber')
+    .populate('project', 'name invoiceNumber poNumber')
     .sort({ created: -1 });
     
     console.log('📋 找到WorkProgress數量:', workProgressList.length);
@@ -42,6 +42,7 @@ const getProjectWorkProgress = async (req, res) => {
         project: {
           _id: project._id,
           name: project.name,
+          invoiceNumber: project.invoiceNumber,
           poNumber: project.poNumber,
           description: project.description
         },

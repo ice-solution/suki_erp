@@ -183,7 +183,7 @@ export default function DataTable({ config, extra = [] }) {
       setIsSearchMode(true);
       const options = { 
         q: value.trim(), 
-        fields: 'address,number,numberPrefix,poNumber' 
+        fields: 'address,number,numberPrefix,invoiceNumber' 
       };
       dispatch(erp.search({ entity, options }));
     } else {

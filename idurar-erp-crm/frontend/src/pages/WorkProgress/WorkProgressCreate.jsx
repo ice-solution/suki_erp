@@ -24,18 +24,19 @@ export default function WorkProgressCreate() {
   const [loading, setLoading] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [manualItems, setManualItems] = useState([]);
+  const [projectInfo, setProjectInfo] = useState(null);
   const [addItemModalVisible, setAddItemModalVisible] = useState(false);
   const [addItemForm] = Form.useForm();
 
   // 從URL參數獲取數據
   const projectId = searchParams.get('projectId');
-  const poNumber = searchParams.get('poNumber');
+  const invoiceNumber = searchParams.get('invoiceNumber');
   const itemsParam = searchParams.get('items');
 
   useEffect(() => {
     console.log('🚀 WorkProgressCreate initialized with params:', {
       projectId,
-      poNumber,
+      invoiceNumber,
       itemsParam: itemsParam ? 'present' : 'missing'
     });
 
@@ -56,7 +57,8 @@ export default function WorkProgressCreate() {
     // 設置基本表單值
     form.setFieldsValue({
       projectId,
-      poNumber,
+      invoiceNumber,
+      poNumber: '',
       completionDate: dayjs().add(7, 'days'), // 默認7天後完工
     });
 
@@ -66,7 +68,7 @@ export default function WorkProgressCreate() {
     } else {
       console.log('❌ No projectId provided, skipping contractor employee fetch');
     }
-  }, [projectId, poNumber, itemsParam, form]);
+  }, [projectId, invoiceNumber, itemsParam, form]);
 
   const fetchProjectContractorEmployees = async () => {
     try {
@@ -80,6 +82,11 @@ export default function WorkProgressCreate() {
       console.log('👥 Project contractors:', projectResponse.result?.contractors);
       
       if (projectResponse.success && projectResponse.result?.contractors) {
+        setProjectInfo(projectResponse.result);
+        form.setFieldsValue({
+          poNumber: projectResponse.result.poNumber || '',
+          invoiceNumber: projectResponse.result.invoiceNumber || invoiceNumber,
+        });
         const contractorIds = projectResponse.result.contractors.map(c => c._id);
         console.log('🆔 Contractor IDs from Project:', contractorIds);
         console.log('👥 Full Project contractors data:', projectResponse.result.contractors);
@@ -152,6 +159,7 @@ export default function WorkProgressCreate() {
 
     const submitData = {
       projectId: values.projectId,
+      invoiceNumber: values.invoiceNumber,
       poNumber: values.poNumber,
       completionDate: values.completionDate ? values.completionDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ') : null,
       notes: values.notes,
@@ -294,7 +302,7 @@ export default function WorkProgressCreate() {
         onBack={() => navigate(-1)}
         backIcon={<ArrowLeftOutlined />}
         title="創建WorkProgress"
-        subTitle={`項目: ${poNumber}`}
+        subTitle={`項目: ${(projectInfo?.invoiceNumber || invoiceNumber || '-')}`}
         ghost={false}
       />
       
@@ -308,7 +316,12 @@ export default function WorkProgressCreate() {
             </Form.Item>
           </Col>
           <Col span={8}>
-            <Form.Item label="P.O Number" name="poNumber">
+            <Form.Item label="Invoice Number" name="invoiceNumber">
+              <Input disabled />
+            </Form.Item>
+          </Col>
+          <Col span={8}>
+            <Form.Item label={translate('P.O Number')} name="poNumber">
               <Input disabled />
             </Form.Item>
           </Col>

@@ -14,16 +14,16 @@ export default function Project() {
 
   const searchConfig = {
     entity: 'project',
-    displayLabels: ['poNumber', 'description'],
-    searchFields: 'poNumber,description',
+    displayLabels: ['invoiceNumber', 'description'],
+    searchFields: 'invoiceNumber,description',
   };
-  const deleteModalLabels = ['poNumber', 'description'];
+  const deleteModalLabels = ['invoiceNumber', 'description'];
   
   const dataTableColumns = [
     {
-      title: translate('P.O Number'),
-      dataIndex: 'poNumber',
-      key: 'poNumber',
+      title: 'Invoice Number',
+      dataIndex: 'invoiceNumber',
+      key: 'invoiceNumber',
     },
     {
       title: translate('Description'),

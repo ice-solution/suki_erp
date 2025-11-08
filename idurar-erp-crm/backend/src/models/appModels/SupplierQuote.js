@@ -54,6 +54,10 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  invoiceNumber: {
+    type: String,
+  },
+
   poNumber: {
     type: String,
   },

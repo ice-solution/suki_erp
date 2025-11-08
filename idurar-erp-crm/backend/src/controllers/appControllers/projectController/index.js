@@ -9,8 +9,8 @@ const filter = require('./filter');
 const summary = require('./summary');
 const paginatedList = require('./paginatedList');
 const sync = require('./sync');
-const checkByPoNumber = require('./checkByPoNumber');
-const checkPoNumberChange = require('./checkPoNumberChange');
+const checkByInvoiceNumber = require('./checkByInvoiceNumber');
+const checkInvoiceNumberChange = require('./checkInvoiceNumberChange');
 const addSalary = require('./addSalary');
 const updateSalary = require('./updateSalary');
 const deleteSalary = require('./deleteSalary');
@@ -31,8 +31,8 @@ module.exports = {
   summary,
   paginatedList,
   sync,
-  checkByPoNumber,
-  checkPoNumberChange,
+  checkByInvoiceNumber,
+  checkInvoiceNumberChange,
   addSalary,
   updateSalary,
   deleteSalary,

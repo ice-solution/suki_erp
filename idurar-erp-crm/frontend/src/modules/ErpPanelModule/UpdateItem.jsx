@@ -116,12 +116,10 @@ export default function UpdateItem({ config, UpdateForm }) {
       }
       
       if (fieldsValue.items) {
-        let newList = [];
-        fieldsValue.items.map((item) => {
-          const { quantity, price, itemName, description } = item;
-          const total = item.quantity * item.price;
-          newList.push({ total, quantity, price, itemName, description });
-        });
+        const newList = fieldsValue.items.map(({ key, ...rest }) => ({
+          ...rest,
+          total: (rest.quantity || 0) * (rest.price || 0),
+        }));
         dataToUpdate.items = newList;
       }
     }
@@ -146,13 +144,13 @@ export default function UpdateItem({ config, UpdateForm }) {
     if (isSuccess) {
       // 檢查是否需要同步項目（對於Quote、SupplierQuote、Invoice）
       const shouldSyncProject = form.getFieldValue('shouldLinkToProject');
-      const poNumber = form.getFieldValue('poNumber');
+      const invoiceNumber = form.getFieldValue('invoiceNumber');
       
       if (shouldSyncProject && ['quote', 'supplierquote', 'invoice'].includes(entity.toLowerCase())) {
         handleProjectSync(shouldSyncProject);
-      } else if (poNumber && ['quote', 'supplierquote', 'invoice'].includes(entity.toLowerCase())) {
-        // 如果有P.O Number，檢查是否需要自動同步項目
-        handleAutoProjectSync(poNumber);
+      } else if (invoiceNumber && ['quote', 'supplierquote', 'invoice'].includes(entity.toLowerCase())) {
+        // 如果有 Invoice Number，檢查是否需要自動同步項目
+        handleAutoProjectSync(invoiceNumber);
       }
       
       form.resetFields();
@@ -179,17 +177,17 @@ export default function UpdateItem({ config, UpdateForm }) {
   };
 
   // 處理自動項目同步
-  const handleAutoProjectSync = async (poNumber) => {
+  const handleAutoProjectSync = async (invoiceNumber) => {
     try {
-      const result = await request.checkProject({ poNumber: poNumber.trim() });
+      const result = await request.checkProject({ invoiceNumber: invoiceNumber.trim() });
       if (result.success && result.result) {
         // 找到匹配的項目，自動同步
         const project = result.result;
-        console.log(`🔗 Auto-syncing ${entity} to project:`, project.poNumber);
+        console.log(`🔗 Auto-syncing ${entity} to project:`, project.invoiceNumber);
         
         const syncResult = await request.sync({ entity: 'project', id: project._id });
         if (syncResult.success) {
-          message.success(`${entity}已自動關聯到項目 ${project.poNumber}！`);
+          message.success(`${entity}已自動關聯到項目 ${project.invoiceNumber}！`);
         }
       }
     } catch (error) {

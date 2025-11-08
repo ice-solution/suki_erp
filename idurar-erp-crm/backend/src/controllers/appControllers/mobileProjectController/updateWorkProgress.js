@@ -53,7 +53,7 @@ const updateWorkProgress = async (req, res) => {
       { new: true }
     )
     .populate('contractorEmployee', 'name contractor')
-    .populate('project', 'name poNumber');
+    .populate('project', 'name invoiceNumber poNumber');
     
     console.log('✅ WorkProgress更新成功');
     

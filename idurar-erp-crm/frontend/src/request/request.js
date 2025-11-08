@@ -238,10 +238,10 @@ const request = {
       return errorHandler(error);
     }
   },
-  checkProject: async ({ poNumber }) => {
+  checkProject: async ({ invoiceNumber }) => {
     try {
       includeToken();
-      const response = await axios.get(`project/check/${poNumber}`);
+      const response = await axios.get(`project/check/${invoiceNumber}`);
       return response.data;
     } catch (error) {
       // 對於404錯誤（沒找到項目），不要顯示錯誤通知

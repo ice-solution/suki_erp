@@ -9,30 +9,33 @@ const { calculate } = require('@/helpers');
 
 const create = async (req, res) => {
   try {
-    const { poNumber, costBy, contractorFee = 0, description, address, startDate, endDate, contractors = [] } = req.body;
+    const { invoiceNumber, poNumber, costBy, contractorFee = 0, description, address, startDate, endDate, contractors = [], name } = req.body;
 
-    if (!poNumber) {
+    if (!invoiceNumber) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: 'P.O Number is required',
+        message: 'Invoice Number is required',
       });
     }
 
-    // 檢查是否已存在相同P.O Number的項目
-    const existingProject = await Project.findOne({ poNumber, removed: false });
+    // 預設專案名稱
+    const projectName = name || invoiceNumber;
+
+    // 檢查是否已存在相同 Invoice Number 的項目
+    const existingProject = await Project.findOne({ invoiceNumber, removed: false });
     if (existingProject) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: 'Project with this P.O Number already exists',
+        message: 'Project with this Invoice Number already exists',
       });
     }
 
-    // 根據P.O Number查找相關的quotations
-    const quotations = await Quote.find({ poNumber, removed: false });
-    const supplierQuotations = await SupplierQuote.find({ poNumber, removed: false });
-    const invoices = await Invoice.find({ poNumber, removed: false });
+    // 根據 Invoice Number 查找相關的文件
+    const quotations = await Quote.find({ invoiceNumber, removed: false });
+    const supplierQuotations = await SupplierQuote.find({ invoiceNumber, removed: false });
+    const invoices = await Invoice.find({ invoiceNumber, removed: false });
 
     console.log(`找到 ${quotations.length} 個quotations, ${supplierQuotations.length} 個supplier quotations, ${invoices.length} 個invoices`);
 
@@ -80,7 +83,9 @@ const create = async (req, res) => {
 
     // 創建項目數據
     const projectData = {
-      poNumber,
+      name: projectName,
+      invoiceNumber,
+      poNumber: poNumber || '',
       costBy,
       contractorFee,
       description,
@@ -103,17 +108,17 @@ const create = async (req, res) => {
 
     // 更新相關的quotations，添加project關聯
     await Quote.updateMany(
-      { poNumber, removed: false },
+      { invoiceNumber, removed: false },
       { project: project._id }
     );
 
     await SupplierQuote.updateMany(
-      { poNumber, removed: false },
+      { invoiceNumber, removed: false },
       { project: project._id }
     );
 
     await Invoice.updateMany(
-      { poNumber, removed: false },
+      { invoiceNumber, removed: false },
       { project: project._id }
     );
 

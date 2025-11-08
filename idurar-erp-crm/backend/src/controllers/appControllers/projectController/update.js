@@ -9,7 +9,7 @@ const { calculate } = require('@/helpers');
 
 const update = async (req, res) => {
   try {
-    const { contractorFee, description, address, startDate, endDate, costBy, contractors, poNumber } = req.body;
+    const { contractorFee, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber } = req.body;
 
     // 查找現有項目
     const existingProject = await Project.findOne({ _id: req.params.id, removed: false });
@@ -21,10 +21,10 @@ const update = async (req, res) => {
       });
     }
 
-    // 檢查 P.O Number 是否改變
-    const oldPoNumber = existingProject.poNumber;
-    const newPoNumber = poNumber;
-    const poNumberChanged = oldPoNumber && newPoNumber && oldPoNumber !== newPoNumber;
+    // 檢查 Invoice Number 是否改變
+    const oldInvoiceNumber = existingProject.invoiceNumber;
+    const newInvoiceNumber = invoiceNumber;
+    const invoiceNumberChanged = oldInvoiceNumber && newInvoiceNumber && oldInvoiceNumber !== newInvoiceNumber;
 
     // 重新計算成本和毛利（如果判頭費改變了）
     const newContractorFee = contractorFee !== undefined ? contractorFee : existingProject.contractorFee;
@@ -45,10 +45,12 @@ const update = async (req, res) => {
     // 添加可選字段
     if (description !== undefined) updateData.description = description;
     if (address !== undefined) updateData.address = address;
+    if (req.body.name !== undefined) updateData.name = req.body.name;
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
     if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
     if (costBy !== undefined) updateData.costBy = costBy;
     if (contractors !== undefined) updateData.contractors = contractors || [];
+    if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
     if (poNumber !== undefined) updateData.poNumber = poNumber;
 
     const result = await Project.findOneAndUpdate(
@@ -57,29 +59,29 @@ const update = async (req, res) => {
       { new: true }
     ).populate('contractors', 'name email phone address');
 
-    // 如果 P.O Number 改變了，同步更新相關的 Quote、SupplierQuote 和 Invoice
-    if (poNumberChanged) {
-      console.log(`🔄 P.O Number changed from ${oldPoNumber} to ${newPoNumber}, syncing related records...`);
+    // 如果 Invoice Number 改變了，同步更新相關的 Quote、SupplierQuote 和 Invoice
+    if (invoiceNumberChanged) {
+      console.log(`🔄 Invoice Number changed from ${oldInvoiceNumber} to ${newInvoiceNumber}, syncing related records...`);
       
       try {
         // 更新相關的 Quote 記錄
         const quoteUpdateResult = await Quote.updateMany(
-          { poNumber: oldPoNumber, removed: false },
-          { poNumber: newPoNumber, updated: new Date() }
+          { invoiceNumber: oldInvoiceNumber, removed: false },
+          { invoiceNumber: newInvoiceNumber, updated: new Date() }
         );
         console.log(`✅ Updated ${quoteUpdateResult.modifiedCount} Quote records`);
 
         // 更新相關的 SupplierQuote 記錄
         const supplierQuoteUpdateResult = await SupplierQuote.updateMany(
-          { poNumber: oldPoNumber, removed: false },
-          { poNumber: newPoNumber, updated: new Date() }
+          { invoiceNumber: oldInvoiceNumber, removed: false },
+          { invoiceNumber: newInvoiceNumber, updated: new Date() }
         );
         console.log(`✅ Updated ${supplierQuoteUpdateResult.modifiedCount} SupplierQuote records`);
 
         // 更新相關的 Invoice 記錄
         const invoiceUpdateResult = await Invoice.updateMany(
-          { poNumber: oldPoNumber, removed: false },
-          { poNumber: newPoNumber, updated: new Date() }
+          { invoiceNumber: oldInvoiceNumber, removed: false },
+          { invoiceNumber: newInvoiceNumber, updated: new Date() }
         );
         console.log(`✅ Updated ${invoiceUpdateResult.modifiedCount} Invoice records`);
 
@@ -88,10 +90,10 @@ const update = async (req, res) => {
           success: true,
           result,
           message: 'Project updated successfully',
-          poNumberSync: {
+          invoiceNumberSync: {
             changed: true,
-            oldPoNumber,
-            newPoNumber,
+            oldInvoiceNumber,
+            newInvoiceNumber,
             syncedRecords: {
               quotes: quoteUpdateResult.modifiedCount,
               supplierQuotes: supplierQuoteUpdateResult.modifiedCount,
@@ -101,16 +103,16 @@ const update = async (req, res) => {
         });
 
       } catch (syncError) {
-        console.error('❌ Error syncing P.O Number:', syncError);
+        console.error('❌ Error syncing Invoice Number:', syncError);
         // 即使同步失敗，項目更新仍然成功
         return res.status(200).json({
           success: true,
           result,
-          message: 'Project updated successfully, but P.O Number sync failed',
-          poNumberSync: {
+          message: 'Project updated successfully, but Invoice Number sync failed',
+          invoiceNumberSync: {
             changed: true,
-            oldPoNumber,
-            newPoNumber,
+            oldInvoiceNumber,
+            newInvoiceNumber,
             syncError: syncError.message
           }
         });

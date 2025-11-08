@@ -39,6 +39,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
   const { result: currentResult } = useSelector(selectCurrentItem);
 
   const resetProject = {
+    invoiceNumber: '',
     poNumber: '',
     status: 'draft',
     costBy: '對方',
@@ -87,7 +88,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
   const handleSync = () => {
     Modal.confirm({
       title: '同步項目數據',
-      content: `確定要同步P.O Number "${currentProject.poNumber}" 的所有相關文檔嗎？這將查找所有相同P.O Number的Quote、Supplier Quote和Invoice並更新項目數據。`,
+      content: `確定要同步 Invoice Number "${currentProject.invoiceNumber}" 的所有相關文檔嗎？這將查找所有相同 Invoice Number 的 Quote、Supplier Quote 和 Invoice 並更新項目數據。`,
       okText: '同步',
       cancelText: '取消',
       onOk: async () => {
@@ -137,7 +138,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
         okText: '創建空WorkProgress',
         cancelText: '取消',
         onOk: () => {
-          navigate(`/workprogress/create?projectId=${currentProject._id}&poNumber=${currentProject.poNumber}`);
+          navigate(`/workprogress/create?projectId=${currentProject._id}&invoiceNumber=${currentProject.invoiceNumber}`);
         }
       });
       return;
@@ -164,11 +165,11 @@ export default function ProjectReadItem({ config, selectedItem }) {
       onOk: () => {
         // 使用Quote items創建
         const itemsData = encodeURIComponent(JSON.stringify(allQuoteItems));
-        navigate(`/workprogress/create?projectId=${currentProject._id}&poNumber=${currentProject.poNumber}&items=${itemsData}`);
+        navigate(`/workprogress/create?projectId=${currentProject._id}&invoiceNumber=${currentProject.invoiceNumber}&items=${itemsData}`);
       },
       onCancel: () => {
         // 創建空WorkProgress
-        navigate(`/workprogress/create?projectId=${currentProject._id}&poNumber=${currentProject.poNumber}`);
+        navigate(`/workprogress/create?projectId=${currentProject._id}&invoiceNumber=${currentProject.invoiceNumber}`);
       }
     });
   };
@@ -408,7 +409,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
         onBack={() => {
           navigate(`/${entity.toLowerCase()}`);
         }}
-        title={`${ENTITY_NAME} - ${currentProject.poNumber}`}
+        title={`${ENTITY_NAME} - ${currentProject.invoiceNumber}`}
         ghost={false}
         tags={[
           <Tag key="status" color={currentProject.status === 'completed' ? 'success' : 'processing'}>
@@ -484,7 +485,8 @@ export default function ProjectReadItem({ config, selectedItem }) {
       <Divider dashed />
       
       <Descriptions title={translate('Project Information')}>
-        <Descriptions.Item label={translate('P.O Number')}>{currentProject.poNumber}</Descriptions.Item>
+        <Descriptions.Item label="Invoice Number">{currentProject.invoiceNumber}</Descriptions.Item>
+        <Descriptions.Item label={translate('P.O Number')}>{currentProject.poNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Description')}>{currentProject.description || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Address')}>{currentProject.address || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Start Date')}>

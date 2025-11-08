@@ -189,7 +189,8 @@ export default function WorkProgressUpdate() {
             <Card title="工作項目信息（只讀）" size="small">
               <Descriptions column={2} size="small">
                 <Descriptions.Item label="項目名稱">{workProgress.item?.itemName}</Descriptions.Item>
-                <Descriptions.Item label="P.O Number">{workProgress.poNumber}</Descriptions.Item>
+                <Descriptions.Item label="Invoice Number">{workProgress.invoiceNumber}</Descriptions.Item>
+                <Descriptions.Item label={translate('P.O Number')}>{workProgress.poNumber || '-'}</Descriptions.Item>
                 <Descriptions.Item label="描述">{workProgress.item?.description || '-'}</Descriptions.Item>
                 <Descriptions.Item label="數量">{workProgress.item?.quantity}</Descriptions.Item>
                 <Descriptions.Item label="單價">

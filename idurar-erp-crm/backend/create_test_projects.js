@@ -9,7 +9,7 @@ mongoose.connect('mongodb://localhost:27017/idurar-erp-crm', {
 // 定義Project Schema
 const projectSchema = new mongoose.Schema({
   name: { type: String, required: true },
-  poNumber: { type: String, required: true },
+  invoiceNumber: { type: String, required: true },
   description: String,
   address: String,
   startDate: Date,
@@ -77,7 +77,7 @@ async function createTestProjects() {
     const projects = await Project.insertMany([
       {
         name: '中環大廈翻新工程',
-        poNumber: 'PO-2024-001',
+        invoiceNumber: 'INV-TEST-001',
         description: '中環商業大廈全面翻新工程',
         address: '香港中環',
         startDate: new Date('2024-01-01'),
@@ -87,7 +87,7 @@ async function createTestProjects() {
       },
       {
         name: '九龍住宅建設',
-        poNumber: 'PO-2024-002',
+        invoiceNumber: 'INV-TEST-002',
         description: '九龍新住宅區建設項目',
         address: '香港九龍',
         startDate: new Date('2024-02-01'),
@@ -97,7 +97,7 @@ async function createTestProjects() {
       },
       {
         name: '新界基礎設施',
-        poNumber: 'PO-2024-003',
+        invoiceNumber: 'INV-TEST-003',
         description: '新界地區基礎設施建設',
         address: '香港新界',
         startDate: new Date('2024-03-01'),
@@ -184,7 +184,7 @@ async function createTestProjects() {
     // 顯示創建的數據
     console.log('\n📋 創建的項目:');
     projects.forEach(project => {
-      console.log(`- ${project.name} (${project.poNumber}) - 承辦商: ${project.contractors.length}個`);
+      console.log(`- ${project.name} (${project.invoiceNumber}) - 承辦商: ${project.contractors.length}個`);
     });
     
     console.log('\n🎉 測試項目數據創建完成！');

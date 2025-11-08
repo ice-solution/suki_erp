@@ -244,6 +244,7 @@ function displayProjects(projects) {
         <div class="project-card" onclick="showProjectWorkProgress('${project._id}')">
             <div class="project-title">${project.name || '未命名項目'}</div>
             <div class="project-info">P.O Number: ${project.poNumber || '未設定'}</div>
+            <div class="project-info">Invoice Number: ${project.invoiceNumber || '未設定'}</div>
             <div class="project-info">描述：${project.description || '未設定'}</div>
             <div class="project-info">開始日期：${formatDate(project.startDate)}</div>
             <div class="project-info">
@@ -310,6 +311,7 @@ function displayWorkProgress(data) {
         <div class="project-card">
             <div class="project-title">${project.name || '未命名項目'}</div>
             <div class="project-info">P.O Number: ${project.poNumber || '未設定'}</div>
+            <div class="project-info">Invoice Number: ${project.invoiceNumber || '未設定'}</div>
             <div class="project-info">描述: ${project.description || '無'}</div>
         </div>
         

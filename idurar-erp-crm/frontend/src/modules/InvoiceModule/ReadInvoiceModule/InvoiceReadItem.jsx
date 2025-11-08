@@ -249,7 +249,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
-        <Descriptions.Item label={translate('P.O Number')}>{currentErp.poNumber}</Descriptions.Item>
+        <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>

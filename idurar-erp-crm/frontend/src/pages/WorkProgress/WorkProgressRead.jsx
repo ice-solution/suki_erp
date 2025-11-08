@@ -358,7 +358,8 @@ export default function WorkProgressRead() {
                   '-'
                 )}
               </Descriptions.Item>
-              <Descriptions.Item label="P.O Number">{workProgress.poNumber}</Descriptions.Item>
+              <Descriptions.Item label="Invoice Number">{workProgress.invoiceNumber}</Descriptions.Item>
+              <Descriptions.Item label={translate('P.O Number')}>{workProgress.poNumber || '-'}</Descriptions.Item>
               <Descriptions.Item label="負責員工">
                 {workProgress.contractorEmployee ? (
                   <div>

@@ -13,11 +13,17 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
 
-  // P.O Number - 用於關聯quotations
-  poNumber: {
+  // Invoice Number (Type + Number) - 用於關聯其他文件
+  invoiceNumber: {
     type: String,
     required: true,
     unique: true,
+  },
+
+  // 備存 P.O Number
+  poNumber: {
+    type: String,
+    default: '',
   },
 
   // 項目狀態

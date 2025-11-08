@@ -25,7 +25,7 @@ const search = async (req, res) => {
   try {
     let results = await Model.find(fields)
       .where({ removed: false })
-      .sort({ poNumber: 1 })
+      .sort({ invoiceNumber: 1 })
       .limit(10)
       .populate('suppliers', 'name');
 

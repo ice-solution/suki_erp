@@ -16,97 +16,110 @@ export default function ProjectForm({ current = null }) {
   const { moneyFormatter } = useMoney();
 
   const form = Form.useFormInstance(); // 使用父組件的form實例
-  const [poNumber, setPoNumber] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
   const [previewData, setPreviewData] = useState(null);
   const [loading, setLoading] = useState(false);
-  const [poOptions, setPoOptions] = useState([]);
+  const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const [contractors, setContractors] = useState([]);
   const [contractorsLoading, setContractorsLoading] = useState(false);
-  const [poNumberChangeWarning, setPoNumberChangeWarning] = useState(null);
-  const [originalPoNumber, setOriginalPoNumber] = useState('');
+  const [invoiceNumberChangeWarning, setInvoiceNumberChangeWarning] = useState(null);
+  const [originalInvoiceNumber, setOriginalInvoiceNumber] = useState('');
 
-  // 檢查 P.O Number 變更
-  const checkPoNumberChange = async (newPoNumber) => {
-    if (!current || !newPoNumber || newPoNumber === originalPoNumber) {
-      setPoNumberChangeWarning(null);
+  // 檢查 Invoice Number 變更
+  const checkInvoiceNumberChange = async (newInvoiceNumber) => {
+    if (!current || !newInvoiceNumber || newInvoiceNumber === originalInvoiceNumber) {
+      setInvoiceNumberChangeWarning(null);
       return;
     }
 
     try {
       const response = await request.get({ 
-        entity: `project/check-po-change?projectId=${current._id}&newPoNumber=${newPoNumber}` 
+        entity: `project/check-invoice-change?projectId=${current._id}&newInvoiceNumber=${newInvoiceNumber}` 
       });
       
-      if (response.success && response.poNumberChanged) {
-        setPoNumberChangeWarning(response);
+      if (response.success && response.invoiceNumberChanged) {
+        setInvoiceNumberChangeWarning(response);
       } else {
-        setPoNumberChangeWarning(null);
+        setInvoiceNumberChangeWarning(null);
       }
     } catch (error) {
-      console.error('Error checking P.O Number change:', error);
+      console.error('Error checking Invoice Number change:', error);
     }
   };
 
-  // 搜索P.O Numbers
-  const searchPoNumbers = async (searchText) => {
+  // 搜索 Invoice Numbers
+  const searchInvoiceNumbers = async (searchText) => {
     if (!searchText || searchText.length < 1) {
-      setPoOptions([]);
+      setInvoiceOptions([]);
       return;
     }
 
     setSearchLoading(true);
     try {
-      // 從Quote和SupplierQuote中搜索P.O numbers
-      const [quoteResponse, supplierQuoteResponse] = await Promise.all([
+      // 從Quote、SupplierQuote與Invoice中搜索 Invoice Numbers
+      const [quoteResponse, supplierQuoteResponse, invoiceResponse] = await Promise.all([
         request.search({ 
           entity: 'quote', 
-          options: { q: searchText, fields: 'poNumber' } 
+          options: { q: searchText, fields: 'invoiceNumber' } 
         }),
         request.search({ 
           entity: 'supplierquote', 
-          options: { q: searchText, fields: 'poNumber' } 
+          options: { q: searchText, fields: 'invoiceNumber' } 
+        }),
+        request.search({
+          entity: 'invoice',
+          options: { q: searchText, fields: 'invoiceNumber' }
         })
       ]);
 
-      const poNumbers = new Set();
+      const invoiceNumbers = new Set();
       
-      // 從quotations收集P.O numbers
+      // 從quotations收集 Invoice Numbers
       if (quoteResponse?.result) {
         quoteResponse.result.forEach(quote => {
-          if (quote.poNumber) {
-            poNumbers.add(quote.poNumber);
+          if (quote.invoiceNumber) {
+            invoiceNumbers.add(quote.invoiceNumber);
           }
         });
       }
 
-      // 從supplier quotations收集P.O numbers
+      // 從supplier quotations收集 Invoice Numbers
       if (supplierQuoteResponse?.result) {
         supplierQuoteResponse.result.forEach(supplierQuote => {
-          if (supplierQuote.poNumber) {
-            poNumbers.add(supplierQuote.poNumber);
+          if (supplierQuote.invoiceNumber) {
+            invoiceNumbers.add(supplierQuote.invoiceNumber);
+          }
+        });
+      }
+
+      // 從 invoices 收集 Invoice Numbers
+      if (invoiceResponse?.result) {
+        invoiceResponse.result.forEach(inv => {
+          if (inv.invoiceNumber) {
+            invoiceNumbers.add(inv.invoiceNumber);
           }
         });
       }
 
       // 轉換為AutoComplete選項格式
-      const options = Array.from(poNumbers).map(poNum => ({
-        value: poNum,
-        label: poNum,
+      const options = Array.from(invoiceNumbers).map(invNumber => ({
+        value: invNumber,
+        label: invNumber,
       }));
 
-      setPoOptions(options);
+      setInvoiceOptions(options);
     } catch (error) {
-      console.error('搜索P.O Number失敗:', error);
-      setPoOptions([]);
+      console.error('搜索 Invoice Number 失敗:', error);
+      setInvoiceOptions([]);
     } finally {
       setSearchLoading(false);
     }
   };
 
-  // 預覽P.O Number相關的quotations
-  const previewPoNumber = async (poNum) => {
-    if (!poNum) {
+  // 預覽 Invoice Number 相關資料
+  const previewInvoiceNumber = async (invoiceNum) => {
+    if (!invoiceNum) {
       setPreviewData(null);
       return;
     }
@@ -117,15 +130,15 @@ export default function ProjectForm({ current = null }) {
       const [quotations, supplierQuotations, invoices] = await Promise.all([
         request.search({ 
           entity: 'quote', 
-          options: { q: poNum, fields: 'poNumber' } 
+          options: { q: invoiceNum, fields: 'invoiceNumber' } 
         }),
         request.search({ 
           entity: 'supplierquote', 
-          options: { q: poNum, fields: 'poNumber' } 
+          options: { q: invoiceNum, fields: 'invoiceNumber' } 
         }),
         request.search({ 
           entity: 'invoice', 
-          options: { q: poNum, fields: 'poNumber' } 
+          options: { q: invoiceNum, fields: 'invoiceNumber' } 
         })
       ]);
 
@@ -136,7 +149,7 @@ export default function ProjectForm({ current = null }) {
 
       if (quotations?.result) {
         quotations.result.forEach(quote => {
-          if (quote.poNumber === poNum && quote.total) {
+          if (quote.invoiceNumber === invoiceNum && quote.total) {
             totalCost = calculate.add(totalCost, quote.total);
           }
           // 收集供應商
@@ -150,7 +163,7 @@ export default function ProjectForm({ current = null }) {
 
       if (supplierQuotations?.result) {
         supplierQuotations.result.forEach(sq => {
-          if (sq.poNumber === poNum && sq.total) {
+          if (sq.invoiceNumber === invoiceNum && sq.total) {
             totalSupplierCost = calculate.add(totalSupplierCost, sq.total);
           }
           // 收集供應商
@@ -165,9 +178,9 @@ export default function ProjectForm({ current = null }) {
       const estimatedProfit = calculate.sub(totalCost, totalSupplierCost);
 
       const previewData = {
-        quotations: quotations?.result?.filter(q => q.poNumber === poNum) || [],
-        supplierQuotations: supplierQuotations?.result?.filter(sq => sq.poNumber === poNum) || [],
-        invoices: invoices?.result?.filter(i => i.poNumber === poNum) || [],
+        quotations: quotations?.result?.filter(q => q.invoiceNumber === invoiceNum) || [],
+        supplierQuotations: supplierQuotations?.result?.filter(sq => sq.invoiceNumber === invoiceNum) || [],
+        invoices: invoices?.result?.filter(i => i.invoiceNumber === invoiceNum) || [],
         totalCost,
         totalSupplierCost,
         estimatedProfit,
@@ -175,6 +188,9 @@ export default function ProjectForm({ current = null }) {
       };
       
       setPreviewData(previewData);
+      if (!form.getFieldValue('name')) {
+        form.setFieldsValue({ name: invoiceNum });
+      }
     } catch (error) {
       console.error('預覽失敗:', error);
       setPreviewData(null);
@@ -285,19 +301,19 @@ export default function ProjectForm({ current = null }) {
         });
         
         form.setFieldsValue(formData);
-        setPoNumber(current.poNumber || '');
-        setOriginalPoNumber(current.poNumber || '');
+        setInvoiceNumber(current.invoiceNumber || '');
+        setOriginalInvoiceNumber(current.invoiceNumber || '');
       }, 100);
       
       return () => clearTimeout(timer);
     }
   }, [current, form, contractors]);
 
-  // P.O Number 變更警告模態框
-  const showPoNumberChangeWarning = () => {
-    if (!poNumberChangeWarning) return null;
+  // Invoice Number 變更警告模態框
+  const showInvoiceNumberChangeWarning = () => {
+    if (!invoiceNumberChangeWarning) return null;
 
-    const { affectedRecords } = poNumberChangeWarning;
+    const { affectedRecords } = invoiceNumberChangeWarning;
     const totalAffected = affectedRecords.quotes.count + affectedRecords.supplierQuotes.count + affectedRecords.invoices.count;
 
     return (
@@ -305,13 +321,13 @@ export default function ProjectForm({ current = null }) {
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <ExclamationCircleOutlined style={{ color: '#faad14' }} />
-            <span>P.O Number 變更警告</span>
+            <span>Invoice Number 變更警告</span>
           </div>
         }
-        open={!!poNumberChangeWarning}
-        onCancel={() => setPoNumberChangeWarning(null)}
+        open={!!invoiceNumberChangeWarning}
+        onCancel={() => setInvoiceNumberChangeWarning(null)}
         footer={[
-          <Button key="cancel" onClick={() => setPoNumberChangeWarning(null)}>
+          <Button key="cancel" onClick={() => setInvoiceNumberChangeWarning(null)}>
             取消
           </Button>,
           <Button 
@@ -319,7 +335,7 @@ export default function ProjectForm({ current = null }) {
             type="primary" 
             danger
             onClick={() => {
-              setPoNumberChangeWarning(null);
+              setInvoiceNumberChangeWarning(null);
               // 這裡可以觸發表單提交
             }}
           >
@@ -330,7 +346,7 @@ export default function ProjectForm({ current = null }) {
       >
         <div style={{ marginBottom: '16px' }}>
           <p>
-            <strong>您正在將 P.O Number 從 "{poNumberChangeWarning.oldPoNumber}" 更改為 "{poNumberChangeWarning.newPoNumber}"</strong>
+            <strong>您正在將 Invoice Number 從 "{invoiceNumberChangeWarning.oldInvoiceNumber}" 更改為 "{invoiceNumberChangeWarning.newInvoiceNumber}"</strong>
           </p>
           <p style={{ color: '#666' }}>
             此變更將自動同步更新以下相關記錄：
@@ -387,7 +403,7 @@ export default function ProjectForm({ current = null }) {
           borderRadius: '6px'
         }}>
           <p style={{ margin: 0, color: '#d46b08' }}>
-            ⚠️ 請確認您要繼續此操作。所有相關記錄的 P.O Number 將被自動更新。
+            ⚠️ 請確認您要繼續此操作。所有相關記錄的 Invoice Number 將被自動更新。
           </p>
         </div>
       </Modal>
@@ -396,44 +412,66 @@ export default function ProjectForm({ current = null }) {
 
   return (
     <>
-      {showPoNumberChangeWarning()}
+      {showInvoiceNumberChangeWarning()}
       <Row gutter={[16, 16]}>
         <Col span={12}>
           <Card title="項目基本信息" size="small">
             <Row gutter={[12, 0]}>
               <Col span={24}>
                 <Form.Item
-                  label={translate('P.O Number')}
-                  name="poNumber"
-                  rules={[{ required: true, message: 'P.O Number is required' }]}
+                  label="Project Name"
+                  name="name"
+                  rules={[{ required: true, message: 'Project Name is required' }]}
+                >
+                  <Input placeholder="輸入項目名稱" allowClear />
+                </Form.Item>
+              </Col>
+              <Col span={24}>
+                <Form.Item
+                  label="Invoice Number (Type + Number)"
+                  name="invoiceNumber"
+                  rules={[{ required: true, message: 'Invoice Number is required' }]}
                 >
                   <AutoComplete
-                    placeholder="輸入或搜索P.O Number"
-                    value={poNumber}
-                    options={poOptions}
-                    onSearch={searchPoNumbers}
+                    placeholder="輸入或搜索 Invoice Number"
+                    value={invoiceNumber}
+                    options={invoiceOptions}
+                    onSearch={searchInvoiceNumbers}
                     onSelect={(value) => {
-                      setPoNumber(value);
-                      previewPoNumber(value);
-                      form.setFieldsValue({ poNumber: value });
+                      setInvoiceNumber(value);
+                      previewInvoiceNumber(value);
+                      const currentName = form.getFieldValue('name');
+                      form.setFieldsValue({
+                        invoiceNumber: value,
+                        name: currentName || value,
+                      });
                     }}
                     onChange={(value) => {
-                      setPoNumber(value);
+                      setInvoiceNumber(value);
                       if (!value) {
                         setPreviewData(null);
-                        setPoNumberChangeWarning(null);
+                        setInvoiceNumberChangeWarning(null);
                       } else {
-                        // 檢查 P.O Number 變更
-                        checkPoNumberChange(value);
+                        // 檢查 Invoice Number 變更
+                        checkInvoiceNumberChange(value);
                       }
                     }}
                     style={{ width: '100%' }}
                     filterOption={false}
-                    notFoundContent={searchLoading ? "搜索中..." : "無匹配的P.O Number"}
+                    notFoundContent={searchLoading ? "搜索中..." : "無匹配的 Invoice Number"}
                   />
                 </Form.Item>
               </Col>
               
+              <Col span={12}>
+                <Form.Item
+                  label={translate('P.O Number')}
+                  name="poNumber"
+                >
+                  <Input placeholder="輸入P.O Number" allowClear />
+                </Form.Item>
+              </Col>
+
               <Col span={12}>
                 <Form.Item
                   label={translate('Cost By')}

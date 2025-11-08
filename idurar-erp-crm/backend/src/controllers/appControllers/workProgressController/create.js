@@ -6,7 +6,8 @@ const create = async (req, res) => {
   try {
     const { 
       projectId, 
-      poNumber, 
+      invoiceNumber, 
+      poNumber = '',
       items = [], 
       completionDate,
       days = 1, // 向後兼容
@@ -14,11 +15,11 @@ const create = async (req, res) => {
     } = req.body;
 
     // 驗證必要字段
-    if (!projectId || !poNumber || !completionDate) {
+    if (!projectId || !invoiceNumber || !completionDate) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: 'Project ID, P.O Number, and Completion Date are required',
+        message: 'Project ID, Invoice Number, and Completion Date are required',
       });
     }
 
@@ -30,6 +31,7 @@ const create = async (req, res) => {
     for (const item of items) {
       const workProgressData = {
         project: projectId,
+        invoiceNumber,
         poNumber,
         item: {
           itemName: item.itemName,

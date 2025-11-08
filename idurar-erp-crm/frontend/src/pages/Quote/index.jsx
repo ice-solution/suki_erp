@@ -13,8 +13,8 @@ export default function Quote() {
 
   const searchConfig = {
     entity: 'quote',
-    displayLabels: ['address', 'poNumber'],
-    searchFields: 'address,poNumber,contactPerson',
+    displayLabels: ['address', 'invoiceNumber'],
+    searchFields: 'address,invoiceNumber,contactPerson',
   };
   const deleteModalLabels = ['number', 'client.name'];
   const dataTableColumns = [

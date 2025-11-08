@@ -119,10 +119,10 @@ export default function CreateItem({ config, CreateForm }) {
       const { shouldLinkToProject, ...dataToSubmit } = fieldsValue;
       
       if (dataToSubmit.items) {
-        let newList = [...dataToSubmit.items];
-        newList.map((item) => {
-          item.total = calculate.multiply(item.quantity, item.price);
-        });
+        const newList = dataToSubmit.items.map(({ key, ...rest }) => ({
+          ...rest,
+          total: calculate.multiply(rest.quantity || 0, rest.price || 0),
+        }));
         dataToSubmit.items = newList;
       }
       

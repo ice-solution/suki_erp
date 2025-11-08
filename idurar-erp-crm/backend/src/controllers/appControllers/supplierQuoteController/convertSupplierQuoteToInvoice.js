@@ -34,7 +34,7 @@ const convert = async (req, res) => {
       date: supplierQuote.date,
       expiredDate: supplierQuote.expiredDate,
       isCompleted: supplierQuote.isCompleted,
-      poNumber: supplierQuote.poNumber,
+      invoiceNumber: supplierQuote.invoiceNumber,
       contactPerson: supplierQuote.contactPerson,
       address: supplierQuote.address,
       clients: supplierQuote.clients,

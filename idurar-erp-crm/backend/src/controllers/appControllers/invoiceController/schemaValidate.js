@@ -19,7 +19,7 @@ const schema = Joi.object({
   paymentTerms: Joi.string().optional(),
   paymentStatus: Joi.string().optional(),
   isCompleted: Joi.boolean().optional(),
-  poNumber: Joi.string().allow('').optional(),
+  invoiceNumber: Joi.string().allow('').optional(),
   contactPerson: Joi.string().allow('').optional(),
   address: Joi.string().allow('').optional(),
   // array cannot be empty

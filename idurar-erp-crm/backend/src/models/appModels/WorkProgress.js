@@ -18,9 +18,13 @@ const workProgressSchema = new mongoose.Schema({
     required: true,
     autopopulate: true,
   },
-  poNumber: {
+  invoiceNumber: {
     type: String,
     required: true,
+  },
+
+  poNumber: {
+    type: String,
   },
   
   // 單個工作項目（從Quote item複製）

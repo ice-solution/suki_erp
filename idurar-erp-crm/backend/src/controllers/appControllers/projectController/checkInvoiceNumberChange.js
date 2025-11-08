@@ -5,14 +5,14 @@ const Quote = mongoose.model('Quote');
 const SupplierQuote = mongoose.model('SupplierQuote');
 const Invoice = mongoose.model('Invoice');
 
-const checkPoNumberChange = async (req, res) => {
+const checkInvoiceNumberChange = async (req, res) => {
   try {
-    const { projectId, newPoNumber } = req.query;
+    const { projectId, newInvoiceNumber } = req.query;
 
-    if (!projectId || !newPoNumber) {
+    if (!projectId || !newInvoiceNumber) {
       return res.status(400).json({
         success: false,
-        message: 'Project ID and new P.O Number are required'
+        message: 'Project ID and new Invoice Number are required'
       });
     }
 
@@ -25,36 +25,37 @@ const checkPoNumberChange = async (req, res) => {
       });
     }
 
-    const oldPoNumber = existingProject.poNumber;
+    const oldInvoiceNumber = existingProject.invoiceNumber;
     
-    // 如果 P.O Number 沒有改變，返回空結果
-    if (oldPoNumber === newPoNumber) {
+    // 如果 Invoice Number 沒有改變，返回空結果
+    if (oldInvoiceNumber === newInvoiceNumber) {
       return res.status(200).json({
         success: true,
-        poNumberChanged: false,
-        message: 'P.O Number unchanged'
+        invoiceNumberChanged: false,
+        message: 'Invoice Number unchanged'
       });
     }
 
     // 查找相關的記錄
     const [quotes, supplierQuotes, invoices] = await Promise.all([
-      Quote.find({ poNumber: oldPoNumber, removed: false }).select('number date status').lean(),
-      SupplierQuote.find({ poNumber: oldPoNumber, removed: false }).select('number date status').lean(),
-      Invoice.find({ poNumber: oldPoNumber, removed: false }).select('number date status').lean()
+      Quote.find({ invoiceNumber: oldInvoiceNumber, removed: false }).select('number date status type').lean(),
+      SupplierQuote.find({ invoiceNumber: oldInvoiceNumber, removed: false }).select('number date status type').lean(),
+      Invoice.find({ invoiceNumber: oldInvoiceNumber, removed: false }).select('number date status type').lean()
     ]);
 
     return res.status(200).json({
       success: true,
-      poNumberChanged: true,
-      oldPoNumber,
-      newPoNumber,
+      invoiceNumberChanged: true,
+      oldInvoiceNumber,
+      newInvoiceNumber,
       affectedRecords: {
         quotes: {
           count: quotes.length,
           records: quotes.map(q => ({
             number: q.number,
             date: q.date,
-            status: q.status
+            status: q.status,
+            type: q.type
           }))
         },
         supplierQuotes: {
@@ -62,7 +63,8 @@ const checkPoNumberChange = async (req, res) => {
           records: supplierQuotes.map(sq => ({
             number: sq.number,
             date: sq.date,
-            status: sq.status
+            status: sq.status,
+            type: sq.type
           }))
         },
         invoices: {
@@ -70,19 +72,21 @@ const checkPoNumberChange = async (req, res) => {
           records: invoices.map(i => ({
             number: i.number,
             date: i.date,
-            status: i.status
+            status: i.status,
+            type: i.type
           }))
         }
       }
     });
 
   } catch (error) {
-    console.error('Error checking P.O Number change:', error);
+    console.error('Error checking Invoice Number change:', error);
     return res.status(500).json({
       success: false,
-      message: 'Error checking P.O Number change: ' + error.message
+      message: 'Error checking Invoice Number change: ' + error.message
     });
   }
 };
 
-module.exports = checkPoNumberChange;
+module.exports = checkInvoiceNumberChange;
+

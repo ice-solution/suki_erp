@@ -84,3 +84,4 @@ const addAttendance = async (req, res) => {
 };
 
 module.exports = addAttendance;
+

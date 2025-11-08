@@ -107,7 +107,7 @@ async function testProjectAPI() {
       contractor: contractorRes.data._id,
       contractorCost: 30000,
       status: 'pending',
-      poNumber: 'PO-001',
+      invoiceNumber: 'INV-001',
       actualCost: 0,
       projectItems: [projectItemRes.data._id]
     };
