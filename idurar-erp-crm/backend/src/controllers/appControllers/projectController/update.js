@@ -9,7 +9,7 @@ const { calculate } = require('@/helpers');
 
 const update = async (req, res) => {
   try {
-    const { contractorFee, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber } = req.body;
+    const { contractorFees, contractorFee, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber } = req.body;
 
     // 查找現有項目
     const existingProject = await Project.findOne({ _id: req.params.id, removed: false });
@@ -26,21 +26,64 @@ const update = async (req, res) => {
     const newInvoiceNumber = invoiceNumber;
     const invoiceNumberChanged = oldInvoiceNumber && newInvoiceNumber && oldInvoiceNumber !== newInvoiceNumber;
 
-    // 重新計算成本和毛利（如果判頭費改變了）
-    const newContractorFee = contractorFee !== undefined ? contractorFee : existingProject.contractorFee;
+    // 處理判頭費：支持新的 contractorFees 數組格式，也支持舊的 contractorFee 單一值（向後兼容）
+    let totalContractorFee = 0;
+    let contractorFeesArray = [];
     
-    // 毛利 = 成本價 - S_price - 判頭費
+    if (contractorFees !== undefined) {
+      // 新格式：contractorFees 數組
+      if (Array.isArray(contractorFees) && contractorFees.length > 0) {
+        contractorFeesArray = contractorFees.filter(fee => fee && fee.projectName && fee.amount !== undefined);
+        totalContractorFee = contractorFeesArray.reduce((sum, fee) => {
+          return calculate.add(sum, fee.amount || 0);
+        }, 0);
+      }
+      // 如果 contractorFees 是空數組，則設置為空
+    } else if (contractorFee !== undefined && contractorFee !== null) {
+      // 舊格式：單一 contractorFee 值（向後兼容）
+      totalContractorFee = contractorFee || 0;
+      if (totalContractorFee > 0) {
+        // 將舊的單一值轉換為數組格式
+        contractorFeesArray = [{
+          projectName: '判頭費',
+          amount: totalContractorFee,
+        }];
+      }
+    } else {
+      // 如果沒有提供新的值，保持現有的 contractorFees
+      if (existingProject.contractorFees && Array.isArray(existingProject.contractorFees)) {
+        contractorFeesArray = existingProject.contractorFees;
+        totalContractorFee = contractorFeesArray.reduce((sum, fee) => {
+          return calculate.add(sum, fee.amount || 0);
+        }, 0);
+      } else if (existingProject.contractorFee !== undefined) {
+        // 向後兼容：如果有舊的 contractorFee 字段
+        totalContractorFee = existingProject.contractorFee || 0;
+        if (totalContractorFee > 0) {
+          contractorFeesArray = [{
+            projectName: '判頭費',
+            amount: totalContractorFee,
+          }];
+        }
+      }
+    }
+    
+    // 毛利 = 成本價 - S_price - 判頭費總額
     const grossProfit = calculate.sub(
-      calculate.sub(existingProject.costPrice, existingProject.sPrice), 
-      newContractorFee
+      calculate.sub(existingProject.costPrice || 0, existingProject.sPrice || 0), 
+      totalContractorFee
     );
 
     // 更新項目數據
     const updateData = {
-      contractorFee: newContractorFee,
       grossProfit,
       updated: new Date(),
     };
+
+    // 如果有新的 contractorFees 值，則更新它
+    if (contractorFees !== undefined) {
+      updateData.contractorFees = contractorFeesArray;
+    }
 
     // 添加可選字段
     if (description !== undefined) updateData.description = description;

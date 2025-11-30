@@ -53,7 +53,7 @@ const convertQuoteToInvoice = async (req, res) => {
       paymentDueDate: null, // 可以後續設定
       paymentTerms: '30天', // 默認付款條件
       isCompleted: quote.isCompleted,
-      invoiceNumber: quote.invoiceNumber,
+      invoiceNumber: quote.numberPrefix && invoiceNumber ? `${quote.numberPrefix}-${invoiceNumber}` : quote.invoiceNumber,
       contactPerson: quote.contactPerson,
       address: quote.address,
       clients: quote.clients,

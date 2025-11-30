@@ -60,7 +60,19 @@ const sync = async (req, res) => {
       sPrice = calculate.add(sPrice, sq.total || 0);
     });
 
-    const grossProfit = calculate.sub(calculate.sub(costPrice, sPrice), project.contractorFee || 0);
+    // 計算總判頭費（支持新的 contractorFees 數組格式和舊的 contractorFee 單一值）
+    let totalContractorFee = 0;
+    if (project.contractorFees && Array.isArray(project.contractorFees)) {
+      // 新格式：contractorFees 數組
+      totalContractorFee = project.contractorFees.reduce((sum, fee) => {
+        return calculate.add(sum, fee.amount || 0);
+      }, 0);
+    } else if (project.contractorFee !== undefined) {
+      // 舊格式：單一 contractorFee 值（向後兼容）
+      totalContractorFee = project.contractorFee || 0;
+    }
+    
+    const grossProfit = calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee);
 
     // 更新項目
     const updatedProject = await Project.findByIdAndUpdate(

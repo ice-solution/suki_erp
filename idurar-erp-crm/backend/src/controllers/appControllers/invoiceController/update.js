@@ -61,6 +61,10 @@ const update = async (req, res) => {
   if (body.hasOwnProperty('currency')) {
     delete body.currency;
   }
+  
+  // 注意：invoiceNumber 是用來關聯 Quote 的，如果用戶提供了就使用，否則保持原值
+  // Invoice 自己的編號是從 numberPrefix + number 生成的（用於顯示）
+  
   // Find document by id and updates with the required fields
 
   let paymentStatus =

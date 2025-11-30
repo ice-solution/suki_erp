@@ -32,6 +32,7 @@ const routerApp = (entity, controller) => {
 
   if (entity === 'quote') {
     router.route(`/${entity}/convert/:id`).get(catchErrors(controller['convert']));
+    router.route(`/${entity}/convertToSupplierQuote/:id`).get(catchErrors(controller['convertToSupplierQuote']));
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
   }
 

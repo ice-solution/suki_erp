@@ -50,7 +50,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     description: '',
     quantity: 1,
     price: 0,
-    total: 0
+    total: 0,
+    poNumber: ''
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
@@ -59,6 +60,17 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const form = Form.useFormInstance();
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const poNumbers = Form.useWatch('poNumbers', form) || [];
+  const quoteTypeValue = Form.useWatch('numberPrefix', form);
+  const numberValue = Form.useWatch('number', form);
+
+  // 自動計算 Quote Number (Quote Type + Number)
+  useEffect(() => {
+    const computedQuoteNumber = quoteTypeValue && numberValue ? `${quoteTypeValue}-${numberValue}` : '';
+    if (form && computedQuoteNumber !== form.getFieldValue('invoiceNumber')) {
+      form.setFieldsValue({ invoiceNumber: computedQuoteNumber });
+    }
+  }, [quoteTypeValue, numberValue, form]);
 
   const searchInvoiceNumbers = async (searchText) => {
     if (!searchText || searchText.length < 1) {
@@ -68,18 +80,30 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
     setSearchLoading(true);
     try {
+      // 只從 Quote 中搜索
       const response = await request.search({
-        entity: 'invoice',
-        options: { q: searchText, fields: 'invoiceNumber' }
+        entity: 'quote',
+        options: { q: searchText, fields: 'numberPrefix,number' }
       });
 
       const options = (response?.result || [])
-        .filter(inv => inv.invoiceNumber)
-        .map(inv => ({ value: inv.invoiceNumber, label: inv.invoiceNumber }));
+        .map(quote => {
+          // 優先使用 Quote Type + number 格式
+          if (quote.numberPrefix && quote.number) {
+            const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
+            return { value: quoteNumber, label: quoteNumber };
+          }
+          // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
+          if (quote.invoiceNumber) {
+            return { value: quote.invoiceNumber, label: quote.invoiceNumber };
+          }
+          return null;
+        })
+        .filter(opt => opt !== null);
 
       setInvoiceOptions(options);
     } catch (error) {
-      console.error('搜索 Invoice Number 失敗:', error);
+      console.error('搜索 Quote Number 失敗:', error);
       setInvoiceOptions([]);
     } finally {
       setSearchLoading(false);
@@ -90,7 +114,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     setDiscount(value || 0);
   };
 
-  // 檢查 Invoice Number 是否對應現有項目
+  // 檢查 Quote Number 是否對應現有項目
   const checkExistingProject = async (invoiceNumber) => {
     if (!invoiceNumber || invoiceNumber.trim() === '') return;
     
@@ -99,12 +123,12 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       if (result.success && result.result) {
         const project = result.result;
         Modal.confirm({
-          title: '發現相同 Invoice Number 的項目',
+          title: '發現相同 Quote Number 的項目',
           content: (
             <div>
-              <p>發現已存在相同 Invoice Number 的項目：</p>
+              <p>發現已存在相同 Quote Number 的項目：</p>
               <ul>
-                <li><strong>Invoice Number:</strong> {project.invoiceNumber}</li>
+                <li><strong>Quote Number:</strong> {project.invoiceNumber}</li>
                 <li><strong>P.O Number:</strong> {project.poNumber || '未設定'}</li>
                 <li><strong>描述:</strong> {project.description || '無描述'}</li>
                 <li><strong>狀態:</strong> {project.status}</li>
@@ -310,22 +334,27 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         clientIds = [current.client._id || current.client];
       }
       
+      // 處理 P.O Numbers：如果 current.poNumber 存在，轉換為數組
+      let poNumbersArray = [];
+      if (current.poNumber) {
+        // 如果是字符串，嘗試用逗號分隔
+        if (typeof current.poNumber === 'string') {
+          poNumbersArray = current.poNumber.split(',').map(p => p.trim()).filter(p => p);
+        } else if (Array.isArray(current.poNumber)) {
+          poNumbersArray = current.poNumber;
+        }
+      }
+      
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
-        console.log('設置表單值:', {
-          clientIds,
-          clients: clients,
-          currentClients,
-          currentClient: current.client
-        });
-        
         form.setFieldsValue({ 
           items: currentItems,
           clients: clientIds,
           type: type,
           shipType: shipType,
           subcontractorCount: subcontractorCount,
-          costPrice: costPrice
+          costPrice: costPrice,
+          poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined
         });
       }, 100);
     }
@@ -421,7 +450,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       description: '',
       quantity: 1,
       price: 0,
-      total: 0
+      total: 0,
+      poNumber: ''
     });
   };
 
@@ -438,25 +468,32 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       title: translate('Item'),
       dataIndex: 'itemName',
       key: 'itemName',
-      width: '25%',
+      width: '20%',
     },
     {
       title: translate('Description'),
       dataIndex: 'description',
       key: 'description',
-      width: '30%',
+      width: '25%',
+    },
+    {
+      title: translate('P.O Number'),
+      dataIndex: 'poNumber',
+      key: 'poNumber',
+      width: '15%',
+      render: (poNumber) => poNumber || '-',
     },
     {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
-      width: '15%',
+      width: '10%',
     },
     {
       title: translate('Price'),
       dataIndex: 'price',
       key: 'price',
-      width: '15%',
+      width: '12%',
       render: (price) => moneyFormatter({ amount: price }),
     },
     {
@@ -469,7 +506,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     {
       title: '',
       key: 'action',
-      width: '5%',
+      width: '8%',
       render: (_, record) => (
         <DeleteOutlined 
           onClick={() => removeItem(record.key)} 
@@ -509,7 +546,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={3}>
           <Form.Item
-            label={translate('Type')}
+            label="Quote Type"
             name="numberPrefix"
             initialValue="QU"
             rules={[
@@ -653,21 +690,27 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label="Invoice Number" name="invoiceNumber">
-            <AutoComplete
-              placeholder="輸入或搜索 Invoice Number"
-              options={invoiceOptions}
-              onSearch={searchInvoiceNumbers}
-              onSelect={(value) => checkExistingProject(value)}
-              onBlur={(e) => checkExistingProject(e.target.value)}
-              allowClear
-              notFoundContent={searchLoading ? '搜索中...' : '無匹配的 Invoice Number'}
+          <Form.Item label="Quote Number" name="invoiceNumber">
+            <Input 
+              placeholder="自動從 Quote Type + Number 計算"
+              readOnly
+              onBlur={(e) => {
+                const quoteNumber = e.target.value;
+                if (quoteNumber) {
+                  checkExistingProject(quoteNumber);
+                }
+              }}
             />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('P.O Number')} name="poNumber">
-            <Input placeholder="輸入P.O Number" />
+          <Form.Item label={translate('P.O Number')} name="poNumbers">
+            <Select
+              mode="tags"
+              placeholder="輸入或選擇P.O Number（可多個）"
+              style={{ width: '100%' }}
+              tokenSeparators={[',']}
+            />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
@@ -736,7 +779,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col span={24}>
           <h4>{translate('Add Item')}</h4>
         </Col>
-        <Col span={5}>
+        <Col span={4}>
           <AutoComplete
             placeholder="輸入項目名稱搜索..."
             onSearch={handleSearch}
@@ -750,14 +793,25 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={7}>
+        <Col span={5}>
           <Input 
             placeholder="描述"
             value={currentItem.description}
             onChange={(e) => updateCurrentItem('description', e.target.value)}
           />
         </Col>
-        <Col span={3}>
+        <Col span={4}>
+          <Select
+            placeholder="選擇P.O Number"
+            value={currentItem.poNumber || undefined}
+            onChange={(value) => updateCurrentItem('poNumber', value)}
+            allowClear
+            style={{ width: '100%' }}
+            options={poNumbers.map(po => ({ value: po, label: po }))}
+            disabled={!poNumbers || poNumbers.length === 0}
+          />
+        </Col>
+        <Col span={2}>
           <InputNumber 
             placeholder="數量"
             min={1}
@@ -766,7 +820,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <InputNumber
             placeholder="價格"
             min={0}
@@ -775,7 +829,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <InputNumber
             placeholder="總計"
             value={currentItem.total}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, DatePicker, Card, Typography, AutoComplete, Modal, message } from 'antd';
-import { PlusOutlined, SearchOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, ExclamationCircleOutlined, DeleteOutlined } from '@ant-design/icons';
 
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
@@ -48,7 +48,7 @@ export default function ProjectForm({ current = null }) {
     }
   };
 
-  // 搜索 Invoice Numbers
+  // 搜索 Quote Numbers (只從 Quote 搜索，使用 Quote Type + number)
   const searchInvoiceNumbers = async (searchText) => {
     if (!searchText || searchText.length < 1) {
       setInvoiceOptions([]);
@@ -57,88 +57,66 @@ export default function ProjectForm({ current = null }) {
 
     setSearchLoading(true);
     try {
-      // 從Quote、SupplierQuote與Invoice中搜索 Invoice Numbers
-      const [quoteResponse, supplierQuoteResponse, invoiceResponse] = await Promise.all([
-        request.search({ 
-          entity: 'quote', 
-          options: { q: searchText, fields: 'invoiceNumber' } 
-        }),
-        request.search({ 
-          entity: 'supplierquote', 
-          options: { q: searchText, fields: 'invoiceNumber' } 
-        }),
-        request.search({
-          entity: 'invoice',
-          options: { q: searchText, fields: 'invoiceNumber' }
-        })
-      ]);
+      // 只從 Quote 中搜索 Quote Numbers (使用 numberPrefix 和 number)
+      const quoteResponse = await request.search({ 
+        entity: 'quote', 
+        options: { q: searchText, fields: 'numberPrefix,number' } 
+      });
 
-      const invoiceNumbers = new Set();
+      const quoteNumbers = new Set();
       
-      // 從quotations收集 Invoice Numbers
+      // 從 quotations 收集 Quote Numbers (Quote Type + number)
       if (quoteResponse?.result) {
         quoteResponse.result.forEach(quote => {
-          if (quote.invoiceNumber) {
-            invoiceNumbers.add(quote.invoiceNumber);
-          }
-        });
-      }
-
-      // 從supplier quotations收集 Invoice Numbers
-      if (supplierQuoteResponse?.result) {
-        supplierQuoteResponse.result.forEach(supplierQuote => {
-          if (supplierQuote.invoiceNumber) {
-            invoiceNumbers.add(supplierQuote.invoiceNumber);
-          }
-        });
-      }
-
-      // 從 invoices 收集 Invoice Numbers
-      if (invoiceResponse?.result) {
-        invoiceResponse.result.forEach(inv => {
-          if (inv.invoiceNumber) {
-            invoiceNumbers.add(inv.invoiceNumber);
+          if (quote.numberPrefix && quote.number) {
+            const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
+            quoteNumbers.add(quoteNumber);
+          } else if (quote.invoiceNumber) {
+            // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
+            quoteNumbers.add(quote.invoiceNumber);
           }
         });
       }
 
       // 轉換為AutoComplete選項格式
-      const options = Array.from(invoiceNumbers).map(invNumber => ({
-        value: invNumber,
-        label: invNumber,
+      const options = Array.from(quoteNumbers).map(quoteNumber => ({
+        value: quoteNumber,
+        label: quoteNumber,
       }));
 
       setInvoiceOptions(options);
     } catch (error) {
-      console.error('搜索 Invoice Number 失敗:', error);
+      console.error('搜索 Quote Number 失敗:', error);
       setInvoiceOptions([]);
     } finally {
       setSearchLoading(false);
     }
   };
 
-  // 預覽 Invoice Number 相關資料
-  const previewInvoiceNumber = async (invoiceNum) => {
-    if (!invoiceNum) {
+  // 預覽 Quote Number 相關資料（只從 Quote 搜索）
+  const previewInvoiceNumber = async (quoteNum) => {
+    if (!quoteNum) {
       setPreviewData(null);
       return;
     }
 
     setLoading(true);
     try {
-      // 查找相關的quotations和supplier quotations
-      const [quotations, supplierQuotations, invoices] = await Promise.all([
-        request.search({ 
-          entity: 'quote', 
-          options: { q: invoiceNum, fields: 'invoiceNumber' } 
-        }),
+      // 只從 Quote 中查找相關資料（使用 Quote Type 和 number 搜索）
+      const quotations = await request.search({ 
+        entity: 'quote', 
+        options: { q: quoteNum, fields: 'numberPrefix,number' } 
+      });
+      
+      // 從 Quote 的 invoiceNumber 查找相關的 supplier quotes 和 invoices
+      const [supplierQuotations, invoices] = await Promise.all([
         request.search({ 
           entity: 'supplierquote', 
-          options: { q: invoiceNum, fields: 'invoiceNumber' } 
+          options: { q: quoteNum, fields: 'invoiceNumber' } 
         }),
         request.search({ 
           entity: 'invoice', 
-          options: { q: invoiceNum, fields: 'invoiceNumber' } 
+          options: { q: quoteNum, fields: 'invoiceNumber' } 
         })
       ]);
 
@@ -147,9 +125,24 @@ export default function ProjectForm({ current = null }) {
       let totalSupplierCost = 0;
       const suppliers = new Set();
 
+      // 檢查是否匹配 quote number (Quote Type + number) - 用於 Quote
+      const matchesQuoteNumber = (record) => {
+        if (record.numberPrefix && record.number) {
+          const recordQuoteNumber = `${record.numberPrefix}-${record.number}`;
+          return recordQuoteNumber === quoteNum;
+        }
+        // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
+        return record.invoiceNumber === quoteNum;
+      };
+
+      // 檢查 invoiceNumber 是否匹配 - 用於 SupplierQuote 和 Invoice
+      const matchesInvoiceNumber = (record) => {
+        return record.invoiceNumber === quoteNum;
+      };
+
       if (quotations?.result) {
         quotations.result.forEach(quote => {
-          if (quote.invoiceNumber === invoiceNum && quote.total) {
+          if (matchesQuoteNumber(quote) && quote.total) {
             totalCost = calculate.add(totalCost, quote.total);
           }
           // 收集供應商
@@ -163,7 +156,7 @@ export default function ProjectForm({ current = null }) {
 
       if (supplierQuotations?.result) {
         supplierQuotations.result.forEach(sq => {
-          if (sq.invoiceNumber === invoiceNum && sq.total) {
+          if (matchesInvoiceNumber(sq) && sq.total) {
             totalSupplierCost = calculate.add(totalSupplierCost, sq.total);
           }
           // 收集供應商
@@ -175,12 +168,20 @@ export default function ProjectForm({ current = null }) {
         });
       }
 
+      if (invoices?.result) {
+        invoices.result.forEach(inv => {
+          if (matchesInvoiceNumber(inv) && inv.total) {
+            // Invoices 可能也需要計算到總成本中
+          }
+        });
+      }
+
       const estimatedProfit = calculate.sub(totalCost, totalSupplierCost);
 
       const previewData = {
-        quotations: quotations?.result?.filter(q => q.invoiceNumber === invoiceNum) || [],
-        supplierQuotations: supplierQuotations?.result?.filter(sq => sq.invoiceNumber === invoiceNum) || [],
-        invoices: invoices?.result?.filter(i => i.invoiceNumber === invoiceNum) || [],
+        quotations: quotations?.result?.filter(q => matchesQuoteNumber(q)) || [],
+        supplierQuotations: supplierQuotations?.result?.filter(sq => matchesInvoiceNumber(sq)) || [],
+        invoices: invoices?.result?.filter(i => matchesInvoiceNumber(i)) || [],
         totalCost,
         totalSupplierCost,
         estimatedProfit,
@@ -189,7 +190,7 @@ export default function ProjectForm({ current = null }) {
       
       setPreviewData(previewData);
       if (!form.getFieldValue('name')) {
-        form.setFieldsValue({ name: invoiceNum });
+        form.setFieldsValue({ name: quoteNum });
       }
     } catch (error) {
       console.error('預覽失敗:', error);
@@ -228,9 +229,18 @@ export default function ProjectForm({ current = null }) {
     }
   };
 
-  // 計算毛利
-  const calculateGrossProfit = (costPrice, sPrice, contractorFee) => {
-    const profit = calculate.sub(calculate.sub(costPrice, sPrice), contractorFee || 0);
+  // 計算毛利（支持 contractorFees 數組）
+  const calculateGrossProfit = (costPrice, sPrice, contractorFees) => {
+    let totalContractorFee = 0;
+    if (Array.isArray(contractorFees)) {
+      totalContractorFee = contractorFees.reduce((sum, fee) => {
+        return calculate.add(sum, fee?.amount || 0);
+      }, 0);
+    } else if (typeof contractorFees === 'number') {
+      // 向後兼容：如果傳入的是數字
+      totalContractorFee = contractorFees || 0;
+    }
+    const profit = calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee);
     return Number.parseFloat(profit);
   };
 
@@ -283,9 +293,25 @@ export default function ProjectForm({ current = null }) {
           contractorIds = current.contractors.map(contractor => contractor._id || contractor);
         }
         
+        // 處理 contractorFees：支持新格式（數組）和舊格式（單一值）
+        let contractorFees = [];
+        if (current.contractorFees && Array.isArray(current.contractorFees)) {
+          // 新格式：contractorFees 數組
+          contractorFees = current.contractorFees;
+        } else if (current.contractorFee !== undefined && current.contractorFee !== null) {
+          // 舊格式：單一 contractorFee 值（向後兼容）
+          if (current.contractorFee > 0) {
+            contractorFees = [{
+              projectName: '判頭費',
+              amount: current.contractorFee,
+            }];
+          }
+        }
+        
         const formData = {
           ...current,
           contractors: contractorIds,  // 確保使用ID數組
+          contractorFees: contractorFees,  // 使用處理後的 contractorFees 數組
           startDate: current.startDate ? dayjs(current.startDate) : null,
           endDate: current.endDate ? dayjs(current.endDate) : null,
         };
@@ -428,12 +454,12 @@ export default function ProjectForm({ current = null }) {
               </Col>
               <Col span={24}>
                 <Form.Item
-                  label="Invoice Number (Type + Number)"
+                  label="Quote Number (Quote Type + Number)"
                   name="invoiceNumber"
-                  rules={[{ required: true, message: 'Invoice Number is required' }]}
+                  rules={[{ required: true, message: 'Quote Number is required' }]}
                 >
                   <AutoComplete
-                    placeholder="輸入或搜索 Invoice Number"
+                    placeholder="輸入或搜索 Quote Number (例如: QU-123, SML-456)"
                     value={invoiceNumber}
                     options={invoiceOptions}
                     onSearch={searchInvoiceNumbers}
@@ -452,13 +478,13 @@ export default function ProjectForm({ current = null }) {
                         setPreviewData(null);
                         setInvoiceNumberChangeWarning(null);
                       } else {
-                        // 檢查 Invoice Number 變更
+                        // 檢查 Quote Number 變更
                         checkInvoiceNumberChange(value);
                       }
                     }}
                     style={{ width: '100%' }}
                     filterOption={false}
-                    notFoundContent={searchLoading ? "搜索中..." : "無匹配的 Invoice Number"}
+                    notFoundContent={searchLoading ? "搜索中..." : "無匹配的 Quote Number"}
                   />
                 </Form.Item>
               </Col>
@@ -571,18 +597,64 @@ export default function ProjectForm({ current = null }) {
           <Card title="財務信息" size="small">
             <Row gutter={[12, 0]}>
               <Col span={24}>
-                <Form.Item
-                  label="判頭費"
-                  name="contractorFee"
-                  initialValue={0}
-                >
-                  <InputNumber
-                    min={0}
-                    precision={2}
-                    style={{ width: '100%' }}
-                    addonBefore="$"
-                    placeholder="0.00"
-                  />
+                <Form.Item label="判頭費">
+                  <Form.List name="contractorFees" initialValue={[]}>
+                    {(fields, { add, remove }) => (
+                      <>
+                        {fields.map(({ key, name, ...restField }) => (
+                          <Row key={key} gutter={8} style={{ marginBottom: 8 }}>
+                            <Col span={10}>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'projectName']}
+                                rules={[{ required: true, message: '請輸入工程名' }]}
+                                style={{ marginBottom: 0 }}
+                              >
+                                <Input placeholder="工程名" />
+                              </Form.Item>
+                            </Col>
+                            <Col span={10}>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'amount']}
+                                rules={[{ required: true, message: '請輸入金額' }]}
+                                style={{ marginBottom: 0 }}
+                              >
+                                <InputNumber
+                                  min={0}
+                                  precision={2}
+                                  style={{ width: '100%' }}
+                                  addonBefore="$"
+                                  placeholder="0.00"
+                                />
+                              </Form.Item>
+                            </Col>
+                            <Col span={4}>
+                              <Button
+                                type="link"
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={() => remove(name)}
+                                style={{ paddingLeft: 0 }}
+                              >
+                                刪除
+                              </Button>
+                            </Col>
+                          </Row>
+                        ))}
+                        <Form.Item style={{ marginBottom: 0 }}>
+                          <Button
+                            type="dashed"
+                            onClick={() => add({ projectName: '', amount: 0 })}
+                            icon={<PlusOutlined />}
+                            block
+                          >
+                            添加判頭費項目
+                          </Button>
+                        </Form.Item>
+                      </>
+                    )}
+                  </Form.List>
                 </Form.Item>
               </Col>
 

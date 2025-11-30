@@ -243,7 +243,7 @@ export default function ReadItem({ config, selectedItem }) {
       </Descriptions>
       
       <Descriptions title={translate('Quote Details')}>
-        <Descriptions.Item label={translate('Number Prefix')}>{currentErp.numberPrefix}</Descriptions.Item>
+        <Descriptions.Item label="Quote Type">{currentErp.numberPrefix}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>

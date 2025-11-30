@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const Model = mongoose.model('Quote');
+const Model = mongoose.model('Invoice');
 
 const search = async (req, res) => {
   if (req.query.q === undefined || req.query.q === '' || req.query.q === ' ') {
@@ -33,7 +33,7 @@ const search = async (req, res) => {
     }
   }
 
-  // 特殊處理：搜索完整的Quote號碼 (Quote Type-number)
+  // 特殊處理：搜索完整的Invoice號碼 (Quote Type-number)
   // 如果搜索詞包含"-"，嘗試分離Quote Type和number
   if (searchTerm.includes('-')) {
     const [quoteTypePart, numberPart] = searchTerm.split('-');
@@ -101,3 +101,4 @@ const search = async (req, res) => {
 };
 
 module.exports = search;
+

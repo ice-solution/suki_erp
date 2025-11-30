@@ -9,6 +9,7 @@ const remove = require('./remove');
 const paginatedList = require('./paginatedList');
 const read = require('./read');
 const linkProject = require('./linkProject');
+const search = require('./search');
 
 methods.mail = sendMail;
 methods.create = create;
@@ -18,5 +19,6 @@ methods.summary = summary;
 methods.list = paginatedList;
 methods.read = read;
 methods.linkProject = linkProject;
+methods.search = search;
 
 module.exports = methods;

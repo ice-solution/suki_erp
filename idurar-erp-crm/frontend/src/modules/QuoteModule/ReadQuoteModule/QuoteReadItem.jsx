@@ -10,6 +10,7 @@ import {
   CloseCircleOutlined,
   RetweetOutlined,
   MailOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -20,11 +21,13 @@ import { generate as uniqueId } from 'shortid';
 
 import { selectCurrentItem } from '@/redux/erp/selectors';
 
-import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
+import { DOWNLOAD_BASE_URL, API_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
 import { useNavigate } from 'react-router-dom';
 import { request } from '@/request';
+import axios from 'axios';
+import storePersist from '@/redux/storePersist';
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -101,6 +104,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [currentErp, setCurrentErp] = useState(selectedItem ?? resetErp);
   const [client, setClient] = useState({});
   const [convertLoading, setConvertLoading] = useState(false);
+  const [convertToSupplierQuoteLoading, setConvertToSupplierQuoteLoading] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -169,6 +173,56 @@ export default function QuoteReadItem({ config, selectedItem }) {
     });
   };
 
+  // 處理Quote轉Supplier Quote（上單）
+  const handleConvertToSupplierQuote = () => {
+    // 檢查是否已經轉換（檢查 converted.supplierQuote 是否存在）
+    if (currentErp.converted && currentErp.converted.supplierQuote) {
+      message.warning('此Quote已經轉換成Supplier Quote');
+      return;
+    }
+
+    Modal.confirm({
+      title: '確認上單',
+      content: (
+        <div>
+          <p>您確定要將此Quote轉換成Supplier Quote（上單）嗎？</p>
+          <p><strong>Quote編號：</strong>{`${currentErp.numberPrefix || 'QU'}-${currentErp.number}`}</p>
+          <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
+          <p style={{ color: '#ff4d4f', marginTop: 12 }}>⚠️ 轉換後將創建新的Supplier Quote，此操作不可撤銷</p>
+        </div>
+      ),
+      okText: '確認上單',
+      cancelText: '取消',
+      okType: 'primary',
+      onOk: async () => {
+        setConvertToSupplierQuoteLoading(true);
+        try {
+          // 設置 axios 配置
+          axios.defaults.baseURL = API_BASE_URL;
+          axios.defaults.withCredentials = true;
+          const auth = storePersist.get('auth');
+          if (auth) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+          }
+          
+          const response = await axios.get(`quote/convertToSupplierQuote/${currentErp._id}`);
+          if (response && response.data && response.data.success) {
+            message.success('Quote成功轉換成Supplier Quote！');
+            // 跳轉到新創建的Supplier Quote
+            navigate(`/supplierquote/read/${response.data.result._id}`);
+          } else {
+            message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
+          }
+        } catch (error) {
+          console.error('轉換錯誤:', error);
+          message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
+        } finally {
+          setConvertToSupplierQuoteLoading(false);
+        }
+      },
+    });
+  };
+
   return (
     <>
       <PageHeader
@@ -213,6 +267,24 @@ export default function QuoteReadItem({ config, selectedItem }) {
             icon={<MailOutlined />}
           >
             {translate('Send by Email')}
+          </Button>,
+          <Button
+            key={`${uniqueId()}`}
+            onClick={handleConvertToSupplierQuote}
+            loading={convertToSupplierQuoteLoading}
+            icon={<ArrowUpOutlined />}
+            style={{ 
+              display: entity === 'quote' ? 'inline-block' : 'none',
+              backgroundColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+              borderColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+              color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
+            }}
+            disabled={currentErp.converted && currentErp.converted.supplierQuote}
+          >
+            {currentErp.converted && currentErp.converted.supplierQuote 
+              ? '已上單' 
+              : '上單'
+            }
           </Button>,
           <Button
             key={`${uniqueId()}`}
@@ -307,7 +379,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
       </Descriptions>
       
       <Descriptions title={translate('Quote Details')}>
-        <Descriptions.Item label={translate('Number Prefix')}>{currentErp.numberPrefix}</Descriptions.Item>
+        <Descriptions.Item label="Quote Type">{currentErp.numberPrefix}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>

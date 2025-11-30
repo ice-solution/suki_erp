@@ -83,7 +83,7 @@ export default function Project() {
     },
     {
       title: '判頭費',
-      dataIndex: 'contractorFee',
+      dataIndex: 'contractorFees',
       key: 'contractorFee',
       onCell: () => ({
         style: {
@@ -91,7 +91,16 @@ export default function Project() {
           whiteSpace: 'nowrap',
         },
       }),
-      render: (amount) => moneyFormatter({ amount: amount || 0 }),
+      render: (contractorFees, record) => {
+        // 支持新格式（contractorFees 數組）和舊格式（contractorFee 單一值）
+        let totalFee = 0;
+        if (contractorFees && Array.isArray(contractorFees) && contractorFees.length > 0) {
+          totalFee = contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
+        } else if (record.contractorFee !== undefined) {
+          totalFee = record.contractorFee || 0;
+        }
+        return moneyFormatter({ amount: totalFee });
+      },
     },
     {
       title: '毛利',

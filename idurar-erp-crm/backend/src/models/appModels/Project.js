@@ -20,10 +20,11 @@ const projectSchema = new mongoose.Schema({
     unique: true,
   },
 
-  // 備存 P.O Number
+  // 備存 P.O Number (注意：此字段不是唯一字段，允許多個項目使用相同的 P.O Number)
   poNumber: {
     type: String,
     default: '',
+    // 注意：不要設置 unique: true，因為多個項目可以共享同一個 P.O Number
   },
 
   // 項目狀態
@@ -163,11 +164,18 @@ const projectSchema = new mongoose.Schema({
     default: 0,
   },
 
-  // 判頭費
-  contractorFee: {
-    type: Number,
-    default: 0,
-  },
+  // 判頭費（多行：工程名 + 金額）
+  contractorFees: [{
+    projectName: {
+      type: String,
+      required: true,
+    },
+    amount: {
+      type: Number,
+      required: true,
+      min: 0,
+    },
+  }],
 
   // 成本價 (quotations總額)
   costPrice: {

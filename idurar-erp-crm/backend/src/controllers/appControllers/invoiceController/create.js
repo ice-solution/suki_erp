@@ -42,6 +42,9 @@ const create = async (req, res) => {
   body['total'] = total;
   body['items'] = items;
 
+  // 注意：invoiceNumber 是用來關聯 Quote 的，如果用戶沒有提供，不自動計算
+  // Invoice 自己的編號是從 numberPrefix + number 生成的（用於顯示）
+
   let paymentStatus = total === 0 ? 'paid' : 'unpaid';
 
   body['paymentStatus'] = paymentStatus;

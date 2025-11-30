@@ -88,7 +88,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
   const handleSync = () => {
     Modal.confirm({
       title: '同步項目數據',
-      content: `確定要同步 Invoice Number "${currentProject.invoiceNumber}" 的所有相關文檔嗎？這將查找所有相同 Invoice Number 的 Quote、Supplier Quote 和 Invoice 並更新項目數據。`,
+      content: `確定要同步 Quote Number "${currentProject.invoiceNumber}" 的所有相關文檔嗎？這將查找所有相同 Quote Number 的 Quote、Supplier Quote 和 Invoice 並更新項目數據。`,
       okText: '同步',
       cancelText: '取消',
       onOk: async () => {
@@ -470,7 +470,11 @@ export default function ProjectReadItem({ config, selectedItem }) {
           />
           <Statistic 
             title="判頭費" 
-            value={moneyFormatter({ amount: currentProject.contractorFee || 0 })}
+            value={moneyFormatter({ 
+              amount: currentProject.contractorFees && Array.isArray(currentProject.contractorFees) 
+                ? currentProject.contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
+                : (currentProject.contractorFee || 0)
+            })}
             style={{ margin: '0 32px' }}
           />
           <Statistic 
@@ -485,7 +489,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
       <Divider dashed />
       
       <Descriptions title={translate('Project Information')}>
-        <Descriptions.Item label="Invoice Number">{currentProject.invoiceNumber}</Descriptions.Item>
+        <Descriptions.Item label="Quote Number">{currentProject.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('P.O Number')}>{currentProject.poNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Description')}>{currentProject.description || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Address')}>{currentProject.address || '-'}</Descriptions.Item>
@@ -496,6 +500,29 @@ export default function ProjectReadItem({ config, selectedItem }) {
           {currentProject.endDate ? dayjs(currentProject.endDate).format(dateFormat) : '-'}
         </Descriptions.Item>
         <Descriptions.Item label={translate('Cost By')}>{currentProject.costBy}</Descriptions.Item>
+        <Descriptions.Item label="判頭費詳情" span={3}>
+          {currentProject.contractorFees && Array.isArray(currentProject.contractorFees) && currentProject.contractorFees.length > 0 ? (
+            <div>
+              {currentProject.contractorFees.map((fee, index) => (
+                <div key={index} style={{ marginBottom: 8 }}>
+                  <Text strong>{fee.projectName || '判頭費'}: </Text>
+                  <Text>{moneyFormatter({ amount: fee.amount || 0 })}</Text>
+                </div>
+              ))}
+              <Divider style={{ margin: '8px 0' }} />
+              <Text strong>總計: </Text>
+              <Text strong>
+                {moneyFormatter({ 
+                  amount: currentProject.contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
+                })}
+              </Text>
+            </div>
+          ) : currentProject.contractorFee ? (
+            <Text>{moneyFormatter({ amount: currentProject.contractorFee || 0 })}</Text>
+          ) : (
+            <Text>-</Text>
+          )}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('Contractors')} span={3}>
           {currentProject.contractors && currentProject.contractors.length > 0 ? (
             <div>

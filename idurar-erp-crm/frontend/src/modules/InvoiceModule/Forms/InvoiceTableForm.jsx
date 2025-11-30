@@ -57,21 +57,58 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
-  const numberPrefixValue = Form.useWatch('numberPrefix', form);
+  const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
+  const [quoteOptions, setQuoteOptions] = useState([]);
+  const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
 
-  useEffect(() => {
-    const computedInvoiceNumber = numberPrefixValue && numberValue ? `${numberPrefixValue}-${numberValue}` : '';
-    if (form && computedInvoiceNumber !== form.getFieldValue('invoiceNumber')) {
-      form.setFieldsValue({ invoiceNumber: computedInvoiceNumber });
+  // 注意：invoiceNumber 字段是用來搜索和選擇 Quote 的，不是 Invoice 自己的編號
+  // Invoice 自己的編號會從 Quote Type + Number 自動生成（在後端處理）
+
+  // 搜索 Quote Number（從 Quote 中搜索）
+  const searchQuoteNumbers = async (searchText) => {
+    if (!searchText || searchText.length < 1) {
+      setQuoteOptions([]);
+      return;
     }
-  }, [numberPrefixValue, numberValue, form]);
+
+    setQuoteSearchLoading(true);
+    try {
+      // 從 Quote 中搜索
+      const response = await request.search({
+        entity: 'quote',
+        options: { q: searchText, fields: 'numberPrefix,number' }
+      });
+
+      const options = (response?.result || [])
+        .map(quote => {
+          // 使用 Quote Type + number 格式
+          if (quote.numberPrefix && quote.number) {
+            const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
+            return { value: quoteNumber, label: quoteNumber };
+          }
+          // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
+          if (quote.invoiceNumber) {
+            return { value: quote.invoiceNumber, label: quote.invoiceNumber };
+          }
+          return null;
+        })
+        .filter(opt => opt !== null);
+
+      setQuoteOptions(options);
+    } catch (error) {
+      console.error('搜索 Quote Number 失敗:', error);
+      setQuoteOptions([]);
+    } finally {
+      setQuoteSearchLoading(false);
+    }
+  };
   
   const handleDiscountChange = (value) => {
     setDiscount(value || 0);
   };
 
-  // 檢查 Invoice Number 是否對應現有項目
+  // 檢查 Quote Number 是否對應現有項目
   const checkExistingProject = async (invoiceNumber) => {
     if (!invoiceNumber || invoiceNumber.trim() === '') return;
     
@@ -80,12 +117,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       if (result.success && result.result) {
         const project = result.result;
         Modal.confirm({
-          title: '發現相同 Invoice Number 的項目',
+          title: '發現相同 Quote Number 的項目',
           content: (
             <div>
-              <p>發現已存在相同 Invoice Number 的項目：</p>
+              <p>發現已存在相同 Quote Number 的項目：</p>
               <ul>
-                <li><strong>Invoice Number:</strong> {project.invoiceNumber}</li>
+                <li><strong>Quote Number:</strong> {project.invoiceNumber}</li>
                 <li><strong>P.O Number:</strong> {project.poNumber || '未設定'}</li>
                 <li><strong>描述:</strong> {project.description || '無描述'}</li>
                 <li><strong>狀態:</strong> {project.status}</li>
@@ -480,7 +517,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={3}>
           <Form.Item
-            label="Invoice Type"
+            label="Quote Type"
             name="numberPrefix"
             initialValue="INV"
             rules={[
@@ -615,8 +652,16 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={5}>
-          <Form.Item label="Invoice Number" name="invoiceNumber">
-            <Input onBlur={(e) => checkExistingProject(e.target.value)} />
+          <Form.Item label="Quote Number" name="invoiceNumber">
+            <AutoComplete
+              placeholder="搜索 Quote Number (從 Quote 中搜索)"
+              options={quoteOptions}
+              onSearch={searchQuoteNumbers}
+              onSelect={(value) => checkExistingProject(value)}
+              onBlur={(e) => checkExistingProject(e.target.value)}
+              allowClear
+              notFoundContent={quoteSearchLoading ? '搜索中...' : '無匹配的 Quote Number'}
+            />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={5}>

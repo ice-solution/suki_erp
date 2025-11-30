@@ -101,6 +101,9 @@ const quoteSchema = new mongoose.Schema({
         type: Number,
         required: true,
       },
+      poNumber: {
+        type: String,
+      },
       // taxRate: {
       //   type: Number,
       //   default: 0,

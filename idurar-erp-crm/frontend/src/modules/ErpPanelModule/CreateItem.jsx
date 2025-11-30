@@ -126,6 +126,16 @@ export default function CreateItem({ config, CreateForm }) {
         dataToSubmit.items = newList;
       }
       
+      // 處理 P.O Numbers：將 poNumbers 數組轉換為 poNumber 字符串（用逗號分隔）
+      if (dataToSubmit.poNumbers && Array.isArray(dataToSubmit.poNumbers) && dataToSubmit.poNumbers.length > 0) {
+        dataToSubmit.poNumber = dataToSubmit.poNumbers.join(', ');
+        delete dataToSubmit.poNumbers; // 移除 poNumbers，只保留 poNumber
+      } else if (dataToSubmit.poNumbers && dataToSubmit.poNumbers.length === 0) {
+        // 如果 poNumbers 為空數組，設置 poNumber 為空字符串
+        dataToSubmit.poNumber = '';
+        delete dataToSubmit.poNumbers;
+      }
+      
       // Check if this is a supplierquote with actual file objects (not just empty arrays)
       const hasActualFiles = (dataToSubmit.dmFiles && dataToSubmit.dmFiles.length > 0 && 
                              dataToSubmit.dmFiles.some(file => file.originFileObj)) || 

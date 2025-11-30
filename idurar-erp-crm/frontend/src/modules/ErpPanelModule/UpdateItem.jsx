@@ -122,6 +122,16 @@ export default function UpdateItem({ config, UpdateForm }) {
         }));
         dataToUpdate.items = newList;
       }
+      
+      // 處理 P.O Numbers：將 poNumbers 數組轉換為 poNumber 字符串（用逗號分隔）
+      if (fieldsValue.poNumbers && Array.isArray(fieldsValue.poNumbers) && fieldsValue.poNumbers.length > 0) {
+        dataToUpdate.poNumber = fieldsValue.poNumbers.join(', ');
+        delete dataToUpdate.poNumbers; // 移除 poNumbers，只保留 poNumber
+      } else if (fieldsValue.poNumbers && fieldsValue.poNumbers.length === 0) {
+        // 如果 poNumbers 為空數組，設置 poNumber 為空字符串
+        dataToUpdate.poNumber = '';
+        delete dataToUpdate.poNumbers;
+      }
     }
 
     // Check if this is a supplierquote with actual file objects (not just empty arrays)

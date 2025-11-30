@@ -80,18 +80,30 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
     setSearchLoading(true);
     try {
+      // 只從 Quote 中搜索
       const response = await request.search({
-        entity: 'invoice',
-        options: { q: searchText, fields: 'invoiceNumber' }
+        entity: 'quote',
+        options: { q: searchText, fields: 'numberPrefix,number' }
       });
 
       const options = (response?.result || [])
-        .filter(inv => inv.invoiceNumber)
-        .map(inv => ({ value: inv.invoiceNumber, label: inv.invoiceNumber }));
+        .map(quote => {
+          // 優先使用 Quote Type + number 格式
+          if (quote.numberPrefix && quote.number) {
+            const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
+            return { value: quoteNumber, label: quoteNumber };
+          }
+          // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
+          if (quote.invoiceNumber) {
+            return { value: quote.invoiceNumber, label: quote.invoiceNumber };
+          }
+          return null;
+        })
+        .filter(opt => opt !== null);
 
       setInvoiceOptions(options);
     } catch (error) {
-      console.error('搜索 Invoice Number 失敗:', error);
+      console.error('搜索 Quote Number 失敗:', error);
       setInvoiceOptions([]);
     } finally {
       setSearchLoading(false);
@@ -128,7 +140,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     return isValidType && isLt10M;
   };
 
-  // 檢查 Invoice Number 是否對應現有項目
+  // 檢查 Quote Number 是否對應現有項目
   const checkExistingProject = async (invoiceNumber) => {
     if (!invoiceNumber || invoiceNumber.trim() === '') return;
     
@@ -137,12 +149,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       if (result.success && result.result) {
         const project = result.result;
         Modal.confirm({
-          title: '發現相同 Invoice Number 的項目',
+          title: '發現相同 Quote Number 的項目',
           content: (
             <div>
-              <p>發現已存在相同 Invoice Number 的項目：</p>
+              <p>發現已存在相同 Quote Number 的項目：</p>
               <ul>
-                <li><strong>Invoice Number:</strong> {project.invoiceNumber}</li>
+                <li><strong>Quote Number:</strong> {project.invoiceNumber}</li>
                 <li><strong>P.O Number:</strong> {project.poNumber || '未設定'}</li>
                 <li><strong>描述:</strong> {project.description || '無描述'}</li>
                 <li><strong>狀態:</strong> {project.status}</li>
@@ -729,7 +741,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         </Col>
         <Col className="gutter-row" span={3}>
           <Form.Item
-            label={translate('Type')}
+            label="Supplier Type"
             name="numberPrefix"
             initialValue="QU"
             rules={[
@@ -885,15 +897,15 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label="Invoice Number" name="invoiceNumber">
+          <Form.Item label="Quote Number" name="invoiceNumber">
             <AutoComplete
-              placeholder="輸入或搜索 Invoice Number"
+              placeholder="輸入或搜索 Quote Number (例如: QU-123, SML-456)"
               options={invoiceOptions}
               onSearch={searchInvoiceNumbers}
               onSelect={(value) => checkExistingProject(value)}
               onBlur={(e) => checkExistingProject(e.target.value)}
               allowClear
-              notFoundContent={searchLoading ? '搜索中...' : '無匹配的 Invoice Number'}
+              notFoundContent={searchLoading ? '搜索中...' : '無匹配的 Quote Number'}
             />
           </Form.Item>
         </Col>

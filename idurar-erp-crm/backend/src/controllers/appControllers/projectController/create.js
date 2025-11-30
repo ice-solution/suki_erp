@@ -9,7 +9,7 @@ const { calculate } = require('@/helpers');
 
 const create = async (req, res) => {
   try {
-    const { invoiceNumber, poNumber, costBy, contractorFee = 0, description, address, startDate, endDate, contractors = [], name } = req.body;
+    const { invoiceNumber, poNumber, costBy, contractorFees = [], contractorFee, description, address, startDate, endDate, contractors = [], name } = req.body;
 
     if (!invoiceNumber) {
       return res.status(400).json({
@@ -55,8 +55,30 @@ const create = async (req, res) => {
       }
     });
 
-    // 計算毛利 = 成本價 - S_price - 判頭費
-    const grossProfit = calculate.sub(calculate.sub(costPrice, sPrice), contractorFee);
+    // 處理判頭費：支持新的 contractorFees 數組格式，也支持舊的 contractorFee 單一值（向後兼容）
+    let totalContractorFee = 0;
+    let contractorFeesArray = [];
+    
+    if (contractorFees && Array.isArray(contractorFees) && contractorFees.length > 0) {
+      // 新格式：contractorFees 數組
+      contractorFeesArray = contractorFees.filter(fee => fee && fee.projectName && fee.amount !== undefined);
+      totalContractorFee = contractorFeesArray.reduce((sum, fee) => {
+        return calculate.add(sum, fee.amount || 0);
+      }, 0);
+    } else if (contractorFee !== undefined && contractorFee !== null) {
+      // 舊格式：單一 contractorFee 值（向後兼容）
+      totalContractorFee = contractorFee || 0;
+      if (totalContractorFee > 0) {
+        // 將舊的單一值轉換為數組格式
+        contractorFeesArray = [{
+          projectName: '判頭費',
+          amount: totalContractorFee,
+        }];
+      }
+    }
+
+    // 計算毛利 = 成本價 - S_price - 判頭費總額
+    const grossProfit = calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee);
 
     // 收集所有相關的供應商（從quotations和supplier quotations）
     const supplierIds = new Set();
@@ -87,7 +109,7 @@ const create = async (req, res) => {
       invoiceNumber,
       poNumber: poNumber || '',
       costBy,
-      contractorFee,
+      contractorFees: contractorFeesArray,
       description,
       address,
       startDate: startDate ? new Date(startDate) : null,

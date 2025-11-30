@@ -22,8 +22,8 @@ export default function Quote() {
       title: translate('Number'),
       dataIndex: 'number',
       render: (number, record) => {
-        const prefix = record.numberPrefix || 'QU';
-        return `${prefix}-${number}`;
+        const quoteType = record.numberPrefix || 'QU';
+        return `${quoteType}-${number}`;
       },
     },
     {

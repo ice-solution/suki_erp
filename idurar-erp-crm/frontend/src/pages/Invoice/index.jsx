@@ -24,8 +24,8 @@ export default function Invoice() {
       title: translate('Number'),
       dataIndex: 'number',
       render: (number, record) => {
-        const prefix = record.numberPrefix || 'INV';
-        return `${prefix}-${number}`;
+        const quoteType = record.numberPrefix || 'INV';
+        return `${quoteType}-${number}`;
       },
     },
     {
