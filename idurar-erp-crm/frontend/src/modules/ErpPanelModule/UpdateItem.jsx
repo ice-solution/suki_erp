@@ -156,9 +156,9 @@ export default function UpdateItem({ config, UpdateForm }) {
       const shouldSyncProject = form.getFieldValue('shouldLinkToProject');
       const invoiceNumber = form.getFieldValue('invoiceNumber');
       
-      if (shouldSyncProject && ['quote', 'supplierquote', 'invoice'].includes(entity.toLowerCase())) {
+      if (shouldSyncProject && ['quote', 'supplierquote', 'shipquote', 'invoice'].includes(entity.toLowerCase())) {
         handleProjectSync(shouldSyncProject);
-      } else if (invoiceNumber && ['quote', 'supplierquote', 'invoice'].includes(entity.toLowerCase())) {
+      } else if (invoiceNumber && ['quote', 'supplierquote', 'shipquote', 'invoice'].includes(entity.toLowerCase())) {
         // 如果有 Invoice Number，檢查是否需要自動同步項目
         handleAutoProjectSync(invoiceNumber);
       }

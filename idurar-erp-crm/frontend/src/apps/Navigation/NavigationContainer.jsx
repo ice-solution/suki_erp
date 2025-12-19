@@ -76,6 +76,11 @@ function Sidebar({ collapsible, isMobile = false }) {
       label: <Link to={'/supplierquote'}>Supplier Quote(S單)</Link>,
     },
     {
+      key: 'shipquote',
+      icon: <FileSyncOutlined />,
+      label: <Link to={'/shipquote'}>吊船Quote</Link>,
+    },
+    {
       key: 'warehouse',
       icon: <DatabaseOutlined />,
       label: <Link to={'/warehouse'}>存倉管理</Link>,

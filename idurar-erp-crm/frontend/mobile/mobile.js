@@ -2,7 +2,7 @@
 let authToken = localStorage.getItem('authToken');
 let currentUser = null;
 let currentProject = null;
-let currentWorkProgress = null;
+let currentProjectInfo = null; // 保存當前項目信息（包括名稱）
 
 // 初始化用戶數據
 try {
@@ -28,6 +28,48 @@ function showMessage(message, type = 'error') {
         }, 5000);
     }
     console.log(`${type.toUpperCase()}: ${message}`);
+}
+
+// 顯示/隱藏 Loading Overlay
+function showLoadingOverlay(text = '處理中...') {
+    const overlay = document.getElementById('loadingOverlay');
+    const loadingText = document.getElementById('loadingText');
+    if (overlay) {
+        if (loadingText) loadingText.textContent = text;
+        overlay.classList.add('active');
+    }
+}
+
+function hideLoadingOverlay() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
+}
+
+// 顯示成功消息 Overlay
+function showSuccessOverlay(message, detail = '') {
+    const overlay = document.getElementById('successOverlay');
+    const successMessage = document.getElementById('successMessage');
+    const successDetail = document.getElementById('successDetail');
+    
+    if (overlay) {
+        if (successMessage) successMessage.textContent = message;
+        if (successDetail) successDetail.textContent = detail;
+        overlay.classList.add('active');
+        
+        // 2秒後自動關閉
+        setTimeout(() => {
+            hideSuccessOverlay();
+        }, 2000);
+    }
+}
+
+function hideSuccessOverlay() {
+    const overlay = document.getElementById('successOverlay');
+    if (overlay) {
+        overlay.classList.remove('active');
+    }
 }
 
 function formatDate(dateString) {
@@ -76,6 +118,17 @@ async function apiRequest(url, options = {}) {
 
         console.log(`API response:`, data);
 
+        // 處理 401 未授權錯誤（token 過期或無效）
+        if (response.status === 401) {
+            console.warn('Token expired or invalid, logging out...');
+            logout();
+            showMessage('登入已過期，請重新登入', 'error');
+            // 拋出特殊錯誤，讓調用者知道是認證錯誤
+            const authError = new Error('登入已過期，請重新登入');
+            authError.isAuthError = true;
+            throw authError;
+        }
+
         if (!response.ok) {
             throw new Error(data.message || `HTTP error! status: ${response.status}`);
         }
@@ -83,33 +136,64 @@ async function apiRequest(url, options = {}) {
         return data;
     } catch (error) {
         console.error('API request failed:', error);
+        // 如果是認證錯誤，已經處理過登出，直接拋出
+        if (error.isAuthError) {
+            throw error;
+        }
+        // 其他錯誤正常拋出
         throw error;
     }
 }
 
 // 認證相關函數
-async function login(phone) {
+async function login(credentials) {
     try {
-        console.log('Starting login process for phone:', phone);
-        const response = await apiRequest('/mobile-auth/login', {
+        // 支持兩種登入方式：
+        // 1. username + password（優先）
+        // 2. phone（向後兼容）
+        let loginData = {};
+        if (credentials.username && credentials.password) {
+            loginData = {
+                username: credentials.username,
+                password: credentials.password
+            };
+            console.log('Starting login process with username:', credentials.username);
+        } else if (credentials.phone) {
+            loginData = { phone: credentials.phone };
+            console.log('Starting login process with phone:', credentials.phone);
+        } else {
+            throw new Error('請輸入用戶名和密碼，或手機號碼');
+        }
+
+        // 登入時不需要 token，所以使用特殊的請求函數
+        const response = await fetch(`${API_BASE}/mobile-auth/login`, {
             method: 'POST',
-            body: JSON.stringify({ phone })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(loginData)
         });
 
-        console.log('Login response:', response);
+        const data = await response.json();
+        console.log('Login response:', data);
 
-        if (response.success) {
-            authToken = response.result.token;
-            currentUser = response.result.contractor;
+        if (!response.ok) {
+            throw new Error(data.message || '登入失敗');
+        }
+
+        if (data.success) {
+            authToken = data.result.token;
+            currentUser = data.result.contractor;
             
             localStorage.setItem('authToken', authToken);
             localStorage.setItem('currentUser', JSON.stringify(currentUser));
             
             console.log('Login successful, showing main section');
+            showMessage('登入成功！', 'success');
             showMainSection();
             loadProjects();
         } else {
-            throw new Error(response.message || '登入失敗');
+            throw new Error(data.message || '登入失敗');
         }
     } catch (error) {
         console.error('Login error:', error);
@@ -132,7 +216,7 @@ function showLoginSection() {
     document.getElementById('mainSection').classList.remove('active');
     
     document.getElementById('headerTitle').textContent = '承辦商工程管理系統';
-    document.getElementById('headerSubtitle').textContent = '請輸入手機號碼登入';
+    document.getElementById('headerSubtitle').textContent = '請登入';
     document.getElementById('backBtn').style.display = 'none';
 }
 
@@ -174,26 +258,52 @@ function showPage(pageName) {
             document.getElementById('backBtn').style.display = 'none';
             loadProjects();
             break;
-        case 'workprogress':
-            document.getElementById('workProgressPage').classList.add('active');
-            document.getElementById('headerTitle').textContent = '工作進度';
-            document.getElementById('headerSubtitle').textContent = '查看工作進度';
+        case 'employees':
+            document.getElementById('employeesPage').classList.add('active');
+            document.getElementById('headerTitle').textContent = currentProjectInfo?.name || '員工列表';
+            document.getElementById('headerSubtitle').textContent = '管理員工打咭';
             document.getElementById('backBtn').style.display = 'block';
-            loadWorkProgress();
+            loadEmployees();
             break;
-        case 'updateProgress':
-            document.getElementById('updateProgressPage').classList.add('active');
-            document.getElementById('headerTitle').textContent = '更新進度';
-            document.getElementById('headerSubtitle').textContent = '記錄工作進度';
+        case 'batchCheckIn':
+            document.getElementById('batchCheckInPage').classList.add('active');
+            document.getElementById('headerTitle').textContent = currentProjectInfo?.name || '今天打咭';
+            document.getElementById('headerSubtitle').textContent = '選擇員工進行打咭';
             document.getElementById('backBtn').style.display = 'block';
+            selectedEmployeesForCheckIn = []; // 清空選擇
+            loadEmployeesForBatchCheckIn();
+            break;
+        case 'makeupCheckIn':
+            document.getElementById('makeupCheckInPage').classList.add('active');
+            document.getElementById('headerTitle').textContent = currentProjectInfo?.name || '補打咭';
+            document.getElementById('headerSubtitle').textContent = '選擇日期和員工進行補打咭';
+            document.getElementById('backBtn').style.display = 'block';
+            // 設置日期限制：只允許今天往前7天（包括今天）
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            const minDateStr = sevenDaysAgo.toISOString().split('T')[0];
+            
+            const makeupDateInput = document.getElementById('makeupDate');
+            if (makeupDateInput) {
+                // 設置日期範圍限制
+                makeupDateInput.setAttribute('max', todayStr);
+                makeupDateInput.setAttribute('min', minDateStr);
+                // 設置默認日期為今天
+                makeupDateInput.value = todayStr;
+                selectedEmployeesForMakeup = []; // 清空選擇
+                loadEmployeesForMakeupCheckIn(todayStr);
+            }
             break;
     }
 }
 
 function goBack() {
-    if (document.getElementById('updateProgressPage').classList.contains('active')) {
-        showPage('workprogress');
-    } else if (document.getElementById('workProgressPage').classList.contains('active')) {
+    if (document.getElementById('batchCheckInPage').classList.contains('active') ||
+        document.getElementById('makeupCheckInPage').classList.contains('active')) {
+        showPage('employees');
+    } else if (document.getElementById('employeesPage').classList.contains('active')) {
         showPage('projects');
     } else {
         showPage('projects');
@@ -218,8 +328,11 @@ async function loadProjects() {
         }
     } catch (error) {
         console.error('Failed to load projects:', error);
-        showMessage('加載項目失敗: ' + error.message);
-        displayProjects([]);
+        // 如果是認證錯誤，已經在 apiRequest 中處理了登出，這裡只顯示消息
+        if (!error.isAuthError) {
+            showMessage('加載項目失敗: ' + error.message);
+            displayProjects([]);
+        }
     }
 }
 
@@ -241,244 +354,310 @@ function displayProjects(projects) {
     }
     
     projectsList.innerHTML = projects.map(project => `
-        <div class="project-card" onclick="showProjectWorkProgress('${project._id}')">
+        <div class="project-card" onclick="showProjectEmployees('${project._id}', '${project.name || '未命名項目'}')">
             <div class="project-title">${project.name || '未命名項目'}</div>
             <div class="project-info">P.O Number: ${project.poNumber || '未設定'}</div>
             <div class="project-info">Invoice Number: ${project.invoiceNumber || '未設定'}</div>
             <div class="project-info">描述：${project.description || '未設定'}</div>
             <div class="project-info">開始日期：${formatDate(project.startDate)}</div>
             <div class="project-info">
-                工作進度：${project.workProgressStats?.total || 0} 項
                 <span class="status-badge status-${project.status}">${getStatusText(project.status)}</span>
-            </div>
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: ${formatProgress(project.workProgressStats?.averageProgress)}%"></div>
-            </div>
-            <div style="font-size: 12px; color: #666; text-align: right;">
-                平均進度：${formatProgress(project.workProgressStats?.averageProgress)}%
             </div>
         </div>
     `).join('');
 }
 
-async function showProjectWorkProgress(projectId) {
+async function showProjectEmployees(projectId, projectName) {
     currentProject = projectId;
-    showPage('workprogress');
+    
+    // 保存項目信息
+    if (projectName) {
+        currentProjectInfo = { name: projectName };
+    } else {
+        // 如果沒有傳入項目名稱，從項目列表中獲取
+        try {
+            const projectsResponse = await apiRequest('/mobile-project/contractor-projects');
+            if (projectsResponse.success) {
+                const project = projectsResponse.result.projects.find(p => p._id === projectId);
+                if (project) {
+                    currentProjectInfo = { name: project.name };
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load project info:', error);
+        }
+    }
+    
+    showPage('employees');
+    loadEmployees();
 }
 
-async function loadWorkProgress() {
+// 加載項目員工列表（不再需要，因為直接進入打咭頁面）
+async function loadEmployees() {
+    // 不再顯示員工列表，直接提供打咭選項
+}
+
+// 批量打咭相關變量
+let selectedEmployeesForCheckIn = [];
+
+// 顯示批量打咭頁面
+function showBatchCheckIn() {
+    selectedEmployeesForCheckIn = [];
+    showPage('batchCheckIn');
+}
+
+// 加載員工列表用於今天打咭
+async function loadEmployeesForBatchCheckIn() {
     if (!currentProject) {
         showMessage('請先選擇一個項目');
         return;
     }
 
     try {
-        console.log('Loading work progress for project:', currentProject);
-        const response = await apiRequest(`/mobile-project/project/${currentProject}/workprogress`);
-        
+        // 使用 attendance-by-date API 獲取今天的員工列表和打咭狀態
+        const today = new Date().toISOString().split('T')[0];
+        const response = await apiRequest(`/mobile-project/project/${currentProject}/attendance-by-date?date=${today}`);
         if (response.success) {
-            displayWorkProgress(response.result);
+            // 保存項目信息（如果還沒有）
+            if (response.result.project && !currentProjectInfo) {
+                currentProjectInfo = response.result.project;
+            }
+            displayEmployeesForBatchCheckIn(response.result.employees);
         } else {
             throw new Error(response.message);
         }
     } catch (error) {
-        console.error('Failed to load work progress:', error);
-        showMessage('加載工作進度失敗: ' + error.message);
-        displayWorkProgress({ workProgressList: [] });
+        console.error('Failed to load employees for batch check-in:', error);
+        if (!error.isAuthError) {
+            showMessage('加載員工列表失敗: ' + error.message);
+        }
     }
 }
 
-function displayWorkProgress(data) {
-    const workProgressList = document.getElementById('workProgressList');
+function displayEmployeesForBatchCheckIn(employees) {
+    const employeesList = document.getElementById('batchCheckInEmployeesList');
     
-    if (!workProgressList) {
-        console.error('workProgressList element not found');
+    if (!employeesList) return;
+    
+    if (!employees || employees.length === 0) {
+        employeesList.innerHTML = '<div class="loading"><p>此項目暫無分配的員工</p></div>';
         return;
     }
     
-    const { project, workProgressList: workProgresses } = data;
-    
-    if (!workProgresses || workProgresses.length === 0) {
-        workProgressList.innerHTML = `
-            <div class="loading">
-                <p>此項目暫無工作進度記錄</p>
-            </div>
-        `;
-        return;
-    }
-    
-    workProgressList.innerHTML = `
-        <div class="project-card">
-            <div class="project-title">${project.name || '未命名項目'}</div>
-            <div class="project-info">P.O Number: ${project.poNumber || '未設定'}</div>
-            <div class="project-info">Invoice Number: ${project.invoiceNumber || '未設定'}</div>
-            <div class="project-info">描述: ${project.description || '無'}</div>
+    // 顯示員工列表：已打咭的顯示 tick，未打咭的顯示 checkbox
+    employeesList.innerHTML = employees.map(employee => `
+        <div class="employee-card" style="justify-content: space-between; align-items: center;">
+            <div class="employee-name" style="margin: 0;">${employee.name || '未命名'}</div>
+            ${employee.hasCheckedIn ? 
+                '<span class="check-icon">✓</span>' : 
+                `<input type="checkbox" class="employee-checkbox" value="${employee._id}" 
+                        onchange="toggleEmployeeSelection('${employee._id}', this.checked)">`
+            }
         </div>
-        
-        ${workProgresses.map(wp => {
-            console.log('WorkProgress data:', wp);
-            console.log('Progress value:', wp.progress);
-            return `
-            <div class="workprogress-card">
-                <div class="workprogress-title">${wp.item?.itemName || '未命名工作'}</div>
-                <div class="workprogress-info">描述: ${wp.item?.description || '無'}</div>
-                <div class="workprogress-info">數量: ${wp.item?.quantity || 0}</div>
-                <div class="workprogress-info">負責員工: ${wp.contractorEmployee?.name || '未分配'}</div>
-                <div class="workprogress-info">
-                    狀態: <span class="status-badge status-${wp.status}">${getStatusText(wp.status)}</span>
-                </div>
-                <div class="workprogress-info">完工日期: ${formatDate(wp.completionDate)}</div>
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${formatProgress(wp.progress)}%"></div>
-                </div>
-                <div style="font-size: 12px; color: #666; text-align: right; margin-top: 8px;">
-                    進度: ${formatProgress(wp.progress)}% (原始值: ${wp.progress})
-                </div>
-                <div style="margin-top: 12px;">
-                    <button class="btn btn-small btn-success" onclick="updateWorkProgress('${wp._id}')">
-                        更新進度
-                    </button>
-                </div>
-            </div>
-        `;
-        }).join('')}
-    `;
+    `).join('');
 }
 
-function updateWorkProgress(workProgressId) {
-    currentWorkProgress = workProgressId;
-    showPage('updateProgress');
-}
-
-// 處理圖片預覽
-function handleImageSelection() {
-    const imageInput = document.getElementById('progressImages');
-    const imagePreview = document.getElementById('imagePreview');
-    
-    console.log('設置圖片選擇處理器，imageInput:', imageInput, 'imagePreview:', imagePreview);
-    
-    if (!imageInput || !imagePreview) {
-        console.error('找不到圖片輸入元素或預覽元素');
-        return;
-    }
-    
-    imageInput.addEventListener('change', function(e) {
-        console.log('圖片選擇事件觸發，文件數量:', e.target.files.length);
-        imagePreview.innerHTML = '';
-        
-        Array.from(e.target.files).forEach((file, index) => {
-            console.log(`處理文件 ${index}:`, file.name, file.type, file.size);
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                const imageDiv = document.createElement('div');
-                imageDiv.className = 'image-preview-item';
-                
-                reader.onload = function(e) {
-                    console.log('圖片讀取完成:', file.name);
-                    imageDiv.style.backgroundImage = `url(${e.target.result})`;
-                    imagePreview.appendChild(imageDiv);
-                };
-                reader.readAsDataURL(file);
-            } else {
-                console.warn('跳過非圖片文件:', file.name, file.type);
-            }
-        });
-    });
-}
-
-// 上傳圖片
-async function uploadImages(files) {
-    console.log('開始上傳圖片，文件數量:', files.length);
-    const uploadedImages = [];
-    
-    for (let i = 0; i < files.length; i++) {
-        const file = files[i];
-        console.log(`上傳文件 ${i}:`, file.name, file.type, file.size);
-        
-        if (file.type.startsWith('image/')) {
-            const formData = new FormData();
-            formData.append('image', file);
-            
-            try {
-                console.log('發送上傳請求到:', `${API_BASE}/mobile-project/upload-image`);
-                const response = await fetch(`${API_BASE}/mobile-project/upload-image`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${authToken}`
-                        // 注意：不要設置 Content-Type，讓瀏覽器自動設置 multipart/form-data
-                    },
-                    body: formData
-                });
-                
-                console.log('上傳響應狀態:', response.status);
-                const data = await response.json();
-                console.log('上傳響應數據:', data);
-                
-                if (data.success) {
-                    uploadedImages.push(data.result.imagePath);
-                    console.log('圖片上傳成功:', data.result.imagePath);
-                } else {
-                    console.error('圖片上傳失敗:', data.message);
-                }
-            } catch (error) {
-                console.error('圖片上傳錯誤:', error);
-            }
-        } else {
-            console.warn('跳過非圖片文件:', file.name, file.type);
+function toggleEmployeeSelection(employeeId, checked) {
+    if (checked) {
+        if (!selectedEmployeesForCheckIn.includes(employeeId)) {
+            selectedEmployeesForCheckIn.push(employeeId);
         }
+    } else {
+        selectedEmployeesForCheckIn = selectedEmployeesForCheckIn.filter(id => id !== employeeId);
     }
-    
-    console.log('上傳完成，成功上傳的圖片:', uploadedImages);
-    return uploadedImages;
+    console.log('Selected employees:', selectedEmployeesForCheckIn);
 }
 
-// 提交進度更新
-async function submitProgressUpdate(formData) {
+// 提交今天打咭
+async function submitBatchCheckIn() {
     try {
-        console.log('提交進度更新，currentWorkProgress:', currentWorkProgress);
-        
-        if (!currentWorkProgress) {
-            throw new Error('未選擇工作進度記錄');
+        if (selectedEmployeesForCheckIn.length === 0) {
+            showMessage('請至少選擇一個員工', 'error');
+            return;
         }
-        
-        const progressValue = document.getElementById('progressValue').value;
-        const progressDescription = document.getElementById('progressDescription').value;
-        const imageFiles = document.getElementById('progressImages').files;
-        
-        console.log('進度值:', progressValue, '描述:', progressDescription, '圖片數量:', imageFiles.length);
-        
-        // 上傳圖片
-        const uploadedImages = await uploadImages(Array.from(imageFiles));
-        console.log('上傳的圖片:', uploadedImages);
-        
-        const updateData = {
-            progress: Number(progressValue),
-            description: progressDescription,
-            images: uploadedImages
-        };
-        console.log('發送的更新數據:', updateData);
-        
-        const response = await apiRequest(`/mobile-project/workprogress/${currentWorkProgress}`, {
-            method: 'PUT',
-            body: JSON.stringify(updateData)
+
+        // 顯示 loading overlay
+        showLoadingOverlay('正在提交打咭記錄...');
+
+        const checkInDate = new Date().toISOString().split('T')[0]; // 今天的日期
+
+        const response = await apiRequest(`/mobile-project/project/${currentProject}/batch-checkin`, {
+            method: 'POST',
+            body: JSON.stringify({
+                employeeIds: selectedEmployeesForCheckIn,
+                checkInDate
+            })
         });
+
+        // 隱藏 loading overlay
+        hideLoadingOverlay();
 
         if (response.success) {
-            console.log('進度更新成功，重新載入數據');
-            showMessage('進度更新成功！', 'success');
-            // 清空表單
-            document.getElementById('updateProgressForm').reset();
-            document.getElementById('imagePreview').innerHTML = '';
-            // 重新載入工作進度數據
-            await loadWorkProgress();
-            // 返回工作進度頁面
-            showPage('workprogress');
+            // 顯示成功消息
+            showSuccessOverlay(
+                '打咭成功！',
+                `已為 ${response.result.successCount} 個員工記錄打咭`
+            );
+            
+            // 清空選擇
+            selectedEmployeesForCheckIn = [];
+            
+            // 重新加載員工列表以更新打咭狀態
+            setTimeout(() => {
+                loadEmployeesForBatchCheckIn();
+            }, 2000);
         } else {
             throw new Error(response.message);
         }
     } catch (error) {
-        console.error('更新進度失敗:', error);
-        showMessage('更新進度失敗: ' + error.message);
+        // 隱藏 loading overlay
+        hideLoadingOverlay();
+        
+        console.error('打咭失敗:', error);
+        if (!error.isAuthError) {
+            showMessage('打咭失敗: ' + error.message);
+        }
+    }
+}
+
+// 顯示補打咭頁面
+function showMakeupCheckIn() {
+    showPage('makeupCheckIn');
+}
+
+// 加載補打咭員工列表（根據日期）
+async function loadEmployeesForMakeupCheckIn(date) {
+    if (!currentProject || !date) {
+        return;
+    }
+
+    try {
+        // 使用 attendance-by-date API 獲取員工列表和打咭狀態
+        const response = await apiRequest(`/mobile-project/project/${currentProject}/attendance-by-date?date=${date}`);
+        if (response.success) {
+            // 保存項目信息（如果還沒有）
+            if (response.result.project && !currentProjectInfo) {
+                currentProjectInfo = response.result.project;
+            }
+            displayEmployeesForMakeupCheckIn(response.result.employees);
+        } else {
+            throw new Error(response.message);
+        }
+    } catch (error) {
+        console.error('Failed to load employees for makeup check-in:', error);
+        if (!error.isAuthError) {
+            showMessage('加載員工列表失敗: ' + error.message);
+        }
+    }
+}
+
+function displayEmployeesForMakeupCheckIn(employees) {
+    const employeesList = document.getElementById('makeupEmployeesList');
+    
+    if (!employeesList) return;
+    
+    if (!employees || employees.length === 0) {
+        employeesList.innerHTML = '<div class="loading"><p>此項目暫無分配的員工</p></div>';
+        return;
+    }
+    
+    // 顯示員工列表：已打咭的顯示 tick，未打咭的顯示 checkbox
+    employeesList.innerHTML = employees.map(employee => `
+        <div class="employee-card" style="justify-content: space-between; align-items: center;">
+            <div class="employee-name" style="margin: 0;">${employee.name || '未命名'}</div>
+            ${employee.hasCheckedIn ? 
+                '<span class="check-icon">✓</span>' : 
+                `<input type="checkbox" class="employee-checkbox" value="${employee._id}" 
+                        onchange="toggleMakeupEmployeeSelection('${employee._id}', this.checked)">`
+            }
+        </div>
+    `).join('');
+}
+
+let selectedEmployeesForMakeup = [];
+
+function toggleMakeupEmployeeSelection(employeeId, checked) {
+    if (checked) {
+        if (!selectedEmployeesForMakeup.includes(employeeId)) {
+            selectedEmployeesForMakeup.push(employeeId);
+        }
+    } else {
+        selectedEmployeesForMakeup = selectedEmployeesForMakeup.filter(id => id !== employeeId);
+    }
+    console.log('Selected employees for makeup:', selectedEmployeesForMakeup);
+}
+
+// 提交補打咭
+async function submitMakeupCheckIn() {
+    try {
+        if (selectedEmployeesForMakeup.length === 0) {
+            showMessage('請至少選擇一個員工', 'error');
+            return;
+        }
+
+        const checkInDate = document.getElementById('makeupDate').value;
+        if (!checkInDate) {
+            showMessage('請選擇日期', 'error');
+            return;
+        }
+
+        // 驗證日期範圍：只允許今天往前7天（包括今天）
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        const minDateStr = sevenDaysAgo.toISOString().split('T')[0];
+
+        if (checkInDate > todayStr) {
+            showMessage('不能選擇未來的日期', 'error');
+            return;
+        }
+
+        if (checkInDate < minDateStr) {
+            showMessage('只能選擇今天往前7天內的日期', 'error');
+            return;
+        }
+
+        // 顯示 loading overlay
+        showLoadingOverlay('正在提交補打咭記錄...');
+
+        const response = await apiRequest(`/mobile-project/project/${currentProject}/makeup-checkin`, {
+            method: 'POST',
+            body: JSON.stringify({
+                employeeIds: selectedEmployeesForMakeup,
+                checkInDate
+            })
+        });
+
+        // 隱藏 loading overlay
+        hideLoadingOverlay();
+
+        if (response.success) {
+            // 顯示成功消息
+            showSuccessOverlay(
+                '補打咭成功！',
+                `已為 ${response.result.successCount} 個員工記錄補打咭`
+            );
+            
+            // 清空選擇
+            selectedEmployeesForMakeup = [];
+            
+            // 重新加載員工列表以更新打咭狀態
+            setTimeout(() => {
+                const date = document.getElementById('makeupDate').value;
+                loadEmployeesForMakeupCheckIn(date);
+            }, 2000);
+        } else {
+            throw new Error(response.message);
+        }
+    } catch (error) {
+        // 隱藏 loading overlay
+        hideLoadingOverlay();
+        
+        console.error('補打咭失敗:', error);
+        if (!error.isAuthError) {
+            showMessage('補打咭失敗: ' + error.message);
+        }
     }
 }
 
@@ -511,52 +690,31 @@ document.addEventListener('DOMContentLoaded', function() {
         showLoginSection();
     }
     
-    // 登入表單 - 使用更直接的方法
+    // 登入表單處理
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
         console.log('Login form found, adding event listener');
         
-        // 移除任何現有的事件監聽器
-        loginForm.onsubmit = null;
-        
-        // 使用onclick事件而不是submit事件
-        const submitBtn = loginForm.querySelector('button[type="submit"]');
-        if (submitBtn) {
-            submitBtn.addEventListener('click', function(e) {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const phone = document.getElementById('phone').value.trim();
-                console.log('Button clicked, phone value:', phone);
-                
-                if (phone) {
-                    console.log('Attempting login with phone:', phone);
-                    login(phone);
-                } else {
-                    console.log('No phone number provided');
-                    showMessage('請輸入手機號碼');
-                }
-                
-                return false;
-            });
-        }
-        
-        // 同時保留submit事件監聽器作為備用
         loginForm.addEventListener('submit', function(e) {
             console.log('Form submit event triggered');
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation();
             
-            const phone = document.getElementById('phone').value.trim();
-            console.log('Phone value:', phone);
+            const username = document.getElementById('username')?.value.trim();
+            const password = document.getElementById('password')?.value;
+            const phone = document.getElementById('phone')?.value.trim();
             
-            if (phone) {
+            // 優先使用 username + password
+            if (username && password) {
+                console.log('Attempting login with username:', username);
+                login({ username, password });
+            } else if (phone) {
+                // 向後兼容：使用手機號碼登入
                 console.log('Attempting login with phone:', phone);
-                login(phone);
+                login({ phone });
             } else {
-                console.log('No phone number provided');
-                showMessage('請輸入手機號碼');
+                console.log('No credentials provided');
+                showMessage('請輸入用戶名和密碼，或手機號碼');
             }
             
             return false;
@@ -565,12 +723,58 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Login form not found!');
     }
     
-    // 進度更新表單
-    const updateProgressForm = document.getElementById('updateProgressForm');
-    if (updateProgressForm) {
-        updateProgressForm.addEventListener('submit', function(e) {
+    // 批量打咭表單
+    const batchCheckInForm = document.getElementById('batchCheckInForm');
+    if (batchCheckInForm) {
+        batchCheckInForm.addEventListener('submit', function(e) {
             e.preventDefault();
-            submitProgressUpdate();
+            submitBatchCheckIn();
+        });
+    }
+    
+    // 補打咭表單
+    const makeupCheckInForm = document.getElementById('makeupCheckInForm');
+    if (makeupCheckInForm) {
+        makeupCheckInForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitMakeupCheckIn();
+        });
+    }
+    
+    // 補打咭日期選擇變化
+    const makeupDateInput = document.getElementById('makeupDate');
+    if (makeupDateInput) {
+        // 初始化日期限制
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
+        const sevenDaysAgo = new Date(today);
+        sevenDaysAgo.setDate(today.getDate() - 7);
+        const minDateStr = sevenDaysAgo.toISOString().split('T')[0];
+        
+        makeupDateInput.setAttribute('max', todayStr);
+        makeupDateInput.setAttribute('min', minDateStr);
+        
+        makeupDateInput.addEventListener('change', function(e) {
+            let selectedDate = e.target.value;
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+            const sevenDaysAgo = new Date(today);
+            sevenDaysAgo.setDate(today.getDate() - 7);
+            const minDateStr = sevenDaysAgo.toISOString().split('T')[0];
+            
+            // 驗證日期範圍
+            if (selectedDate > todayStr) {
+                showMessage('不能選擇未來的日期', 'error');
+                e.target.value = todayStr;
+                selectedDate = todayStr;
+            } else if (selectedDate < minDateStr) {
+                showMessage('只能選擇今天往前7天內的日期', 'error');
+                e.target.value = minDateStr;
+                selectedDate = minDateStr;
+            }
+            
+            selectedEmployeesForMakeup = []; // 清空選擇
+            loadEmployeesForMakeupCheckIn(selectedDate);
         });
     }
     
@@ -579,14 +783,14 @@ document.addEventListener('DOMContentLoaded', function() {
     if (backBtn) {
         backBtn.addEventListener('click', goBack);
     }
-    
-    // 圖片選擇處理
-    handleImageSelection();
 });
 
 // 全局函數供HTML調用
 window.showPage = showPage;
-window.showProjectWorkProgress = showProjectWorkProgress;
-window.updateWorkProgress = updateWorkProgress;
+window.showProjectEmployees = showProjectEmployees;
+window.showBatchCheckIn = showBatchCheckIn;
+window.showMakeupCheckIn = showMakeupCheckIn;
+window.toggleEmployeeSelection = toggleEmployeeSelection;
+window.toggleMakeupEmployeeSelection = toggleMakeupEmployeeSelection;
 window.goBack = goBack;
 window.logout = logout;

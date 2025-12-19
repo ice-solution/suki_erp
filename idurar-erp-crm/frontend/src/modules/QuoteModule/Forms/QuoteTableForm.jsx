@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message } from 'antd';
 
-import { PlusOutlined, DeleteOutlined, LinkOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, LinkOutlined, EditOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -45,6 +45,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   
   // Item form states
   const [items, setItems] = useState([]);
+  const [editingItemKey, setEditingItemKey] = useState(null);
   const [currentItem, setCurrentItem] = useState({
     itemName: '',
     description: '',
@@ -64,13 +65,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
 
-  // 自動計算 Quote Number (Quote Type + Number)
-  useEffect(() => {
-    const computedQuoteNumber = quoteTypeValue && numberValue ? `${quoteTypeValue}-${numberValue}` : '';
-    if (form && computedQuoteNumber !== form.getFieldValue('invoiceNumber')) {
-      form.setFieldsValue({ invoiceNumber: computedQuoteNumber });
-    }
-  }, [quoteTypeValue, numberValue, form]);
+  // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 
   const searchInvoiceNumbers = async (searchText) => {
     if (!searchText || searchText.length < 1) {
@@ -309,7 +304,28 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       setCurrentYear(year);
       setLastNumber(number);
       setSelectedType(type);
-      setItems(currentItems.map((item, index) => ({ ...item, key: index })));
+      
+      // 按 itemName 中的數字排序
+      const sortedItems = [...currentItems].sort((a, b) => {
+        const getNumber = (str) => {
+          if (!str) return 0;
+          const match = str.toString().match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        const numA = getNumber(a.itemName);
+        const numB = getNumber(b.itemName);
+        if (numA !== numB) {
+          return numA - numB;
+        }
+        // 如果數字相同，按字符串排序
+        return (a.itemName || '').localeCompare(b.itemName || '');
+      });
+      
+      // 確保每個 item 都有一個穩定的唯一 key
+      setItems(sortedItems.map((item, index) => ({ 
+        ...item, 
+        key: item.key || item._id || `item-${index}-${Date.now()}` 
+      })));
       
       // 計算subTotal或使用現有的subTotal
       let calculatedSubTotal = 0;
@@ -428,19 +444,51 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     setCurrentItem(updatedItem);
   };
 
-  // 添加項目到列表
+  // 編輯項目
+  const editItem = (record) => {
+    const itemKey = record.key;
+    if (!itemKey) {
+      console.error('Item key is missing:', record);
+      return;
+    }
+    setCurrentItem({
+      itemName: record.itemName || '',
+      description: record.description || '',
+      quantity: record.quantity || 1,
+      price: record.price || 0,
+      total: record.total || 0,
+      poNumber: record.poNumber || ''
+    });
+    setEditingItemKey(itemKey);
+  };
+
+  // 添加或更新項目到列表
   const addItemToList = () => {
-    if (!currentItem.itemName || currentItem.quantity <= 0 || currentItem.price < 0) {
+    if (!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0) {
       return;
     }
 
-    const newItem = {
-      ...currentItem,
-      key: Date.now(), // 用作唯一標識
-      total: calculate.multiply(currentItem.quantity, currentItem.price)
-    };
+    const itemTotal = calculate.multiply(currentItem.quantity, currentItem.price);
+    
+    let updatedItems;
+    if (editingItemKey) {
+      // 編輯模式：更新現有項目
+      updatedItems = items.map(item => 
+        item.key === editingItemKey 
+          ? { ...currentItem, key: editingItemKey, total: itemTotal }
+          : item
+      );
+      setEditingItemKey(null);
+    } else {
+      // 添加模式：添加新項目
+      const newItem = {
+        ...currentItem,
+        key: Date.now(), // 用作唯一標識
+        total: itemTotal
+      };
+      updatedItems = [...items, newItem];
+    }
 
-    const updatedItems = [...items, newItem];
     setItems(updatedItems);
     form.setFieldsValue({ items: updatedItems });
 
@@ -468,20 +516,19 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       title: translate('Item'),
       dataIndex: 'itemName',
       key: 'itemName',
-      width: '20%',
+      width: '5%',
     },
     {
       title: translate('Description'),
       dataIndex: 'description',
       key: 'description',
-      width: '25%',
+      width: '45%',
     },
     {
       title: translate('P.O Number'),
       dataIndex: 'poNumber',
       key: 'poNumber',
       width: '15%',
-      render: (poNumber) => poNumber || '-',
     },
     {
       title: translate('Quantity'),
@@ -494,24 +541,30 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       dataIndex: 'price',
       key: 'price',
       width: '12%',
-      render: (price) => moneyFormatter({ amount: price }),
+      render: (price) => moneyFormatter({ amount: price || 0 }),
     },
     {
       title: translate('Total'),
       dataIndex: 'total',
       key: 'total',
       width: '10%',
-      render: (total) => moneyFormatter({ amount: total }),
+      render: (total) => moneyFormatter({ amount: total || 0 }),
     },
     {
       title: '',
       key: 'action',
       width: '8%',
       render: (_, record) => (
-        <DeleteOutlined 
-          onClick={() => removeItem(record.key)} 
-          style={{ color: 'red', cursor: 'pointer' }}
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <EditOutlined 
+            onClick={() => editItem(record)} 
+            style={{ color: '#1890ff', cursor: 'pointer', fontSize: '16px' }}
+          />
+          <DeleteOutlined 
+            onClick={() => removeItem(record.key)} 
+            style={{ color: 'red', cursor: 'pointer', fontSize: '16px' }}
+          />
+        </div>
       ),
     },
   ];
@@ -611,7 +664,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 { value: '服務', label: '服務' },
                 { value: '材料', label: '材料' },
                 { value: '服務&材料', label: '服務&材料' },
-                { value: '吊船', label: '吊船' },
               ]}
             />
           </Form.Item>
@@ -692,8 +744,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col className="gutter-row" span={6}>
           <Form.Item label="Quote Number" name="invoiceNumber">
             <Input 
-              placeholder="自動從 Quote Type + Number 計算"
-              readOnly
+              placeholder="輸入 Quote Number"
               onBlur={(e) => {
                 const quoteNumber = e.target.value;
                 if (quoteNumber) {
@@ -747,21 +798,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6} style={{ display: selectedType === '吊船' ? 'block' : 'none' }}>
-          <Form.Item 
-            label={translate('Ship Type')} 
-            name="shipType"
-            rules={[{ required: selectedType === '吊船', message: 'Please select ship type' }]}
-          >
-            <Select
-              placeholder="選擇類型"
-              options={[
-                { value: '續租', label: '續租' },
-                { value: '租貨', label: '租貨' },
-              ]}
-            />
-          </Form.Item>
-        </Col>
       </Row>
       
       <Row gutter={[12, 0]}>
@@ -779,9 +815,9 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col span={24}>
           <h4>{translate('Add Item')}</h4>
         </Col>
-        <Col span={4}>
+        <Col span={2}>
           <AutoComplete
-            placeholder="輸入項目名稱搜索..."
+            placeholder="項目"
             onSearch={handleSearch}
             onSelect={handleItemSelect}
             value={currentItem.itemName}
@@ -793,22 +829,29 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={5}>
+        <Col span={11}>
           <Input 
             placeholder="描述"
             value={currentItem.description}
             onChange={(e) => updateCurrentItem('description', e.target.value)}
           />
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <Select
-            placeholder="選擇P.O Number"
-            value={currentItem.poNumber || undefined}
+            placeholder="P.O Number"
+            value={currentItem.poNumber}
             onChange={(value) => updateCurrentItem('poNumber', value)}
+            showSearch
             allowClear
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={poNumbers.map(po => ({
+              label: po,
+              value: po
+            }))}
             style={{ width: '100%' }}
-            options={poNumbers.map(po => ({ value: po, label: po }))}
-            disabled={!poNumbers || poNumbers.length === 0}
+            notFoundContent={poNumbers.length === 0 ? '請先在表單中填寫 P.O Number' : '無匹配項'}
           />
         </Col>
         <Col span={2}>
@@ -820,30 +863,35 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={3}>
-          <InputNumber
+        <Col span={2}>
+          <InputNumber 
             placeholder="價格"
             min={0}
             value={currentItem.price}
             onChange={(value) => updateCurrentItem('price', value)}
             style={{ width: '100%' }}
+            addonBefore="$"
           />
         </Col>
-        <Col span={3}>
-          <InputNumber
+        <Col span={2}>
+          <Input 
             placeholder="總計"
-            value={currentItem.total}
-            readOnly
+            value={moneyFormatter({ amount: currentItem.total || 0 })}
+            disabled
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={1}>
+        <Col span={2}>
           <Button 
             type="primary" 
-            icon={<PlusOutlined />} 
+            icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addItemToList}
-            disabled={!currentItem.itemName || currentItem.quantity <= 0}
-          />
+            disabled={!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0}
+            key={editingItemKey ? 'update-btn' : 'add-btn'}
+            style={{ width: '100%' }}
+          >
+            {editingItemKey ? translate('Update') : translate('Add')}
+          </Button>
         </Col>
       </Row>
 

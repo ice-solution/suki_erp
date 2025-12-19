@@ -18,22 +18,22 @@ import calculate from '@/utils/calculate';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 
-export default function InvoiceTableForm({ subTotal = 0, current = null }) {
-  const { last_invoice_number } = useSelector(selectFinanceSettings);
+export default function ShipQuoteTableForm({ subTotal = 0, current = null }) {
+  const { last_quote_number } = useSelector(selectFinanceSettings);
 
-  if (last_invoice_number === undefined) {
+  if (last_quote_number === undefined) {
     return <></>;
   }
 
-  return <LoadInvoiceTableForm subTotal={subTotal} current={current} />;
+  return <LoadShipQuoteTableForm subTotal={subTotal} current={current} />;
 }
 
-function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
+function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
-  const { last_invoice_number } = useSelector(selectFinanceSettings);
-  const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
+  const { last_quote_number } = useSelector(selectFinanceSettings);
+  const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
   const navigate = useNavigate();
 
   const [subTotal, setSubTotal] = useState(0);
@@ -41,7 +41,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [discount, setDiscount] = useState(0);
   const [discountTotal, setDiscountTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
-  const [selectedType, setSelectedType] = useState('服務');
+  // 固定為吊船類型，不需要 selectedType
   
   // Item form states
   const [items, setItems] = useState([]);
@@ -51,31 +51,31 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     description: '',
     quantity: 1,
     price: 0,
-    total: 0
+    total: 0,
+    poNumber: ''
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
+  const [invoiceOptions, setInvoiceOptions] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const poNumbers = Form.useWatch('poNumbers', form) || [];
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
-  const [quoteOptions, setQuoteOptions] = useState([]);
-  const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
 
-  // 注意：invoiceNumber 字段是用來搜索和選擇 Quote 的，不是 Invoice 自己的編號
-  // Invoice 自己的編號會從 Quote Type + Number 自動生成（在後端處理）
+  // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 
-  // 搜索 Quote Number（從 Quote 中搜索）
-  const searchQuoteNumbers = async (searchText) => {
+  const searchInvoiceNumbers = async (searchText) => {
     if (!searchText || searchText.length < 1) {
-      setQuoteOptions([]);
+      setInvoiceOptions([]);
       return;
     }
 
-    setQuoteSearchLoading(true);
+    setSearchLoading(true);
     try {
-      // 從 Quote 中搜索
+      // 只從 Quote 中搜索
       const response = await request.search({
         entity: 'quote',
         options: { q: searchText, fields: 'numberPrefix,number' }
@@ -83,7 +83,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
       const options = (response?.result || [])
         .map(quote => {
-          // 使用 Quote Type + number 格式
+          // 優先使用 Quote Type + number 格式
           if (quote.numberPrefix && quote.number) {
             const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
             return { value: quoteNumber, label: quoteNumber };
@@ -96,12 +96,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         })
         .filter(opt => opt !== null);
 
-      setQuoteOptions(options);
+      setInvoiceOptions(options);
     } catch (error) {
       console.error('搜索 Quote Number 失敗:', error);
-      setQuoteOptions([]);
+      setInvoiceOptions([]);
     } finally {
-      setQuoteSearchLoading(false);
+      setSearchLoading(false);
     }
   };
   
@@ -129,18 +129,19 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 <li><strong>狀態:</strong> {project.status}</li>
                 <li><strong>成本承擔方:</strong> {project.costBy}</li>
               </ul>
-              <p>是否要在創建Invoice後自動關聯到此項目？</p>
+              <p>是否要在創建Quote後自動關聯到此項目？</p>
             </div>
           ),
           okText: '是，創建後關聯',
-          cancelText: '否，僅創建Invoice',
+          cancelText: '否，僅創建Quote',
           icon: <LinkOutlined />,
           onOk: () => {
-            message.info('Invoice創建後將自動關聯到項目');
+            message.info('Quote創建後將自動關聯到項目');
+            // 這裡可以設置一個狀態標記，在表單提交成功後執行關聯
             form.setFieldsValue({ shouldLinkToProject: project._id });
           },
           onCancel: () => {
-            message.info('將僅創建Invoice，不關聯到項目');
+            message.info('將僅創建Quote，不關聯到項目');
           },
         });
       }
@@ -159,7 +160,9 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const fetchClients = async () => {
     try {
       const response = await request.listAll({ entity: 'client' });
+      console.log('客戶API響應:', response);
       
+      // 確保result是數組
       const clientData = response?.result;
       if (Array.isArray(clientData)) {
         const clientOptions = clientData.map(client => ({
@@ -167,7 +170,9 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           label: client.name,
         }));
         setClients(clientOptions);
+        console.log('客戶選項:', clientOptions);
       } else {
+        console.warn('客戶數據不是數組格式:', clientData);
         setClients([]);
       }
     } catch (error) {
@@ -237,6 +242,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
   };
 
+
   // 單獨處理current客戶數據，確保客戶選項正確顯示
   useEffect(() => {
     if (current) {
@@ -285,7 +291,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         discount = 0, 
         year, 
         number, 
-        type = '服務',
+        type = '吊船',
         items: currentItems = [], 
         clients: currentClients = [], 
         subTotal: currentSubTotal = 0,
@@ -297,7 +303,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       setDiscount(discount);
       setCurrentYear(year);
       setLastNumber(number);
-      setSelectedType(type);
+      // 固定為吊船類型，不需要 setSelectedType
       
       // 按 itemName 中的數字排序
       const sortedItems = [...currentItems].sort((a, b) => {
@@ -344,15 +350,27 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         clientIds = [current.client._id || current.client];
       }
       
+      // 處理 P.O Numbers：如果 current.poNumber 存在，轉換為數組
+      let poNumbersArray = [];
+      if (current.poNumber) {
+        // 如果是字符串，嘗試用逗號分隔
+        if (typeof current.poNumber === 'string') {
+          poNumbersArray = current.poNumber.split(',').map(p => p.trim()).filter(p => p);
+        } else if (Array.isArray(current.poNumber)) {
+          poNumbersArray = current.poNumber;
+        }
+      }
+      
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
         form.setFieldsValue({ 
           items: currentItems,
           clients: clientIds,
-          type: type,
+          type: '吊船', // 固定為吊船
           shipType: shipType,
           subcontractorCount: subcontractorCount,
-          costPrice: costPrice
+          costPrice: costPrice,
+          poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined
         });
       }, 100);
     }
@@ -371,7 +389,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
     setSubTotal(newSubTotal);
     
-    // 同步更新表單的items字段
+    // 更新表單的items字段
     form.setFieldsValue({ items: items });
   }, [items, form]);
 
@@ -438,14 +456,15 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       description: record.description || '',
       quantity: record.quantity || 1,
       price: record.price || 0,
-      total: record.total || 0
+      total: record.total || 0,
+      poNumber: record.poNumber || ''
     });
     setEditingItemKey(itemKey);
   };
 
   // 添加或更新項目到列表
   const addItemToList = () => {
-    if (!currentItem.itemName || currentItem.quantity <= 0 || currentItem.price < 0) {
+    if (!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0) {
       return;
     }
 
@@ -479,11 +498,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       description: '',
       quantity: 1,
       price: 0,
-      total: 0
+      total: 0,
+      poNumber: ''
     });
   };
 
-  // 移除項目
+  // 刪除項目
   const removeItem = (key) => {
     const updatedItems = items.filter(item => item.key !== key);
     setItems(updatedItems);
@@ -505,44 +525,44 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       width: '45%',
     },
     {
+      title: translate('P.O Number'),
+      dataIndex: 'poNumber',
+      key: 'poNumber',
+      width: '15%',
+    },
+    {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
-      width: '15%',
+      width: '10%',
     },
     {
       title: translate('Price'),
       dataIndex: 'price',
       key: 'price',
-      width: '15%',
+      width: '12%',
       render: (price) => moneyFormatter({ amount: price || 0 }),
     },
     {
       title: translate('Total'),
       dataIndex: 'total',
       key: 'total',
-      width: '15%',
+      width: '10%',
       render: (total) => moneyFormatter({ amount: total || 0 }),
     },
     {
-      title: translate('Action'),
+      title: '',
       key: 'action',
       width: '8%',
       render: (_, record) => (
         <div style={{ display: 'flex', gap: '8px' }}>
-          <Button 
-            type="text" 
-            icon={<EditOutlined />} 
-            onClick={() => editItem(record)}
-            size="small"
-            style={{ color: '#1890ff' }}
+          <EditOutlined 
+            onClick={() => editItem(record)} 
+            style={{ color: '#1890ff', cursor: 'pointer', fontSize: '16px' }}
           />
-          <Button 
-            type="text" 
-            danger 
-            icon={<DeleteOutlined />} 
-            onClick={() => removeItem(record.key)}
-            size="small"
+          <DeleteOutlined 
+            onClick={() => removeItem(record.key)} 
+            style={{ color: 'red', cursor: 'pointer', fontSize: '16px' }}
           />
         </div>
       ),
@@ -581,7 +601,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Form.Item
             label="Quote Type"
             name="numberPrefix"
-            initialValue="INV"
+            initialValue="QU"
             rules={[
               {
                 required: true,
@@ -593,7 +613,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 { value: 'SML', label: 'SML' },
                 { value: 'QU', label: 'QU' },
                 { value: 'XX', label: 'XX' },
-                { value: 'INV', label: 'INV' },
               ]}
             />
           </Form.Item>
@@ -626,84 +645,80 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
         </Col>
+
         <Col className="gutter-row" span={5}>
           <Form.Item
-            label="Service Type"
+            label={translate('Type')}
             name="type"
-            initialValue="服務"
-            rules={[
-              {
-                required: true,
-              },
-            ]}
+            initialValue={'吊船'}
           >
-            <Select
-              onChange={(value) => setSelectedType(value)}
-              options={[
-                { value: '人工', label: '人工' },
-                { value: '服務', label: '服務' },
-                { value: '材料', label: '材料' },
-                { value: '服務&材料', label: '服務&材料' },
-                { value: '吊船', label: '吊船' },
-              ]}
-            />
+            <Input value="吊船" disabled style={{ width: '100%' }} />
           </Form.Item>
         </Col>
       </Row>
-
+      
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={4}>
+        <Col className="gutter-row" span={6}>
           <Form.Item
-            label={translate('Status')}
+            label={translate('status')}
             name="status"
-            initialValue="draft"
+            rules={[
+              {
+                required: false,
+              },
+            ]}
+            initialValue={'draft'}
           >
             <Select
               options={[
                 { value: 'draft', label: translate('Draft') },
                 { value: 'pending', label: translate('Pending') },
                 { value: 'sent', label: translate('Sent') },
-                { value: 'paid', label: translate('Paid') },
-                { value: 'overdue', label: translate('Overdue') },
-                { value: 'cancelled', label: translate('Cancelled') },
-                { value: 'refunded', label: translate('Refunded') },
+                { value: 'accepted', label: translate('Accepted') },
+                { value: 'declined', label: translate('Declined') },
               ]}
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
+        <Col className="gutter-row" span={6}>
           <Form.Item
-            label={translate('Date')}
             name="date"
-            initialValue={dayjs()}
+            label={translate('Date')}
             rules={[
               {
                 required: true,
+                type: 'object',
               },
             ]}
+            initialValue={dayjs()}
           >
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('Expire Date')} name="expiredDate">
+        <Col className="gutter-row" span={6}>
+          <Form.Item
+            name="expiredDate"
+            label={translate('Expire Date')}
+            rules={[
+              {
+                required: false,
+                type: 'object',
+              },
+            ]}
+            initialValue={dayjs().add(30, 'days')}
+          >
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('Invoice Date')} name="invoiceDate" initialValue={dayjs()}>
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('Note')} name="notes" style={{ display: selectedType === '服務' ? 'block' : 'none' }}>
-            <Input.TextArea rows={1} />
+        <Col className="gutter-row" span={6}>
+          <Form.Item label={translate('Note')} name="notes">
+            <Input />
           </Form.Item>
         </Col>
       </Row>
-
+      
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={4}>
+        <Col className="gutter-row" span={6}>
           <Form.Item
             label={translate('Completed')}
             name="isCompleted"
@@ -713,65 +728,71 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             <Switch />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
+        <Col className="gutter-row" span={6}>
           <Form.Item label="Quote Number" name="invoiceNumber">
-            <AutoComplete
-              placeholder="搜索 Quote Number (從 Quote 中搜索)"
-              options={quoteOptions}
-              onSearch={searchQuoteNumbers}
-              onSelect={(value) => checkExistingProject(value)}
-              onBlur={(e) => checkExistingProject(e.target.value)}
-              allowClear
-              notFoundContent={quoteSearchLoading ? '搜索中...' : '無匹配的 Quote Number'}
+            <Input 
+              placeholder="輸入 Quote Number"
+              onBlur={(e) => {
+                const quoteNumber = e.target.value;
+                if (quoteNumber) {
+                  checkExistingProject(quoteNumber);
+                }
+              }}
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('P.O Number')} name="poNumber">
-            <Input placeholder="輸入P.O Number" />
+        <Col className="gutter-row" span={6}>
+          <Form.Item label={translate('P.O Number')} name="poNumbers">
+            <Select
+              mode="tags"
+              placeholder="輸入或選擇P.O Number（可多個）"
+              style={{ width: '100%' }}
+              tokenSeparators={[',']}
+            />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
+        <Col className="gutter-row" span={6}>
           <Form.Item label={translate('Contact Person')} name="contactPerson">
             <Input />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item
-            label={translate('Subcontractor Count')}
+        <Col className="gutter-row" span={6}>
+          <Form.Item 
+            label={translate('Subcontractor Count')} 
             name="subcontractorCount"
           >
             <InputNumber 
-              min={0} 
-              style={{ width: '100%' }} 
+              min={0}
               placeholder="代工數"
-            />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item
-            label={translate('Cost Price')}
-            name="costPrice"
-          >
-            <InputNumber 
-              min={0} 
-              precision={2}
-              style={{ width: '100%' }} 
-              addonBefore="$"
-              placeholder="成本價"
+              style={{ width: '100%' }}
             />
           </Form.Item>
         </Col>
       </Row>
-
+      
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={6} style={{ display: selectedType === '吊船' ? 'block' : 'none' }}>
-          <Form.Item
-            label={translate('Ship Type')}
+        <Col className="gutter-row" span={6}>
+          <Form.Item 
+            label={translate('Cost Price')} 
+            name="costPrice"
+          >
+            <InputNumber 
+              min={0}
+              precision={2}
+              placeholder="成本價"
+              style={{ width: '100%' }}
+              addonBefore="$"
+            />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={6}>
+          <Form.Item 
+            label={translate('Ship Type')} 
             name="shipType"
+            rules={[{ required: true, message: 'Please select ship type' }]}
           >
             <Select
-              placeholder="選擇船舶類型"
+              placeholder="選擇類型"
               options={[
                 { value: '續租', label: '續租' },
                 { value: '租貨', label: '租貨' },
@@ -779,131 +800,102 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={18}>
+      </Row>
+      
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={12}>
           <Form.Item label={translate('Project Address')} name="address">
             <Input />
           </Form.Item>
         </Col>
       </Row>
 
-      {/* Invoice特有字段 */}
-      <Divider orientation="left">付款信息</Divider>
-      <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            label={translate('Payment Status')}
-            name="paymentStatus"
-            initialValue="unpaid"
-          >
-            <Select
-              options={[
-                { value: 'unpaid', label: translate('Unpaid') },
-                { value: 'paid', label: translate('Paid') },
-                { value: 'partially', label: translate('Partially Paid') },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('Payment Due Date')} name="paymentDueDate">
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            label={translate('Payment Terms')}
-            name="paymentTerms"
-            initialValue="30天"
-          >
-            <Select
-              options={[
-                { value: '即時付款', label: '即時付款' },
-                { value: '7天', label: '7天' },
-                { value: '14天', label: '14天' },
-                { value: '30天', label: '30天' },
-                { value: '60天', label: '60天' },
-                { value: '90天', label: '90天' },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          {/* 空列用於平衡 */}
-        </Col>
-      </Row>
-
       <Divider dashed />
 
-      {/* Add Item Section */}
-      <div style={{ marginBottom: 16, padding: '16px', backgroundColor: '#fafafa', borderRadius: '6px' }}>
-        <h4 style={{ marginBottom: 12 }}>添加項目</h4>
-        <Row gutter={[12, 8]}>
-          <Col span={2}>
-            <label>項目名稱</label>
-            <AutoComplete
-              placeholder="選擇項目"
-              onSearch={handleSearch}
-              onSelect={handleItemSelect}
-              value={currentItem.itemName}
-              onChange={(value) => updateCurrentItem('itemName', value)}
-              loading={loading}
-              showSearch
-              filterOption={false}
-              options={handleSearch('')}
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col span={11}>
-            <label>描述</label>
-            <Input 
-              placeholder="描述"
-              value={currentItem.description}
-              onChange={(e) => updateCurrentItem('description', e.target.value)}
-            />
-          </Col>
-          <Col span={3}>
-            <label>數量</label>
-            <InputNumber 
-              placeholder="數量"
-              min={1}
-              value={currentItem.quantity}
-              onChange={(value) => updateCurrentItem('quantity', value)}
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col span={3}>
-            <label>價格</label>
-            <InputNumber
-              placeholder="價格"
-              min={0}
-              value={currentItem.price}
-              onChange={(value) => updateCurrentItem('price', value)}
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col span={3}>
-            <label>總計</label>
-            <InputNumber
-              placeholder="總計"
-              value={currentItem.total}
-              readOnly
-              style={{ width: '100%' }}
-            />
-          </Col>
-          <Col span={2} style={{ display: 'flex', alignItems: 'end' }}>
-            <Button 
-              type="primary" 
-              icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
-              onClick={addItemToList}
-              disabled={!currentItem.itemName || currentItem.quantity <= 0}
-              style={{ marginTop: '22px', width: '100%' }}
-              key={editingItemKey ? 'update-btn' : 'add-btn'}
-            >
-              {editingItemKey ? translate('Update') : ''}
-            </Button>
-          </Col>
-        </Row>
-      </div>
+      {/* Item Input Form */}
+      <Row gutter={[12, 12]} style={{ backgroundColor: '#f5f5f5', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
+        <Col span={24}>
+          <h4>{translate('Add Item')}</h4>
+        </Col>
+        <Col span={2}>
+          <AutoComplete
+            placeholder="項目"
+            onSearch={handleSearch}
+            onSelect={handleItemSelect}
+            value={currentItem.itemName}
+            onChange={(value) => updateCurrentItem('itemName', value)}
+            loading={loading}
+            showSearch
+            filterOption={false}
+            options={handleSearch('')}
+            style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={11}>
+          <Input 
+            placeholder="描述"
+            value={currentItem.description}
+            onChange={(e) => updateCurrentItem('description', e.target.value)}
+          />
+        </Col>
+        <Col span={3}>
+          <Select
+            placeholder="P.O Number"
+            value={currentItem.poNumber}
+            onChange={(value) => updateCurrentItem('poNumber', value)}
+            showSearch
+            allowClear
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={poNumbers.map(po => ({
+              label: po,
+              value: po
+            }))}
+            style={{ width: '100%' }}
+            notFoundContent={poNumbers.length === 0 ? '請先在表單中填寫 P.O Number' : '無匹配項'}
+          />
+        </Col>
+        <Col span={2}>
+          <InputNumber 
+            placeholder="數量"
+            min={1}
+            value={currentItem.quantity}
+            onChange={(value) => updateCurrentItem('quantity', value)}
+            style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={2}>
+          <InputNumber 
+            placeholder="價格"
+            min={0}
+            value={currentItem.price}
+            onChange={(value) => updateCurrentItem('price', value)}
+            style={{ width: '100%' }}
+            addonBefore="$"
+          />
+        </Col>
+        <Col span={2}>
+          <Input 
+            placeholder="總計"
+            value={moneyFormatter({ amount: currentItem.total || 0 })}
+            disabled
+            style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={2}>
+          <Button 
+            type="primary" 
+            icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
+            onClick={addItemToList}
+            disabled={!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0}
+            key={editingItemKey ? 'update-btn' : 'add-btn'}
+            style={{ width: '100%' }}
+          >
+            {editingItemKey ? translate('Update') : translate('Add')}
+          </Button>
+        </Col>
+      </Row>
 
       {/* Items Table */}
       <Table
@@ -934,9 +926,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               </Button>
             </Form.Item>
           </Col>
-        </Row>
-        <Row gutter={[12, -5]}>
-          <Col className="gutter-row" span={4} offset={15}>
+          <Col className="gutter-row" span={4} offset={10}>
             <p
               style={{
                 paddingLeft: '12px',

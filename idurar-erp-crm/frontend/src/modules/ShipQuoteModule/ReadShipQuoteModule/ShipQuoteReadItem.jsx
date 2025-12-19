@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -10,7 +10,7 @@ import {
   CloseCircleOutlined,
   RetweetOutlined,
   MailOutlined,
-  DeleteOutlined,
+  ArrowUpOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -21,22 +21,34 @@ import { generate as uniqueId } from 'shortid';
 
 import { selectCurrentItem } from '@/redux/erp/selectors';
 
-import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
+import { DOWNLOAD_BASE_URL, API_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
 import { useNavigate } from 'react-router-dom';
 import { request } from '@/request';
+import axios from 'axios';
+import storePersist from '@/redux/storePersist';
 
 const Item = ({ item, currentErp }) => {
+  const { moneyFormatter } = useMoney();
   return (
     <Row gutter={[12, 0]} key={item._id}>
-      <Col className="gutter-row" span={15}>
+      <Col className="gutter-row" span={11}>
         <p style={{ marginBottom: 5 }}>
           <strong>{item.itemName}</strong>
         </p>
         <p>{item.description}</p>
       </Col>
-      <Col className="gutter-row" span={9}>
+      <Col className="gutter-row" span={4}>
+        <p
+          style={{
+            textAlign: 'right',
+          }}
+        >
+          {moneyFormatter({ amount: item.price, currency_code: currentErp.currency })}
+        </p>
+      </Col>
+      <Col className="gutter-row" span={4}>
         <p
           style={{
             textAlign: 'right',
@@ -45,12 +57,22 @@ const Item = ({ item, currentErp }) => {
           {item.quantity}
         </p>
       </Col>
+      <Col className="gutter-row" span={5}>
+        <p
+          style={{
+            textAlign: 'right',
+            fontWeight: '700',
+          }}
+        >
+          {moneyFormatter({ amount: item.total, currency_code: currentErp.currency })}
+        </p>
+      </Col>
       <Divider dashed style={{ marginTop: 0, marginBottom: 15 }} />
     </Row>
   );
 };
 
-export default function SupplierQuoteReadItem({ config, selectedItem }) {
+export default function ShipQuoteReadItem({ config, selectedItem }) {
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
@@ -63,7 +85,12 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
 
   const resetErp = {
     status: '',
-    clients: [],
+    client: {
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+    },
     subTotal: 0,
     discountTotal: 0,
     discount: 0,
@@ -76,6 +103,11 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const [itemslist, setItemsList] = useState([]);
   const [currentErp, setCurrentErp] = useState(selectedItem ?? resetErp);
   const [client, setClient] = useState({});
+  const [convertLoading, setConvertLoading] = useState(false);
+  const [convertToSupplierQuoteLoading, setConvertToSupplierQuoteLoading] = useState(false);
+  const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
+  const [selectedPoNumber, setSelectedPoNumber] = useState(null);
+  const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -94,22 +126,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
       // 向後兼容，如果還有舊的client字段
       setClient(currentErp.client);
     }
-    
-    // Debug file data
-    if (currentErp?.dmFiles?.length > 0) {
-      console.log('🔍 DM Files received in frontend:', currentErp.dmFiles);
-      currentErp.dmFiles.forEach((file, index) => {
-        console.log(`📄 DM File ${index + 1}:`, file);
-        console.log(`  fileName: ${file.fileName} (type: ${typeof file.fileName})`);
-      });
-    }
-    if (currentErp?.invoiceFiles?.length > 0) {
-      console.log('🔍 Invoice Files received in frontend:', currentErp.invoiceFiles);
-      currentErp.invoiceFiles.forEach((file, index) => {
-        console.log(`📄 Invoice File ${index + 1}:`, file);
-        console.log(`  fileName: ${file.fileName} (type: ${typeof file.fileName})`);
-      });
-    }
   }, [currentErp]);
 
   useEffect(() => {
@@ -118,69 +134,109 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
     }
   }, [currentErp]);
 
-  // 處理文件名編碼
-  const decodeFileName = (fileName) => {
-    try {
-      // Try to decode if it's URL encoded
-      if (fileName.includes('%')) {
-        return decodeURIComponent(fileName);
-      }
-      
-      // Try to fix common encoding issues
-      if (fileName.includes('�')) {
-        // This indicates encoding issues, try to decode from latin1
-        const bytes = [];
-        for (let i = 0; i < fileName.length; i++) {
-          bytes.push(fileName.charCodeAt(i));
-        }
-        const buffer = new Uint8Array(bytes);
-        const decoder = new TextDecoder('utf-8');
-        return decoder.decode(buffer);
-      }
-      
-      return fileName;
-    } catch (error) {
-      console.log('Filename decoding error:', error);
-      return fileName;
+  // 處理Quote轉Invoice
+  const handleConvertToInvoice = () => {
+    // 檢查是否已經轉換
+    if (currentErp.converted && currentErp.converted.to === 'invoice') {
+      message.warning('此Quote已經轉換成Invoice');
+      return;
     }
-  };
 
-  // 處理文件刪除
-  const handleDeleteFile = (fileId, fileType, fileName) => {
     Modal.confirm({
-      title: '確認刪除文件',
+      title: '確認轉換',
       content: (
         <div>
-          <p>您確定要刪除此文件嗎？</p>
-          <p><strong>文件名：</strong>{fileName}</p>
-          <p style={{ color: '#ff4d4f', marginTop: 12 }}>⚠️ 此操作不可撤銷</p>
+          <p>您確定要將此Quote轉換成Invoice嗎？</p>
+          <p><strong>Quote編號：</strong>{`${currentErp.numberPrefix || 'QU'}-${currentErp.number}`}</p>
+          <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
+          <p style={{ color: '#ff4d4f', marginTop: 12 }}>⚠️ 轉換後將創建新的Invoice，此操作不可撤銷</p>
         </div>
       ),
-      okText: '確認刪除',
+      okText: '確認轉換',
       cancelText: '取消',
-      okType: 'danger',
+      okType: 'primary',
       onOk: async () => {
+        setConvertLoading(true);
         try {
-          const response = await request.deleteFile({ 
-            entity: 'supplierquote', 
-            id: currentErp._id, 
-            fileId, 
-            fileType 
-          });
-          
+          const response = await request.convert({ entity: 'quote', id: currentErp._id });
           if (response && response.success) {
-            message.success('文件刪除成功！');
-            // 重新載入數據
-            dispatch(erp.read({ entity, id: currentErp._id }));
+            message.success('Quote成功轉換成Invoice！');
+            // 跳轉到新創建的Invoice
+            navigate(`/invoice/read/${response.result._id}`);
           } else {
-            message.error('刪除失敗：' + (response?.message || '未知錯誤'));
+            message.error('轉換失敗：' + (response?.message || '未知錯誤'));
           }
         } catch (error) {
-          console.error('刪除文件錯誤:', error);
-          message.error('刪除過程中發生錯誤');
+          console.error('轉換錯誤:', error);
+          message.error('轉換過程中發生錯誤');
+        } finally {
+          setConvertLoading(false);
         }
       },
     });
+  };
+
+  // 處理Quote轉Supplier Quote（上單）
+  const handleConvertToSupplierQuote = () => {
+    // 檢查是否已經轉換（檢查 converted.supplierQuote 是否存在）
+    if (currentErp.converted && currentErp.converted.supplierQuote) {
+      message.warning('此Quote已經轉換成Supplier Quote');
+      return;
+    }
+
+    // 提取所有唯一的 P.O numbers
+    const poNumbers = [];
+    if (currentErp.items && currentErp.items.length > 0) {
+      currentErp.items.forEach(item => {
+        if (item.poNumber && !poNumbers.includes(item.poNumber)) {
+          poNumbers.push(item.poNumber);
+        }
+      });
+    }
+
+    if (poNumbers.length === 0) {
+      message.warning('此Quote沒有包含任何 P.O number 的 items');
+      return;
+    }
+
+    // 顯示 P.O number 選擇 Modal
+    setAvailablePoNumbers(poNumbers);
+    setSelectedPoNumber(null);
+    setPoNumberModalVisible(true);
+  };
+
+  // 執行轉換
+  const executeConvertToSupplierQuote = async () => {
+    if (!selectedPoNumber) {
+      message.warning('請選擇 P.O number');
+      return;
+    }
+
+    setPoNumberModalVisible(false);
+    setConvertToSupplierQuoteLoading(true);
+    try {
+      // 設置 axios 配置
+      axios.defaults.baseURL = API_BASE_URL;
+      axios.defaults.withCredentials = true;
+      const auth = storePersist.get('auth');
+      if (auth) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+      }
+      
+      const response = await axios.get(`quote/convertToSupplierQuote/${currentErp._id}?poNumber=${encodeURIComponent(selectedPoNumber)}`);
+      if (response && response.data && response.data.success) {
+        message.success('Quote成功轉換成Supplier Quote！');
+        // 跳轉到新創建的Supplier Quote
+        navigate(`/supplierquote/read/${response.data.result._id}`);
+      } else {
+        message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('轉換錯誤:', error);
+      message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
+    } finally {
+      setConvertToSupplierQuoteLoading(false);
+    }
   };
 
   return (
@@ -230,13 +286,39 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           </Button>,
           <Button
             key={`${uniqueId()}`}
-            onClick={() => {
-              dispatch(erp.convert({ entity, id: currentErp._id }));
+            onClick={handleConvertToSupplierQuote}
+            loading={convertToSupplierQuoteLoading}
+            icon={<ArrowUpOutlined />}
+            style={{ 
+              display: entity === 'quote' ? 'inline-block' : 'none',
+              backgroundColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+              borderColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+              color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
             }}
-            icon={<RetweetOutlined />}
-            style={{ display: entity === 'supplierquote' ? 'inline-block' : 'none' }}
+            disabled={currentErp.converted && currentErp.converted.supplierQuote}
           >
-            {translate('Convert to Invoice')}
+            {currentErp.converted && currentErp.converted.supplierQuote 
+              ? '已上單' 
+              : '上單'
+            }
+          </Button>,
+          <Button
+            key={`${uniqueId()}`}
+            onClick={handleConvertToInvoice}
+            loading={convertLoading}
+            icon={<RetweetOutlined />}
+            style={{ 
+              display: entity === 'quote' ? 'inline-block' : 'none',
+              backgroundColor: currentErp.converted && currentErp.converted.to === 'invoice' ? '#52c41a' : undefined,
+              borderColor: currentErp.converted && currentErp.converted.to === 'invoice' ? '#52c41a' : undefined,
+              color: currentErp.converted && currentErp.converted.to === 'invoice' ? '#fff' : undefined,
+            }}
+            disabled={currentErp.converted && currentErp.converted.to === 'invoice'}
+          >
+            {currentErp.converted && currentErp.converted.to === 'invoice' 
+              ? '已轉換成Invoice' 
+              : translate('Convert to Invoice')
+            }
           </Button>,
 
           <Button
@@ -248,7 +330,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
                   data: currentErp,
                 })
               );
-              // 使用table form的編輯URL
+              // 修改這裡：使用table form的編輯URL
               navigate(`/${entity.toLowerCase()}/table/update/${currentErp._id}`);
             }}
             type="primary"
@@ -312,20 +394,19 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Primary Contact Phone')}>{client.phone}</Descriptions.Item>
       </Descriptions>
       
-      <Descriptions title={translate('Supplier Quote Details')}>
-        <Descriptions.Item label="Supplier Type">{currentErp.numberPrefix}</Descriptions.Item>
+      <Descriptions title={translate('Quote Details')}>
+        <Descriptions.Item label="Quote Type">{currentErp.numberPrefix}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
-        <Descriptions.Item label="Quote Number">{currentErp.numberPrefix && currentErp.number ? `${currentErp.numberPrefix}-${currentErp.number}` : currentErp.invoiceNumber || '-'}</Descriptions.Item>
+        <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
-        <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</Descriptions.Item>
       </Descriptions>
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>
@@ -333,78 +414,39 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           <p><strong>{translate('Project Address')}:</strong></p>
           <p>{currentErp.address || '-'}</p>
         </Col>
-        <Col span={12}>
-          <p><strong>倉庫:</strong></p>
-          <p>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</p>
-        </Col>
       </Row>
-      
-      <Descriptions title="文件信息">
-        <Descriptions.Item label="DM文件" span={3}>
-          {currentErp.dmFiles && currentErp.dmFiles.length > 0 ? (
-            <div>
-              {currentErp.dmFiles.map((file, index) => (
-                <div key={index} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Tag style={{ marginBottom: 0 }}>
-                    <a href={`http://localhost:8888/uploads/supplierquote/${file.fileName || file.path?.split('/').pop()}`} target="_blank" rel="noopener noreferrer">
-                      {decodeFileName(file.name)}
-                    </a>
-                  </Tag>
-                  <Button 
-                    type="text" 
-                    size="small" 
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDeleteFile(file.id, 'dm', file.name)}
-                    title="刪除文件"
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            '-'
-          )}
-        </Descriptions.Item>
-        <Descriptions.Item label="Invoice文件" span={3}>
-          {currentErp.invoiceFiles && currentErp.invoiceFiles.length > 0 ? (
-            <div>
-              {currentErp.invoiceFiles.map((file, index) => (
-                <div key={index} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Tag style={{ marginBottom: 0 }}>
-                    <a href={`http://localhost:8888/uploads/supplierquote/${file.fileName || file.path?.split('/').pop()}`} target="_blank" rel="noopener noreferrer">
-                      {decodeFileName(file.name)} ({file.fileType?.toUpperCase()})
-                    </a>
-                  </Tag>
-                  <Button 
-                    type="text" 
-                    size="small" 
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDeleteFile(file.id, 'invoice', file.name)}
-                    title="刪除文件"
-                  />
-                </div>
-              ))}
-            </div>
-          ) : (
-            '-'
-          )}
-        </Descriptions.Item>
-      </Descriptions>
       <Divider />
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={15}>
+        <Col className="gutter-row" span={11}>
           <p>
             <strong>{translate('Product')}</strong>
           </p>
         </Col>
-        <Col className="gutter-row" span={9}>
+        <Col className="gutter-row" span={4}>
+          <p
+            style={{
+              textAlign: 'right',
+            }}
+          >
+            <strong>{translate('Price')}</strong>
+          </p>
+        </Col>
+        <Col className="gutter-row" span={4}>
           <p
             style={{
               textAlign: 'right',
             }}
           >
             <strong>{translate('Quantity')}</strong>
+          </p>
+        </Col>
+        <Col className="gutter-row" span={5}>
+          <p
+            style={{
+              textAlign: 'right',
+            }}
+          >
+            <strong>{translate('Total')}</strong>
           </p>
         </Col>
       </Row>
@@ -449,6 +491,39 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           </Col>
         </Row>
       </div>
+
+      {/* P.O Number 選擇 Modal */}
+      <Modal
+        title="選擇 P.O Number"
+        open={poNumberModalVisible}
+        onOk={executeConvertToSupplierQuote}
+        onCancel={() => {
+          setPoNumberModalVisible(false);
+          setSelectedPoNumber(null);
+        }}
+        okText="確認上單"
+        cancelText="取消"
+        okButtonProps={{ disabled: !selectedPoNumber }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p>請選擇要上單的 P.O Number：</p>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="選擇 P.O Number"
+            value={selectedPoNumber}
+            onChange={setSelectedPoNumber}
+          >
+            {availablePoNumbers.map(po => (
+              <Select.Option key={po} value={po}>
+                {po}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+        <p style={{ color: '#1890ff', fontSize: '12px' }}>
+          ℹ️ 只會轉換所選 P.O Number 的 items 到 Supplier Quote
+        </p>
+      </Modal>
     </>
   );
 }

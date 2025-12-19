@@ -25,6 +25,10 @@ const SupplierQuote = lazy(() => import('@/pages/SupplierQuote/index'));
 const SupplierQuoteRead = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteRead'));
 const SupplierQuoteTableCreate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableCreate'));
 const SupplierQuoteTableUpdate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableUpdate'));
+const ShipQuote = lazy(() => import('@/pages/ShipQuote/index'));
+const ShipQuoteRead = lazy(() => import('@/pages/ShipQuote/ShipQuoteRead'));
+const ShipQuoteTableCreate = lazy(() => import('@/pages/ShipQuote/ShipQuoteTableCreate'));
+const ShipQuoteTableUpdate = lazy(() => import('@/pages/ShipQuote/ShipQuoteTableUpdate'));
 const Warehouse = lazy(() => import('@/pages/Warehouse/index'));
 const Project = lazy(() => import('@/pages/Project/index'));
 const ProjectCreate = lazy(() => import('@/pages/Project/ProjectCreate'));
@@ -149,6 +153,22 @@ let routes = {
     {
       path: '/supplierquote/table/update/:id',
       element: <SupplierQuoteTableUpdate />,
+    },
+    {
+      path: '/shipquote',
+      element: <ShipQuote />,
+    },
+    {
+      path: '/shipquote/read/:id',
+      element: <ShipQuoteRead />,
+    },
+    {
+      path: '/shipquote/table/create',
+      element: <ShipQuoteTableCreate />,
+    },
+    {
+      path: '/shipquote/table/update/:id',
+      element: <ShipQuoteTableUpdate />,
     },
     {
       path: '/warehouse',

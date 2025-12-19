@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -105,6 +105,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [client, setClient] = useState({});
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertToSupplierQuoteLoading, setConvertToSupplierQuoteLoading] = useState(false);
+  const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
+  const [selectedPoNumber, setSelectedPoNumber] = useState(null);
+  const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -181,46 +184,59 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
 
-    Modal.confirm({
-      title: '確認上單',
-      content: (
-        <div>
-          <p>您確定要將此Quote轉換成Supplier Quote（上單）嗎？</p>
-          <p><strong>Quote編號：</strong>{`${currentErp.numberPrefix || 'QU'}-${currentErp.number}`}</p>
-          <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
-          <p style={{ color: '#ff4d4f', marginTop: 12 }}>⚠️ 轉換後將創建新的Supplier Quote，此操作不可撤銷</p>
-        </div>
-      ),
-      okText: '確認上單',
-      cancelText: '取消',
-      okType: 'primary',
-      onOk: async () => {
-        setConvertToSupplierQuoteLoading(true);
-        try {
-          // 設置 axios 配置
-          axios.defaults.baseURL = API_BASE_URL;
-          axios.defaults.withCredentials = true;
-          const auth = storePersist.get('auth');
-          if (auth) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
-          }
-          
-          const response = await axios.get(`quote/convertToSupplierQuote/${currentErp._id}`);
-          if (response && response.data && response.data.success) {
-            message.success('Quote成功轉換成Supplier Quote！');
-            // 跳轉到新創建的Supplier Quote
-            navigate(`/supplierquote/read/${response.data.result._id}`);
-          } else {
-            message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
-          }
-        } catch (error) {
-          console.error('轉換錯誤:', error);
-          message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
-        } finally {
-          setConvertToSupplierQuoteLoading(false);
+    // 提取所有唯一的 P.O numbers
+    const poNumbers = [];
+    if (currentErp.items && currentErp.items.length > 0) {
+      currentErp.items.forEach(item => {
+        if (item.poNumber && !poNumbers.includes(item.poNumber)) {
+          poNumbers.push(item.poNumber);
         }
-      },
-    });
+      });
+    }
+
+    if (poNumbers.length === 0) {
+      message.warning('此Quote沒有包含任何 P.O number 的 items');
+      return;
+    }
+
+    // 顯示 P.O number 選擇 Modal
+    setAvailablePoNumbers(poNumbers);
+    setSelectedPoNumber(null);
+    setPoNumberModalVisible(true);
+  };
+
+  // 執行轉換
+  const executeConvertToSupplierQuote = async () => {
+    if (!selectedPoNumber) {
+      message.warning('請選擇 P.O number');
+      return;
+    }
+
+    setPoNumberModalVisible(false);
+    setConvertToSupplierQuoteLoading(true);
+    try {
+      // 設置 axios 配置
+      axios.defaults.baseURL = API_BASE_URL;
+      axios.defaults.withCredentials = true;
+      const auth = storePersist.get('auth');
+      if (auth) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+      }
+      
+      const response = await axios.get(`quote/convertToSupplierQuote/${currentErp._id}?poNumber=${encodeURIComponent(selectedPoNumber)}`);
+      if (response && response.data && response.data.success) {
+        message.success('Quote成功轉換成Supplier Quote！');
+        // 跳轉到新創建的Supplier Quote
+        navigate(`/supplierquote/read/${response.data.result._id}`);
+      } else {
+        message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('轉換錯誤:', error);
+      message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
+    } finally {
+      setConvertToSupplierQuoteLoading(false);
+    }
   };
 
   return (
@@ -383,9 +399,6 @@ export default function QuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
-        {currentErp.type === '吊船' && currentErp.shipType && (
-          <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
-        )}
         <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
@@ -475,6 +488,39 @@ export default function QuoteReadItem({ config, selectedItem }) {
           </Col>
         </Row>
       </div>
+
+      {/* P.O Number 選擇 Modal */}
+      <Modal
+        title="選擇 P.O Number"
+        open={poNumberModalVisible}
+        onOk={executeConvertToSupplierQuote}
+        onCancel={() => {
+          setPoNumberModalVisible(false);
+          setSelectedPoNumber(null);
+        }}
+        okText="確認上單"
+        cancelText="取消"
+        okButtonProps={{ disabled: !selectedPoNumber }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p>請選擇要上單的 P.O Number：</p>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="選擇 P.O Number"
+            value={selectedPoNumber}
+            onChange={setSelectedPoNumber}
+          >
+            {availablePoNumbers.map(po => (
+              <Select.Option key={po} value={po}>
+                {po}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+        <p style={{ color: '#1890ff', fontSize: '12px' }}>
+          ℹ️ 只會轉換所選 P.O Number 的 items 到 Supplier Quote
+        </p>
+      </Modal>
     </>
   );
 }

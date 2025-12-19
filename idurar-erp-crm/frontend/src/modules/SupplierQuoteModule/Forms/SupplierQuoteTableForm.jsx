@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message, Upload } from 'antd';
 
-import { PlusOutlined, DeleteOutlined, LinkOutlined, UploadOutlined, InboxOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, LinkOutlined, UploadOutlined, InboxOutlined, EditOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -43,6 +43,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   
   // Item form states
   const [items, setItems] = useState([]);
+  const [editingItemKey, setEditingItemKey] = useState(null);
   const [currentItem, setCurrentItem] = useState({
     itemName: '',
     description: '',
@@ -56,10 +57,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   
   // Materials form states
   const [materials, setMaterials] = useState([]);
+  const [editingMaterialKey, setEditingMaterialKey] = useState(null);
   const [currentMaterial, setCurrentMaterial] = useState({
     warehouse: '',
     itemName: '',
-    quantity: 1
+    quantity: 1,
+    price: 0
   });
   const [warehouseItems, setWarehouseItems] = useState([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
@@ -392,16 +395,38 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setCurrentYear(year);
       setLastNumber(number);
       setSelectedType(type);
-      setItems(currentItems.map((item, index) => ({ ...item, key: index })));
+      
+      // 按 itemName 中的數字排序
+      const sortedItems = [...currentItems].sort((a, b) => {
+        const getNumber = (str) => {
+          if (!str) return 0;
+          const match = str.toString().match(/\d+/);
+          return match ? parseInt(match[0], 10) : 0;
+        };
+        const numA = getNumber(a.itemName);
+        const numB = getNumber(b.itemName);
+        if (numA !== numB) {
+          return numA - numB;
+        }
+        // 如果數字相同，按字符串排序
+        return (a.itemName || '').localeCompare(b.itemName || '');
+      });
+      
+      // 確保每個 item 都有一個穩定的唯一 key
+      setItems(sortedItems.map((item, index) => ({ 
+        ...item, 
+        key: item.key || item._id || `item-${index}-${Date.now()}` 
+      })));
       setMaterials(currentMaterials.map((material, index) => ({ ...material, key: index })));
       
-      // 計算subTotal或使用現有的subTotal
+      // 計算subTotal或使用現有的subTotal（只計算 materials，不計算 items）
       let calculatedSubTotal = 0;
-      if (currentItems && currentItems.length > 0) {
-        currentItems.forEach((item) => {
-          if (item && item.quantity && item.price) {
-            let itemTotal = calculate.multiply(item.quantity, item.price);
-            calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
+      // 只計算 materials 的總計，不計算 items 的總計
+      if (currentMaterials && currentMaterials.length > 0) {
+        currentMaterials.forEach((material) => {
+          if (material && material.quantity && material.price) {
+            let materialTotal = calculate.multiply(material.quantity, material.price);
+            calculatedSubTotal = calculate.add(calculatedSubTotal, materialTotal);
           }
         });
       }
@@ -431,14 +456,15 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當items改變時
+  // 計算subTotal當materials改變時（只計算 materials，不計算 items）
   useEffect(() => {
     let newSubTotal = 0;
-    if (items && items.length > 0) {
-      items.forEach((item) => {
-        if (item && item.quantity && item.price) {
-          let itemTotal = calculate.multiply(item.quantity, item.price);
-          newSubTotal = calculate.add(newSubTotal, itemTotal);
+    // 只計算 materials 的總計，不計算 items 的總計
+    if (materials && materials.length > 0) {
+      materials.forEach((material) => {
+        if (material && material.quantity && material.price) {
+          let materialTotal = calculate.multiply(material.quantity, material.price);
+          newSubTotal = calculate.add(newSubTotal, materialTotal);
         }
       });
     }
@@ -449,7 +475,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       items: items,
       materials: materials 
     });
-  }, [items, form]);
+  }, [materials, form]);
 
   // 同步materials到表單
   useEffect(() => {
@@ -472,14 +498,46 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   }, [dmFileList, invoiceFileList, form]);
 
   // 處理項目選擇
-  const handleItemSelect = (value, option) => {
+  const handleItemSelect = async (value, option) => {
     const selectedItem = projectItems.find(item => item.item_name === value);
     if (selectedItem) {
+      let price = selectedItem.price || 0;
+      
+      // 從存倉中查找相同名字的貨品，獲取其價格
+      try {
+        // 使用 request.get 來搜索 warehouse，支持 search 參數
+        const entity = `warehouse?search=${encodeURIComponent(value)}&limit=50`;
+        const warehouseResponse = await request.get({ entity });
+        
+        // warehouse API 返回格式: { success: true, result: [...], pagination: {...} }
+        const warehouseItems = warehouseResponse?.result || [];
+        
+        if (warehouseItems.length > 0) {
+          // 查找完全匹配的 itemName（不區分大小寫）
+          const matchingWarehouseItem = warehouseItems.find(
+            item => item.itemName && item.itemName.trim().toLowerCase() === value.trim().toLowerCase()
+          );
+          
+          if (matchingWarehouseItem && matchingWarehouseItem.unitPrice && matchingWarehouseItem.unitPrice > 0) {
+            // 使用存倉的價格
+            price = matchingWarehouseItem.unitPrice;
+            console.log(`✅ 從存倉獲取價格: ${value} = $${price}`);
+          } else {
+            console.log(`ℹ️ 存倉中找到 "${value}" 但沒有有效價格，使用項目價格`);
+          }
+        } else {
+          console.log(`ℹ️ 存倉中未找到 "${value}"，使用項目價格`);
+        }
+      } catch (error) {
+        console.warn('⚠️ 獲取存倉價格失敗，使用項目價格:', error);
+        // 如果獲取存倉價格失敗，繼續使用項目價格
+      }
+      
       setCurrentItem({
         ...currentItem,
         itemName: selectedItem.item_name,
-        price: selectedItem.price || 0,
-        total: calculate.multiply(currentItem.quantity, selectedItem.price || 0)
+        price: price,
+        total: calculate.multiply(currentItem.quantity, price)
       });
     }
   };
@@ -515,20 +573,79 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     setCurrentItem(updatedItem);
   };
 
-  // 添加項目到列表
+  // 編輯項目
+  const editItem = (record) => {
+    const itemKey = record.key || record._id || Date.now();
+    if (!itemKey) {
+      console.error('Item key is missing:', record);
+      return;
+    }
+    console.log('Editing item:', { record, itemKey, allItems: items });
+    setCurrentItem({
+      itemName: record.itemName || '',
+      description: record.description || '',
+      quantity: record.quantity || 1,
+      price: record.price || 0,
+      total: record.total || 0
+    });
+    setEditingItemKey(itemKey);
+  };
+
+  // 添加或更新項目到列表
   const addItemToList = () => {
     if (!currentItem.itemName || currentItem.quantity <= 0 || currentItem.price < 0) {
       return;
     }
 
-    const newItem = {
-      ...currentItem,
-      key: Date.now(), // 用作唯一標識
-      total: calculate.multiply(currentItem.quantity, currentItem.price)
-    };
+    const itemTotal = calculate.multiply(currentItem.quantity, currentItem.price);
+    
+    let updatedItems;
+    if (editingItemKey) {
+      // 編輯模式：更新現有項目
+      let found = false;
+      updatedItems = items.map(item => {
+        const itemKey = item.key || item._id;
+        // 檢查是否匹配編輯的項目（使用多種方式匹配）
+        const matches = itemKey === editingItemKey || 
+                       item._id === editingItemKey || 
+                       String(itemKey) === String(editingItemKey) ||
+                       (item.key && String(item.key) === String(editingItemKey));
+        
+        if (matches) {
+          found = true;
+          // 保留原有的所有字段，更新為新的值
+          const updatedItem = { 
+            ...item,  // 保留所有原有字段
+            ...currentItem,  // 用新值覆蓋
+            key: item.key || editingItemKey,  // 確保 key 不變
+            total: itemTotal,  // 更新總計
+            _id: item._id  // 保留 _id
+          };
+          console.log('Updating item:', { old: item, new: updatedItem });
+          return updatedItem;
+        }
+        return item;
+      });
+      
+      if (!found) {
+        console.warn('Item not found for editing:', editingItemKey, 'Items:', items.map(i => ({ key: i.key, _id: i._id })));
+      } else {
+        console.log('Item updated successfully, new items:', updatedItems);
+      }
+      
+      setEditingItemKey(null);
+    } else {
+      // 添加模式：添加新項目
+      const newItem = {
+        ...currentItem,
+        key: Date.now(), // 用作唯一標識
+        total: itemTotal
+      };
+      updatedItems = [...items, newItem];
+    }
 
-    const updatedItems = [...items, newItem];
-    setItems(updatedItems);
+    // 確保創建新的數組引用，強制 React 重新渲染
+    setItems([...updatedItems]);
     form.setFieldsValue({ items: updatedItems });
 
     // 重置當前項目
@@ -549,13 +666,46 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   };
 
   // 處理材料選擇
-  const handleMaterialSelect = (value, option) => {
+  const handleMaterialSelect = async (value, option) => {
     const selectedMaterial = warehouseItems.find(item => item.itemName === value);
     if (selectedMaterial) {
+      let price = selectedMaterial.unitPrice || 0;
+      
+      // 確保從存倉獲取最新的價格（即使已經在 warehouseItems 中）
+      try {
+        // 使用 request.get 來搜索 warehouse，支持 search 參數
+        const entity = `warehouse?search=${encodeURIComponent(value)}&limit=50`;
+        const warehouseResponse = await request.get({ entity });
+        
+        // warehouse API 返回格式: { success: true, result: [...], pagination: {...} }
+        const warehouseItemsFromAPI = warehouseResponse?.result || [];
+        
+        if (warehouseItemsFromAPI.length > 0) {
+          // 查找完全匹配的 itemName（不區分大小寫）
+          const matchingWarehouseItem = warehouseItemsFromAPI.find(
+            item => item.itemName && item.itemName.trim().toLowerCase() === value.trim().toLowerCase()
+          );
+          
+          if (matchingWarehouseItem && matchingWarehouseItem.unitPrice && matchingWarehouseItem.unitPrice > 0) {
+            // 使用存倉的價格
+            price = matchingWarehouseItem.unitPrice;
+            console.log(`✅ 從存倉獲取材料價格: ${value} = $${price}`);
+          } else {
+            console.log(`ℹ️ 存倉中找到 "${value}" 但沒有有效價格，使用已加載的價格`);
+          }
+        } else {
+          console.log(`ℹ️ 存倉中未找到 "${value}"，使用已加載的價格`);
+        }
+      } catch (error) {
+        console.warn('⚠️ 獲取存倉價格失敗，使用已加載的價格:', error);
+        // 如果獲取存倉價格失敗，繼續使用已加載的價格
+      }
+      
       setCurrentMaterial({
         ...currentMaterial,
         itemName: selectedMaterial.itemName,
-        warehouse: selectedMaterial.warehouse
+        warehouse: selectedMaterial.warehouse,
+        price: price // 自動填入價格
       });
     }
   };
@@ -600,26 +750,88 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  // 添加材料到列表
+  // 編輯材料
+  const editMaterial = (record) => {
+    const materialKey = record.key || record._id || Date.now();
+    if (!materialKey) {
+      console.error('Material key is missing:', record);
+      return;
+    }
+    console.log('Editing material:', { record, materialKey, allMaterials: materials });
+    const materialData = {
+      warehouse: record.warehouse || '',
+      itemName: record.itemName || '',
+      quantity: record.quantity || 1,
+      price: record.price || 0
+    };
+    setCurrentMaterial(materialData);
+    setEditingMaterialKey(materialKey);
+    
+    // 如果選擇了倉庫，動態加載該倉庫的項目
+    if (materialData.warehouse) {
+      fetchWarehouseItems(materialData.warehouse);
+    }
+  };
+
+  // 添加或更新材料到列表
   const addMaterialToList = () => {
     if (!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity <= 0) {
       return;
     }
 
-    const newMaterial = {
-      ...currentMaterial,
-      key: Date.now(), // 用作唯一標識
-    };
+    let updatedMaterials;
+    if (editingMaterialKey) {
+      // 編輯模式：更新現有材料
+      let found = false;
+      updatedMaterials = materials.map(material => {
+        const materialKey = material.key || material._id;
+        // 檢查是否匹配編輯的材料（使用多種方式匹配）
+        const matches = materialKey === editingMaterialKey || 
+                       material._id === editingMaterialKey || 
+                       String(materialKey) === String(editingMaterialKey) ||
+                       (material.key && String(material.key) === String(editingMaterialKey));
+        
+        if (matches) {
+          found = true;
+          // 保留原有的所有字段，更新為新的值
+          const updatedMaterial = { 
+            ...material,  // 保留所有原有字段
+            ...currentMaterial,  // 用新值覆蓋
+            key: material.key || editingMaterialKey,  // 確保 key 不變
+            _id: material._id  // 保留 _id
+          };
+          console.log('Updating material:', { old: material, new: updatedMaterial });
+          return updatedMaterial;
+        }
+        return material;
+      });
+      
+      if (!found) {
+        console.warn('Material not found for editing:', editingMaterialKey, 'Materials:', materials.map(m => ({ key: m.key, _id: m._id })));
+      } else {
+        console.log('Material updated successfully, new materials:', updatedMaterials);
+      }
+      
+      setEditingMaterialKey(null);
+    } else {
+      // 添加模式：添加新材料
+      const newMaterial = {
+        ...currentMaterial,
+        key: Date.now(), // 用作唯一標識
+      };
+      updatedMaterials = [...materials, newMaterial];
+    }
 
-    const updatedMaterials = [...materials, newMaterial];
-    setMaterials(updatedMaterials);
+    // 確保創建新的數組引用，強制 React 重新渲染
+    setMaterials([...updatedMaterials]);
     form.setFieldsValue({ materials: updatedMaterials });
 
     // 重置當前材料
     setCurrentMaterial({
       warehouse: '',
       itemName: '',
-      quantity: 1
+      quantity: 1,
+      price: 0
     });
   };
 
@@ -636,13 +848,53 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       title: translate('Item'),
       dataIndex: 'itemName',
       key: 'itemName',
-      width: '25%',
+      width: '15%',
     },
     {
       title: translate('Description'),
       dataIndex: 'description',
       key: 'description',
-      width: '30%',
+      width: '70%',
+    },
+    {
+      title: translate('Quantity'),
+      dataIndex: 'quantity',
+      key: 'quantity',
+      width: '10%',
+    },
+    {
+      title: '',
+      key: 'action',
+      width: '5%',
+      render: (_, record) => (
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <EditOutlined 
+            onClick={() => editItem(record)} 
+            style={{ color: '#1890ff', cursor: 'pointer', fontSize: '16px' }}
+          />
+          <DeleteOutlined 
+            onClick={() => removeItem(record.key)} 
+            style={{ color: 'red', cursor: 'pointer', fontSize: '16px' }}
+          />
+        </div>
+      ),
+    },
+  ];
+
+  // Materials table columns
+  const materialColumns = [
+    {
+      title: translate('Warehouse'),
+      dataIndex: 'warehouse',
+      key: 'warehouse',
+      width: '15%',
+      render: (warehouse) => `倉${warehouse}`,
+    },
+    {
+      title: translate('Item'),
+      dataIndex: 'itemName',
+      key: 'itemName',
+      width: '35%',
     },
     {
       title: translate('Quantity'),
@@ -654,59 +906,24 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       title: translate('Price'),
       dataIndex: 'price',
       key: 'price',
+      width: '20%',
+      render: (price) => moneyFormatter({ amount: price || 0 }),
+    },
+    {
+      title: '',
+      key: 'action',
       width: '15%',
-      render: (price) => moneyFormatter({ amount: price }),
-    },
-    {
-      title: translate('Total'),
-      dataIndex: 'total',
-      key: 'total',
-      width: '10%',
-      render: (total) => moneyFormatter({ amount: total }),
-    },
-    {
-      title: '',
-      key: 'action',
-      width: '5%',
       render: (_, record) => (
-        <DeleteOutlined 
-          onClick={() => removeItem(record.key)} 
-          style={{ color: 'red', cursor: 'pointer' }}
-        />
-      ),
-    },
-  ];
-
-  // Materials table columns
-  const materialColumns = [
-    {
-      title: translate('Warehouse'),
-      dataIndex: 'warehouse',
-      key: 'warehouse',
-      width: '20%',
-      render: (warehouse) => `倉${warehouse}`,
-    },
-    {
-      title: translate('Item'),
-      dataIndex: 'itemName',
-      key: 'itemName',
-      width: '40%',
-    },
-    {
-      title: translate('Quantity'),
-      dataIndex: 'quantity',
-      key: 'quantity',
-      width: '20%',
-    },
-    {
-      title: '',
-      key: 'action',
-      width: '20%',
-      render: (_, record) => (
-        <DeleteOutlined 
-          onClick={() => removeMaterial(record.key)} 
-          style={{ color: 'red', cursor: 'pointer' }}
-        />
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <EditOutlined 
+            onClick={() => editMaterial(record)} 
+            style={{ color: '#1890ff', cursor: 'pointer', fontSize: '16px' }}
+          />
+          <DeleteOutlined 
+            onClick={() => removeMaterial(record.key)} 
+            style={{ color: 'red', cursor: 'pointer', fontSize: '16px' }}
+          />
+        </div>
       ),
     },
   ];
@@ -743,7 +960,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           <Form.Item
             label="Supplier Type"
             name="numberPrefix"
-            initialValue="QU"
+            initialValue="S"
             rules={[
               {
                 required: true,
@@ -752,9 +969,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           >
             <Select
               options={[
-                { value: 'SML', label: 'SML' },
-                { value: 'QU', label: 'QU' },
-                { value: 'XX', label: 'XX' },
+                { value: 'S', label: 'S' },
+                { value: 'NO', label: 'NO' },
               ]}
             />
           </Form.Item>
@@ -979,7 +1195,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         <Col span={24}>
           <h4>{translate('Add Item')}</h4>
         </Col>
-        <Col span={5}>
+        <Col span={6}>
           <AutoComplete
             placeholder="輸入項目名稱搜索..."
             onSearch={handleSearch}
@@ -993,7 +1209,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={7}>
+        <Col span={14}>
           <Input 
             placeholder="描述"
             value={currentItem.description}
@@ -1009,30 +1225,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={4}>
-          <InputNumber
-            placeholder="價格"
-            min={0}
-            value={currentItem.price}
-            onChange={(value) => updateCurrentItem('price', value)}
-            style={{ width: '100%' }}
-          />
-        </Col>
-        <Col span={4}>
-          <InputNumber
-            placeholder="總計"
-            value={currentItem.total}
-            readOnly
-            style={{ width: '100%' }}
-          />
-        </Col>
         <Col span={1}>
           <Button 
             type="primary" 
-            icon={<PlusOutlined />} 
+            icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addItemToList}
             disabled={!currentItem.itemName || currentItem.quantity <= 0}
-          />
+            key={editingItemKey ? 'update-btn' : 'add-btn'}
+          >
+            {editingItemKey ? translate('Update') : ''}
+          </Button>
         </Col>
       </Row>
 
@@ -1042,7 +1244,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         columns={columns}
         pagination={false}
         size="small"
-        rowKey={(record, index) => record.key || index}
+        rowKey={(item) => item.key || item._id || Date.now()}
         locale={{ emptyText: translate('No items added') }}
       />
 
@@ -1067,7 +1269,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             ]}
           />
         </Col>
-        <Col span={10}>
+        <Col span={8}>
           <AutoComplete
             placeholder="輸入材料名稱搜索..."
             onSearch={handleMaterialSearch}
@@ -1081,7 +1283,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={4}>
+        <Col span={3}>
           <InputNumber 
             placeholder="數量"
             min={1}
@@ -1090,15 +1292,25 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
           />
         </Col>
+        <Col span={3}>
+          <InputNumber
+            placeholder="價格"
+            min={0}
+            value={currentMaterial.price}
+            onChange={(value) => updateCurrentMaterial('price', value)}
+            style={{ width: '100%' }}
+          />
+        </Col>
         <Col span={4}>
           <Button 
             type="primary" 
-            icon={<PlusOutlined />} 
+            icon={editingMaterialKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addMaterialToList}
             disabled={!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity <= 0}
             style={{ width: '100%' }}
+            key={editingMaterialKey ? 'update-material-btn' : 'add-material-btn'}
           >
-            添加
+            {editingMaterialKey ? translate('Update') : translate('Add')}
           </Button>
         </Col>
       </Row>
@@ -1109,7 +1321,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         columns={materialColumns}
         pagination={false}
         size="small"
-        rowKey={(record, index) => record.key || index}
+        rowKey={(material) => material.key || material._id || Date.now()}
         locale={{ emptyText: '未添加材料' }}
       />
 

@@ -17,7 +17,6 @@ import {
   Divider,
   Popconfirm,
   DatePicker,
-  TimePicker,
   Drawer,
   List,
   Badge
@@ -109,19 +108,18 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
     form.setFieldsValue({
       contractorEmployee: record.contractorEmployee._id,
       dailySalary: record.dailySalary,
-      workDays: record.workDays,
       notes: record.notes
+      // 工作天數會根據打咭記錄自動計算，不需要設置
     });
     setModalVisible(true);
   };
 
   const handleSave = async (values) => {
     try {
+      // 工作天數和總工資會根據打咭記錄自動計算，不需要前端傳送
       const salaryData = {
         contractorEmployee: values.contractorEmployee,
         dailySalary: values.dailySalary,
-        workDays: values.workDays || 0,
-        totalSalary: (values.dailySalary || 0) * (values.workDays || 0),
         notes: values.notes
       };
 
@@ -180,8 +178,7 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
     attendanceForm.resetFields();
     attendanceForm.setFieldsValue({
       contractorEmployee: employee?._id,
-      checkInDate: dayjs(),
-      checkInTime: dayjs()
+      checkInDate: dayjs()
     });
     setAttendanceModalVisible(true);
   };
@@ -191,8 +188,6 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
       const attendanceData = {
         contractorEmployee: values.contractorEmployee,
         checkInDate: values.checkInDate.format('YYYY-MM-DD'),
-        checkInTime: values.checkInTime ? values.checkInTime.format('HH:mm') : null,
-        checkOutTime: values.checkOutTime ? values.checkOutTime.format('HH:mm') : null,
         notes: values.notes
       };
 
@@ -460,20 +455,6 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
           </Form.Item>
 
           <Form.Item
-            name="workDays"
-            label="工作天數"
-            rules={[{ required: true, message: '請輸入工作天數' }]}
-          >
-            <InputNumber
-              placeholder="輸入工作天數"
-              min={0}
-              precision={1}
-              style={{ width: '100%' }}
-              addonAfter="天"
-            />
-          </Form.Item>
-
-          <Form.Item
             name="notes"
             label="備註"
           >
@@ -516,17 +497,6 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
                 }
                 description={
                   <div>
-                    <div>
-                      <ClockCircleOutlined style={{ marginRight: 4 }} />
-                      上班: {record.checkInTime}
-                      {record.checkOutTime && (
-                        <>
-                          <span style={{ margin: '0 8px' }}>|</span>
-                          <ClockCircleOutlined style={{ marginRight: 4 }} />
-                          下班: {record.checkOutTime}
-                        </>
-                      )}
-                    </div>
                     {record.workHours > 0 && (
                       <div style={{ color: '#1890ff' }}>
                         工作時數: {record.workHours.toFixed(1)} 小時
@@ -587,34 +557,6 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
           >
             <DatePicker style={{ width: '100%' }} />
           </Form.Item>
-
-          <Row gutter={16}>
-            <Col span={12}>
-              <Form.Item
-                name="checkInTime"
-                label="上班時間"
-                rules={[{ required: true, message: '請選擇上班時間' }]}
-              >
-                <TimePicker 
-                  format="HH:mm" 
-                  style={{ width: '100%' }}
-                  placeholder="選擇時間"
-                />
-              </Form.Item>
-            </Col>
-            <Col span={12}>
-              <Form.Item
-                name="checkOutTime"
-                label="下班時間"
-              >
-                <TimePicker 
-                  format="HH:mm" 
-                  style={{ width: '100%' }}
-                  placeholder="選擇時間（可選）"
-                />
-              </Form.Item>
-            </Col>
-          </Row>
 
           <Form.Item
             name="notes"

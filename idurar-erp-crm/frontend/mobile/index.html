@@ -185,25 +185,135 @@
             color: #155724;
         }
 
-        .workprogress-card {
+        .employee-card {
             background: white;
             border-radius: 12px;
             padding: 16px;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
 
-        .workprogress-title {
+        .employee-info {
+            flex: 1;
+        }
+
+        .employee-name {
             font-size: 16px;
             font-weight: 600;
             color: #333;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
         }
 
-        .workprogress-info {
+        .employee-details {
+            font-size: 12px;
+            color: #666;
+        }
+
+        .employee-checkbox {
+            width: 24px;
+            height: 24px;
+            cursor: pointer;
+        }
+
+        .check-icon {
+            color: #28a745;
+            font-size: 20px;
+            font-weight: bold;
+        }
+
+        /* Loading Overlay */
+        .loading-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: white;
+            margin-top: 20px;
+            font-size: 16px;
+            font-weight: 500;
+        }
+
+        /* Success Message Overlay */
+        .success-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            z-index: 10000;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .success-overlay.active {
+            display: flex;
+        }
+
+        .success-content {
+            background: white;
+            padding: 30px 40px;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            max-width: 300px;
+        }
+
+        .success-icon {
+            width: 60px;
+            height: 60px;
+            margin: 0 auto 20px;
+            background: #28a745;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+            color: white;
+        }
+
+        .success-message {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .success-detail {
             font-size: 14px;
             color: #666;
-            margin-bottom: 4px;
         }
 
         .back-btn {
@@ -340,7 +450,7 @@
         <div class="header">
             <button class="back-btn" id="backBtn" style="display: none;">← 返回</button>
             <h1 id="headerTitle">承辦商工程管理系統</h1>
-            <p id="headerSubtitle">請輸入手機號碼登入</p>
+            <p id="headerSubtitle">請登入</p>
         </div>
 
         <!-- Content -->
@@ -351,18 +461,32 @@
                 
                 <form id="loginForm">
                     <div class="form-group">
-                        <label for="phone">手機號碼</label>
-                        <input type="tel" id="phone" name="phone" placeholder="請輸入手機號碼" required>
+                        <label for="username">用戶名</label>
+                        <input type="text" id="username" name="username" placeholder="請輸入用戶名">
                         <div style="font-size: 12px; color: #666; margin-top: 4px;">
-                            例如：98765432 或 +85298765432
+                            使用用戶名和密碼登入（推薦）
                         </div>
                     </div>
+                    
+                    <div class="form-group">
+                        <label for="password">密碼</label>
+                        <input type="password" id="password" name="password" placeholder="請輸入密碼">
+                    </div>
+                    
+                    <div style="text-align: center; margin: 15px 0; color: #999; font-size: 14px;">
+                        ─── 或 ───
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="phone">手機號碼</label>
+                        <input type="tel" id="phone" name="phone" placeholder="請輸入手機號碼">
+                        <div style="font-size: 12px; color: #666; margin-top: 4px;">
+                            使用手機號碼登入（舊方式，向後兼容）
+                        </div>
+                    </div>
+                    
                     <button type="submit" class="btn">登入</button>
                 </form>
-
-                <div style="margin-top: 20px; text-align: center; font-size: 14px; color: #666;">
-                    只需輸入註冊的手機號碼即可登入
-                </div>
             </div>
 
             <!-- Main Section -->
@@ -372,33 +496,59 @@
                     <div id="projectsList"></div>
                 </div>
 
-                <!-- WorkProgress Page -->
-                <div class="page" id="workProgressPage">
-                    <div id="workProgressList"></div>
+                <!-- Employees Page -->
+                <div class="page" id="employeesPage">
+                    <div style="margin-bottom: 16px;">
+                        <button class="btn btn-success" onclick="showBatchCheckIn()" style="margin-bottom: 12px;">
+                            今天打咭
+                        </button>
+                        <button class="btn btn-warning" onclick="showMakeupCheckIn()" style="margin-bottom: 12px;">
+                            補打咭
+                        </button>
+                    </div>
                 </div>
 
-                <!-- Update Progress Modal -->
-                <div class="page" id="updateProgressPage">
-                    <form id="updateProgressForm">
-                        <div class="form-group">
-                            <label for="progressValue">進度百分比 (%)</label>
-                            <input type="number" id="progressValue" min="0" max="100" placeholder="輸入進度百分比" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="progressDescription">工作描述</label>
-                            <textarea id="progressDescription" rows="3" placeholder="描述今天完成的工作內容" required></textarea>
-                        </div>
-                        <div class="form-group">
-                            <label for="progressImages">上傳工程照片</label>
-                            <input type="file" id="progressImages" class="file-input" multiple accept="image/*">
-                            <div class="image-preview" id="imagePreview"></div>
-                        </div>
-                        <div class="form-actions">
+                <!-- Batch CheckIn Page (今天打咭) -->
+                <div class="page" id="batchCheckInPage">
+                    <form id="batchCheckInForm">
+                        <div id="batchCheckInEmployeesList"></div>
+                        <div class="form-actions" style="margin-top: 20px;">
                             <button type="button" class="btn btn-warning" onclick="goBack()">取消</button>
-                            <button type="submit" class="btn btn-success">提交進度</button>
+                            <button type="submit" class="btn btn-success">提交</button>
                         </div>
                     </form>
                 </div>
+
+                <!-- Makeup CheckIn Page (補打咭) -->
+                <div class="page" id="makeupCheckInPage">
+                    <form id="makeupCheckInForm">
+                        <div class="form-group">
+                            <label for="makeupDate">選擇日期</label>
+                            <input type="date" id="makeupDate" required>
+                        </div>
+                        <div id="makeupEmployeesList" style="margin-top: 20px;"></div>
+                        <div class="form-actions" style="margin-top: 20px;">
+                            <button type="button" class="btn btn-warning" onclick="goBack()">取消</button>
+                            <button type="submit" class="btn btn-success">提交</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+        <!-- Loading Overlay -->
+        <div class="loading-overlay" id="loadingOverlay">
+            <div class="loading-spinner"></div>
+            <div class="loading-text" id="loadingText">處理中...</div>
+        </div>
+
+        <!-- Success Overlay -->
+        <div class="success-overlay" id="successOverlay">
+            <div class="success-content">
+                <div class="success-icon">✓</div>
+                <div class="success-message" id="successMessage">操作成功</div>
+                <div class="success-detail" id="successDetail"></div>
             </div>
         </div>
     </div>

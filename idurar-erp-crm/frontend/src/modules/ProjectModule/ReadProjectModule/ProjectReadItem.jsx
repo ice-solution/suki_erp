@@ -45,6 +45,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
     costBy: '對方',
     quotations: [],
     supplierQuotations: [],
+    shipQuotations: [],
     invoices: [],
     suppliers: [],
     costPrice: 0,
@@ -100,7 +101,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
           }));
           
           if (result) {
-            message.success(`同步完成！新增了 ${result.syncSummary?.newQuotations || 0} 個Quote、${result.syncSummary?.newSupplierQuotations || 0} 個Supplier Quote、${result.syncSummary?.newInvoices || 0} 個Invoice`);
+            message.success(`同步完成！新增了 ${result.syncSummary?.newQuotations || 0} 個Quote、${result.syncSummary?.newSupplierQuotations || 0} 個Supplier Quote、${result.syncSummary?.newShipQuotations || 0} 個吊船Quote、${result.syncSummary?.newInvoices || 0} 個Invoice`);
             // 重新載入項目數據
             dispatch(erp.read({ entity: entity.toLowerCase(), id: currentProject._id }));
           }
@@ -217,6 +218,40 @@ export default function ProjectReadItem({ config, selectedItem }) {
       render: (number, record) => (
         <Link 
           to={`/supplierquote/read/${record._id}`}
+          style={{ color: '#1890ff', textDecoration: 'none' }}
+        >
+          {`${record.numberPrefix || 'QU'}-${number}`}
+        </Link>
+      ),
+    },
+    {
+      title: translate('Year'),
+      dataIndex: 'year',
+      key: 'year',
+    },
+    {
+      title: translate('Status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status) => <Tag>{translate(status)}</Tag>,
+    },
+    {
+      title: translate('Total'),
+      dataIndex: 'total',
+      key: 'total',
+      render: (amount) => moneyFormatter({ amount: amount || 0 }),
+    },
+  ];
+
+  // Ship Quotations表格列（格式和Quotations一樣）
+  const shipQuotationColumns = [
+    {
+      title: translate('Number'),
+      dataIndex: 'number',
+      key: 'number',
+      render: (number, record) => (
+        <Link 
+          to={`/shipquote/read/${record._id}`}
           style={{ color: '#1890ff', textDecoration: 'none' }}
         >
           {`${record.numberPrefix || 'QU'}-${number}`}
@@ -563,6 +598,19 @@ export default function ProjectReadItem({ config, selectedItem }) {
               size="small"
               rowKey="_id"
               locale={{ emptyText: 'No supplier quotations linked' }}
+            />
+          </Card>
+        </Col>
+
+        <Col span={24}>
+          <Card title={`吊船Quotations (${currentProject.shipQuotations?.length || 0})`} size="small">
+            <Table
+              dataSource={currentProject.shipQuotations || []}
+              columns={shipQuotationColumns}
+              pagination={false}
+              size="small"
+              rowKey="_id"
+              locale={{ emptyText: 'No ship quotations linked' }}
             />
           </Card>
         </Col>
