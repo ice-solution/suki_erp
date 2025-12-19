@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const Project = mongoose.model('Project');
+const { calculateWorkDaysFromAttendance } = require('./calculateWorkDays');
 
 const updateSalary = async (req, res) => {
   try {
@@ -36,8 +37,18 @@ const updateSalary = async (req, res) => {
       });
     }
 
-    // 計算總工資
-    const totalSalary = dailySalary * (workDays || 0);
+    // 根據打咭記錄自動計算工作天數（如果提供了 workDays 則忽略，完全由打咭記錄決定）
+    let calculatedWorkDays = 0;
+    try {
+      calculatedWorkDays = await calculateWorkDaysFromAttendance(projectId, contractorEmployee);
+    } catch (error) {
+      console.error('計算工作天數時發生錯誤:', error);
+      // 如果計算失敗，使用提供的 workDays 或 0
+      calculatedWorkDays = workDays || 0;
+    }
+
+    // 計算總工資（使用自動計算的工作天數）
+    const totalSalary = dailySalary * calculatedWorkDays;
 
     // 使用 $set 直接更新特定的 salary 記錄，避免重新驗證整個項目
     await Project.findOneAndUpdate(
@@ -46,7 +57,7 @@ const updateSalary = async (req, res) => {
         $set: {
           'salaries.$.contractorEmployee': contractorEmployee,
           'salaries.$.dailySalary': dailySalary,
-          'salaries.$.workDays': workDays || 0,
+          'salaries.$.workDays': calculatedWorkDays,
           'salaries.$.totalSalary': totalSalary,
           'salaries.$.notes': notes || '',
           'salaries.$.updated': new Date()

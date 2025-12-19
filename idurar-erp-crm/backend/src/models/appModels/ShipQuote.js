@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const supplierQuoteSchema = new mongoose.Schema({
+const shipQuoteSchema = new mongoose.Schema({
   removed: {
     type: Boolean,
     default: false,
@@ -8,13 +8,23 @@ const supplierQuoteSchema = new mongoose.Schema({
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: true },
 
   converted: {
-    type: Boolean,
-    default: false,
+    to: {
+      type: String,
+      enum: ['invoice'],
+    },
+    invoice: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Invoice',
+    },
+    supplierQuote: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'SupplierQuote',
+    },
   },
   numberPrefix: {
     type: String,
-    enum: ['S', 'NO'],
-    default: 'S',
+    enum: ['SML', 'QU', 'XX'],
+    default: 'QU',
     required: true,
   },
   number: {
@@ -27,13 +37,15 @@ const supplierQuoteSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['人工', '服務', '材料', '服務&材料', '吊船'],
+    enum: ['吊船'],
+    default: '吊船',
     required: true,
   },
-  // 吊船相關字段
+  // 吊船相關字段（必填）
   shipType: {
     type: String,
     enum: ['續租', '租貨'],
+    required: true,
   },
   subcontractorCount: {
     type: Number,
@@ -67,10 +79,6 @@ const supplierQuoteSchema = new mongoose.Schema({
   address: {
     type: String,
   },
-  warehouse: {
-    type: String,
-    enum: ['A', 'B', 'C', 'D'],
-  },
 
   // 向後兼容：保留舊的client字段
   client: {
@@ -103,36 +111,14 @@ const supplierQuoteSchema = new mongoose.Schema({
       },
       price: {
         type: Number,
-        required: false,
-        default: 0,
+        required: true,
+      },
+      poNumber: {
+        type: String,
       },
       total: {
         type: Number,
-        required: false,
-        default: 0,
-      },
-    },
-  ],
-  materials: [
-    {
-      warehouse: {
-        type: String,
-        enum: ['A', 'B', 'C', 'D'],
         required: true,
-      },
-      itemName: {
-        type: String,
-        required: true,
-      },
-      quantity: {
-        type: Number,
-        required: true,
-        min: 1,
-      },
-      price: {
-        type: Number,
-        required: false,
-        default: 0,
       },
     },
   ],
@@ -190,34 +176,6 @@ const supplierQuoteSchema = new mongoose.Schema({
       },
     },
   ],
-  dmFiles: [
-    {
-      id: String,
-      name: String,
-      path: String,
-      description: String,
-      isPublic: {
-        type: Boolean,
-        default: true,
-      },
-    },
-  ],
-  invoiceFiles: [
-    {
-      id: String,
-      name: String,
-      path: String,
-      description: String,
-      fileType: {
-        type: String,
-        enum: ['pdf', 'jpg', 'jpeg', 'png'],
-      },
-      isPublic: {
-        type: Boolean,
-        default: true,
-      },
-    },
-  ],
   updated: {
     type: Date,
     default: Date.now,
@@ -228,5 +186,6 @@ const supplierQuoteSchema = new mongoose.Schema({
   },
 });
 
-supplierQuoteSchema.plugin(require('mongoose-autopopulate'));
-module.exports = mongoose.model('SupplierQuote', supplierQuoteSchema);
+shipQuoteSchema.plugin(require('mongoose-autopopulate'));
+module.exports = mongoose.model('ShipQuote', shipQuoteSchema);
+

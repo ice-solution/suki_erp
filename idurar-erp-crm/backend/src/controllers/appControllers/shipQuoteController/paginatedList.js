@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const Model = mongoose.model('Quote');
+const Model = mongoose.model('ShipQuote');
 
 const paginatedList = async (req, res) => {
   const page = req.query.page || 1;
@@ -32,7 +32,7 @@ const paginatedList = async (req, res) => {
   
   const resultsPromise = Model.find({
     removed: false,
-
+    type: '吊船', // 只查詢吊船類型
     [filter]: equal,
     ...fields,
   })
@@ -45,7 +45,7 @@ const paginatedList = async (req, res) => {
   // Counting the total documents
   const countPromise = Model.countDocuments({
     removed: false,
-
+    type: '吊船', // 只查詢吊船類型
     [filter]: equal,
     ...fields,
   });
@@ -75,3 +75,5 @@ const paginatedList = async (req, res) => {
 };
 
 module.exports = paginatedList;
+
+

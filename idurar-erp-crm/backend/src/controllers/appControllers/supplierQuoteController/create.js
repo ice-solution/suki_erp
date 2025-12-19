@@ -35,14 +35,32 @@ const create = async (req, res) => {
   let total = 0;
   // let credit = 0;
 
-  //Calculate the items array with subTotal, total, discountTotal
-  items.map((item) => {
-    let total = calculate.multiply(item['quantity'], item['price']);
-    //sub total
-    subTotal = calculate.add(subTotal, total);
-    //item total
-    item['total'] = total;
-  });
+  // 注意：SupplierQuote 只計算 materials 的總計，不計算 items 的總計
+  // Items 只用於記錄，不參與價格計算
+
+  // Calculate materials total only
+  let materials = req.body.materials || [];
+  // Parse materials if it's a JSON string (from FormData)
+  if (typeof materials === 'string') {
+    try {
+      materials = JSON.parse(materials);
+    } catch (error) {
+      materials = [];
+    }
+  }
+  // Ensure materials is an array
+  if (!Array.isArray(materials)) {
+    materials = [];
+  }
+  if (materials.length > 0) {
+    materials.forEach((material) => {
+      if (material && material.quantity && material.price) {
+        let materialTotal = calculate.multiply(material.quantity, material.price);
+        subTotal = calculate.add(subTotal, materialTotal);
+      }
+    });
+  }
+
   discountTotal = calculate.multiply(subTotal, discount / 100);
   total = calculate.sub(subTotal, discountTotal);
 
@@ -61,6 +79,7 @@ const create = async (req, res) => {
   body['discountTotal'] = discountTotal;
   body['total'] = total;
   body['items'] = items;
+  body['materials'] = materials;
   body['createdBy'] = req.admin._id;
 
   // Handle file uploads using express-fileupload

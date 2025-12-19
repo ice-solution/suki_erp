@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const Quote = mongoose.model('Quote');
 const SupplierQuote = mongoose.model('SupplierQuote');
+const ShipQuote = mongoose.model('ShipQuote');
 const Invoice = mongoose.model('Invoice');
 
 const checkInvoiceNumberChange = async (req, res) => {
@@ -37,10 +38,36 @@ const checkInvoiceNumberChange = async (req, res) => {
     }
 
     // 查找相關的記錄
-    const [quotes, supplierQuotes, invoices] = await Promise.all([
-      Quote.find({ invoiceNumber: oldInvoiceNumber, removed: false }).select('number date status type').lean(),
-      SupplierQuote.find({ invoiceNumber: oldInvoiceNumber, removed: false }).select('number date status type').lean(),
-      Invoice.find({ invoiceNumber: oldInvoiceNumber, removed: false }).select('number date status type').lean()
+    // 支持兩種查找方式：1) invoiceNumber 字段直接匹配 2) numberPrefix-number 組合匹配
+    let numberPrefix = null;
+    let number = null;
+    if (oldInvoiceNumber && oldInvoiceNumber.includes('-')) {
+      const parts = oldInvoiceNumber.split('-');
+      if (parts.length >= 2) {
+        numberPrefix = parts[0];
+        number = parts.slice(1).join('-');
+      }
+    }
+
+    const findQuery = {
+      $or: [
+        { invoiceNumber: oldInvoiceNumber, removed: false }
+      ]
+    };
+    
+    if (numberPrefix && number) {
+      findQuery.$or.push({
+        numberPrefix,
+        number,
+        removed: false
+      });
+    }
+
+    const [quotes, supplierQuotes, shipQuotes, invoices] = await Promise.all([
+      Quote.find(findQuery).select('number date status type').lean(),
+      SupplierQuote.find(findQuery).select('number date status type').lean(),
+      ShipQuote.find(findQuery).select('number date status type').lean(),
+      Invoice.find(findQuery).select('number date status type').lean()
     ]);
 
     return res.status(200).json({
@@ -61,6 +88,15 @@ const checkInvoiceNumberChange = async (req, res) => {
         supplierQuotes: {
           count: supplierQuotes.length,
           records: supplierQuotes.map(sq => ({
+            number: sq.number,
+            date: sq.date,
+            status: sq.status,
+            type: sq.type
+          }))
+        },
+        shipQuotes: {
+          count: shipQuotes.length,
+          records: shipQuotes.map(sq => ({
             number: sq.number,
             date: sq.date,
             status: sq.status,

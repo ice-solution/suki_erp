@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const Contractor = require('../models/appModels/Contractor');
+const setLoginCredentials = require('../controllers/appControllers/contractorController/setLoginCredentials');
+const { catchErrors } = require('../handlers/errorHandlers');
 
 // 查詢所有承辦商
 router.get('/', async (req, res) => {
@@ -37,7 +39,13 @@ router.get('/:id', async (req, res) => {
 // 更新承辦商
 router.put('/:id', async (req, res) => {
   try {
-    const contractor = await Contractor.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const updateData = { ...req.body };
+    
+    // 不允許通過此接口直接更新密碼和用戶名（需要使用 set-login-credentials）
+    delete updateData.hashedPassword;
+    delete updateData.username;
+    
+    const contractor = await Contractor.findByIdAndUpdate(req.params.id, updateData, { new: true });
     if (!contractor) return res.status(404).json({ error: 'Not found' });
     res.json(contractor);
   } catch (err) {
@@ -55,5 +63,8 @@ router.delete('/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// 設置/更新承辦商登入憑證（用戶名和密碼）- Admin 使用
+router.post('/:contractorId/set-login-credentials', catchErrors(setLoginCredentials));
 
 module.exports = router; 

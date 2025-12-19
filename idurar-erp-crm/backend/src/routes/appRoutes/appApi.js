@@ -36,6 +36,10 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
   }
 
+  if (entity === 'shipquote') {
+    router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
+  }
+
   if (entity === 'project') {
     router.route(`/${entity}/sync/:id`).patch(catchErrors(controller['sync']));
     router.route(`/${entity}/check/:invoiceNumber`).get(catchErrors(controller['checkByInvoiceNumber']));
@@ -47,6 +51,7 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/:projectId/attendance`).post(catchErrors(controller['addAttendance']));
     router.route(`/${entity}/:projectId/attendance/:attendanceId`).patch(catchErrors(controller['updateAttendance']));
     router.route(`/${entity}/:projectId/attendance/:attendanceId`).delete(catchErrors(controller['deleteAttendance']));
+    router.route(`/${entity}/:projectId/recalculate-workdays`).post(catchErrors(controller['recalculateWorkDays']));
   }
 
   if (entity === 'workprogress') {

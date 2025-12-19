@@ -29,11 +29,25 @@ const update = async (req, res) => {
     discount = parseFloat(discount) || 0;
   }
 
-  if (!Array.isArray(items) || items.length === 0) {
+  // Parse materials to check if we have items or materials
+  let materials = req.body.materials || [];
+  if (typeof materials === 'string') {
+    try {
+      materials = JSON.parse(materials);
+    } catch (error) {
+      materials = [];
+    }
+  }
+  if (!Array.isArray(materials)) {
+    materials = [];
+  }
+
+  // Items or materials must have at least one entry
+  if ((!Array.isArray(items) || items.length === 0) && (!Array.isArray(materials) || materials.length === 0)) {
     return res.status(400).json({
       success: false,
       result: null,
-      message: 'Items cannot be empty',
+      message: 'Items or materials cannot be empty',
     });
   }
   // default
@@ -42,14 +56,19 @@ const update = async (req, res) => {
   let total = 0;
   // let credit = 0;
 
-  //Calculate the items array with subTotal, total, discountTotal
-  items.map((item) => {
-    let total = calculate.multiply(item['quantity'], item['price']);
-    //sub total
-    subTotal = calculate.add(subTotal, total);
-    //item total
-    item['total'] = total;
-  });
+  // 注意：SupplierQuote 只計算 materials 的總計，不計算 items 的總計
+  // Items 只用於記錄，不參與價格計算
+
+  // Calculate materials total only (materials already parsed above)
+  if (materials.length > 0) {
+    materials.forEach((material) => {
+      if (material && material.quantity && material.price) {
+        let materialTotal = calculate.multiply(material.quantity, material.price);
+        subTotal = calculate.add(subTotal, materialTotal);
+      }
+    });
+  }
+
   discountTotal = calculate.multiply(subTotal, discount / 100);
   total = calculate.sub(subTotal, discountTotal);
 
@@ -68,6 +87,7 @@ const update = async (req, res) => {
   body['discountTotal'] = discountTotal;
   body['total'] = total;
   body['items'] = items;
+  body['materials'] = materials;
   body['pdf'] = 'supplier-quote-' + req.params.id + '.pdf';
 
   // Handle file uploads using express-fileupload

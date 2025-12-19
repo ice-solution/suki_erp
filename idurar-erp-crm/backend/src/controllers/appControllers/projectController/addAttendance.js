@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
+const { calculateWorkDaysFromAttendance } = require('./calculateWorkDays');
 
 const addAttendance = async (req, res) => {
   try {
@@ -7,10 +8,10 @@ const addAttendance = async (req, res) => {
     const { contractorEmployee, checkInDate, checkInTime, checkOutTime, notes } = req.body;
 
     // 驗證必填字段
-    if (!contractorEmployee || !checkInDate || !checkInTime) {
+    if (!contractorEmployee || !checkInDate) {
       return res.status(400).json({
         success: false,
-        message: '員工、打咭日期和打咭時間為必填字段'
+        message: '員工和打咭日期為必填字段'
       });
     }
 
@@ -37,9 +38,9 @@ const addAttendance = async (req, res) => {
       });
     }
 
-    // 計算工作時數
+    // 計算工作時數（如果提供了時間）
     let workHours = 0;
-    if (checkOutTime) {
+    if (checkOutTime && checkInTime) {
       const checkIn = new Date(`${checkInDate} ${checkInTime}`);
       const checkOut = new Date(`${checkInDate} ${checkOutTime}`);
       workHours = (checkOut - checkIn) / (1000 * 60 * 60); // 轉換為小時
@@ -50,7 +51,7 @@ const addAttendance = async (req, res) => {
     const newAttendance = {
       contractorEmployee,
       checkInDate: new Date(checkInDate),
-      checkInTime,
+      checkInTime: checkInTime || null,
       checkOutTime: checkOutTime || null,
       workHours,
       notes: notes || '',
@@ -67,9 +68,24 @@ const addAttendance = async (req, res) => {
     .populate('onboard.contractorEmployee', 'name contractor')
     .populate('onboard.contractorEmployee.contractor', 'name');
 
+    // 根據打咭記錄自動計算並更新該員工的工作天數
+    try {
+      await calculateWorkDaysFromAttendance(projectId, contractorEmployee);
+    } catch (error) {
+      console.error('計算工作天數時發生錯誤:', error);
+      // 即使計算失敗，打咭記錄仍已添加成功，所以繼續返回成功響應
+    }
+
+    // 重新查詢項目以獲取最新的 salaries 數據
+    const finalProject = await Project.findById(projectId)
+      .populate('onboard.contractorEmployee', 'name contractor')
+      .populate('onboard.contractorEmployee.contractor', 'name')
+      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee.contractor', 'name');
+
     return res.status(200).json({
       success: true,
-      result: updatedProject,
+      result: finalProject,
       message: '打咭記錄添加成功'
     });
 

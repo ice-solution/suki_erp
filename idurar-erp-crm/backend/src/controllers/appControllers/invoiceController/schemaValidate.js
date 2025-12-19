@@ -10,7 +10,7 @@ const schema = Joi.object({
   shipType: Joi.string().optional(),
   subcontractorCount: Joi.number().optional(),
   costPrice: Joi.number().optional(),
-  status: Joi.string().required(),
+  status: Joi.string().optional(),
   notes: Joi.string().allow(''),
   expiredDate: Joi.date().optional(), // Changed to optional
   date: Joi.date().required(),

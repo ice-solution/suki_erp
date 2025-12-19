@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
 
 const Project = mongoose.model('Project');
+const { calculateWorkDaysFromAttendance } = require('./calculateWorkDays');
 
 const addSalary = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { contractorEmployee, dailySalary, workDays, notes } = req.body;
+    const { contractorEmployee, dailySalary, notes } = req.body;
 
     // 驗證必填字段
     if (!contractorEmployee || !dailySalary) {
@@ -36,14 +37,24 @@ const addSalary = async (req, res) => {
       });
     }
 
+    // 根據打咭記錄自動計算工作天數
+    let workDays = 0;
+    try {
+      workDays = await calculateWorkDaysFromAttendance(projectId, contractorEmployee);
+    } catch (error) {
+      console.error('計算工作天數時發生錯誤:', error);
+      // 如果計算失敗（可能沒有打咭記錄），使用 0
+      workDays = 0;
+    }
+
     // 計算總工資
-    const totalSalary = dailySalary * (workDays || 0);
+    const totalSalary = dailySalary * workDays;
 
     // 創建新的工資記錄
     const newSalary = {
       contractorEmployee,
       dailySalary,
-      workDays: workDays || 0,
+      workDays,
       totalSalary,
       notes: notes || '',
       created: new Date(),

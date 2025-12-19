@@ -2,6 +2,47 @@ const WarehouseInventory = require('../../../models/appModels/WarehouseInventory
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
 
+/**
+ * 生成下一個可用的 SKU 編號
+ * 從 A100 開始，依序遞增（A101, A102, ...）
+ */
+async function generateNextSKU() {
+  try {
+    // 查找所有以 "A" 開頭的 SKU（不包含已刪除的記錄）
+    const existingSKUs = await WarehouseInventory.find({
+      sku: { $regex: /^A\d+$/i },
+      removed: false
+    }).select('sku').lean();
+
+    if (existingSKUs.length === 0) {
+      // 如果沒有找到任何 A 開頭的 SKU，從 A100 開始
+      return 'A100';
+    }
+
+    // 提取所有數字部分並找到最大值
+    let maxNumber = 99; // 從 99 開始，這樣第一個會是 A100
+    existingSKUs.forEach(item => {
+      if (item.sku) {
+        const match = item.sku.match(/^A(\d+)$/i);
+        if (match) {
+          const number = parseInt(match[1], 10);
+          if (number > maxNumber) {
+            maxNumber = number;
+          }
+        }
+      }
+    });
+
+    // 生成下一個 SKU
+    const nextNumber = maxNumber + 1;
+    return `A${nextNumber}`;
+  } catch (error) {
+    console.error('生成 SKU 失敗:', error);
+    // 如果出錯，返回 A100 作為默認值
+    return 'A100';
+  }
+}
+
 const create = async (req, res) => {
   try {
     const {
@@ -27,10 +68,16 @@ const create = async (req, res) => {
       });
     }
 
+    // 如果沒有提供 SKU，自動生成下一個可用的 SKU
+    let finalSku = sku;
+    if (!finalSku || finalSku.trim() === '') {
+      finalSku = await generateNextSKU();
+    }
+
     // 檢查SKU是否已存在
-    if (sku) {
+    if (finalSku) {
       const existingItem = await WarehouseInventory.findOne({ 
-        sku: sku, 
+        sku: finalSku, 
         removed: false 
       });
       if (existingItem) {
@@ -45,7 +92,7 @@ const create = async (req, res) => {
     const inventoryData = {
       itemName,
       description,
-      sku,
+      sku: finalSku,
       quantity: parseInt(quantity),
       warehouse,
       unitPrice: parseFloat(unitPrice) || 0,

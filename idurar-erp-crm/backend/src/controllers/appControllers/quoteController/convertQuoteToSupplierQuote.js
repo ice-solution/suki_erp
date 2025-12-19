@@ -28,6 +28,27 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       });
     }
 
+    // 獲取 P.O number 參數
+    const poNumber = req.query.poNumber;
+    if (!poNumber) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: 'P.O number is required',
+      });
+    }
+
+    // 過濾出指定 P.O number 的 items
+    const filteredItems = quote.items.filter(item => item.poNumber === poNumber);
+    
+    if (filteredItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: `No items found with P.O number: ${poNumber}`,
+      });
+    }
+
     // Get next supplier quote number
     const supplierQuoteNumberResult = await increaseBySettingKey({
       settingKey: 'last_supplier_quote_number',
@@ -36,19 +57,31 @@ const convertQuoteToSupplierQuote = async (req, res) => {
     const supplierQuoteNumber = supplierQuoteNumberResult ? supplierQuoteNumberResult.settingValue : 1;
 
     // Create supplier quote data from quote
-    // 注意：items 中的 poNumber 需要處理（Quote 的 items 有 poNumber，SupplierQuote 的 items 沒有）
-    const supplierQuoteItems = quote.items.map(item => ({
+    // 注意：items 中的 poNumber 和 price 不需要傳遞到 SupplierQuote
+    // SupplierQuote 的 items 只需要 itemName, description, quantity
+    const supplierQuoteItems = filteredItems.map(item => ({
       itemName: item.itemName,
       description: item.description,
       quantity: item.quantity,
-      price: item.price,
-      total: item.total,
-      // SupplierQuote items 不包含 poNumber
+      // 不包含 price 和 total，因為 SupplierQuote 不需要 item 的價錢
     }));
+
+    // 映射 Quote 的 numberPrefix 到 SupplierQuote 的有效值
+    // SupplierQuote 只接受 'S' 或 'NO'
+    let supplierQuotePrefix = 'S'; // 默認值
+    if (quote.numberPrefix) {
+      // 如果 Quote 的 numberPrefix 是 'SML'，轉換為 'S'，其他情況使用默認值 'S'
+      if (quote.numberPrefix === 'SML') {
+        supplierQuotePrefix = 'S';
+      } else {
+        // 對於其他值（如 'QU', 'XX'），使用默認值 'S'
+        supplierQuotePrefix = 'S';
+      }
+    }
 
     const supplierQuoteData = {
       converted: false, // SupplierQuote 的 converted 是 Boolean 類型
-      numberPrefix: quote.numberPrefix || 'QU', // 使用 Quote 的 numberPrefix
+      numberPrefix: supplierQuotePrefix, // 使用映射後的值
       number: supplierQuoteNumber.toString(),
       year: new Date().getFullYear(),
       type: quote.type,
@@ -65,9 +98,10 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       client: quote.client, // 向後兼容
       project: quote.project,
       items: supplierQuoteItems,
-      subTotal: quote.subTotal,
-      discountTotal: quote.discountTotal,
-      total: quote.total,
+      // 不傳遞 subTotal, discountTotal, total，因為 SupplierQuote 會根據 materials 重新計算
+      subTotal: 0,
+      discountTotal: 0,
+      total: 0,
       credit: 0, // Supplier Quote初始credit為0
       currency: quote.currency,
       discount: quote.discount,

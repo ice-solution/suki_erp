@@ -7,7 +7,7 @@ const paginatedList = async (req, res) => {
   const limit = parseInt(req.query.items) || 10;
   const skip = page * limit - limit;
 
-  const { sortBy = 'enabled', sortValue = -1, filter, equal } = req.query;
+  const { sortBy, sortValue, filter, equal } = req.query;
 
   const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
 
@@ -20,6 +20,15 @@ const paginatedList = async (req, res) => {
   }
 
   //  Query the database for a list of all results
+  // 默認按 year 降序，然後按 number 升序排序
+  let sortObj = {};
+  if (!sortBy) {
+    // 如果沒有指定排序，使用默認排序：先按 year 降序，再按 number 升序
+    sortObj = { year: -1, number: 1 };
+  } else {
+    sortObj = { [sortBy]: sortValue || 1 };
+  }
+  
   const resultsPromise = Model.find({
     removed: false,
 
@@ -28,7 +37,7 @@ const paginatedList = async (req, res) => {
   })
     .skip(skip)
     .limit(limit)
-    .sort({ [sortBy]: sortValue })
+    .sort(sortObj)
     .populate('createdBy', 'name')
     .exec();
 

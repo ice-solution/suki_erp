@@ -3,11 +3,10 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('SupplierQuote');
 
 const listAll = async (req, res) => {
-  const sort = parseInt(req.query.sort) || 'desc';
-
   //  Query the database for a list of all results
+  // 按 year 降序，然後按 number 升序排序
   const result = await Model.find({ removed: false })
-    .sort({ created: sort })
+    .sort({ year: -1, number: 1 })
     .populate('createdBy', 'name');
 
   if (result.length > 0) {

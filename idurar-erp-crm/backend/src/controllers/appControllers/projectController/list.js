@@ -26,6 +26,10 @@ const list = async (req, res) => {
       select: 'number year total status'
     })
     .populate({
+      path: 'shipQuotations', 
+      select: 'number year total status'
+    })
+    .populate({
       path: 'invoices',
       select: 'number year total status'
     });

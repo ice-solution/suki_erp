@@ -18,6 +18,7 @@ const addAttendance = require('./addAttendance');
 const getAttendance = require('./getAttendance');
 const updateAttendance = require('./updateAttendance');
 const deleteAttendance = require('./deleteAttendance');
+const recalculateWorkDays = require('./recalculateWorkDays');
 
 module.exports = {
   create,
@@ -40,4 +41,5 @@ module.exports = {
   getAttendance,
   updateAttendance,
   deleteAttendance,
+  recalculateWorkDays,
 };

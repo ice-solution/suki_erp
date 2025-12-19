@@ -75,6 +75,13 @@ const projectSchema = new mongoose.Schema({
     autopopulate: true,
   }],
 
+  // 關聯的ship quotations (吊船quote)
+  shipQuotations: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'ShipQuote',
+    autopopulate: true,
+  }],
+
   // 關聯的invoices
   invoices: [{
     type: mongoose.Schema.ObjectId,
@@ -129,8 +136,7 @@ const projectSchema = new mongoose.Schema({
       required: true,
     },
     checkInTime: {
-      type: String, // 格式: "HH:mm"
-      required: true,
+      type: String, // 格式: "HH:mm"，可選
     },
     checkOutTime: {
       type: String, // 格式: "HH:mm"，可選

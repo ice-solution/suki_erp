@@ -18,6 +18,26 @@ const schema = new mongoose.Schema({
   country: String,
   address: String,
   email: String,
+  // 登入相關字段
+  username: {
+    type: String,
+    unique: true,
+    sparse: true, // 允許多個 null 值
+  },
+  hashedPassword: {
+    type: String,
+    select: false, // 默認不返回密碼
+  },
+  lastLogin: {
+    type: Date,
+  },
+  loginAttempts: {
+    type: Number,
+    default: 0,
+  },
+  lockUntil: {
+    type: Date,
+  },
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   assigned: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
@@ -29,6 +49,65 @@ const schema = new mongoose.Schema({
     default: Date.now,
   },
 });
+
+// 添加索引
+schema.index({ username: 1 });
+
+// 虛擬屬性：檢查是否被鎖定
+schema.virtual('isLocked').get(function() {
+  return !!(this.lockUntil && this.lockUntil > Date.now());
+});
+
+// 方法：比較密碼
+schema.methods.comparePassword = async function(candidatePassword) {
+  const bcrypt = require('bcryptjs');
+  if (!this.hashedPassword) return false;
+  return await bcrypt.compare(candidatePassword, this.hashedPassword);
+};
+
+// 方法：設置密碼
+schema.methods.setPassword = async function(password) {
+  const bcrypt = require('bcryptjs');
+  const salt = await bcrypt.genSalt(10);
+  this.hashedPassword = await bcrypt.hash(password, salt);
+};
+
+// 方法：增加登入嘗試次數
+schema.methods.incLoginAttempts = function() {
+  // 如果有上次的鎖定時間且還沒過期
+  if (this.lockUntil && this.lockUntil < Date.now()) {
+    return this.updateOne({
+      $unset: {
+        loginAttempts: 1,
+        lockUntil: 1
+      }
+    });
+  }
+  
+  const updates = { $inc: { loginAttempts: 1 } };
+  
+  // 如果達到最大嘗試次數且目前沒有鎖定，則設置鎖定時間
+  if (this.loginAttempts + 1 >= 5 && !this.isLocked) {
+    updates.$set = {
+      lockUntil: Date.now() + 2 * 60 * 60 * 1000, // 鎖定2小時
+    };
+  }
+  
+  return this.updateOne(updates);
+};
+
+// 方法：重置登入嘗試
+schema.methods.resetLoginAttempts = function() {
+  return this.updateOne({
+    $unset: {
+      loginAttempts: 1,
+      lockUntil: 1
+    },
+    $set: {
+      lastLogin: Date.now()
+    }
+  });
+};
 
 schema.plugin(require('mongoose-autopopulate'));
 

@@ -3,13 +3,14 @@ const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const Quote = mongoose.model('Quote');
 const SupplierQuote = mongoose.model('SupplierQuote');
+const ShipQuote = mongoose.model('ShipQuote');
 const Invoice = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
 
 const update = async (req, res) => {
   try {
-    const { contractorFees, contractorFee, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber } = req.body;
+    const { contractorFees, contractorFee, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber, status } = req.body;
 
     // 查找現有項目
     const existingProject = await Project.findOne({ _id: req.params.id, removed: false });
@@ -92,6 +93,7 @@ const update = async (req, res) => {
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
     if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
     if (costBy !== undefined) updateData.costBy = costBy;
+    if (status !== undefined) updateData.status = status;
     if (contractors !== undefined) updateData.contractors = contractors || [];
     if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
     if (poNumber !== undefined) updateData.poNumber = poNumber;
@@ -108,22 +110,55 @@ const update = async (req, res) => {
       
       try {
         // 更新相關的 Quote 記錄
+        // 支持兩種查找方式：1) invoiceNumber 字段直接匹配 2) numberPrefix-number 組合匹配
+        // 解析 oldInvoiceNumber
+        let oldNumberPrefix = null;
+        let oldNumber = null;
+        if (oldInvoiceNumber && oldInvoiceNumber.includes('-')) {
+          const parts = oldInvoiceNumber.split('-');
+          if (parts.length >= 2) {
+            oldNumberPrefix = parts[0];
+            oldNumber = parts.slice(1).join('-');
+          }
+        }
+
+        const oldFindQuery = {
+          $or: [
+            { invoiceNumber: oldInvoiceNumber, removed: false }
+          ]
+        };
+        
+        if (oldNumberPrefix && oldNumber) {
+          oldFindQuery.$or.push({
+            numberPrefix: oldNumberPrefix,
+            number: oldNumber,
+            removed: false
+          });
+        }
+
         const quoteUpdateResult = await Quote.updateMany(
-          { invoiceNumber: oldInvoiceNumber, removed: false },
+          oldFindQuery,
           { invoiceNumber: newInvoiceNumber, updated: new Date() }
         );
         console.log(`✅ Updated ${quoteUpdateResult.modifiedCount} Quote records`);
 
         // 更新相關的 SupplierQuote 記錄
         const supplierQuoteUpdateResult = await SupplierQuote.updateMany(
-          { invoiceNumber: oldInvoiceNumber, removed: false },
+          oldFindQuery,
           { invoiceNumber: newInvoiceNumber, updated: new Date() }
         );
         console.log(`✅ Updated ${supplierQuoteUpdateResult.modifiedCount} SupplierQuote records`);
 
+        // 更新相關的 ShipQuote 記錄
+        const shipQuoteUpdateResult = await ShipQuote.updateMany(
+          oldFindQuery,
+          { invoiceNumber: newInvoiceNumber, updated: new Date() }
+        );
+        console.log(`✅ Updated ${shipQuoteUpdateResult.modifiedCount} ShipQuote records`);
+
         // 更新相關的 Invoice 記錄
         const invoiceUpdateResult = await Invoice.updateMany(
-          { invoiceNumber: oldInvoiceNumber, removed: false },
+          oldFindQuery,
           { invoiceNumber: newInvoiceNumber, updated: new Date() }
         );
         console.log(`✅ Updated ${invoiceUpdateResult.modifiedCount} Invoice records`);
@@ -140,6 +175,7 @@ const update = async (req, res) => {
             syncedRecords: {
               quotes: quoteUpdateResult.modifiedCount,
               supplierQuotes: supplierQuoteUpdateResult.modifiedCount,
+              shipQuotes: shipQuoteUpdateResult.modifiedCount,
               invoices: invoiceUpdateResult.modifiedCount
             }
           }

@@ -27,13 +27,8 @@ const quoteSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['人工', '服務', '材料', '服務&材料', '吊船'],
+    enum: ['人工', '服務', '材料', '服務&材料'],
     required: true,
-  },
-  // 吊船相關字段
-  shipType: {
-    type: String,
-    enum: ['續租', '租貨'],
   },
   subcontractorCount: {
     type: Number,

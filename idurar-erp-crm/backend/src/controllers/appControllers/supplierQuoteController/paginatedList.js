@@ -8,12 +8,13 @@ const paginatedList = async (req, res) => {
   const skip = page * limit - limit;
 
   //  Query the database for a list of all results
+  // 按 year 降序，然後按 number 升序排序
   const resultsPromise = Model.find({
     removed: false,
   })
     .skip(skip)
     .limit(limit)
-    .sort({ created: -1 })
+    .sort({ year: -1, number: 1 })
     .populate('createdBy', 'name');
 
   // Counting the total documents

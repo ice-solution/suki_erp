@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const Quote = mongoose.model('Quote');
 const SupplierQuote = mongoose.model('SupplierQuote');
+const ShipQuote = mongoose.model('ShipQuote');
 const Invoice = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
@@ -33,17 +34,51 @@ const create = async (req, res) => {
     }
 
     // 根據 Invoice Number 查找相關的文件
-    const quotations = await Quote.find({ invoiceNumber, removed: false });
-    const supplierQuotations = await SupplierQuote.find({ invoiceNumber, removed: false });
-    const invoices = await Invoice.find({ invoiceNumber, removed: false });
+    // 支持兩種查找方式：1) invoiceNumber 字段直接匹配 2) numberPrefix-number 組合匹配
+    // 解析 invoiceNumber (例如 "SML-48133" -> prefix: "SML", number: "48133")
+    let numberPrefix = null;
+    let number = null;
+    if (invoiceNumber && invoiceNumber.includes('-')) {
+      const parts = invoiceNumber.split('-');
+      if (parts.length >= 2) {
+        numberPrefix = parts[0];
+        number = parts.slice(1).join('-'); // 支持多個 "-" 的情況
+      }
+    }
 
-    console.log(`找到 ${quotations.length} 個quotations, ${supplierQuotations.length} 個supplier quotations, ${invoices.length} 個invoices`);
+    const findQuery = {
+      $or: [
+        { invoiceNumber, removed: false }
+      ]
+    };
+    
+    // 如果能夠解析出 prefix 和 number，也查找組合匹配
+    if (numberPrefix && number) {
+      findQuery.$or.push({
+        numberPrefix,
+        number,
+        removed: false
+      });
+    }
 
-    // 計算成本價 (quotations總額)
+    const quotations = await Quote.find(findQuery);
+    const supplierQuotations = await SupplierQuote.find(findQuery);
+    const shipQuotations = await ShipQuote.find(findQuery);
+    const invoices = await Invoice.find(findQuery);
+
+    console.log(`找到 ${quotations.length} 個quotations, ${supplierQuotations.length} 個supplier quotations, ${shipQuotations.length} 個ship quotations, ${invoices.length} 個invoices`);
+
+    // 計算成本價 (quotations總額 + shipQuotations總額)
     let costPrice = 0;
     quotations.forEach(quote => {
       if (quote.total) {
         costPrice = calculate.add(costPrice, quote.total);
+      }
+    });
+    // 吊船quote也計入成本價
+    shipQuotations.forEach(shipQuote => {
+      if (shipQuote.total) {
+        costPrice = calculate.add(costPrice, shipQuote.total);
       }
     });
 
@@ -103,6 +138,16 @@ const create = async (req, res) => {
       }
     });
 
+    shipQuotations.forEach(shipQuote => {
+      if (shipQuote.clients) {
+        shipQuote.clients.forEach(client => {
+          if (client._id) {
+            supplierIds.add(client._id.toString());
+          }
+        });
+      }
+    });
+
     // 創建項目數據
     const projectData = {
       name: projectName,
@@ -116,6 +161,7 @@ const create = async (req, res) => {
       endDate: endDate ? new Date(endDate) : null,
       quotations: quotations.map(q => q._id),
       supplierQuotations: supplierQuotations.map(sq => sq._id),
+      shipQuotations: shipQuotations.map(sq => sq._id),
       invoices: invoices.map(i => i._id),
       suppliers: Array.from(supplierIds),
       contractors: contractors || [],
@@ -129,20 +175,11 @@ const create = async (req, res) => {
     const project = await new Project(projectData).save();
 
     // 更新相關的quotations，添加project關聯
-    await Quote.updateMany(
-      { invoiceNumber, removed: false },
-      { project: project._id }
-    );
-
-    await SupplierQuote.updateMany(
-      { invoiceNumber, removed: false },
-      { project: project._id }
-    );
-
-    await Invoice.updateMany(
-      { invoiceNumber, removed: false },
-      { project: project._id }
-    );
+    // 使用相同的查找邏輯來更新
+    await Quote.updateMany(findQuery, { project: project._id });
+    await SupplierQuote.updateMany(findQuery, { project: project._id });
+    await ShipQuote.updateMany(findQuery, { project: project._id });
+    await Invoice.updateMany(findQuery, { project: project._id });
 
     // 重新查詢項目以獲取完整的populated數據
     const populatedProject = await Project.findById(project._id);
@@ -150,7 +187,7 @@ const create = async (req, res) => {
     return res.status(200).json({
       success: true,
       result: populatedProject,
-      message: `Project created successfully. Linked ${quotations.length} quotations, ${supplierQuotations.length} supplier quotations, and ${invoices.length} invoices.`,
+      message: `Project created successfully. Linked ${quotations.length} quotations, ${supplierQuotations.length} supplier quotations, ${shipQuotations.length} ship quotations, and ${invoices.length} invoices.`,
     });
 
   } catch (error) {
