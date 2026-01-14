@@ -3,7 +3,28 @@ const mongoose = require('mongoose');
 
 module.exports = downloadPdf = async (req, res, { directory, id }) => {
   try {
-    const modelName = directory.slice(0, 1).toUpperCase() + directory.slice(1);
+    // 處理特殊模型名稱映射
+    const modelNameMap = {
+      'supplierquote': 'SupplierQuote',
+      'shipquote': 'ShipQuote',
+      'contractoremployee': 'ContractorEmployee',
+      'projectitem': 'ProjectItem',
+      'paymentmode': 'PaymentMode',
+      'chartofaccounts': 'ChartOfAccounts',
+      'journalentry': 'JournalEntry',
+      'accountingperiod': 'AccountingPeriod',
+      'warehouseinventory': 'WarehouseInventory',
+      'warehousetransaction': 'WarehouseTransaction',
+      'workprogress': 'WorkProgress',
+      'financialreport': 'FinancialReport',
+    };
+    
+    // 如果目錄名稱在映射表中，使用映射值；否則使用標準轉換
+    let modelName = modelNameMap[directory.toLowerCase()];
+    if (!modelName) {
+      modelName = directory.slice(0, 1).toUpperCase() + directory.slice(1);
+    }
+    
     if (mongoose.models[modelName]) {
       const Model = mongoose.model(modelName);
       const result = await Model.findOne({

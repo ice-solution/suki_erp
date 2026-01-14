@@ -313,7 +313,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
       </Descriptions>
       
       <Descriptions title={translate('Supplier Quote Details')}>
-        <Descriptions.Item label="Supplier Type">{currentErp.numberPrefix}</Descriptions.Item>
+        <Descriptions.Item label="Supplier Type">{currentErp.numberPrefix && currentErp.numberPrefix !== 'XX' ? currentErp.numberPrefix : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>

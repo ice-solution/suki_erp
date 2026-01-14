@@ -88,7 +88,17 @@ function Sidebar({ collapsible, isMobile = false }) {
     {
       key: 'project',
       icon: <ProjectOutlined />,
-      label: <Link to={'/project'}>{translate('project_management')}</Link>,
+      label: translate('project_management'),
+      children: [
+        {
+          key: 'project-list',
+          label: <Link to={'/project'}>{translate('project_management')}</Link>,
+        },
+        {
+          key: 'project-report',
+          label: <Link to={'/project/report'}>項目報告</Link>,
+        },
+      ],
     },
     {
       key: 'contractor',
@@ -122,7 +132,15 @@ function Sidebar({ collapsible, isMobile = false }) {
       if (currentPath !== location.pathname) {
         if (location.pathname === '/') {
           setCurrentPath('dashboard');
-        } else setCurrentPath(location.pathname.slice(1));
+        } else {
+          const path = location.pathname.slice(1);
+          // 處理項目報告路徑
+          if (path === 'project/report') {
+            setCurrentPath('project-report');
+          } else {
+            setCurrentPath(path);
+          }
+        }
       }
   }, [location, currentPath]);
 

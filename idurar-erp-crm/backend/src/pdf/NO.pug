@@ -1,0 +1,406 @@
+doctype html
+html
+  head
+    link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    style.
+      .sheet {
+        margin: 0;
+        width: 100%; 
+        height: 297mm;
+      }
+
+      body{
+        width: 100%; 
+        margin: 0;
+        padding: 0px 20px;
+        background: #ffffff;
+        font-family: Arial, sans-serif;
+        font-size:12px;
+        color:#222;
+      }
+      *, *:before, *:after {
+        box-sizing: inherit;
+        color:#222
+      }
+
+      .clearfix {
+        display: block; }
+      .clearfix:after {
+        content: "";
+        display: table;
+        clear: both;
+      }
+      .left{
+        float:left;
+      }
+      .right{
+        float:right;
+      }
+      
+      .header-section {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      
+      .company-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+      }
+      
+      .logo-section {
+        display: flex;
+        align-items: center;
+      }
+      
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin-right: 15px;
+      }
+      
+      .company-name {
+        font-size: 18px;
+        font-weight: bold;
+        color: #222;
+        line-height: 1.4;
+      }
+      
+      .company-name-english {
+        font-size: 14px;
+        font-weight: normal;
+        color: #666;
+      }
+      
+      .document-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin: 20px 0;
+        color: #222;
+      }
+      
+      .document-info {
+        text-align: right;
+        margin-bottom: 20px;
+        font-size: 12px;
+      }
+      
+      .info-section {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      
+      .info-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      
+      .info-label {
+        width: 100px;
+        font-weight: bold;
+        color: #222;
+      }
+      
+      .info-value {
+        flex: 1;
+        color: #222;
+      }
+      
+      .info-row-two-col {
+        display: flex;
+        margin-bottom: 8px;
+      }
+      
+      .info-col {
+        flex: 1;
+        margin-right: 20px;
+      }
+      
+      .info-col:last-child {
+        margin-right: 0;
+      }
+      
+      .table-container {
+        width: 100%;
+        margin: 20px 0;
+      }
+      
+      .quotation-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+      
+      .quotation-table th {
+        background-color: #f0f0f0;
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+        font-weight: bold;
+        font-size: 12px;
+      }
+      
+      .quotation-table td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        font-size: 12px;
+      }
+      
+      .quotation-table .item-content {
+        width: 40%;
+      }
+      
+      .quotation-table .item-qty {
+        width: 15%;
+        text-align: center;
+      }
+      
+      .quotation-table .item-unit {
+        width: 20%;
+        text-align: right;
+      }
+      
+      .quotation-table .item-amount {
+        width: 25%;
+        text-align: right;
+      }
+      
+      .summary-section {
+        width: 100%;
+        margin: 20px 0;
+        text-align: right;
+      }
+      
+      .summary-row {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      
+      .summary-label {
+        width: 150px;
+        text-align: right;
+        font-weight: bold;
+        padding-right: 10px;
+      }
+      
+      .summary-value {
+        width: 150px;
+        text-align: right;
+      }
+      
+      .summary-total {
+        font-weight: bold;
+        font-size: 14px;
+        border-top: 2px solid #222;
+        padding-top: 5px;
+        margin-top: 5px;
+      }
+      
+      .notes-section {
+        margin-top: 20px;
+        font-size: 12px;
+      }
+      
+      .notes-title {
+        font-weight: bold;
+        margin-bottom: 5px;
+      }
+      
+      .signature-section {
+        margin-top: 40px;
+        width: 100%;
+      }
+      
+      .signature-grid {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 20px;
+      }
+      
+      .signature-item {
+        flex: 1;
+        margin-right: 20px;
+        text-align: center;
+      }
+      
+      .signature-item:last-child {
+        margin-right: 0;
+      }
+      
+      .signature-label {
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+      
+      .signature-line {
+        border-bottom: 1px solid #222;
+        width: 100%;
+        height: 40px;
+        margin: 0 auto;
+      }
+      
+      .issuer-section {
+        margin-top: 30px;
+        text-align: center;
+      }
+      
+      .issuer-name {
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+      
+      .issuer-stamp {
+        border-bottom: 1px solid #222;
+        width: 200px;
+        height: 50px;
+        margin: 0 auto;
+      }
+      
+      .footer-section {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 11px;
+        color: #666;
+        border-top: 1px solid #ddd;
+        padding-top: 15px;
+      }
+      
+      .footer-address {
+        margin-bottom: 5px;
+        line-height: 1.6;
+      }
+      
+      .footer-contact {
+        margin-top: 10px;
+      }
+      
+      .end-marker {
+        text-align: center;
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+
+body
+  .header-section
+    .company-header
+      .logo-section
+        img.logo(src=settings.public_server_file+settings.company_logo)
+        .company-name-section
+          .company-name #{settings.company_name}
+          .company-name-english Wing Shun Metal Eng Co (O/B Super Pioneer Ltd)
+    
+    .document-title 報價
+    
+    .document-info
+      .info-row
+        .info-label 檔案編號:
+        .info-value #{model.numberPrefix || 'NO'}-#{model.number}/#{model.year || ''}
+      .info-row
+        .info-label 日期:
+        .info-value #{moment(model.date).format('DD-MM-YYYY')}
+    
+    .info-section
+      .info-row
+        .info-label 致:
+        .info-value
+          - const client = model.client || (model.clients && model.clients[0]) || {}
+          | #{client.name || ''}
+      .info-row
+        .info-label
+        .info-value #{client.address || ''}
+      .info-row
+        .info-label 聯絡人:
+        .info-value #{model.contactPerson || client.contactPerson || ''}
+      .info-row
+        .info-label 工程地址:
+        .info-value #{model.address || ''}
+      .info-row
+        .info-label 機號:
+        .info-value #{model.content || model.notes || ''}
+    
+    .table-container
+      table.quotation-table
+        thead
+          tr
+            th.item-content 工程內容
+            th.item-qty 數量
+            th.item-unit 單價 HKD $
+            th.item-amount 金額 HKD $
+        tbody
+          - const allItems = (model.items || []).concat((model.materials || []).map(m => ({ itemName: m.itemName, description: m.description || '', quantity: m.quantity, price: m.price, total: (m.quantity || 0) * (m.price || 0) })))
+          each item in allItems
+            tr
+              td.item-content #{item.itemName}#{item.description ? ' - ' + item.description : ''}
+              td.item-qty #{item.quantity}
+              td.item-unit #{moneyFormatter({amount:item.price || 0})}
+              td.item-amount #{moneyFormatter({amount:item.total || 0})}
+          if allItems.length === 0
+            tr
+              td(colspan='4' style='text-align: center;') 無項目
+    
+    .summary-section
+      .summary-row
+        .summary-label 合共港幣:
+        .summary-value #{moneyFormatter({amount:model.subTotal || 0})}
+      .summary-row
+        .summary-label 折扣%:
+        .summary-value #{model.discount || 0}%
+      .summary-row
+        .summary-label 折扣金額:
+        .summary-value #{moneyFormatter({amount:model.discountTotal || 0})}
+      .summary-row.summary-total
+        .summary-label 總金額:
+        .summary-value #{moneyFormatter({amount:model.total || 0})}
+    
+    .notes-section
+      .notes-title 注:
+      .notes-content
+        | 1) 此報價有效期為90天
+    
+    .signature-section
+      .signature-grid
+        .signature-item
+          .signature-label 制單人
+          .signature-line
+        .signature-item
+          .signature-label 核實者
+          .signature-line
+        .signature-item
+          .signature-label 同意及確定
+          .signature-line
+        .signature-item
+          .signature-label 公司簽署及蓋章
+          .signature-line
+      
+      .issuer-section
+        .issuer-name 發出者: #{settings.company_name || '永順鐵器工程公司'}
+        .issuer-stamp
+    
+    .end-marker End
+    
+    .footer-section
+      .footer-address
+        | #{settings.company_address || '新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室'}
+        if settings.company_address_english
+          br
+          | #{settings.company_address_english}
+        else
+          br
+          | Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T.
+      .footer-contact
+        | 電話: #{settings.company_phone || '2776 4793, 2756 7579'}
+        | &nbsp;&nbsp;&nbsp;
+        | 傳真: #{settings.company_fax || settings.company_phone || '2776 4796'}
+        br
+        | Tel: #{settings.company_phone || '2776 4793, 2756 7579'}
+        | &nbsp;&nbsp;&nbsp;
+        | Fax: #{settings.company_fax || settings.company_phone || '2776 4796'}

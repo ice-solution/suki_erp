@@ -7,7 +7,7 @@ const { getData } = require('@/middlewares/serverData');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 
-const pugFiles = ['invoice', 'offer', 'quote', 'payment'];
+const pugFiles = ['invoice', 'offer', 'quote', 'payment', 'sml', 'no', 'po', 'swp', 's', 'e', 'y'];
 
 require('dotenv').config({ path: '.env' });
 require('dotenv').config({ path: '.env.local' });
@@ -28,37 +28,64 @@ exports.generatePdf = async (
 
     // render pdf html
 
-    if (pugFiles.includes(modelName.toLowerCase())) {
-      // Compile Pug template
+    // Compile Pug template
+    const settings = await loadSettings();
+    const selectedLang = settings['idurar_app_language'];
+    const translate = useLanguage({ selectedLang });
 
-      const settings = await loadSettings();
-      const selectedLang = settings['idurar_app_language'];
-      const translate = useLanguage({ selectedLang });
+    const {
+      currency_symbol,
+      currency_position,
+      decimal_sep,
+      thousand_sep,
+      cent_precision,
+      zero_format,
+    } = settings;
 
-      const {
+    const { moneyFormatter } = useMoney({
+      settings: {
         currency_symbol,
         currency_position,
         decimal_sep,
         thousand_sep,
         cent_precision,
         zero_format,
-      } = settings;
+      },
+    });
+    const { dateFormat } = useDate({ settings });
 
-      const { moneyFormatter } = useMoney({
-        settings: {
-          currency_symbol,
-          currency_position,
-          decimal_sep,
-          thousand_sep,
-          cent_precision,
-          zero_format,
-        },
-      });
-      const { dateFormat } = useDate({ settings });
+    settings.public_server_file = process.env.PUBLIC_SERVER_FILE;
 
-      settings.public_server_file = process.env.PUBLIC_SERVER_FILE;
+    // 根據 numberPrefix 選擇模板
+    let templateName = modelName.toLowerCase();
+    
+    // 如果是 Quote，根據 numberPrefix 選擇模板
+    if ((modelName.toLowerCase() === 'quote' || modelName === 'Quote') && result.numberPrefix) {
+      if (result.numberPrefix === 'SML') {
+        templateName = 'sml';
+      } else {
+        // 默認使用 quote 模板
+        templateName = 'quote';
+      }
+    }
+    
+    // 如果是 SupplierQuote，根據 numberPrefix 選擇模板
+    if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
+      const prefixMap = {
+        'NO': 'no',
+        'PO': 'po',
+        'SWP': 'swp',
+        'S': 's',
+        'E': 'e',
+        'Y': 'y'
+      };
+      templateName = prefixMap[result.numberPrefix] || 's'; // 默認使用 's' 模板
+    }
 
-      const htmlContent = pug.renderFile('src/pdf/' + modelName + '.pug', {
+    // 檢查模板是否存在於 pugFiles 中
+    if (pugFiles.includes(templateName)) {
+
+      const htmlContent = pug.renderFile('src/pdf/' + templateName + '.pug', {
         model: result,
         settings,
         translate,

@@ -32,32 +32,8 @@ const calculateWorkDaysFromAttendance = async (projectId, contractorEmployeeId) 
     // 工作天數 = 不同日期的數量
     const workDays = uniqueDates.size;
 
-    // 查找該員工的工資記錄
-    const salaryRecord = project.salaries.find(
-      salary => salary.contractorEmployee.toString() === contractorEmployeeId.toString()
-    );
-
-    if (!salaryRecord) {
-      // 如果沒有工資記錄，返回計算出的天數但不更新
-      return workDays;
-    }
-
-    const salaryId = salaryRecord._id;
-    const dailySalary = salaryRecord.dailySalary || 0;
-    const totalSalary = dailySalary * workDays;
-
-    // 更新該員工的工作天數和總工資
-    await Project.findOneAndUpdate(
-      { _id: projectId, 'salaries._id': salaryId },
-      {
-        $set: {
-          'salaries.$.workDays': workDays,
-          'salaries.$.totalSalary': totalSalary,
-          'salaries.$.updated': new Date()
-        }
-      }
-    );
-
+    // 只返回工作天數，不更新記錄
+    // 更新記錄應該由調用者（如 updateSalary）來處理
     return workDays;
   } catch (error) {
     console.error('計算工作天數錯誤:', error);

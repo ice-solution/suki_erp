@@ -13,7 +13,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   },
   numberPrefix: {
     type: String,
-    enum: ['S', 'NO'],
+    enum: ['NO', 'PO', 'S', 'SWP', 'E', 'Y'],
     default: 'S',
     required: true,
   },

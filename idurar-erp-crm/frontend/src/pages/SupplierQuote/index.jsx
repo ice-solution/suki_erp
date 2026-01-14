@@ -22,7 +22,7 @@ export default function SupplierQuote() {
       title: translate('Number'),
       dataIndex: 'number',
       render: (number, record) => {
-        const quoteType = record.numberPrefix || 'QU';
+        const quoteType = record.numberPrefix && record.numberPrefix !== 'XX' ? record.numberPrefix : 'QU';
         return `${quoteType}-${number}`;
       },
     },

@@ -52,6 +52,7 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/:projectId/attendance/:attendanceId`).patch(catchErrors(controller['updateAttendance']));
     router.route(`/${entity}/:projectId/attendance/:attendanceId`).delete(catchErrors(controller['deleteAttendance']));
     router.route(`/${entity}/:projectId/recalculate-workdays`).post(catchErrors(controller['recalculateWorkDays']));
+    router.route(`/${entity}/report`).get(catchErrors(controller['getProjectReport']));
   }
 
   if (entity === 'workprogress') {

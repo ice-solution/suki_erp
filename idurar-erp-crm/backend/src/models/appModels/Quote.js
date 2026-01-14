@@ -13,7 +13,7 @@ const quoteSchema = new mongoose.Schema({
   },
   numberPrefix: {
     type: String,
-    enum: ['SML', 'QU', 'XX'],
+    enum: ['SML', 'QU'],
     default: 'QU',
     required: true,
   },

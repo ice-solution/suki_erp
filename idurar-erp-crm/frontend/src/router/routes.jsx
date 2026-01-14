@@ -34,6 +34,7 @@ const Project = lazy(() => import('@/pages/Project/index'));
 const ProjectCreate = lazy(() => import('@/pages/Project/ProjectCreate'));
 const ProjectRead = lazy(() => import('@/pages/Project/ProjectRead'));
 const ProjectUpdate = lazy(() => import('@/pages/Project/ProjectUpdate'));
+const ProjectReport = lazy(() => import('@/pages/ProjectReport'));
 const WorkProgressCreate = lazy(() => import('@/pages/WorkProgress/WorkProgressCreate'));
 const WorkProgressRead = lazy(() => import('@/pages/WorkProgress/WorkProgressRead'));
 const WorkProgressUpdate = lazy(() => import('@/pages/WorkProgress/WorkProgressUpdate'));
@@ -189,6 +190,10 @@ let routes = {
     {
       path: '/project/update/:id',
       element: <ProjectUpdate />,
+    },
+    {
+      path: '/project/report',
+      element: <ProjectReport />,
     },
     {
       path: '/workprogress/create',

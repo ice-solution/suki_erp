@@ -1,0 +1,320 @@
+doctype html
+html
+  head
+    link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    style.
+      .sheet {
+        margin: 0;
+        width: 100%; 
+        height: 297mm;
+      }
+
+      body{
+        width: 100%; 
+        margin: 0;
+        padding: 0px 20px;
+        background: #ffffff;
+        font-family: Arial, sans-serif;
+        font-size:12px;
+        color:#222;
+      }
+      *, *:before, *:after {
+        box-sizing: inherit;
+        color:#222
+      }
+
+      .clearfix {
+        display: block; }
+      .clearfix:after {
+        content: "";
+        display: table;
+        clear: both;
+      }
+      .left{
+        float:left;
+      }
+      .right{
+        float:right;
+      }
+      
+      .header-section {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      
+      .company-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 15px;
+      }
+      
+      .logo-section {
+        display: flex;
+        align-items: center;
+      }
+      
+      .logo {
+        width: 80px;
+        height: 80px;
+        margin-right: 15px;
+      }
+      
+      .company-name {
+        font-size: 18px;
+        font-weight: bold;
+        color: #222;
+        line-height: 1.4;
+      }
+      
+      .company-name-english {
+        font-size: 14px;
+        font-weight: normal;
+        color: #666;
+      }
+      
+      .company-ownership {
+        font-size: 10px;
+        color: #666;
+        margin-top: 5px;
+      }
+      
+      .certification-section {
+        text-align: right;
+        font-size: 10px;
+        color: #666;
+      }
+      
+      .certification-logos {
+        margin-bottom: 5px;
+      }
+      
+      .document-title {
+        text-align: center;
+        font-size: 24px;
+        font-weight: bold;
+        margin: 30px 0;
+        color: #222;
+      }
+      
+      .info-section {
+        width: 100%;
+        margin-bottom: 20px;
+      }
+      
+      .info-row {
+        display: flex;
+        margin-bottom: 8px;
+        font-size: 12px;
+      }
+      
+      .info-label {
+        width: 120px;
+        font-weight: bold;
+        color: #222;
+      }
+      
+      .info-value {
+        flex: 1;
+        color: #222;
+      }
+      
+      .info-row-two-col {
+        display: flex;
+        margin-bottom: 8px;
+      }
+      
+      .info-col {
+        flex: 1;
+        margin-right: 20px;
+      }
+      
+      .info-col:last-child {
+        margin-right: 0;
+      }
+      
+      .table-container {
+        width: 100%;
+        margin: 20px 0;
+      }
+      
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+      }
+      
+      .items-table th {
+        background-color: #f0f0f0;
+        border: 1px solid #ddd;
+        padding: 10px;
+        text-align: left;
+        font-weight: bold;
+        font-size: 12px;
+      }
+      
+      .items-table td {
+        border: 1px solid #ddd;
+        padding: 10px;
+        font-size: 12px;
+      }
+      
+      .items-table .item-name {
+        width: 60%;
+      }
+      
+      .items-table .item-qty {
+        width: 20%;
+        text-align: center;
+      }
+      
+      .items-table .item-unit {
+        width: 20%;
+        text-align: center;
+      }
+      
+      .acknowledgement-section {
+        margin-top: 40px;
+        width: 100%;
+      }
+      
+      .acknowledgement-title {
+        text-align: center;
+        font-size: 20px;
+        font-weight: bold;
+        margin-bottom: 20px;
+      }
+      
+      .acknowledgement-info {
+        display: flex;
+        justify-content: space-around;
+        margin-bottom: 30px;
+      }
+      
+      .acknowledgement-item {
+        text-align: center;
+      }
+      
+      .acknowledgement-label {
+        font-weight: bold;
+        margin-bottom: 10px;
+        font-size: 12px;
+      }
+      
+      .acknowledgement-line {
+        border-bottom: 1px solid #222;
+        width: 150px;
+        height: 30px;
+        margin: 0 auto;
+      }
+      
+      .footer-section {
+        margin-top: 40px;
+        text-align: center;
+        font-size: 11px;
+        color: #666;
+        border-top: 1px solid #ddd;
+        padding-top: 15px;
+      }
+      
+      .footer-address {
+        margin-bottom: 5px;
+        line-height: 1.6;
+      }
+      
+      .footer-contact {
+        margin-top: 10px;
+      }
+
+body
+  .header-section
+    .company-header
+      .logo-section
+        img.logo(src=settings.public_server_file+settings.company_logo)
+        .company-name-section
+          .company-name #{settings.company_name}
+          .company-name-english SUPER MAX ENGINEERING CO.
+          .company-ownership (Wholly Owned By Super Pioneer Ltd.)
+      .certification-section
+        .certification-logos
+          | ISO 9001: 2008
+          br
+          | Certificate No: Q368
+        .page-number
+          | Page
+    
+    .document-title 簽收單
+    
+    .info-section
+      .info-row
+        .info-label TO:
+        .info-value
+          - const client = model.client || (model.clients && model.clients[0]) || {}
+          | #{client.name || ''}
+      .info-row
+        .info-label 送貨地址:
+        .info-value #{model.address || client.address || ''}
+      .info-row-two-col
+        .info-col
+          .info-row
+            .info-label Invoice NO:
+            .info-value #{model.invoiceNumber || ''}
+          .info-row
+            .info-label 報價編號:
+            .info-value #{model.numberPrefix || 'S'}-#{model.number}/#{model.year || ''}
+          .info-row
+            .info-label Your P/O NO:
+            .info-value #{model.poNumber || 'N/A'}
+        .info-col
+          .info-row
+            .info-label 收貨人:
+            .info-value #{model.contactPerson || ''}
+          .info-row
+            .info-label 日期:
+            .info-value #{moment(model.date).format('DD/MM/YYYY')}
+          .info-row
+            .info-label 上單編號:
+            .info-value #{model.numberPrefix || 'S'}-#{model.number}/#{model.year || ''}
+    
+    .table-container
+      table.items-table
+        thead
+          tr
+            th.item-name 項目
+            th.item-qty 數量
+            th.item-unit 單位
+        tbody
+          - const allItems = (model.items || []).concat((model.materials || []).map(m => ({ itemName: m.itemName, quantity: m.quantity, price: m.price, warehouse: m.warehouse })))
+          each item in allItems
+            tr
+              td.item-name #{item.itemName}
+              td.item-qty #{item.quantity}
+              td.item-unit Pcs
+          if allItems.length === 0
+            tr
+              td(colspan='3' style='text-align: center;') 無項目
+    
+    .acknowledgement-section
+      .acknowledgement-title 簽收單
+      .acknowledgement-info
+        .acknowledgement-item
+          .acknowledgement-label 裝箱方式
+          .acknowledgement-line
+        .acknowledgement-item
+          .acknowledgement-label 簽收人
+          .acknowledgement-line
+        .acknowledgement-item
+          .acknowledgement-label 日期
+          .acknowledgement-line
+    
+    .footer-section
+      .footer-address
+        | #{settings.company_address || '新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室'}
+        if settings.company_address_english
+          br
+          | #{settings.company_address_english}
+      .footer-contact
+        | 電話: #{settings.company_phone || '2776 4793, 2756 7579'}
+        | &nbsp;&nbsp;&nbsp;
+        | 傳真: #{settings.company_fax || settings.company_phone || '2776 4796'}

@@ -56,7 +56,28 @@ const updateAttendance = async (req, res) => {
 
     // 根據打咭記錄自動計算並更新該員工的工作天數
     try {
-      await calculateWorkDaysFromAttendance(projectId, contractorEmployeeId);
+      const workDays = await calculateWorkDaysFromAttendance(projectId, contractorEmployeeId);
+      
+      // 查找該員工的工資記錄並更新
+      const salaryRecord = finalProject.salaries.find(
+        salary => salary.contractorEmployee.toString() === contractorEmployeeId.toString()
+      );
+      
+      if (salaryRecord) {
+        const dailySalary = salaryRecord.dailySalary || 0;
+        const totalSalary = dailySalary * workDays;
+        
+        await Project.findOneAndUpdate(
+          { _id: projectId, 'salaries._id': salaryRecord._id },
+          {
+            $set: {
+              'salaries.$.workDays': workDays,
+              'salaries.$.totalSalary': totalSalary,
+              'salaries.$.updated': new Date()
+            }
+          }
+        );
+      }
     } catch (error) {
       console.error('計算工作天數時發生錯誤:', error);
       // 即使計算失敗，打咭記錄仍已更新成功，所以繼續返回成功響應

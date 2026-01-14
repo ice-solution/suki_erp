@@ -45,10 +45,14 @@ const update = async (req, res) => {
   //Calculate the items array with subTotal, total, discountTotal
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
-    //sub total
-    subTotal = calculate.add(subTotal, total);
     //item total
     item['total'] = total;
+    // 如果價格是負數，不計入 subtotal
+    if (item['price'] < 0) {
+      return; // 跳過負數價格項目，不計入 subtotal
+    }
+    //sub total
+    subTotal = calculate.add(subTotal, total);
   });
   discountTotal = calculate.multiply(subTotal, discount / 100);
   total = calculate.sub(subTotal, discountTotal);

@@ -327,10 +327,14 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
       
-      // 計算subTotal或使用現有的subTotal
+      // 計算subTotal或使用現有的subTotal（負數價格不計入）
       let calculatedSubTotal = 0;
       if (currentItems && currentItems.length > 0) {
         currentItems.forEach((item) => {
+          // 如果價格是負數，不計入 subtotal
+          if (item && item.price < 0) {
+            return; // 跳過負數價格項目
+          }
           if (item && item.quantity && item.price) {
             let itemTotal = calculate.multiply(item.quantity, item.price);
             calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
@@ -376,11 +380,15 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當items改變時
+  // 計算subTotal當items改變時（負數價格不計入）
   useEffect(() => {
     let newSubTotal = 0;
     if (items && items.length > 0) {
       items.forEach((item) => {
+        // 如果價格是負數，不計入 subtotal
+        if (item && item.price < 0) {
+          return; // 跳過負數價格項目
+        }
         if (item && item.quantity && item.price) {
           let itemTotal = calculate.multiply(item.quantity, item.price);
           newSubTotal = calculate.add(newSubTotal, itemTotal);
@@ -464,7 +472,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
   // 添加或更新項目到列表
   const addItemToList = () => {
-    if (!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0) {
+    // 允許負數價格，只需要項目名稱和數量 > 0
+    if (!currentItem.itemName || currentItem.quantity <= 0) {
       return;
     }
 
@@ -541,14 +550,26 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       dataIndex: 'price',
       key: 'price',
       width: '12%',
-      render: (price) => moneyFormatter({ amount: price || 0 }),
+      render: (price) => {
+        // 如果是負數價格，用紅色顯示
+        if (price < 0) {
+          return <span style={{ color: '#ff4d4f' }}>{moneyFormatter({ amount: price || 0 })}</span>;
+        }
+        return moneyFormatter({ amount: price || 0 });
+      },
     },
     {
       title: translate('Total'),
       dataIndex: 'total',
       key: 'total',
       width: '10%',
-      render: (total) => moneyFormatter({ amount: total || 0 }),
+      render: (total) => {
+        // 如果是負數總計，用紅色顯示
+        if (total < 0) {
+          return <span style={{ color: '#ff4d4f' }}>{moneyFormatter({ amount: total || 0 })}</span>;
+        }
+        return moneyFormatter({ amount: total || 0 });
+      },
     },
     {
       title: '',
@@ -612,8 +633,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               options={[
                 { value: 'SML', label: 'SML' },
                 { value: 'QU', label: 'QU' },
-                { value: 'XX', label: 'XX' },
-              ]}
+              ].filter(option => option.value !== 'XX')}
             />
           </Form.Item>
         </Col>
@@ -865,8 +885,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col span={2}>
           <InputNumber 
-            placeholder="價格"
-            min={0}
+            placeholder="價格（可輸入負數）"
             value={currentItem.price}
             onChange={(value) => updateCurrentItem('price', value)}
             style={{ width: '100%' }}
@@ -874,19 +893,11 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
           />
         </Col>
         <Col span={2}>
-          <Input 
-            placeholder="總計"
-            value={moneyFormatter({ amount: currentItem.total || 0 })}
-            disabled
-            style={{ width: '100%' }}
-          />
-        </Col>
-        <Col span={2}>
           <Button 
             type="primary" 
             icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addItemToList}
-            disabled={!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0}
+            disabled={!currentItem.itemName || currentItem.quantity <= 0}
             key={editingItemKey ? 'update-btn' : 'add-btn'}
             style={{ width: '100%' }}
           >

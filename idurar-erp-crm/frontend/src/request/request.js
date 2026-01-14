@@ -203,10 +203,20 @@ const request = {
       return errorHandler(error);
     }
   },
-  get: async ({ entity }) => {
+  get: async ({ entity, params = {} }) => {
     try {
       includeToken();
-      const response = await axios.get(entity);
+      let query = '';
+      if (Object.keys(params).length > 0) {
+        query = '?';
+        for (var key in params) {
+          if (params[key] !== undefined && params[key] !== null) {
+            query += encodeURIComponent(key) + '=' + encodeURIComponent(params[key]) + '&';
+          }
+        }
+        query = query.slice(0, -1);
+      }
+      const response = await axios.get(entity + query);
       return response.data;
     } catch (error) {
       return errorHandler(error);

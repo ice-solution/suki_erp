@@ -281,6 +281,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setMaterialsLoading(true);
       console.log('🔍 Fetching Warehouse Items from API...', selectedWarehouse ? `for warehouse ${selectedWarehouse}` : 'all warehouses');
       
+      // 如果選擇「其他」，不從 API 獲取數據
+      if (selectedWarehouse === '其他') {
+        setWarehouseItems([]);
+        setMaterialsLoading(false);
+        return;
+      }
+      
       // 使用正確的倉庫 API
       const entity = selectedWarehouse 
         ? `warehouse?warehouse=${selectedWarehouse}` 
@@ -419,9 +426,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       })));
       setMaterials(currentMaterials.map((material, index) => ({ ...material, key: index })));
       
-      // 計算subTotal或使用現有的subTotal（只計算 materials，不計算 items）
+      // 計算subTotal或使用現有的subTotal（計算 materials 和 items）
       let calculatedSubTotal = 0;
-      // 只計算 materials 的總計，不計算 items 的總計
+      
+      // 計算 materials 的總計
       if (currentMaterials && currentMaterials.length > 0) {
         currentMaterials.forEach((material) => {
           if (material && material.quantity && material.price) {
@@ -430,6 +438,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           }
         });
       }
+      
+      // 計算 items 的總計（負數會自動減去）
+      if (currentItems && currentItems.length > 0) {
+        currentItems.forEach((item) => {
+          if (item && item.quantity && item.price !== undefined && item.price !== null) {
+            // 允許負數價格，負數會自動從總數中減去
+            let itemTotal = calculate.multiply(item.quantity, item.price);
+            calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
+          }
+        });
+      }
+      
       setSubTotal(calculatedSubTotal || currentSubTotal);
       
       // 處理客戶數據（新舊格式兼容）
@@ -456,10 +476,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當materials改變時（只計算 materials，不計算 items）
+  // 計算subTotal當materials或items改變時（計算 materials 和 items）
   useEffect(() => {
     let newSubTotal = 0;
-    // 只計算 materials 的總計，不計算 items 的總計
+    
+    // 計算 materials 的總計
     if (materials && materials.length > 0) {
       materials.forEach((material) => {
         if (material && material.quantity && material.price) {
@@ -468,6 +489,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         }
       });
     }
+    
+    // 計算 items 的總計（負數會自動減去）
+    if (items && items.length > 0) {
+      items.forEach((item) => {
+        if (item && item.quantity && item.price !== undefined && item.price !== null) {
+          // 允許負數價格，負數會自動從總數中減去
+          let itemTotal = calculate.multiply(item.quantity, item.price);
+          newSubTotal = calculate.add(newSubTotal, itemTotal);
+        }
+      });
+    }
+    
     setSubTotal(newSubTotal);
     
     // 更新表單的items和materials字段
@@ -475,7 +508,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       items: items,
       materials: materials 
     });
-  }, [materials, form]);
+  }, [materials, items, form]);
 
   // 同步materials到表單
   useEffect(() => {
@@ -593,7 +626,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 添加或更新項目到列表
   const addItemToList = () => {
-    if (!currentItem.itemName || currentItem.quantity <= 0 || currentItem.price < 0) {
+    // 允許負數價格，只檢查必要字段
+    if (!currentItem.itemName || currentItem.quantity <= 0) {
       return;
     }
 
@@ -712,6 +746,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 搜索倉庫項目
   const handleMaterialSearch = (searchText) => {
+    // 如果選擇了「其他」，不顯示任何項目（需要手動輸入）
+    if (currentMaterial.warehouse === '其他') {
+      return [];
+    }
+    
     // 如果選擇了倉庫，只顯示該倉庫的項目
     const filteredItems = currentMaterial.warehouse 
       ? warehouseItems.filter(item => item.warehouse === currentMaterial.warehouse)
@@ -969,9 +1008,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           >
             <Select
               options={[
-                { value: 'S', label: 'S' },
                 { value: 'NO', label: 'NO' },
-              ]}
+                { value: 'PO', label: 'PO' },
+                { value: 'S', label: 'S' },
+                { value: 'SWP', label: 'SWP' },
+                { value: 'E', label: 'E' },
+                { value: 'Y', label: 'Y' },
+              ].filter(option => option.value !== 'XX')}
             />
           </Form.Item>
         </Col>
@@ -1266,6 +1309,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               { value: 'B', label: '倉B' },
               { value: 'C', label: '倉C' },
               { value: 'D', label: '倉D' },
+              { value: '其他', label: '其他' },
             ]}
           />
         </Col>
