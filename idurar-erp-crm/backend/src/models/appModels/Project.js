@@ -170,16 +170,29 @@ const projectSchema = new mongoose.Schema({
     default: 0,
   },
 
-  // 判頭費（多行：工程名 + 金額）
+  // 判頭費（多行：判頭費 + 判頭 + 日期）
   contractorFees: [{
-    projectName: {
-      type: String,
-      required: true,
-    },
     amount: {
       type: Number,
       required: true,
       min: 0,
+    },
+    contractor: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Contractor',
+      autopopulate: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+    },
+    created: {
+      type: Date,
+      default: Date.now,
+    },
+    updated: {
+      type: Date,
+      default: Date.now,
     },
   }],
 
