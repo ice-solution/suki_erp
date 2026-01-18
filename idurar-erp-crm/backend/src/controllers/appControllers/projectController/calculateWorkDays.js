@@ -14,8 +14,14 @@ const calculateWorkDaysFromAttendance = async (projectId, contractorEmployeeId) 
 
     // 查找該員工的所有打咭記錄
     const attendanceRecords = project.onboard.filter(
-      attendance => attendance.contractorEmployee.toString() === contractorEmployeeId.toString()
+      attendance => {
+        if (!attendance.contractorEmployee) return false;
+        const attendanceEmployeeId = attendance.contractorEmployee._id || attendance.contractorEmployee;
+        return attendanceEmployeeId.toString() === contractorEmployeeId.toString();
+      }
     );
+    
+    console.log(`[calculateWorkDaysFromAttendance] 項目 ${projectId}，員工 ${contractorEmployeeId} 有 ${attendanceRecords.length} 條打咭記錄`);
 
     // 使用 Set 來儲存不同的日期（只計算日期部分，不計算時間）
     const uniqueDates = new Set();
@@ -54,11 +60,22 @@ const recalculateAllWorkDays = async (projectId) => {
     // 為每個有工資記錄的員工計算並更新工作天數
     for (const salary of project.salaries) {
       const contractorEmployeeId = salary.contractorEmployee;
+      
+      if (!contractorEmployeeId) {
+        console.warn(`工資記錄 ${salary._id} 沒有 contractorEmployee`);
+        continue;
+      }
 
       // 查找該員工的所有打咭記錄
       const attendanceRecords = project.onboard.filter(
-        attendance => attendance.contractorEmployee.toString() === contractorEmployeeId.toString()
+        attendance => {
+          if (!attendance.contractorEmployee) return false;
+          const attendanceEmployeeId = attendance.contractorEmployee._id || attendance.contractorEmployee;
+          return attendanceEmployeeId.toString() === contractorEmployeeId.toString();
+        }
       );
+      
+      console.log(`員工 ${contractorEmployeeId} 有 ${attendanceRecords.length} 條打咭記錄`);
 
       // 使用 Set 來儲存不同的日期（只計算日期部分，不計算時間）
       const uniqueDates = new Set();
@@ -76,9 +93,11 @@ const recalculateAllWorkDays = async (projectId) => {
       const workDays = uniqueDates.size;
       const dailySalary = salary.dailySalary || 0;
       const totalSalary = dailySalary * workDays;
+      
+      console.log(`員工 ${contractorEmployeeId}: 工作天數=${workDays}, 日薪=${dailySalary}, 總工資=${totalSalary}`);
 
       // 更新該員工的工作天數和總工資
-      await Project.findOneAndUpdate(
+      const updateResult = await Project.findOneAndUpdate(
         { _id: projectId, 'salaries._id': salary._id },
         {
           $set: {
@@ -88,6 +107,10 @@ const recalculateAllWorkDays = async (projectId) => {
           }
         }
       );
+      
+      if (!updateResult) {
+        console.warn(`無法更新工資記錄 ${salary._id}`);
+      }
     }
 
     return { success: true };

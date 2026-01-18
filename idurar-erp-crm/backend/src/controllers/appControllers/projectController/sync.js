@@ -80,14 +80,17 @@ const sync = async (req, res) => {
       }
     });
 
-    // 重新計算財務數據
+    // 重新計算財務數據（優先使用 costPrice，如果沒有則使用 total 作為後備）
     let costPrice = 0;
     quotations.forEach(q => {
-      costPrice = calculate.add(costPrice, q.total || 0);
+      // 優先使用 costPrice，如果沒有則使用 total
+      const price = (q.costPrice !== undefined && q.costPrice !== null) ? q.costPrice : (q.total || 0);
+      costPrice = calculate.add(costPrice, price);
     });
-    // 吊船quote也計入成本價
+    // 吊船quote也計入成本價（優先使用 costPrice，如果沒有則使用 total）
     shipQuotations.forEach(sq => {
-      costPrice = calculate.add(costPrice, sq.total || 0);
+      const price = (sq.costPrice !== undefined && sq.costPrice !== null) ? sq.costPrice : (sq.total || 0);
+      costPrice = calculate.add(costPrice, price);
     });
 
     let sPrice = 0;

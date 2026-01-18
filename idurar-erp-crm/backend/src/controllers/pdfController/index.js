@@ -1,5 +1,6 @@
 const pug = require('pug');
 const fs = require('fs');
+const path = require('path');
 const moment = require('moment');
 let pdf = require('html-pdf');
 const { listAllSettings, loadSettings } = require('@/middlewares/settings');
@@ -84,8 +85,15 @@ exports.generatePdf = async (
 
     // 檢查模板是否存在於 pugFiles 中
     if (pugFiles.includes(templateName)) {
+      // 使用絕對路徑來確保在構建後也能找到模板文件
+      const templatePath = path.join(__dirname, '../../pdf', templateName + '.pug');
+      
+      // 檢查文件是否存在
+      if (!fs.existsSync(templatePath)) {
+        throw new Error(`Template file not found: ${templatePath}`);
+      }
 
-      const htmlContent = pug.renderFile('src/pdf/' + templateName + '.pug', {
+      const htmlContent = pug.renderFile(templatePath, {
         model: result,
         settings,
         translate,

@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const Model = mongoose.model('SupplierQuote');
+const Ship = mongoose.model('Ship');
+const Winch = mongoose.model('Winch');
 
 const custom = require('@/controllers/pdfController');
 
@@ -220,11 +222,69 @@ const update = async (req, res) => {
   if ('currency' in body) {
     delete body.currency;
   }
+  // 先獲取現有的SupplierQuote記錄，以便檢查之前的ship和winch
+  const existingQuote = await Model.findOne({ _id: req.params.id, removed: false }).exec();
+  
   // Find document by id and updates with the required fields
-
   const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {
     new: true, // return the new result instead of the old one
   }).exec();
+
+  // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
+  const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
+  const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
+
+  // 處理船隻：如果之前有ship但現在沒有，將之前的ship狀態改為回倉
+  if (existingQuote && existingQuote.ship) {
+    const oldShipId = typeof existingQuote.ship === 'object' ? existingQuote.ship._id.toString() : existingQuote.ship.toString();
+    const newShipId = body.ship ? (typeof body.ship === 'object' ? body.ship.toString() : body.ship.toString()) : null;
+    
+    // 如果ship被移除了（之前有，現在沒有）
+    if (!newShipId || oldShipId !== newShipId) {
+      await Ship.findByIdAndUpdate(oldShipId, {
+        status: 'returned_warehouse_hk', // 預設為回倉(表衣)
+        supplierNumber: null,
+        expiredDate: null,
+        updated: new Date()
+      });
+    }
+  }
+
+  // 處理爬攬器：如果之前有winch但現在沒有，將之前的winch狀態改為回倉
+  if (existingQuote && existingQuote.winch) {
+    const oldWinchId = typeof existingQuote.winch === 'object' ? existingQuote.winch._id.toString() : existingQuote.winch.toString();
+    const newWinchId = body.winch ? (typeof body.winch === 'object' ? body.winch.toString() : body.winch.toString()) : null;
+    
+    // 如果winch被移除了（之前有，現在沒有）
+    if (!newWinchId || oldWinchId !== newWinchId) {
+      await Winch.findByIdAndUpdate(oldWinchId, {
+        status: 'returned_warehouse_hk', // 預設為回倉(表衣)
+        supplierNumber: null,
+        expiredDate: null,
+        updated: new Date()
+      });
+    }
+  }
+
+  // 更新新的船隻
+  if (body.ship) {
+    await Ship.findByIdAndUpdate(body.ship, {
+      status: 'in_use',
+      supplierNumber: supplierQuoteNumber,
+      expiredDate: expiredDate,
+      updated: new Date()
+    });
+  }
+
+  // 更新新的爬攬器
+  if (body.winch) {
+    await Winch.findByIdAndUpdate(body.winch, {
+      status: 'in_use',
+      supplierNumber: supplierQuoteNumber,
+      expiredDate: expiredDate,
+      updated: new Date()
+    });
+  }
 
   console.log('📤 Returning result with files:');
   console.log('  DM files count:', result.dmFiles?.length || 0);

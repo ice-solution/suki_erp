@@ -68,18 +68,17 @@ const create = async (req, res) => {
 
     console.log(`找到 ${quotations.length} 個quotations, ${supplierQuotations.length} 個supplier quotations, ${shipQuotations.length} 個ship quotations, ${invoices.length} 個invoices`);
 
-    // 計算成本價 (quotations總額 + shipQuotations總額)
+    // 計算成本價 (優先使用 quotations 的 costPrice，如果沒有則使用 total)
     let costPrice = 0;
     quotations.forEach(quote => {
-      if (quote.total) {
-        costPrice = calculate.add(costPrice, quote.total);
-      }
+      // 優先使用 costPrice，如果沒有則使用 total
+      const price = (quote.costPrice !== undefined && quote.costPrice !== null) ? quote.costPrice : (quote.total || 0);
+      costPrice = calculate.add(costPrice, price);
     });
-    // 吊船quote也計入成本價
+    // 吊船quote也計入成本價（優先使用 costPrice，如果沒有則使用 total）
     shipQuotations.forEach(shipQuote => {
-      if (shipQuote.total) {
-        costPrice = calculate.add(costPrice, shipQuote.total);
-      }
+      const price = (shipQuote.costPrice !== undefined && shipQuote.costPrice !== null) ? shipQuote.costPrice : (shipQuote.total || 0);
+      costPrice = calculate.add(costPrice, price);
     });
 
     // 計算S_price (supplier quotations總額)

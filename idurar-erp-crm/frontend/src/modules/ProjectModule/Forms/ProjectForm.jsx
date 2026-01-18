@@ -297,7 +297,10 @@ export default function ProjectForm({ current = null }) {
         let contractorFees = [];
         if (current.contractorFees && Array.isArray(current.contractorFees)) {
           // 新格式：contractorFees 數組
-          contractorFees = current.contractorFees;
+          contractorFees = current.contractorFees.map(fee => ({
+            projectName: fee.projectName || '',
+            amount: fee.amount || 0,
+          }));
         } else if (current.contractorFee !== undefined && current.contractorFee !== null) {
           // 舊格式：單一 contractorFee 值（向後兼容）
           if (current.contractorFee > 0) {

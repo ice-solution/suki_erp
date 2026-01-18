@@ -285,10 +285,11 @@ html
         .right.col-10
             .billTo
                 p #{translate('Client')} :
-                p #{model.client.name}
-                p #{model.client.address}
-                p #{model.client.phone}
-                p #{model.client.email}
+                - const client = model.client || (model.clients && model.clients[0]) || {}
+                p #{client.name || ''}
+                p #{client.address || ''}
+                p #{client.phone || ''}
+                p #{client.email || ''}
         .col.col-24
           .space  
       main

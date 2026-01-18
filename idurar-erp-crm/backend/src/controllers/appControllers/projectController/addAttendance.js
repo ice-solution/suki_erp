@@ -60,19 +60,65 @@ const addAttendance = async (req, res) => {
     };
 
     // 使用 $push 直接更新 onboard 數組，避免重新驗證整個項目
-    const updatedProject = await Project.findByIdAndUpdate(
+    await Project.findByIdAndUpdate(
       projectId,
       { $push: { onboard: newAttendance } },
       { new: true }
-    )
-    .populate('onboard.contractorEmployee', 'name contractor')
-    .populate('onboard.contractorEmployee.contractor', 'name');
+    );
 
     // 根據打咭記錄自動計算並更新該員工的工作天數
+    // 注意：必須在 $push 之後重新查詢項目，以獲取最新的 onboard 數據
     try {
-      await calculateWorkDaysFromAttendance(projectId, contractorEmployee);
+      console.log(`[addAttendance] 開始計算員工 ${contractorEmployee} 的工作天數`);
+      const workDays = await calculateWorkDaysFromAttendance(projectId, contractorEmployee);
+      console.log(`[addAttendance] 計算結果：工作天數 = ${workDays}`);
+      
+      // 重新查詢項目以獲取最新的數據（包含剛剛添加的打咭記錄）
+      const projectWithNewAttendance = await Project.findById(projectId)
+        .populate('salaries.contractorEmployee', 'name contractor')
+        .populate('salaries.contractorEmployee.contractor', 'name');
+      
+      // 查找該員工的工資記錄並更新
+      if (projectWithNewAttendance && projectWithNewAttendance.salaries) {
+        const salaryRecord = projectWithNewAttendance.salaries.find(
+          salary => {
+            const salaryEmployeeId = salary.contractorEmployee._id || salary.contractorEmployee;
+            return salaryEmployeeId.toString() === contractorEmployee.toString();
+          }
+        );
+        
+        if (salaryRecord) {
+          const dailySalary = salaryRecord.dailySalary || 0;
+          const totalSalary = dailySalary * workDays;
+          
+          console.log(`[addAttendance] 找到工資記錄，日薪=${dailySalary}，更新工作天數=${workDays}，總工資=${totalSalary}`);
+          
+          const updateResult = await Project.findOneAndUpdate(
+            { _id: projectId, 'salaries._id': salaryRecord._id },
+            {
+              $set: {
+                'salaries.$.workDays': workDays,
+                'salaries.$.totalSalary': totalSalary,
+                'salaries.$.updated': new Date()
+              }
+            },
+            { new: true }
+          );
+          
+          if (updateResult) {
+            console.log(`[addAttendance] 工資記錄更新成功`);
+          } else {
+            console.warn(`[addAttendance] 工資記錄更新失敗，找不到記錄`);
+          }
+        } else {
+          console.warn(`[addAttendance] 未找到員工 ${contractorEmployee} 的工資記錄，無法更新工作天數`);
+        }
+      } else {
+        console.warn(`[addAttendance] 項目沒有 salaries 數據`);
+      }
     } catch (error) {
-      console.error('計算工作天數時發生錯誤:', error);
+      console.error('[addAttendance] 計算工作天數時發生錯誤:', error);
+      console.error(error.stack);
       // 即使計算失敗，打咭記錄仍已添加成功，所以繼續返回成功響應
     }
 

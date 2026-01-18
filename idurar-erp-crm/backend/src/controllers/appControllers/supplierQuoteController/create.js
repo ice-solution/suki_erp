@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 
 const Model = mongoose.model('SupplierQuote');
+const Ship = mongoose.model('Ship');
+const Winch = mongoose.model('Winch');
 
 const custom = require('@/controllers/pdfController');
 const { increaseBySettingKey } = require('@/middlewares/settings');
@@ -175,7 +177,28 @@ const create = async (req, res) => {
       new: true,
     }
   ).exec();
-  // Returning successfull response
+
+  // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
+  const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
+  const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
+
+  if (body.ship) {
+    await Ship.findByIdAndUpdate(body.ship, {
+      status: 'in_use',
+      supplierNumber: supplierQuoteNumber,
+      expiredDate: expiredDate,
+      updated: new Date()
+    });
+  }
+
+  if (body.winch) {
+    await Winch.findByIdAndUpdate(body.winch, {
+      status: 'in_use',
+      supplierNumber: supplierQuoteNumber,
+      expiredDate: expiredDate,
+      updated: new Date()
+    });
+  }
 
   increaseBySettingKey({
     settingKey: 'last_supplier_quote_number',

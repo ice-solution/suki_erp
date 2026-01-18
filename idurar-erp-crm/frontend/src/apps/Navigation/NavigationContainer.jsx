@@ -27,6 +27,8 @@ import {
   BuildOutlined,
   CalculatorOutlined,
   DatabaseOutlined,
+  RocketOutlined,
+  ToolOutlined,
 } from '@ant-design/icons';
 
 const { Sider } = Layout;
@@ -114,6 +116,16 @@ function Sidebar({ collapsible, isMobile = false }) {
           label: <Link to={'/contractor-employee'}>{translate('contractor_employees')}</Link>,
         },
       ],
+    },
+    {
+      key: 'ship',
+      icon: <RocketOutlined />,
+      label: <Link to={'/ship'}>船隻管理</Link>,
+    },
+    {
+      key: 'winch',
+      icon: <ToolOutlined />,
+      label: <Link to={'/winch'}>爬攬器管理</Link>,
     },
     {
       key: 'accounting',

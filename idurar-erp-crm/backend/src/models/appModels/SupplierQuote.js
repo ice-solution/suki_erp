@@ -88,6 +88,16 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
   },
+  ship: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Ship',
+    autopopulate: true,
+  },
+  winch: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Winch',
+    autopopulate: true,
+  },
   items: [
     {
       itemName: {
@@ -127,7 +137,7 @@ const supplierQuoteSchema = new mongoose.Schema({
       quantity: {
         type: Number,
         required: true,
-        min: 1,
+        min: 0,
       },
       price: {
         type: Number,

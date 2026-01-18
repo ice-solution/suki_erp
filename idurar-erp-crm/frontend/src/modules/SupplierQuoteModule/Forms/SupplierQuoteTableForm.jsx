@@ -62,10 +62,21 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     warehouse: '',
     itemName: '',
     quantity: 1,
-    price: 0
+    unitPrice: 0, // 單價
+    price: 0 // 總價（quantity * unitPrice）
   });
   const [warehouseItems, setWarehouseItems] = useState([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
+  
+  // Ships and Winches form states
+  const [selectedShip, setSelectedShip] = useState(null); // Stores the selected ship ID
+  const [selectedShipName, setSelectedShipName] = useState(null); // Stores the selected ship name
+  const [selectedWinch, setSelectedWinch] = useState(null); // Stores the selected winch ID
+  const [selectedWinchName, setSelectedWinchName] = useState(null); // Stores the selected winch name
+  const [ships, setShips] = useState([]);
+  const [winches, setWinches] = useState([]);
+  const [shipsLoading, setShipsLoading] = useState(false);
+  const [winchesLoading, setWinchesLoading] = useState(false);
   
   // File upload states
   const [dmFileList, setDmFileList] = useState([]);
@@ -189,6 +200,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     fetchProjectItems();
     fetchClients();
     fetchWarehouseItems();
+    fetchShips();
+    fetchWinches();
   }, []);
 
   const fetchClients = async () => {
@@ -342,6 +355,52 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
+  // 獲取狀態為「正常」的船隻列表
+  const fetchShips = async () => {
+    try {
+      setShipsLoading(true);
+      const response = await request.listAll({ entity: 'ship' });
+      if (response.success && Array.isArray(response.result)) {
+        // 只過濾 status = 'normal' 的船隻
+        const normalShips = response.result.filter(ship => ship.status === 'normal');
+        const shipOptions = normalShips.map(ship => ({
+          value: ship._id,
+          label: ship.name || ship.registrationNumber || '未命名船隻',
+          ...ship
+        }));
+        setShips(shipOptions);
+      }
+    } catch (error) {
+      console.error('獲取船隻列表失敗:', error);
+      setShips([]);
+    } finally {
+      setShipsLoading(false);
+    }
+  };
+
+  // 獲取狀態為「正常」的爬攬器列表
+  const fetchWinches = async () => {
+    try {
+      setWinchesLoading(true);
+      const response = await request.listAll({ entity: 'winch' });
+      if (response.success && Array.isArray(response.result)) {
+        // 只過濾 status = 'normal' 的爬攬器
+        const normalWinches = response.result.filter(winch => winch.status === 'normal');
+        const winchOptions = normalWinches.map(winch => ({
+          value: winch._id,
+          label: winch.name || winch.serialNumber || '未命名爬攬器',
+          ...winch
+        }));
+        setWinches(winchOptions);
+      }
+    } catch (error) {
+      console.error('獲取爬攬器列表失敗:', error);
+      setWinches([]);
+    } finally {
+      setWinchesLoading(false);
+    }
+  };
+
   // 單獨處理current客戶數據，確保客戶選項正確顯示
   useEffect(() => {
     if (current) {
@@ -395,7 +454,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         materials: currentMaterials = [],
         clients: currentClients = [], 
         subTotal: currentSubTotal = 0,
-        shipType
+        shipType,
+        ship: currentShip,
+        winch: currentWinch
       } = current;
       
       setDiscount(discount);
@@ -432,8 +493,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 計算 materials 的總計
       if (currentMaterials && currentMaterials.length > 0) {
         currentMaterials.forEach((material) => {
-          if (material && material.quantity && material.price) {
-            let materialTotal = calculate.multiply(material.quantity, material.price);
+          // price 現在已經是總價（quantity * unitPrice），直接使用
+          if (material && material.price) {
+            let materialTotal = material.price;
+            // 保留小數點後2位
+            materialTotal = Number.parseFloat(materialTotal.toFixed(2));
             calculatedSubTotal = calculate.add(calculatedSubTotal, materialTotal);
           }
         });
@@ -470,11 +534,63 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           materials: currentMaterials,
           clients: clientIds,
           type: type,
-          shipType: shipType
+          shipType: shipType,
+          ship: currentShip ? (currentShip._id || currentShip) : null,
+          winch: currentWinch ? (currentWinch._id || currentWinch) : null
         });
       }, 100);
     }
   }, [current, form, clients]);
+
+  // 處理船隻和爬攬器數據，確保在ships和winches加載完成後設置
+  useEffect(() => {
+    if (current && current._id) {
+      // 只在current確實存在且有_id時才處理（表示這是一個已存在的記錄）
+      const { ship: currentShip, winch: currentWinch } = current;
+      
+      // 處理船隻數據 - 如果current有ship，更新selectedShip
+      if (currentShip) {
+        const shipId = typeof currentShip === 'object' ? currentShip._id : currentShip;
+        const shipName = typeof currentShip === 'object' ? currentShip.name : null;
+        
+        setSelectedShip(shipId);
+        // 如果有名稱，直接使用；否則嘗試從ships數組中查找
+        if (shipName) {
+          setSelectedShipName(shipName);
+        } else if (ships.length > 0) {
+          const foundShip = ships.find(s => s.value === shipId);
+          if (foundShip) {
+            setSelectedShipName(foundShip.label);
+          }
+        }
+      } else if (currentShip === null) {
+        // 只有當current明確地將ship設置為null時，才清空
+        setSelectedShip(null);
+        setSelectedShipName(null);
+      }
+      
+      // 處理爬攬器數據 - 如果current有winch，更新selectedWinch
+      if (currentWinch) {
+        const winchId = typeof currentWinch === 'object' ? currentWinch._id : currentWinch;
+        const winchName = typeof currentWinch === 'object' ? currentWinch.name : null;
+        
+        setSelectedWinch(winchId);
+        // 如果有名稱，直接使用；否則嘗試從winches數組中查找
+        if (winchName) {
+          setSelectedWinchName(winchName);
+        } else if (winches.length > 0) {
+          const foundWinch = winches.find(w => w.value === winchId);
+          if (foundWinch) {
+            setSelectedWinchName(foundWinch.label);
+          }
+        }
+      } else if (currentWinch === null) {
+        // 只有當current明確地將winch設置為null時，才清空
+        setSelectedWinch(null);
+        setSelectedWinchName(null);
+      }
+    }
+  }, [current, ships, winches]);
 
   // 計算subTotal當materials或items改變時（計算 materials 和 items）
   useEffect(() => {
@@ -483,8 +599,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     // 計算 materials 的總計
     if (materials && materials.length > 0) {
       materials.forEach((material) => {
-        if (material && material.quantity && material.price) {
-          let materialTotal = calculate.multiply(material.quantity, material.price);
+        // price 現在已經是總價（quantity * unitPrice），直接使用
+        if (material && material.price) {
+          let materialTotal = material.price;
+          // 保留小數點後2位
+          materialTotal = Number.parseFloat(materialTotal.toFixed(2));
           newSubTotal = calculate.add(newSubTotal, materialTotal);
         }
       });
@@ -735,11 +854,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         // 如果獲取存倉價格失敗，繼續使用已加載的價格
       }
       
+      // 計算總價（quantity * unitPrice）
+      const quantity = currentMaterial.quantity || 1;
+      const totalPrice = calculate.multiply(quantity, price);
+      
       setCurrentMaterial({
         ...currentMaterial,
         itemName: selectedMaterial.itemName,
         warehouse: selectedMaterial.warehouse,
-        price: price // 自動填入價格
+        unitPrice: price, // 存儲單價
+        price: Number.parseFloat(totalPrice.toFixed(2)) // 計算並存儲總價
       });
     }
   };
@@ -781,6 +905,14 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       [field]: value
     };
     
+    // 當 quantity 或 unitPrice 改變時，自動計算總價
+    if (field === 'quantity' || field === 'unitPrice') {
+      const quantity = field === 'quantity' ? (value || 0) : (updatedMaterial.quantity || 0);
+      const unitPrice = field === 'unitPrice' ? (value || 0) : (updatedMaterial.unitPrice || 0);
+      const totalPrice = calculate.multiply(quantity, unitPrice);
+      updatedMaterial.price = Number.parseFloat(totalPrice.toFixed(2));
+    }
+    
     setCurrentMaterial(updatedMaterial);
     
     // 如果選擇了倉庫，動態加載該倉庫的項目
@@ -797,11 +929,17 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       return;
     }
     console.log('Editing material:', { record, materialKey, allMaterials: materials });
+    // 計算單價（如果沒有 unitPrice，則使用 price / quantity）
+    const quantity = record.quantity || 1;
+    const totalPrice = record.price || 0;
+    const unitPrice = record.unitPrice || (quantity > 0 ? totalPrice / quantity : 0);
+    
     const materialData = {
       warehouse: record.warehouse || '',
       itemName: record.itemName || '',
-      quantity: record.quantity || 1,
-      price: record.price || 0
+      quantity: quantity,
+      unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
+      price: totalPrice
     };
     setCurrentMaterial(materialData);
     setEditingMaterialKey(materialKey);
@@ -814,7 +952,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 添加或更新材料到列表
   const addMaterialToList = () => {
-    if (!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity <= 0) {
+    if (!currentMaterial.itemName || !currentMaterial.warehouse || !currentMaterial.quantity || currentMaterial.quantity <= 0) {
       return;
     }
 
@@ -870,6 +1008,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       warehouse: '',
       itemName: '',
       quantity: 1,
+      unitPrice: 0,
       price: 0
     });
   };
@@ -940,6 +1079,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       dataIndex: 'quantity',
       key: 'quantity',
       width: '15%',
+      render: (quantity) => quantity !== undefined && quantity !== null ? Number(quantity).toFixed(2) : '-',
     },
     {
       title: translate('Price'),
@@ -1330,7 +1470,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         <Col span={3}>
           <InputNumber 
             placeholder="數量"
-            min={1}
+            min={0}
+            step={0.01}
+            precision={2}
             value={currentMaterial.quantity}
             onChange={(value) => updateCurrentMaterial('quantity', value)}
             style={{ width: '100%' }}
@@ -1338,10 +1480,21 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         </Col>
         <Col span={3}>
           <InputNumber
-            placeholder="價格"
+            placeholder="總價"
             min={0}
+            step={0.01}
+            precision={2}
             value={currentMaterial.price}
-            onChange={(value) => updateCurrentMaterial('price', value)}
+            onChange={(value) => {
+              // 當用戶修改總價時，反向計算單價
+              const quantity = currentMaterial.quantity || 1;
+              const unitPrice = quantity > 0 ? (value || 0) / quantity : 0;
+              setCurrentMaterial({
+                ...currentMaterial,
+                unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
+                price: value || 0
+              });
+            }}
             style={{ width: '100%' }}
           />
         </Col>
@@ -1350,7 +1503,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             type="primary" 
             icon={editingMaterialKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addMaterialToList}
-            disabled={!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity <= 0}
+            disabled={!currentMaterial.itemName || !currentMaterial.warehouse || !currentMaterial.quantity || currentMaterial.quantity <= 0}
             style={{ width: '100%' }}
             key={editingMaterialKey ? 'update-material-btn' : 'add-material-btn'}
           >
@@ -1369,6 +1522,114 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         locale={{ emptyText: '未添加材料' }}
       />
 
+      <Divider orientation="left">船隻爬攬器管理</Divider>
+
+      {/* Ships and Winches Selection */}
+      <Row gutter={[12, 12]} style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
+        <Col span={12}>
+          <h4>選擇船隻</h4>
+          <Select
+            placeholder="選擇船隻（只顯示狀態為「正常」的）"
+            value={selectedShip}
+            onChange={(value, option) => {
+              setSelectedShip(value);
+              setSelectedShipName(option?.label || null);
+              form.setFieldsValue({ ship: value });
+            }}
+            style={{ width: '100%' }}
+            loading={shipsLoading}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label || '').toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+            options={ships}
+            allowClear
+          />
+        </Col>
+        <Col span={12}>
+          <h4>選擇爬攬器</h4>
+          <Select
+            placeholder="選擇爬攬器（只顯示狀態為「正常」的）"
+            value={selectedWinch}
+            onChange={(value, option) => {
+              setSelectedWinch(value);
+              setSelectedWinchName(option?.label || null);
+              form.setFieldsValue({ winch: value });
+            }}
+            style={{ width: '100%' }}
+            loading={winchesLoading}
+            showSearch
+            filterOption={(input, option) =>
+              (option?.label || '').toLowerCase().indexOf(input.toLowerCase()) >= 0
+            }
+            options={winches}
+            allowClear
+          />
+        </Col>
+      </Row>
+
+      {/* Ships and Winches Display Table */}
+      {(selectedShip || selectedWinch) && (
+        <Table
+          dataSource={[
+            ...(selectedShip ? [{
+              key: 'ship',
+              type: '船隻',
+              name: selectedShipName || ships.find(s => s.value === selectedShip)?.label || selectedShip,
+              id: selectedShip
+            }] : []),
+            ...(selectedWinch ? [{
+              key: 'winch',
+              type: '爬攬器',
+              name: selectedWinchName || winches.find(w => w.value === selectedWinch)?.label || selectedWinch,
+              id: selectedWinch
+            }] : [])
+          ]}
+          columns={[
+            {
+              title: '類型',
+              dataIndex: 'type',
+              key: 'type',
+              width: '15%',
+            },
+            {
+              title: '名稱',
+              dataIndex: 'name',
+              key: 'name',
+              width: '70%',
+            },
+            {
+              title: '操作',
+              key: 'action',
+              width: '15%',
+              render: (_, record) => (
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => {
+                    if (record.type === '船隻') {
+                      setSelectedShip(null);
+                      setSelectedShipName(null);
+                      form.setFieldsValue({ ship: null });
+                    } else if (record.type === '爬攬器') {
+                      setSelectedWinch(null);
+                      setSelectedWinchName(null);
+                      form.setFieldsValue({ winch: null });
+                    }
+                  }}
+                >
+                  刪除
+                </Button>
+              ),
+            },
+          ]}
+          pagination={false}
+          size="small"
+          locale={{ emptyText: '未選擇船隻或爬攬器' }}
+        />
+      )}
+
       {/* Hidden Form Items for submission */}
       <Form.Item name="items" style={{ display: 'none' }}>
         <Input />
@@ -1383,6 +1644,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         <Input />
       </Form.Item>
       <Form.Item name="invoiceFiles" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="ship" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="winch" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="ship" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="winch" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useMemo } from 'react';
 
 import {
   EyeOutlined,
@@ -14,7 +14,7 @@ import { PageHeader } from '@ant-design/pro-layout';
 
 import { useSelector, useDispatch } from 'react-redux';
 import { crud } from '@/redux/crud/actions';
-import { selectListItems } from '@/redux/crud/selectors';
+import { selectListItems, selectListItemsByEntity } from '@/redux/crud/selectors';
 import useLanguage from '@/locale/useLanguage';
 import { dataForTable } from '@/utils/dataStructure';
 import { useMoney, useDate } from '@/settings';
@@ -146,7 +146,9 @@ export default function DataTable({ config, extra = [] }) {
     },
   ];
 
-  const { result: listResult, isLoading: listIsLoading } = useSelector(selectListItems);
+  // 使用按 entity 分離的 selector
+  const selectListByEntity = selectListItemsByEntity(entity);
+  const { result: listResult, isLoading: listIsLoading } = useSelector(selectListByEntity);
 
   const { pagination, items: dataSource } = listResult;
 
@@ -155,7 +157,7 @@ export default function DataTable({ config, extra = [] }) {
   const handelDataTableLoad = useCallback((pagination) => {
     const options = { page: pagination.current || 1, items: pagination.pageSize || 10 };
     dispatch(crud.list({ entity, options }));
-  }, []);
+  }, [entity, dispatch]);
 
   const filterTable = (e) => {
     const value = e.target.value;
@@ -163,9 +165,9 @@ export default function DataTable({ config, extra = [] }) {
     dispatch(crud.list({ entity, options }));
   };
 
-  const dispatcher = () => {
+  const dispatcher = useCallback(() => {
     dispatch(crud.list({ entity }));
-  };
+  }, [entity, dispatch]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -173,7 +175,7 @@ export default function DataTable({ config, extra = [] }) {
     return () => {
       controller.abort();
     };
-  }, []);
+  }, [dispatcher]);
 
   return (
     <>

@@ -57,6 +57,8 @@ const AdminUserList = lazy(() => import('@/pages/AdminUserList.jsx'));
 const About = lazy(() => import('@/pages/About'));
 const ContractorList = lazy(() => import('@/pages/ContractorList.jsx'));
 const ContractorEmployeeList = lazy(() => import('@/pages/ContractorEmployeeList.jsx'));
+const ShipList = lazy(() => import('@/pages/ShipList.jsx'));
+const WinchList = lazy(() => import('@/pages/WinchList.jsx'));
 const ChartOfAccounts = lazy(() => import('@/pages/ChartOfAccounts.jsx'));
 const JournalEntries = lazy(() => import('@/pages/JournalEntries.jsx'));
 const FinancialReports = lazy(() => import('@/pages/FinancialReports.jsx'));
@@ -238,6 +240,14 @@ let routes = {
     {
       path: '/contractor-employee',
       element: <ContractorEmployeeList />,
+    },
+    {
+      path: '/ship',
+      element: <ShipList />,
+    },
+    {
+      path: '/winch',
+      element: <WinchList />,
     },
     {
       path: '/accounting',

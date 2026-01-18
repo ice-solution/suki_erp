@@ -41,6 +41,7 @@ export const crud = {
       dispatch({
         type: actionTypes.REQUEST_LOADING,
         keyState: 'list',
+        entity: entity,
         payload: null,
       });
 
@@ -58,12 +59,14 @@ export const crud = {
         dispatch({
           type: actionTypes.REQUEST_SUCCESS,
           keyState: 'list',
+          entity: entity,
           payload: result,
         });
       } else {
         dispatch({
           type: actionTypes.REQUEST_FAILED,
           keyState: 'list',
+          entity: entity,
           payload: null,
         });
       }

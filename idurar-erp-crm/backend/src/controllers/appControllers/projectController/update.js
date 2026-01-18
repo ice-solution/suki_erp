@@ -10,7 +10,7 @@ const { calculate } = require('@/helpers');
 
 const update = async (req, res) => {
   try {
-    const { contractorFees, contractorFee, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber, status } = req.body;
+    const { contractorFees, contractorFee, usedContractorFees, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber, status } = req.body;
 
     // 查找現有項目
     const existingProject = await Project.findOne({ _id: req.params.id, removed: false });
@@ -32,36 +32,15 @@ const update = async (req, res) => {
     let contractorFeesArray = [];
     
     if (contractorFees !== undefined) {
-      // 新格式：contractorFees 數組
+      // 新格式：contractorFees 數組（projectName + amount）
       if (Array.isArray(contractorFees) && contractorFees.length > 0) {
-        // 支持新格式（amount, contractor, date）和舊格式（projectName, amount）向後兼容
+        // 過濾有效的 fee - 必須有 projectName 和 amount
         contractorFeesArray = contractorFees.filter(fee => {
-          if (fee && fee.amount !== undefined) {
-            // 新格式：必須有 amount, contractor, date
-            if (fee.contractor && fee.date) {
-              return true;
-            }
-            // 舊格式：必須有 projectName（向後兼容）
-            if (fee.projectName) {
-              return true;
-            }
-          }
-          return false;
-        }).map(fee => {
-          // 如果是舊格式，轉換為新格式
-          if (fee.projectName && !fee.contractor) {
-            return {
-              amount: fee.amount,
-              contractor: null, // 舊格式沒有 contractor
-              date: fee.date || new Date(), // 如果沒有 date，使用當前日期
-            };
-          }
-          return {
-            amount: fee.amount,
-            contractor: fee.contractor,
-            date: fee.date ? new Date(fee.date) : new Date(),
-          };
-        });
+          return fee && fee.projectName !== undefined && fee.amount !== undefined;
+        }).map(fee => ({
+          projectName: fee.projectName || '',
+          amount: fee.amount || 0,
+        }));
         totalContractorFee = contractorFeesArray.reduce((sum, fee) => {
           return calculate.add(sum, fee.amount || 0);
         }, 0);
@@ -113,6 +92,11 @@ const update = async (req, res) => {
       updateData.contractorFees = contractorFeesArray;
     }
 
+    // 如果有新的 usedContractorFees 值，則更新它
+    if (usedContractorFees !== undefined) {
+      updateData.usedContractorFees = usedContractorFees;
+    }
+
     // 添加可選字段
     if (description !== undefined) updateData.description = description;
     if (address !== undefined) updateData.address = address;
@@ -130,8 +114,7 @@ const update = async (req, res) => {
       updateData,
       { new: true }
     )
-      .populate('contractors', 'name email phone address')
-      .populate('contractorFees.contractor', 'name');
+      .populate('contractors', 'name email phone address');
 
     // 如果 Invoice Number 改變了，同步更新相關的 Quote、SupplierQuote 和 Invoice
     if (invoiceNumberChanged) {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Divider, Card, Table, Typography, Modal, message } from 'antd';
+import { Divider, Card, Table, Typography, Modal, message, Form, Select, DatePicker, InputNumber } from 'antd';
 import dayjs from 'dayjs';
 
 import { Button, Row, Col, Descriptions, Statistic, Tag } from 'antd';
@@ -58,6 +58,18 @@ export default function ProjectReadItem({ config, selectedItem }) {
   const [syncLoading, setSyncLoading] = useState(false);
   const [workProgressLoading, setWorkProgressLoading] = useState(false);
   const [workProgressList, setWorkProgressList] = useState([]);
+  const [contractorFeesModalVisible, setContractorFeesModalVisible] = useState(false);
+  const [contractorFeesForm] = Form.useForm();
+  
+  // 從 contractorFees 中提取工程名選項
+  const projectNameOptions = currentProject.contractorFees && Array.isArray(currentProject.contractorFees)
+    ? currentProject.contractorFees
+        .filter(fee => fee.projectName && fee.projectName.trim() !== '')
+        .map(fee => ({
+          value: fee.projectName,
+          label: fee.projectName,
+        }))
+    : [];
 
   useEffect(() => {
     const controller = new AbortController();
@@ -68,6 +80,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
     }
     return () => controller.abort();
   }, [currentResult]);
+
 
   // 載入WorkProgress列表
   const loadWorkProgress = async (projectId) => {
@@ -82,6 +95,45 @@ export default function ProjectReadItem({ config, selectedItem }) {
       }
     } catch (error) {
       console.error('Error loading WorkProgress:', error);
+    }
+  };
+
+  // 處理添加使用判頭費
+  const handleAddContractorFee = async (values) => {
+    try {
+      // 獲取當前的 usedContractorFees 數組
+      const currentUsedContractorFees = currentProject.usedContractorFees || [];
+      
+      // 添加新的使用判頭費記錄
+      const newUsedContractorFee = {
+        projectName: values.projectName,
+        date: values.date ? dayjs(values.date).toDate() : new Date(),
+        amount: values.amount || 0,
+      };
+      
+      const updatedUsedContractorFees = [...currentUsedContractorFees, newUsedContractorFee];
+      
+      // 更新項目
+      const response = await request.update({
+        entity: 'project',
+        id: currentProject._id,
+        jsonData: {
+          usedContractorFees: updatedUsedContractorFees,
+        },
+      });
+      
+      if (response.success) {
+        message.success('使用判頭費記錄添加成功！');
+        setContractorFeesModalVisible(false);
+        contractorFeesForm.resetFields();
+        // 重新載入項目數據
+        dispatch(erp.read({ entity: entity.toLowerCase(), id: currentProject._id }));
+      } else {
+        message.error('添加失敗：' + (response.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('Error adding used contractor fee:', error);
+      message.error('添加過程中發生錯誤');
     }
   };
 
@@ -202,6 +254,12 @@ export default function ProjectReadItem({ config, selectedItem }) {
       render: (status) => <Tag>{translate(status)}</Tag>,
     },
     {
+      title: '成本價',
+      dataIndex: 'costPrice',
+      key: 'costPrice',
+      render: (amount) => moneyFormatter({ amount: amount || 0 }),
+    },
+    {
       title: translate('Total'),
       dataIndex: 'total',
       key: 'total',
@@ -308,6 +366,37 @@ export default function ProjectReadItem({ config, selectedItem }) {
       dataIndex: 'total',
       key: 'total',
       render: (amount) => moneyFormatter({ amount: amount || 0 }),
+    },
+  ];
+
+  // 使用判頭費表格列
+  const contractorFeesColumns = [
+    {
+      title: '工程名',
+      dataIndex: 'projectName',
+      key: 'projectName',
+      render: (projectName) => {
+        if (!projectName) return '-';
+        return <Text strong>{projectName}</Text>;
+      },
+    },
+    {
+      title: '日期',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date) => {
+        if (!date) return '-';
+        return dayjs(date).format(dateFormat);
+      },
+    },
+    {
+      title: '金額',
+      dataIndex: 'amount',
+      key: 'amount',
+      align: 'right',
+      render: (amount) => {
+        return <Text strong>{moneyFormatter({ amount: amount || 0 })}</Text>;
+      },
     },
   ];
 
@@ -535,7 +624,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
           {currentProject.endDate ? dayjs(currentProject.endDate).format(dateFormat) : '-'}
         </Descriptions.Item>
         <Descriptions.Item label={translate('Cost By')}>{currentProject.costBy}</Descriptions.Item>
-        <Descriptions.Item label="判頭費詳情" span={3}>
+        <Descriptions.Item label="判頭費總計" span={3}>
           {currentProject.contractorFees && Array.isArray(currentProject.contractorFees) && currentProject.contractorFees.length > 0 ? (
             <div>
               {currentProject.contractorFees.map((fee, index) => (
@@ -630,6 +719,49 @@ export default function ProjectReadItem({ config, selectedItem }) {
 
         <Col span={24}>
           <Card 
+            title={`使用判頭費 (${currentProject.usedContractorFees?.length || 0})`} 
+            size="small"
+            extra={
+              <Button 
+                type="primary" 
+                icon={<PlusOutlined />}
+                onClick={() => setContractorFeesModalVisible(true)}
+                size="small"
+              >
+                建立資料
+              </Button>
+            }
+          >
+            <Table
+              dataSource={currentProject.usedContractorFees || []}
+              columns={contractorFeesColumns}
+              pagination={false}
+              size="small"
+              rowKey={(record, index) => record._id || index}
+              locale={{ emptyText: '沒有判頭費記錄' }}
+              summary={(pageData) => {
+                const total = (pageData || []).reduce((sum, record) => {
+                  return sum + (record.amount || 0);
+                }, 0);
+                return (
+                  <Table.Summary fixed>
+                    <Table.Summary.Row>
+                      <Table.Summary.Cell index={0} colSpan={2}>
+                        <Text strong>總計</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} align="right">
+                        <Text strong>{moneyFormatter({ amount: total })}</Text>
+                      </Table.Summary.Cell>
+                    </Table.Summary.Row>
+                  </Table.Summary>
+                );
+              }}
+            />
+          </Card>
+        </Col>
+
+        <Col span={24}>
+          <Card 
             title={`WorkProgress (${workProgressList.length})`}
             size="small"
             extra={
@@ -662,6 +794,81 @@ export default function ProjectReadItem({ config, selectedItem }) {
           />
         </Col>
       </Row>
+
+      {/* 使用判頭費 建立資料 模态框 */}
+      <Modal
+        title="建立使用判頭費資料"
+        open={contractorFeesModalVisible}
+        onCancel={() => {
+          setContractorFeesModalVisible(false);
+          contractorFeesForm.resetFields();
+        }}
+        footer={null}
+        width={500}
+      >
+        <Form
+          form={contractorFeesForm}
+          layout="vertical"
+          onFinish={handleAddContractorFee}
+        >
+          <Form.Item
+            label="工程名"
+            name="projectName"
+            rules={[{ required: true, message: '請選擇工程名' }]}
+          >
+            <Select
+              placeholder="選擇工程名"
+              showSearch
+              filterOption={(input, option) =>
+                option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+              options={projectNameOptions}
+              notFoundContent={projectNameOptions.length === 0 ? '請先在財務信息中添加判頭費工程名' : '無匹配的工程名'}
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="日期"
+            name="date"
+            rules={[{ required: true, message: '請選擇日期' }]}
+          >
+            <DatePicker 
+              style={{ width: '100%' }} 
+              format={dateFormat}
+              placeholder="選擇日期"
+            />
+          </Form.Item>
+
+          <Form.Item
+            label="金額"
+            name="amount"
+            rules={[{ required: true, message: '請輸入金額' }]}
+          >
+            <InputNumber
+              min={0}
+              precision={2}
+              style={{ width: '100%' }}
+              addonBefore="$"
+              placeholder="0.00"
+            />
+          </Form.Item>
+
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Button 
+              style={{ marginRight: 8 }} 
+              onClick={() => {
+                setContractorFeesModalVisible(false);
+                contractorFeesForm.resetFields();
+              }}
+            >
+              取消
+            </Button>
+            <Button type="primary" htmlType="submit">
+              建立資料
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   );
 }

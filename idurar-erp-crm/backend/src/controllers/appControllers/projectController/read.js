@@ -20,7 +20,6 @@ const read = async (req, res) => {
       .populate('salaries.contractorEmployee.contractor', 'name')
       .populate('onboard.contractorEmployee', 'name contractor')
       .populate('onboard.contractorEmployee.contractor', 'name')
-      .populate('contractorFees.contractor', 'name')
       .exec();
 
     // If no results found, return document not found

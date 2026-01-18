@@ -849,7 +849,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={11}>
+        <Col span={8}>
           <Input 
             placeholder="描述"
             value={currentItem.description}
@@ -883,13 +883,14 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={2}>
+        <Col span={4}>
           <InputNumber 
             placeholder="價格（可輸入負數）"
             value={currentItem.price}
             onChange={(value) => updateCurrentItem('price', value)}
             style={{ width: '100%' }}
             addonBefore="$"
+            controls={false}
           />
         </Col>
         <Col span={2}>

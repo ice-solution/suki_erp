@@ -326,6 +326,18 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</Descriptions.Item>
+        {currentErp.ship && (
+          <Descriptions.Item label="船隻">
+            <Tag color="blue">{currentErp.ship.name}</Tag>
+            {currentErp.ship.registrationNumber && ` (${currentErp.ship.registrationNumber})`}
+          </Descriptions.Item>
+        )}
+        {currentErp.winch && (
+          <Descriptions.Item label="爬攬器">
+            <Tag color="green">{currentErp.winch.name}</Tag>
+            {currentErp.winch.serialNumber && ` (${currentErp.winch.serialNumber})`}
+          </Descriptions.Item>
+        )}
       </Descriptions>
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>

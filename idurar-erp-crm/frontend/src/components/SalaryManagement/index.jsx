@@ -53,6 +53,7 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [attendanceModalVisible, setAttendanceModalVisible] = useState(false);
   const [attendanceForm] = Form.useForm();
+  const [recalculating, setRecalculating] = useState(false);
 
   // 從 WorkProgress 中提取已分配的員工
   const assignedEmployees = workProgressList
@@ -199,7 +200,10 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
       if (response.success) {
         message.success('打咭記錄添加成功');
         setAttendanceModalVisible(false);
+        // 刷新打咭記錄列表
         fetchAttendanceRecords(selectedEmployee?._id);
+        // 刷新工資列表以更新工作天數
+        fetchSalaries();
       }
     } catch (error) {
       console.error('添加打咭記錄失敗:', error);
@@ -219,6 +223,27 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
     } catch (error) {
       message.error('刪除失敗');
       console.error('Error deleting salary:', error);
+    }
+  };
+
+  // 重新計算工作天數
+  const handleRecalculateWorkDays = async () => {
+    try {
+      setRecalculating(true);
+      const response = await request.post({ 
+        entity: `project/${projectId}/recalculate-workdays` 
+      });
+      if (response.success) {
+        message.success('工作天數重新計算成功');
+        fetchSalaries();
+      } else {
+        message.error('重新計算失敗：' + (response.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('重新計算工作天數失敗:', error);
+      message.error('重新計算失敗');
+    } finally {
+      setRecalculating(false);
     }
   };
 
@@ -336,14 +361,24 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
       }
       size="small"
       extra={
-        <Button 
-          type="primary" 
-          icon={<PlusOutlined />} 
-          onClick={handleCreate}
-          size="small"
-        >
-          添加人工記錄
-        </Button>
+        <Space>
+          <Button 
+            icon={<ClockCircleOutlined />} 
+            onClick={handleRecalculateWorkDays}
+            size="small"
+            loading={recalculating}
+          >
+            重新計算工作天數
+          </Button>
+          <Button 
+            type="primary" 
+            icon={<PlusOutlined />} 
+            onClick={handleCreate}
+            size="small"
+          >
+            添加人工記錄
+          </Button>
+        </Space>
       }
     >
       {/* 統計信息 */}
