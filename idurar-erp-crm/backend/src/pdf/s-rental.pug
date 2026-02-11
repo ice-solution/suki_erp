@@ -1,0 +1,278 @@
+doctype html
+html
+  head
+    meta(charset="utf-8")
+    link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    style.
+      .sheet { margin: 0; width: 100%; min-height: 297mm; box-sizing: border-box; }
+      body { width: 100%; max-width: 100%; margin: 0; padding: 12px 16px 20px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
+      *, *:before, *:after { box-sizing: border-box; color: #222; }
+      .clearfix::after { content: ""; display: table; clear: both; }
+      .header-section { width: 100%; max-width: 100%; margin-bottom: 14px; }
+      .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .header-table td { vertical-align: top; }
+      .header-table td.header-left { width: 55%; padding: 0 12px 0 0; }
+      .header-table td.header-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .header-left-inner { display: table; width: 100%; }
+      .header-logo-cell { width: 56px; padding-right: 10px; vertical-align: top; }
+      .header-logo { width: 56px; height: 56px; display: block; }
+      .header-text-cell { vertical-align: top; }
+      .company-name { font-size: 9px; font-weight: bold; line-height: 1.3; word-wrap: break-word; }
+      .company-name-english { font-size: 9px; font-weight: bold; color: #222; word-wrap: break-word; margin-top: 2px; }
+      .company-ownership { font-size: 8px; color: #666; margin-top: 2px; word-wrap: break-word; }
+      .certification-section { font-size: 8px; color: #666; line-height: 1.4; }
+      .certification-logos .iso-text { display: block; margin-top: 2px; }
+      .header-page { margin-top: 4px; font-size: 8px; }
+      .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 12px 0 10px; color: #222; }
+      .info-block { width: 100%; margin-bottom: 10px; font-size: 10px; }
+      .info-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .info-table td { vertical-align: top; font-size: 10px; }
+      .info-table .info-left { width: 55%; padding: 0 12px 0 0; }
+      .info-table .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .info-row { margin-bottom: 4px; }
+      .info-label { font-weight: bold; }
+      .info-value { word-wrap: break-word; }
+      .project-address { margin: 10px 0 12px; padding: 6px 0; border-bottom: 1px solid #eee; font-size: 10px; }
+      .quotation-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10px; table-layout: fixed; }
+      .quotation-table th, .quotation-table td { border: 1px solid #ddd; padding: 6px 5px; vertical-align: top; }
+      .quotation-table th { background: #f0f0f0; font-weight: bold; text-align: left; font-size: 10px; }
+      .quotation-table .col-desc { width: 48%; word-wrap: break-word; font-size: 10px; }
+      .quotation-table .col-qty { width: 12%; text-align: center; }
+      .quotation-table .col-unit { width: 20%; text-align: right; font-size: 9px; word-break: break-all; }
+      .quotation-table .col-amount { width: 20%; text-align: right; font-size: 9px; word-break: break-all; }
+      .quotation-table td.num { text-align: right; font-size: 9px; }
+      .totals-block { margin: 10px 0 16px 0; font-size: 10px; }
+      .totals-row { display: flex; margin-bottom: 3px; }
+      .totals-label { width: 100px; font-weight: bold; flex-shrink: 0; font-size: 10px; }
+      .totals-value { flex: 1; text-align: right; font-size: 9px; word-break: break-all; max-width: 140px; margin-left: auto; }
+      .totals-row.grand .totals-value { font-weight: bold; font-size: 10px; }
+      .notes-block { margin: 16px 0; padding: 10px; background: #fafafa; border: 1px solid #eee; font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
+      .notes-title { font-weight: bold; margin-bottom: 6px; font-size: 10px; }
+      .extra-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10px; }
+      .extra-table th, .extra-table td { border: 1px solid #ddd; padding: 5px 8px; text-align: left; font-size: 10px; }
+      .extra-table th { background: #f0f0f0; font-weight: bold; }
+      .extra-table .col-desc { width: auto; }
+      .extra-table .col-price { text-align: right; width: 120px; }
+      .page-break { page-break-before: always; }
+      .terms-section { margin: 16px 0; font-size: 10px; line-height: 1.6; }
+      .terms-section h4 { margin: 10px 0 6px; font-size: 10px; }
+      .terms-section ol { margin: 0; padding-left: 18px; }
+      .terms-section li { margin-bottom: 4px; }
+      .signature-block { margin-top: 14px; width: 100%; }
+      .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .signature-table td { width: 50%; vertical-align: top; padding: 0 8px 0 0; font-size: 9px; }
+      .signature-table td:last-child { padding: 0 0 0 8px; text-align: right; }
+      .signature-left { }
+      .signature-right { }
+      .signature-line { border-bottom: 1px solid #222; height: 20px; margin: 4px 0 0 0; }
+      .signature-left .signature-line { width: 100%; }
+      .signature-right .signature-line { width: 100%; margin-left: 0; }
+      .signature-label { font-size: 9px; margin-bottom: 3px; }
+      .verifier-title { font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+      .verifier-sub { font-size: 9px; color: #444; margin-bottom: 4px; }
+      .issuer-title { font-size: 9px; font-weight: bold; margin-bottom: 2px; }
+      .issuer-company { font-size: 9px; margin-bottom: 4px; }
+      .doc-creator { font-size: 9px; margin-bottom: 10px; }
+      .doc-end { text-align: center; font-size: 9px; margin: 16px 0 10px; }
+      .doc-bottom-wrap { margin-top: 24px; }
+      .footer-section { margin-top: 10px; padding-top: 10px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
+      .footer-line-1 { margin-bottom: 2px; font-size: 9px; }
+      .footer-line-2 { font-size: 9px; }
+  body
+    - const client = model.client || (model.clients && model.clients[0]) || {}
+    - const clientName = client.name || ''
+    - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
+    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
+    - const docDate = model.date ? moment(model.date).format('DD-MM-YYYY') : ''
+    - const contactPerson = model.contactPerson || ''
+    - const projectAddress = model.address || ''
+    - const mainItems = (model.items || []).map(i => ({ itemName: i.itemName, description: i.description || '', quantity: i.quantity, price: i.price != null ? i.price : 0, total: i.total != null ? i.total : (i.quantity || 0) * (i.price || 0) }))
+    - const materials = (model.materials || []).map(m => ({ itemName: m.itemName, description: '', quantity: m.quantity, price: m.price != null ? m.price : 0, total: (m.quantity || 0) * (m.price || 0) }))
+    - const allRows = mainItems.concat(materials)
+    - const subTotal = model.subTotal != null ? model.subTotal : allRows.reduce((s, r) => s + (r.total || 0), 0)
+    - const discount = model.discount != null ? model.discount : 0
+    - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
+    - const total = model.total != null ? model.total : (subTotal - discountTotal)
+    - const currency = model.currency || 'HKD'
+
+    .header-section
+      table.header-table
+        tr
+          td.header-left
+            table.header-left-inner
+              tr
+                td.header-logo-cell
+                  img.header-logo(src=settings.public_server_file+settings.company_logo)
+                td.header-text-cell
+                  .company-name 超越工程公司
+                  .company-name-english SUPER MAX ENGINEERING CO.
+                  .company-ownership (Wholly Owned By Super Pioneer Ltd.)
+          td.header-right
+            .certification-section
+              .certification-logos
+                span.iso-text ISO 9001 : 2008
+                span.iso-text Certificate No : Q368
+              .header-page Page 1
+
+    .doc-title 導向吊船租賃報價
+
+    .info-block
+      table.info-table
+        tr
+          td.info-left
+            .info-row 致: #{clientName}
+            if clientAddress
+              .info-row #{clientAddress}
+            if contactPerson
+              .info-row 聯絡人: #{contactPerson}
+            if projectAddress
+              .info-row 工程地址/機號: #{projectAddress}
+          td.info-right
+            .info-row 檔案編號 : #{docNumber}
+            .info-row 日期 : #{docDate}
+
+    table.quotation-table
+      thead
+        tr
+          th.col-desc 摘要
+          th.col-qty 數量
+          th.col-unit 單價 HKD $
+          th.col-amount 金額 HKD $
+      tbody
+        each row in allRows
+          tr
+            td.col-desc
+              | #{row.itemName || ''}
+              if row.description
+                br
+                span(style='font-size:10px;color:#666') #{row.description}
+            td.col-qty.num #{row.quantity != null ? row.quantity : '-'}
+            td.col-unit.num #{row.price != null ? moneyFormatter({ amount: row.price, currency_code: currency }) : '-'}
+            td.col-amount.num #{row.total != null ? moneyFormatter({ amount: row.total, currency_code: currency }) : '-'}
+        if allRows.length === 0
+          tr
+            td(colspan='4' style='text-align:center') 無項目
+
+    .totals-block
+      .totals-row
+        .totals-label 合共港幣:
+        .totals-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+      .totals-row
+        .totals-label 折扣%:
+        .totals-value #{discount}%
+      .totals-row
+        .totals-label 折扣金額:
+        .totals-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
+      .totals-row.grand
+        .totals-label 總金額:
+        .totals-value #{moneyFormatter({ amount: total, currency_code: currency })}
+
+    .page-break
+
+    .header-section
+      table.header-table
+        tr
+          td.header-left
+            table.header-left-inner
+              tr
+                td.header-logo-cell
+                  img.header-logo(src=settings.public_server_file+settings.company_logo)
+                td.header-text-cell
+                  .company-name 超越工程公司
+                  .company-name-english SUPER MAX ENGINEERING CO.
+                  .company-ownership (Wholly Owned By Super Pioneer Ltd.)
+          td.header-right
+            .certification-section
+              .certification-logos
+                span.iso-text ISO 9001 : 2008
+                span.iso-text Certificate No : Q368
+              .header-page Page 2
+
+    .doc-title 導向吊船租賃報價
+
+    .info-block
+      table.info-table
+        tr
+          td.info-left
+            .info-row 致: #{clientName}
+            if contactPerson
+              .info-row 聯絡人: #{contactPerson}
+          td.info-right
+            .info-row 檔案編號 : #{docNumber}
+            .info-row 日期 : #{docDate}
+
+    if model.notes
+      .notes-block
+        .notes-title 備註 (注:)
+        | #{model.notes}
+
+    .terms-section(style='margin-top:20px')
+      h4 附加項目
+    table.extra-table
+      thead
+        tr
+          th.col-desc 摘要
+          th.col-price 單價 HKD $
+      tbody
+        tr
+          td 續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}
+          td.col-price -
+        tr
+          td 額外電源線(200米以外部份)
+          td.col-price -
+        tr
+          td 因井道漏水落雨整壞爬纜器,需更換爬纜器
+          td.col-price -
+        tr
+          td 因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器
+          td.col-price -
+        tr
+          td 吊船改吊點重新安排檢驗F2/F3證書
+          td.col-price -
+        tr
+          td 三角足場續租(每14日)
+          td.col-price -
+
+    .terms-section
+      h4 租賃說明
+      ol
+        li 租用價格包括吊船交機及來回運輸費用(不包括離島地區)。
+        li 由確定收到租金起計, 90天後送貨。
+        li 價格第二及三項為消耗品, 恕不提供租用服務。
+        li 租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。
+        li 預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。
+        li 租用期間如因壞機而影響地盤工作, 本公司可恕不負責。
+        li 地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。
+        li 在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。
+        li 租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。
+        li 所有地盤使用人員及第三者保險由租用者負責。
+        li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
+
+      h4 付款方法
+      p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
+
+      h4 報價有效期
+      p #{model.expiredDate ? moment(model.expiredDate).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
+
+    .doc-bottom-wrap
+      .doc-creator 制單人:
+      .signature-block
+        table.signature-table
+          tr
+            td
+              .signature-left
+                .verifier-title 核實者
+                .verifier-sub 同意及確定
+                .signature-label 公司簽署及蓋章
+                .signature-line
+            td
+              .signature-right
+                .issuer-title 發出者
+                .issuer-company 超越工程公司
+                .signature-label 公司簽署及蓋章
+                .signature-line
+      .doc-end End
+      .footer-section
+        .footer-line-1 新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室 電話:2776 4793, 2756 7579 傳真:2776 4796
+        .footer-line-2 Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T. Tel:2776 4793, 2756 7579 Fax:2776 4796

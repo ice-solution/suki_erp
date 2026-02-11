@@ -29,5 +29,5 @@ export const selectCrmSettings = createSelector(
 
 export const selectCompanySettings = createSelector(
   [selectCurrentSettings],
-  (settings) => settings.company_settings
+  (settings) => settings?.company_settings ?? {}
 );

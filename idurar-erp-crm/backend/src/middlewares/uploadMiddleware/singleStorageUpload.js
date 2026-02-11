@@ -40,6 +40,7 @@ const singleStorageUpload = ({
           filePath: filePath,
         };
 
+        if (!req.body) req.body = {};
         req.body[fieldName] = filePath;
 
         cb(null, _fileName);

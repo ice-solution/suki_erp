@@ -13,6 +13,48 @@
   },
   {
     "settingCategory": "company_settings",
+    "settingKey": "company_logo_no",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
+    "settingKey": "company_logo_po",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
+    "settingKey": "company_logo_s",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
+    "settingKey": "company_logo_swp",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
+    "settingKey": "company_logo_e",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
+    "settingKey": "company_logo_y",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
+    "settingKey": "company_logo_sml",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
     "settingKey": "company_icon",
     "settingValue": "public/uploads/setting/company-logo.png",
     "valueType": "image"

@@ -10,6 +10,7 @@ import {
 import TabsContent from '@/components/TabsContent/TabsContent';
 
 import CompanyLogoSettings from './CompanyLogoSettings';
+import CompanyLogoByTypeSettings from './CompanyLogoByTypeSettings';
 import GeneralSettings from './GeneralSettings';
 import CompanySettings from './CompanySettings';
 import FinanceSettings from './FinanceSettings';
@@ -40,6 +41,12 @@ export default function Settings() {
       label: translate('Company Logo'),
       icon: <FileImageOutlined />,
       children: <CompanyLogoSettings />,
+    },
+    {
+      key: 'company_logo_by_type',
+      label: '依單據類型 Logo',
+      icon: <FileImageOutlined />,
+      children: <CompanyLogoByTypeSettings />,
     },
     {
       key: 'currency_settings',

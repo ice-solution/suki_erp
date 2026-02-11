@@ -98,41 +98,12 @@ html
         color: #222;
       }
       
-      .info-section {
-        width: 100%;
-        margin-bottom: 20px;
-      }
-      
-      .info-row {
-        display: flex;
-        margin-bottom: 8px;
-        font-size: 12px;
-      }
-      
-      .info-label {
-        width: 120px;
-        font-weight: bold;
-        color: #222;
-      }
-      
-      .info-value {
-        flex: 1;
-        color: #222;
-      }
-      
-      .info-row-two-col {
-        display: flex;
-        margin-bottom: 8px;
-      }
-      
-      .info-col {
-        flex: 1;
-        margin-right: 20px;
-      }
-      
-      .info-col:last-child {
-        margin-right: 0;
-      }
+      .info-section { width: 100%; margin-bottom: 16px; font-size: 10px; }
+      .info-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .info-table td { vertical-align: top; font-size: 10px; }
+      .info-table .info-left { width: 55%; padding: 0 12px 0 0; }
+      .info-table .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .info-row { margin-bottom: 4px; }
       
       .table-container {
         width: 100%;
@@ -218,13 +189,12 @@ html
         padding-top: 15px;
       }
       
-      .footer-address {
-        margin-bottom: 5px;
+      .footer-line-1 {
+        margin-bottom: 4px;
         line-height: 1.6;
       }
-      
-      .footer-contact {
-        margin-top: 10px;
+      .footer-line-2 {
+        line-height: 1.6;
       }
 
 body
@@ -247,35 +217,17 @@ body
     .document-title 簽收單
     
     .info-section
-      .info-row
-        .info-label TO:
-        .info-value
-          - const client = model.client || (model.clients && model.clients[0]) || {}
-          | #{client.name || ''}
-      .info-row
-        .info-label 送貨地址:
-        .info-value #{model.address || client.address || ''}
-      .info-row-two-col
-        .info-col
-          .info-row
-            .info-label Invoice NO:
-            .info-value #{model.invoiceNumber || ''}
-          .info-row
-            .info-label 報價編號:
-            .info-value #{model.numberPrefix || 'SWP'}-#{model.number}/#{model.year || ''}
-          .info-row
-            .info-label Your P/O NO:
-            .info-value #{model.poNumber || 'N/A'}
-        .info-col
-          .info-row
-            .info-label 收貨人:
-            .info-value #{model.contactPerson || ''}
-          .info-row
-            .info-label 日期:
-            .info-value #{moment(model.date).format('DD/MM/YYYY')}
-          .info-row
-            .info-label 上單編號:
-            .info-value #{model.numberPrefix || 'SWP'}-#{model.number}/#{model.year || ''}
+      - const client = model.client || (model.clients && model.clients[0]) || {}
+      table.info-table
+        tr
+          td.info-left
+            .info-row 致: #{client.name || ''}
+            .info-row #{model.address || client.address || ''}
+            if model.contactPerson
+              .info-row 收貨人: #{model.contactPerson}
+          td.info-right
+            .info-row 檔案編號 : #{model.invoiceNumber || (model.numberPrefix || 'SWP') + '-' + model.number + '/' + (model.year || '')}
+            .info-row 日期 : #{moment(model.date).format('DD-MM-YYYY')}
     
     .table-container
       table.items-table
@@ -309,12 +261,5 @@ body
           .acknowledgement-line
     
     .footer-section
-      .footer-address
-        | #{settings.company_address || '新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室'}
-        if settings.company_address_english
-          br
-          | #{settings.company_address_english}
-      .footer-contact
-        | 電話: #{settings.company_phone || '2776 4793, 2756 7579'}
-        | &nbsp;&nbsp;&nbsp;
-        | 傳真: #{settings.company_fax || settings.company_phone || '2776 4796'}
+      .footer-line-1 #{settings.company_address || '新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室'} 電話: #{settings.company_phone || '2776 4793, 2756 7579'} 傳真: #{settings.company_fax || '2776 4796'}
+      .footer-line-2 #{settings.company_address_english || 'Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T.'} Tel: #{settings.company_phone || '2776 4793, 2756 7579'} Fax: #{settings.company_fax || '2776 4796'}

@@ -105,6 +105,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
   const [client, setClient] = useState({});
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertToSupplierQuoteLoading, setConvertToSupplierQuoteLoading] = useState(false);
+  const [convertShipQuoteToSLoading, setConvertShipQuoteToSLoading] = useState(false);
   const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
   const [selectedPoNumber, setSelectedPoNumber] = useState(null);
   const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
@@ -205,6 +206,51 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
     setPoNumberModalVisible(true);
   };
 
+  // Ship Quote 轉 S單（整單轉換，無需選 P.O）
+  const handleConvertShipQuoteToS = () => {
+    if (currentErp.converted && currentErp.converted.supplierQuote) {
+      message.warning('此 Ship Quote 已經轉換成 S單');
+      return;
+    }
+    Modal.confirm({
+      title: '確認轉換到 S單',
+      content: (
+        <div>
+          <p>您確定要將此 Ship Quote 轉換成 S單（Supplier Quote）嗎？</p>
+          <p><strong>編號：</strong>{`${currentErp.numberPrefix || ''}-${currentErp.number}/${currentErp.year || ''}`}</p>
+          <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
+          <p style={{ color: '#ff4d4f', marginTop: 12 }}>轉換後將建立新的 S單，此操作不可撤銷</p>
+        </div>
+      ),
+      okText: '確認轉換',
+      cancelText: '取消',
+      okType: 'primary',
+      onOk: async () => {
+        setConvertShipQuoteToSLoading(true);
+        try {
+          axios.defaults.baseURL = API_BASE_URL;
+          axios.defaults.withCredentials = true;
+          const auth = storePersist.get('auth');
+          if (auth) {
+            axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+          }
+          const response = await axios.get(`shipquote/convertToSupplierQuote/${currentErp._id}`);
+          if (response?.data?.success) {
+            message.success('Ship Quote 已成功轉換成 S單！');
+            navigate(`/supplierquote/read/${response.data.result._id}`);
+          } else {
+            message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
+          }
+        } catch (error) {
+          console.error('轉換錯誤:', error);
+          message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
+        } finally {
+          setConvertShipQuoteToSLoading(false);
+        }
+      },
+    });
+  };
+
   // 執行轉換
   const executeConvertToSupplierQuote = async () => {
     if (!selectedPoNumber) {
@@ -301,6 +347,21 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
               ? '已上單' 
               : '上單'
             }
+          </Button>,
+          <Button
+            key={`${uniqueId()}`}
+            onClick={handleConvertShipQuoteToS}
+            loading={convertShipQuoteToSLoading}
+            icon={<ArrowUpOutlined />}
+            style={{ 
+              display: entity === 'shipquote' ? 'inline-block' : 'none',
+              backgroundColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+              borderColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+              color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
+            }}
+            disabled={currentErp.converted && currentErp.converted.supplierQuote}
+          >
+            {currentErp.converted && currentErp.converted.supplierQuote ? '已轉S單' : '轉換到S單'}
           </Button>,
           <Button
             key={`${uniqueId()}`}

@@ -1,4 +1,6 @@
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 
 const { catchErrors } = require('@/handlers/errorHandlers');
 
@@ -42,12 +44,24 @@ router.route('/setting/listBySettingKey').get(catchErrors(settingController.list
 router
   .route('/setting/updateBySettingKey/:settingKey?')
   .patch(catchErrors(settingController.updateBySettingKey));
+// 使用 express-fileupload 的 req.files.file（app 已全域啟用），因 body 已被其解析，multer 收不到檔案
+async function settingUploadFromReqFiles(req, res, next) {
+  if (req.body?.settingValue || req.upload?.filePath) return next();
+  const file = req.files?.file;
+  if (!file) return next();
+  const dir = path.join(__dirname, '../../public/uploads/setting');
+  fs.mkdirSync(dir, { recursive: true });
+  const filename = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}${path.extname(file.name)}`;
+  const fullPath = path.join(dir, filename);
+  await file.mv(fullPath);
+  if (!req.body) req.body = {};
+  req.body.settingValue = `public/uploads/setting/${filename}`;
+  next();
+}
 router
   .route('/setting/upload/:settingKey?')
   .patch(
-    catchErrors(
-      singleStorageUpload({ entity: 'setting', fieldName: 'settingValue', fileType: 'image' })
-    ),
+    catchErrors(settingUploadFromReqFiles),
     catchErrors(settingController.updateBySettingKey)
   );
 router.route('/setting/updateManySetting').patch(catchErrors(settingController.updateManySetting));

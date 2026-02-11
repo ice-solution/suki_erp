@@ -367,11 +367,12 @@ const request = {
   upload: async ({ entity, id, jsonData }) => {
     try {
       includeToken();
-      const response = await axios.patch(entity + '/upload/' + id, jsonData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
-      });
+      // 傳 FormData 時不要手動設 Content-Type，讓 axios 自動加上 boundary，否則後端無法解析
+      const config =
+        jsonData instanceof FormData
+          ? {}
+          : { headers: { 'Content-Type': 'multipart/form-data' } };
+      const response = await axios.patch(entity + '/upload/' + id, jsonData, config);
       successHandler(response, {
         notifyOnSuccess: true,
         notifyOnFailed: true,

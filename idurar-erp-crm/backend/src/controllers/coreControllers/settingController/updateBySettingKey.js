@@ -12,7 +12,8 @@ const updateBySettingKey = async (req, res) => {
       message: 'No settingKey provided ',
     });
   }
-  const { settingValue } = req.body;
+  // 上傳 Logo 時由 singleStorageUpload 寫入 req.upload.filePath，或從 req.body.settingValue 取得
+  const settingValue = req.body?.settingValue ?? req.upload?.filePath;
 
   if (!settingValue) {
     return res.status(202).json({
@@ -21,16 +22,20 @@ const updateBySettingKey = async (req, res) => {
       message: 'No settingValue provided ',
     });
   }
-  const result = await Model.findOneAndUpdate(
+  let result = await Model.findOneAndUpdate(
     { settingKey },
-    {
-      settingValue,
-    },
-    {
-      new: true, // return the new result instead of the old one
-      runValidators: true,
-    }
+    { settingValue },
+    { new: true, runValidators: true }
   ).exec();
+  // 若為依類型 Logo 設定且尚無該 key，則自動建立（方便現有環境不需跑 setup）
+  if (!result && settingKey && settingKey.startsWith('company_logo_')) {
+    result = await Model.create({
+      settingCategory: 'company_settings',
+      settingKey,
+      settingValue,
+      valueType: 'image',
+    });
+  }
   if (!result) {
     return res.status(404).json({
       success: false,
