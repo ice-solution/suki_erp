@@ -11,10 +11,11 @@ const schema = new mongoose.Schema({
   },
   name: {
     type: String,
-    required: true,
+    required: false,
   },
   registrationNumber: {
     type: String,
+    required: true,
   },
   status: {
     type: String,

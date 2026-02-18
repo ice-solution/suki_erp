@@ -365,7 +365,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         const normalShips = response.result.filter(ship => ship.status === 'normal');
         const shipOptions = normalShips.map(ship => ({
           value: ship._id,
-          label: ship.name || ship.registrationNumber || '未命名船隻',
+          label: ship.registrationNumber || '—',
           ...ship
         }));
         setShips(shipOptions);
@@ -388,7 +388,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         const normalWinches = response.result.filter(winch => winch.status === 'normal');
         const winchOptions = normalWinches.map(winch => ({
           value: winch._id,
-          label: winch.name || winch.serialNumber || '未命名爬攬器',
+          label: winch.serialNumber || '—',
           ...winch
         }));
         setWinches(winchOptions);
@@ -548,44 +548,33 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 只在current確實存在且有_id時才處理（表示這是一個已存在的記錄）
       const { ship: currentShip, winch: currentWinch } = current;
       
-      // 處理船隻數據 - 如果current有ship，更新selectedShip
+      // 處理船隻數據 - 以登記號碼顯示
       if (currentShip) {
         const shipId = typeof currentShip === 'object' ? currentShip._id : currentShip;
-        const shipName = typeof currentShip === 'object' ? currentShip.name : null;
-        
+        const shipRegNo = typeof currentShip === 'object' ? currentShip.registrationNumber : null;
         setSelectedShip(shipId);
-        // 如果有名稱，直接使用；否則嘗試從ships數組中查找
-        if (shipName) {
-          setSelectedShipName(shipName);
+        if (shipRegNo) {
+          setSelectedShipName(shipRegNo);
         } else if (ships.length > 0) {
           const foundShip = ships.find(s => s.value === shipId);
-          if (foundShip) {
-            setSelectedShipName(foundShip.label);
-          }
+          if (foundShip) setSelectedShipName(foundShip.label);
         }
       } else if (currentShip === null) {
-        // 只有當current明確地將ship設置為null時，才清空
         setSelectedShip(null);
         setSelectedShipName(null);
       }
-      
-      // 處理爬攬器數據 - 如果current有winch，更新selectedWinch
+      // 處理爬攬器數據 - 以序列號顯示
       if (currentWinch) {
         const winchId = typeof currentWinch === 'object' ? currentWinch._id : currentWinch;
-        const winchName = typeof currentWinch === 'object' ? currentWinch.name : null;
-        
+        const winchSerial = typeof currentWinch === 'object' ? currentWinch.serialNumber : null;
         setSelectedWinch(winchId);
-        // 如果有名稱，直接使用；否則嘗試從winches數組中查找
-        if (winchName) {
-          setSelectedWinchName(winchName);
+        if (winchSerial) {
+          setSelectedWinchName(winchSerial);
         } else if (winches.length > 0) {
           const foundWinch = winches.find(w => w.value === winchId);
-          if (foundWinch) {
-            setSelectedWinchName(foundWinch.label);
-          }
+          if (foundWinch) setSelectedWinchName(foundWinch.label);
         }
       } else if (currentWinch === null) {
-        // 只有當current明確地將winch設置為null時，才清空
         setSelectedWinch(null);
         setSelectedWinchName(null);
       }
@@ -1593,7 +1582,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               width: '15%',
             },
             {
-              title: '名稱',
+              title: '登記號碼 / 序列號',
               dataIndex: 'name',
               key: 'name',
               width: '70%',

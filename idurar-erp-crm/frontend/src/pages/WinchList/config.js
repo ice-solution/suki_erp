@@ -1,12 +1,9 @@
 export const fields = {
-  name: {
+  serialNumber: {
     type: 'string',
     required: true,
     show: true,
-  },
-  serialNumber: {
-    type: 'string',
-    show: true,
+    label: '序列號',
   },
   status: {
     type: 'select',

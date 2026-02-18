@@ -328,14 +328,12 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</Descriptions.Item>
         {currentErp.ship && (
           <Descriptions.Item label="船隻">
-            <Tag color="blue">{currentErp.ship.name}</Tag>
-            {currentErp.ship.registrationNumber && ` (${currentErp.ship.registrationNumber})`}
+            <Tag color="blue">{currentErp.ship.registrationNumber || '—'}</Tag>
           </Descriptions.Item>
         )}
         {currentErp.winch && (
           <Descriptions.Item label="爬攬器">
-            <Tag color="green">{currentErp.winch.name}</Tag>
-            {currentErp.winch.serialNumber && ` (${currentErp.winch.serialNumber})`}
+            <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
           </Descriptions.Item>
         )}
       </Descriptions>

@@ -9,8 +9,8 @@ const read = async (req, res) => {
     removed: false,
   })
     .populate('createdBy', 'name')
-    .populate('ship', 'name registrationNumber status supplierNumber')
-    .populate('winch', 'name serialNumber status supplierNumber')
+    .populate('ship', 'registrationNumber status supplierNumber')
+    .populate('winch', 'serialNumber status supplierNumber')
     .exec();
   // If no results found, return document not found
   if (!result) {

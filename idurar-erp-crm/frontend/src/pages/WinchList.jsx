@@ -15,10 +15,10 @@ export default function WinchList() {
   const { moneyFormatter } = useMoney();
   const entity = 'winch';
   const searchConfig = {
-    displayLabels: ['name'],
-    searchFields: 'name',
+    displayLabels: ['serialNumber'],
+    searchFields: 'serialNumber',
   };
-  const deleteModalLabels = ['name'];
+  const deleteModalLabels = ['serialNumber'];
 
   // 存儲supplierNumber到SupplierQuote _id的映射
   const [supplierQuoteMap, setSupplierQuoteMap] = useState({});
@@ -56,14 +56,7 @@ export default function WinchList() {
   const getBaseColumns = () => {
     const baseColumns = [];
     
-    // Name列
-    baseColumns.push({
-      title: translate('name') || '名稱',
-      dataIndex: 'name',
-      key: 'name',
-    });
-
-    // Serial Number列
+    // 序列號列（唯一識別）
     baseColumns.push({
       title: translate('serialNumber') || '序列號',
       dataIndex: 'serialNumber',

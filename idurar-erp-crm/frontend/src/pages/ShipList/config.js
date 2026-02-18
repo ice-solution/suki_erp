@@ -1,12 +1,9 @@
 export const fields = {
-  name: {
+  registrationNumber: {
     type: 'string',
     required: true,
     show: true,
-  },
-  registrationNumber: {
-    type: 'string',
-    show: true,
+    label: '登記號碼',
   },
   status: {
     type: 'select',

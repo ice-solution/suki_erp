@@ -15,10 +15,10 @@ export default function ShipList() {
   const { moneyFormatter } = useMoney();
   const entity = 'ship';
   const searchConfig = {
-    displayLabels: ['name'],
-    searchFields: 'name',
+    displayLabels: ['registrationNumber'],
+    searchFields: 'registrationNumber',
   };
-  const deleteModalLabels = ['name'];
+  const deleteModalLabels = ['registrationNumber'];
 
   // 存儲supplierNumber到SupplierQuote _id的映射
   const [supplierQuoteMap, setSupplierQuoteMap] = useState({});
@@ -56,14 +56,7 @@ export default function ShipList() {
   const getBaseColumns = () => {
     const baseColumns = [];
     
-    // Name列
-    baseColumns.push({
-      title: translate('name') || '名稱',
-      dataIndex: 'name',
-      key: 'name',
-    });
-
-    // Registration Number列
+    // 登記號碼列（唯一識別）
     baseColumns.push({
       title: translate('registrationNumber') || '登記號碼',
       dataIndex: 'registrationNumber',
