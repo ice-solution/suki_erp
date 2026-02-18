@@ -121,14 +121,20 @@ exports.generatePdf = async (
       }
     }
 
-    // 檢查模板是否存在於 pugFiles 中
-    if (pugFiles.includes(templateName)) {
-      // 使用絕對路徑來確保在構建後也能找到模板文件
-      const templatePath = path.join(__dirname, '../../pdf', templateName + '.pug');
-      
-      // 檢查文件是否存在
-      if (!fs.existsSync(templatePath)) {
-        throw new Error(`Template file not found: ${templatePath}`);
+    // 檢查模板是否存在於 pugFiles 中（一律使用小寫檔名，避免 Linux 大小寫敏感導致找不到）
+    const templateNameLower = templateName.toLowerCase();
+    if (pugFiles.includes(templateNameLower)) {
+      const fileName = templateNameLower + '.pug';
+      // 依序嘗試多個路徑，以支援不同部署方式（本機 __dirname、從 backend 目錄執行、從專案根目錄執行）
+      const candidates = [
+        path.join(__dirname, '../../pdf', fileName),
+        path.join(process.cwd(), 'src', 'pdf', fileName),
+        path.join(process.cwd(), 'backend', 'src', 'pdf', fileName),
+      ];
+      let templatePath = candidates.find((p) => fs.existsSync(p));
+      if (!templatePath) {
+        templatePath = candidates[0]; // 錯誤訊息顯示第一個預期路徑
+        throw new Error(`Template file not found: ${templatePath}. Tried: ${candidates.join(', ')}`);
       }
 
       const htmlContent = pug.renderFile(templatePath, {
