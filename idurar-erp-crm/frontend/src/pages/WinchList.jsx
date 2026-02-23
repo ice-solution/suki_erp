@@ -20,13 +20,14 @@ export default function WinchList() {
   };
   const deleteModalLabels = ['serialNumber'];
 
-  // 存儲supplierNumber到SupplierQuote _id的映射
+  // 存儲 supplierNumber -> { id, address } 的映射
   const [supplierQuoteMap, setSupplierQuoteMap] = useState({});
 
-  // 根據supplierNumber查找SupplierQuote的_id
-  const findSupplierQuoteId = async (supplierNumber) => {
+  // 根據 supplierNumber 查找 SupplierQuote 的 _id 和 address（Project Address）
+  const findSupplierQuoteInfo = async (supplierNumber) => {
     if (!supplierNumber) return null;
-    if (supplierQuoteMap[supplierNumber]) return supplierQuoteMap[supplierNumber];
+    const cached = supplierQuoteMap[supplierNumber];
+    if (cached) return typeof cached === 'object' ? cached : { id: cached, address: null };
 
     try {
       const response = await request.search({
@@ -35,15 +36,15 @@ export default function WinchList() {
       });
 
       if (response.success && response.result && response.result.length > 0) {
-        // 精確匹配supplierNumber（格式：numberPrefix-number）
         const matchedQuote = response.result.find(quote => {
           const quoteNumber = `${quote.numberPrefix || 'S'}-${quote.number}`;
           return quoteNumber === supplierNumber;
         });
 
         if (matchedQuote) {
-          setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: matchedQuote._id }));
-          return matchedQuote._id;
+          const info = { id: matchedQuote._id, address: matchedQuote.address || null };
+          setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
+          return info;
         }
       }
     } catch (error) {
@@ -89,10 +90,8 @@ export default function WinchList() {
         if (!supplierNumber || record.status !== 'in_use') {
           return '-';
         }
-        
-        // 使用useState存儲的映射，或異步查找
-        const quoteId = supplierQuoteMap[supplierNumber];
-        
+        const info = supplierQuoteMap[supplierNumber];
+        const quoteId = typeof info === 'object' ? info?.id : info;
         if (quoteId) {
           return (
             <Link
@@ -102,15 +101,30 @@ export default function WinchList() {
               {supplierNumber}
             </Link>
           );
-        } else {
-          // 如果還沒有映射，異步查找
-          findSupplierQuoteId(supplierNumber);
-          return (
-            <span style={{ color: '#1890ff', cursor: 'pointer' }}>
-              {supplierNumber}
-            </span>
-          );
         }
+        findSupplierQuoteInfo(supplierNumber);
+        return (
+          <span style={{ color: '#1890ff', cursor: 'pointer' }}>
+            {supplierNumber}
+          </span>
+        );
+      },
+    });
+
+    // Project Address列（對應 Supplier Quote 的 address）
+    baseColumns.push({
+      title: translate('Project Address') || 'Project Address',
+      dataIndex: 'supplierNumber',
+      key: 'projectAddress',
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') {
+          return '-';
+        }
+        const info = supplierQuoteMap[supplierNumber];
+        const address = typeof info === 'object' ? info?.address : null;
+        if (address) return address;
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
       },
     });
 

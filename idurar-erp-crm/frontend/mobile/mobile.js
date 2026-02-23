@@ -394,7 +394,89 @@ async function showProjectEmployees(projectId, projectName) {
 
 // 加載項目員工列表（不再需要，因為直接進入打咭頁面）
 async function loadEmployees() {
-    // 不再顯示員工列表，直接提供打咭選項
+    loadTodayAttendance();
+}
+
+// 打咭摘要數據（用於點擊顯示日期）
+let attendanceSummaryData = [];
+
+// 加載並顯示打咭人員和打咭記錄（人名 - 總人工，點擊人名顯示打咭日期）
+async function loadTodayAttendance() {
+    const staffListEl = document.getElementById('checkedInStaffList');
+    const recordsListEl = document.getElementById('attendanceRecordsList');
+    if (!staffListEl || !recordsListEl) return;
+
+    if (!currentProject) {
+        staffListEl.innerHTML = '<p style="color: #666;">請先選擇項目</p>';
+        recordsListEl.innerHTML = '<p style="color: #666;">請先選擇項目</p>';
+        return;
+    }
+
+    staffListEl.innerHTML = '<span class="loading">載入中...</span>';
+    recordsListEl.innerHTML = '<span class="loading">載入中...</span>';
+
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const [dateRes, summaryRes] = await Promise.all([
+            apiRequest(`/mobile-project/project/${currentProject}/attendance-by-date?date=${today}`),
+            apiRequest(`/mobile-project/project/${currentProject}/attendance-summary`)
+        ]);
+
+        const records = dateRes.result?.attendanceRecords || [];
+        const staffNames = [...new Set(records.map(r => r.name).filter(Boolean))];
+
+        attendanceSummaryData = summaryRes.success ? (summaryRes.result?.summary || []) : [];
+
+        // 打咭人員（今日）
+        if (staffNames.length === 0) {
+            staffListEl.innerHTML = '<p style="color: #999;">今日尚無打咭人員</p>';
+        } else {
+            staffListEl.innerHTML = staffNames.map(name =>
+                `<span class="attendance-staff-item">${name}</span>`
+            ).join('');
+        }
+
+        // 打咭記錄：人名 - 總人工，點擊顯示打咭日期
+        if (attendanceSummaryData.length === 0) {
+            recordsListEl.innerHTML = '<p style="color: #999;">暫無打咭記錄</p>';
+        } else {
+            recordsListEl.innerHTML = attendanceSummaryData.map((item, idx) => {
+                const amount = item.totalAmount != null ? '$' + Number(item.totalAmount).toLocaleString() : '$0';
+                return `<div class="attendance-record-item" onclick="showAttendanceDatesModal(${idx})">
+                    <strong>${item.name || '—'}</strong> - ${amount}
+                </div>`;
+            }).join('');
+        }
+    } catch (error) {
+        console.error('Failed to load attendance:', error);
+        if (!error.isAuthError) {
+            staffListEl.innerHTML = '<p style="color: #dc3545;">載入失敗</p>';
+            recordsListEl.innerHTML = '<p style="color: #dc3545;">載入失敗</p>';
+        }
+    }
+}
+
+function showAttendanceDatesModal(idx) {
+    const item = attendanceSummaryData[idx];
+    if (!item) return;
+    const modal = document.getElementById('attendanceDatesModal');
+    const titleEl = document.getElementById('attendanceDatesModalTitle');
+    const listEl = document.getElementById('attendanceDatesList');
+    if (!modal || !titleEl || !listEl) return;
+    titleEl.textContent = `${item.name || '—'} 打咭日期`;
+    const formatDate = (d) => {
+        const [y, m, day] = d.split('-');
+        return `${y}/${m}/${day}`;
+    };
+    listEl.innerHTML = item.dates && item.dates.length
+        ? item.dates.map(d => `<span class="attendance-date-tag">${formatDate(d)}</span>`).join('')
+        : '<p style="color: #999;">暫無日期</p>';
+    modal.style.display = 'block';
+}
+
+function closeAttendanceDatesModal() {
+    const modal = document.getElementById('attendanceDatesModal');
+    if (modal) modal.style.display = 'none';
 }
 
 // 批量打咭相關變量
@@ -794,3 +876,5 @@ window.toggleEmployeeSelection = toggleEmployeeSelection;
 window.toggleMakeupEmployeeSelection = toggleMakeupEmployeeSelection;
 window.goBack = goBack;
 window.logout = logout;
+window.showAttendanceDatesModal = showAttendanceDatesModal;
+window.closeAttendanceDatesModal = closeAttendanceDatesModal;

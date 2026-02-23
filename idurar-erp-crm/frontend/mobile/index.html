@@ -437,6 +437,39 @@
             flex: 1;
         }
 
+        .attendance-record-item {
+            background: white;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+            font-size: 14px;
+            border-left: 4px solid #28a745;
+            cursor: pointer;
+        }
+
+        .attendance-record-item:active {
+            opacity: 0.9;
+        }
+
+        .attendance-date-tag {
+            display: inline-block;
+            background: #e8f5e9;
+            color: #2e7d32;
+            padding: 4px 10px;
+            border-radius: 6px;
+            margin: 4px 4px 0 0;
+            font-size: 13px;
+        }
+
+        .attendance-staff-item {
+            display: inline-block;
+            background: white;
+            border-radius: 8px;
+            padding: 8px 12px;
+            margin: 4px 4px 4px 0;
+            font-size: 14px;
+        }
+
         @media (max-width: 480px) {
             .container {
                 max-width: 100%;
@@ -496,8 +529,29 @@
                     <div id="projectsList"></div>
                 </div>
 
-                <!-- Employees Page -->
+                <!-- Employees Page (打咭頁面) -->
                 <div class="page" id="employeesPage">
+                    <!-- 打咭人員和打咭記錄 -->
+                    <div id="attendanceSummarySection" style="margin-bottom: 20px;">
+                        <div class="attendance-section" style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                            <h4 style="margin-bottom: 12px; color: #333;">今天打咭人員</h4>
+                            <div id="checkedInStaffList" class="loading">載入中...</div>
+                        </div>
+                        <div class="attendance-section" style="background: #f8f9fa; border-radius: 12px; padding: 16px; margin-bottom: 16px;">
+                            <h4 style="margin-bottom: 12px; color: #333;">打咭記錄</h4>
+                            <div id="attendanceRecordsList" class="loading">載入中...</div>
+                        </div>
+                        <!-- 打咭日期詳情 Modal -->
+                        <div id="attendanceDatesModal" class="modal" style="display: none;" onclick="if(event.target===this) closeAttendanceDatesModal()">
+                            <div class="modal-content" onclick="event.stopPropagation()">
+                                <div class="modal-header">
+                                    <span class="modal-title" id="attendanceDatesModalTitle">打咭日期</span>
+                                    <span class="close" onclick="closeAttendanceDatesModal()">&times;</span>
+                                </div>
+                                <div id="attendanceDatesList"></div>
+                            </div>
+                        </div>
+                    </div>
                     <div style="margin-bottom: 16px;">
                         <button class="btn btn-success" onclick="showBatchCheckIn()" style="margin-bottom: 12px;">
                             今天打咭
