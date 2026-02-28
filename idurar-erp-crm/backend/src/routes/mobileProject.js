@@ -22,6 +22,9 @@ router.post('/project/:projectId/batch-checkin', catchErrors(mobileProjectContro
 // 獲取指定日期的員工打咭狀態（用於補打咭）
 router.get('/project/:projectId/attendance-by-date', catchErrors(mobileProjectController.getAttendanceByDate));
 
+// 獲取打咭摘要（人名、總人工、打咭日期列表）
+router.get('/project/:projectId/attendance-summary', catchErrors(mobileProjectController.getAttendanceSummary));
+
 // 補打咭
 router.post('/project/:projectId/makeup-checkin', catchErrors(mobileProjectController.makeupCheckIn));
 

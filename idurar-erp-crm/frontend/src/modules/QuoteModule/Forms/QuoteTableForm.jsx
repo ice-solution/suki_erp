@@ -327,7 +327,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
       
-      // 計算subTotal或使用現有的subTotal（負數價格不計入）
+      // 計算subTotal（允許負數影響總額）
       let calculatedSubTotal = 0;
       if (currentItems && currentItems.length > 0) {
         currentItems.forEach((item) => {
@@ -380,7 +380,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當items改變時（負數價格不計入）
+  // 計算subTotal當items改變時（允許負數影響總額）
   useEffect(() => {
     let newSubTotal = 0;
     if (items && items.length > 0) {
@@ -472,8 +472,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
   // 添加或更新項目到列表
   const addItemToList = () => {
-    // 允許負數價格，只需要項目名稱和數量 > 0
-    if (!currentItem.itemName || currentItem.quantity <= 0) {
+    // 允許正數（加數）或負數（減數），但不允許 0
+    if (!currentItem.itemName || currentItem.quantity === null || currentItem.quantity === undefined || currentItem.quantity === 0) {
       return;
     }
 
@@ -876,8 +876,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col span={2}>
           <InputNumber 
-            placeholder="數量"
-            min={1}
+            placeholder="數量（正=加，負=減）"
             value={currentItem.quantity}
             onChange={(value) => updateCurrentItem('quantity', value)}
             style={{ width: '100%' }}
@@ -898,7 +897,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             type="primary" 
             icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addItemToList}
-            disabled={!currentItem.itemName || currentItem.quantity <= 0}
+            disabled={!currentItem.itemName || currentItem.quantity === null || currentItem.quantity === undefined || currentItem.quantity === 0}
             key={editingItemKey ? 'update-btn' : 'add-btn'}
             style={{ width: '100%' }}
           >

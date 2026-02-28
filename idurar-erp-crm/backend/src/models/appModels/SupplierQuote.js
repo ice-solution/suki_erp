@@ -61,6 +61,9 @@ const supplierQuoteSchema = new mongoose.Schema({
   poNumber: {
     type: String,
   },
+  counterpartyInvoiceNumber: {
+    type: String,
+  },
   contactPerson: {
     type: String,
   },
@@ -137,7 +140,6 @@ const supplierQuoteSchema = new mongoose.Schema({
       quantity: {
         type: Number,
         required: true,
-        min: 0,
       },
       price: {
         type: Number,

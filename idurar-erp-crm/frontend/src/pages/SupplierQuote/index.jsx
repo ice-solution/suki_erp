@@ -80,6 +80,18 @@ export default function SupplierQuote() {
       },
     },
     {
+      title: translate('SubTotal'),
+      dataIndex: 'subTotal',
+      onCell: () => ({ style: { textAlign: 'right', whiteSpace: 'nowrap', direction: 'ltr' } }),
+      render: (subTotal, record) => moneyFormatter({ amount: subTotal, currency_code: record.currency }),
+    },
+    {
+      title: translate('Cost Price'),
+      dataIndex: 'costPrice',
+      onCell: () => ({ style: { textAlign: 'right', whiteSpace: 'nowrap', direction: 'ltr' } }),
+      render: (costPrice, record) => costPrice != null && costPrice !== '' ? moneyFormatter({ amount: costPrice, currency_code: record.currency }) : '-',
+    },
+    {
       title: translate('Total'),
       dataIndex: 'total',
       onCell: () => {

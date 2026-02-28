@@ -490,11 +490,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 計算subTotal或使用現有的subTotal（計算 materials 和 items）
       let calculatedSubTotal = 0;
       
-      // 計算 materials 的總計
+      // 計算 materials 的總計（price 為總價，正=加數、負=減數）
       if (currentMaterials && currentMaterials.length > 0) {
         currentMaterials.forEach((material) => {
-          // price 現在已經是總價（quantity * unitPrice），直接使用
-          if (material && material.price) {
+          if (material && material.price !== undefined && material.price !== null) {
             let materialTotal = material.price;
             // 保留小數點後2位
             materialTotal = Number.parseFloat(materialTotal.toFixed(2));
@@ -585,11 +584,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   useEffect(() => {
     let newSubTotal = 0;
     
-    // 計算 materials 的總計
+    // 計算 materials 的總計（price 為總價，正=加數、負=減數）
     if (materials && materials.length > 0) {
       materials.forEach((material) => {
-        // price 現在已經是總價（quantity * unitPrice），直接使用
-        if (material && material.price) {
+        if (material && material.price !== undefined && material.price !== null) {
           let materialTotal = material.price;
           // 保留小數點後2位
           materialTotal = Number.parseFloat(materialTotal.toFixed(2));
@@ -941,7 +939,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 添加或更新材料到列表
   const addMaterialToList = () => {
-    if (!currentMaterial.itemName || !currentMaterial.warehouse || !currentMaterial.quantity || currentMaterial.quantity <= 0) {
+    // 允許正數（加數）或負數（減數），但不允許 0
+    if (!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity === null || currentMaterial.quantity === undefined || currentMaterial.quantity === 0) {
       return;
     }
 
@@ -1075,7 +1074,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       dataIndex: 'price',
       key: 'price',
       width: '20%',
-      render: (price) => moneyFormatter({ amount: price || 0 }),
+      render: (price) => {
+        const amount = price ?? 0;
+        if (amount < 0) {
+          return <span style={{ color: '#ff4d4f' }}>{moneyFormatter({ amount })}</span>;
+        }
+        return moneyFormatter({ amount });
+      },
     },
     {
       title: '',
@@ -1303,6 +1308,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
+          <Form.Item label="對方Invoice Number" name="counterpartyInvoiceNumber">
+            <Input placeholder="對方Invoice Number（選填）" />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={6}>
           <Form.Item label={translate('Contact Person')} name="contactPerson">
             <Input />
           </Form.Item>
@@ -1420,7 +1430,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         locale={{ emptyText: translate('No items added') }}
       />
 
-      <Divider orientation="left">材料管理</Divider>
+      <Divider orientation="left">材料及費用管理</Divider>
 
       {/* Materials Input Form */}
       <Row gutter={[12, 12]} style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
@@ -1458,8 +1468,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         </Col>
         <Col span={3}>
           <InputNumber 
-            placeholder="數量"
-            min={0}
+            placeholder="數量（正=加，負=減）"
             step={0.01}
             precision={2}
             value={currentMaterial.quantity}
@@ -1469,15 +1478,14 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         </Col>
         <Col span={3}>
           <InputNumber
-            placeholder="總價"
-            min={0}
+            placeholder="總價（正=加，負=減）"
             step={0.01}
             precision={2}
             value={currentMaterial.price}
             onChange={(value) => {
-              // 當用戶修改總價時，反向計算單價
-              const quantity = currentMaterial.quantity || 1;
-              const unitPrice = quantity > 0 ? (value || 0) / quantity : 0;
+              // 當用戶修改總價時，反向計算單價（支援負數）
+              const quantity = currentMaterial.quantity;
+              const unitPrice = (quantity && quantity !== 0) ? (value || 0) / quantity : (value || 0);
               setCurrentMaterial({
                 ...currentMaterial,
                 unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
@@ -1492,7 +1500,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             type="primary" 
             icon={editingMaterialKey ? <EditOutlined /> : <PlusOutlined />} 
             onClick={addMaterialToList}
-            disabled={!currentMaterial.itemName || !currentMaterial.warehouse || !currentMaterial.quantity || currentMaterial.quantity <= 0}
+            disabled={!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity === null || currentMaterial.quantity === undefined || currentMaterial.quantity === 0}
             style={{ width: '100%' }}
             key={editingMaterialKey ? 'update-material-btn' : 'add-material-btn'}
           >

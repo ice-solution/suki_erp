@@ -26,16 +26,10 @@ const create = async (req, res) => {
   let discountTotal = 0;
   let total = 0;
 
-  //Calculate the items array with subTotal, total, discountTotal
+  //Calculate the items array with subTotal, total, discountTotal（允許負數影響總額）
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
-    //item total
     item['total'] = total;
-    // 如果價格是負數，不計入 subtotal
-    if (item['price'] < 0) {
-      return; // 跳過負數價格項目，不計入 subtotal
-    }
-    //sub total
     subTotal = calculate.add(subTotal, total);
   });
   discountTotal = calculate.multiply(subTotal, discount / 100);

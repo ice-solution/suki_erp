@@ -5,6 +5,7 @@ const uploadImage = require('./uploadImage');
 const getProjectEmployees = require('./getProjectEmployees');
 const batchCheckIn = require('./batchCheckIn');
 const getAttendanceByDate = require('./getAttendanceByDate');
+const getAttendanceSummary = require('./getAttendanceSummary');
 const makeupCheckIn = require('./makeupCheckIn');
 
 const methods = {
@@ -15,6 +16,7 @@ const methods = {
   getProjectEmployees,
   batchCheckIn,
   getAttendanceByDate,
+  getAttendanceSummary,
   makeupCheckIn
 };
 

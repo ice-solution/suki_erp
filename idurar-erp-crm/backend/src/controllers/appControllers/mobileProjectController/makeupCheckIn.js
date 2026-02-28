@@ -71,12 +71,12 @@ const makeupCheckIn = async (req, res) => {
     const results = [];
     const errors = [];
 
-    // 為每個員工補打咭
+    // 為每個員工補打咭（使用 $push 直接寫入 DB，與後台 addAttendance 一致）
     for (const employeeId of employeeIds) {
       try {
         // 檢查是否已經有該員工在該日期的打咭記錄
         const existingAttendance = project.onboard.find(
-          (attendance) => 
+          (attendance) =>
             attendance.contractorEmployee.toString() === employeeId.toString() &&
             new Date(attendance.checkInDate).toISOString().split('T')[0] === dateStr
         );
@@ -91,7 +91,7 @@ const makeupCheckIn = async (req, res) => {
 
         // 創建新的打咭記錄
         const newAttendance = {
-          contractorEmployee: employeeId,
+          contractorEmployee: new mongoose.Types.ObjectId(employeeId),
           checkInDate: checkInDateObj,
           checkInTime: checkInTime || null,
           checkOutTime: checkOutTime || null,
@@ -101,13 +101,15 @@ const makeupCheckIn = async (req, res) => {
           updated: new Date()
         };
 
-        // 添加到項目
-        project.onboard.push(newAttendance);
+        // 使用 $push 直接寫入 DB（確保即時反映到 project read）
+        await Project.findByIdAndUpdate(
+          projectId,
+          { $push: { onboard: newAttendance } }
+        );
         results.push({
           employeeId,
           success: true
         });
-
       } catch (error) {
         errors.push({
           employeeId,
@@ -116,13 +118,27 @@ const makeupCheckIn = async (req, res) => {
       }
     }
 
-    // 保存項目
-    await project.save();
-
-    // 為每個成功打咭的員工計算工作天數
+    // 為每個成功打咭的員工計算工作天數並更新 salaries（workDays、totalSalary）
     for (const result of results) {
       try {
-        await calculateWorkDaysFromAttendance(projectId, result.employeeId);
+        const workDays = await calculateWorkDaysFromAttendance(projectId, result.employeeId);
+        const projectWithSalaries = await Project.findById(projectId)
+          .populate('salaries.contractorEmployee', 'name contractor')
+          .lean();
+        const salaryRecord = (projectWithSalaries?.salaries || []).find(
+          (s) => {
+          const empId = s.contractorEmployee?._id || s.contractorEmployee;
+          return empId && empId.toString() === result.employeeId.toString();
+        }
+        );
+        if (salaryRecord) {
+          const dailySalary = salaryRecord.dailySalary || 0;
+          const totalSalary = dailySalary * workDays;
+          await Project.findOneAndUpdate(
+            { _id: projectId, 'salaries._id': salaryRecord._id },
+            { $set: { 'salaries.$.workDays': workDays, 'salaries.$.totalSalary': totalSalary, 'salaries.$.updated': new Date() } }
+          );
+        }
       } catch (error) {
         console.error(`計算員工 ${result.employeeId} 工作天數失敗:`, error);
       }

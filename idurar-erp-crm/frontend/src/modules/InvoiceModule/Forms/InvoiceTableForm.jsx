@@ -321,15 +321,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
       
-      // 計算subTotal或使用現有的subTotal（負數價格不計入）
+      // 計算subTotal（允許負數影響總額）
       let calculatedSubTotal = 0;
       if (currentItems && currentItems.length > 0) {
         currentItems.forEach((item) => {
-          // 如果價格是負數，不計入 subtotal
-          if (item && item.price < 0) {
-            return; // 跳過負數價格項目
-          }
-          if (item && item.quantity && item.price) {
+          if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
             let itemTotal = calculate.multiply(item.quantity, item.price);
             calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
           }
@@ -362,16 +358,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當items改變時（負數價格不計入）
+  // 計算subTotal當items改變時（允許負數影響總額）
   useEffect(() => {
     let newSubTotal = 0;
     if (items && items.length > 0) {
       items.forEach((item) => {
-        // 如果價格是負數，不計入 subtotal
-        if (item && item.price < 0) {
-          return; // 跳過負數價格項目
-        }
-        if (item && item.quantity && item.price) {
+        if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
           let itemTotal = calculate.multiply(item.quantity, item.price);
           newSubTotal = calculate.add(newSubTotal, itemTotal);
         }
@@ -453,8 +445,8 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
   // 添加或更新項目到列表
   const addItemToList = () => {
-    // 允許負數價格，只需要 itemName 和 quantity > 0
-    if (!currentItem.itemName || currentItem.quantity <= 0) {
+    // 允許正數（加數）或負數（減數），但不允許 0
+    if (!currentItem.itemName || currentItem.quantity === null || currentItem.quantity === undefined || currentItem.quantity === 0) {
       return;
     }
 
@@ -885,8 +877,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Col span={3}>
             <label>數量</label>
             <InputNumber 
-              placeholder="數量"
-              min={1}
+              placeholder="數量（正=加，負=減）"
               value={currentItem.quantity}
               onChange={(value) => updateCurrentItem('quantity', value)}
               style={{ width: '100%' }}
@@ -906,7 +897,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               type="primary" 
               icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
               onClick={addItemToList}
-              disabled={!currentItem.itemName || currentItem.quantity <= 0}
+              disabled={!currentItem.itemName || currentItem.quantity === null || currentItem.quantity === undefined || currentItem.quantity === 0}
               style={{ marginTop: '22px', width: '100%' }}
               key={editingItemKey ? 'update-btn' : 'add-btn'}
             >

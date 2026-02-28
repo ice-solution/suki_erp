@@ -58,15 +58,22 @@ const update = async (req, res) => {
   let total = 0;
   // let credit = 0;
 
-  // 注意：SupplierQuote 只計算 materials 的總計，不計算 items 的總計
-  // Items 只用於記錄，不參與價格計算
-
-  // Calculate materials total only (materials already parsed above)
+  // subTotal = materials 總計 + items 總計（兩者都參與價格計算，允許負數）
+  // 1) Materials：price 為總價
   if (materials.length > 0) {
     materials.forEach((material) => {
-      if (material && material.quantity && material.price) {
-        let materialTotal = calculate.multiply(material.quantity, material.price);
-        subTotal = calculate.add(subTotal, materialTotal);
+      if (material && material.price !== undefined && material.price !== null) {
+        subTotal = calculate.add(subTotal, Number(material.price));
+      }
+    });
+  }
+  // 2) Items：quantity * price 計入 subTotal
+  if (items.length > 0) {
+    items.forEach((item) => {
+      if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
+        const itemTotal = calculate.multiply(item.quantity, item.price);
+        item['total'] = itemTotal;
+        subTotal = calculate.add(subTotal, itemTotal);
       }
     });
   }

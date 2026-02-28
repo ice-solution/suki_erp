@@ -50,6 +50,18 @@ const Item = ({ item, currentErp }) => {
   );
 };
 
+const MaterialRow = ({ material, moneyFormatter, currency }) => (
+  <Row gutter={[12, 0]}>
+    <Col span={4}>{material.warehouse ? `倉${material.warehouse}` : '-'}</Col>
+    <Col span={8}><strong>{material.itemName}</strong></Col>
+    <Col span={4} style={{ textAlign: 'right' }}>{material.quantity != null ? Number(material.quantity).toFixed(2) : '-'}</Col>
+    <Col span={8} style={{ textAlign: 'right', color: (material.price || 0) < 0 ? '#ff4d4f' : undefined }}>
+      {moneyFormatter({ amount: material.price ?? 0, currency_code: currency })}
+    </Col>
+    <Divider dashed style={{ marginTop: 0, marginBottom: 15 }} />
+  </Row>
+);
+
 export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
@@ -321,9 +333,10 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
         <Descriptions.Item label="Quote Number">{currentErp.numberPrefix && currentErp.number ? `${currentErp.numberPrefix}-${currentErp.number}` : currentErp.invoiceNumber || '-'}</Descriptions.Item>
+        <Descriptions.Item label="對方Invoice Number">{currentErp.counterpartyInvoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
-        <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice != null && currentErp.costPrice !== '' ? moneyFormatter({ amount: currentErp.costPrice }) : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</Descriptions.Item>
         {currentErp.ship && (
@@ -421,6 +434,25 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
       {itemslist.map((item) => (
         <Item key={item._id} item={item} currentErp={currentErp} />
       ))}
+      {(currentErp?.materials?.length ?? 0) > 0 && (
+        <>
+          <Divider orientation="left">材料及費用管理</Divider>
+          <Row gutter={[12, 0]} style={{ marginBottom: 16 }}>
+            <Col span={4}><strong>{translate('Warehouse')}</strong></Col>
+            <Col span={8}><strong>{translate('Item')}</strong></Col>
+            <Col span={4} style={{ textAlign: 'right' }}><strong>{translate('Quantity')}</strong></Col>
+            <Col span={8} style={{ textAlign: 'right' }}><strong>{translate('Price')}</strong></Col>
+          </Row>
+          {currentErp.materials.map((material, index) => (
+            <MaterialRow
+              key={material.key ?? material._id ?? index}
+              material={{ ...material, key: material.key ?? material._id ?? index }}
+              moneyFormatter={moneyFormatter}
+              currency={currentErp.currency}
+            />
+          ))}
+        </>
+      )}
       <div
         style={{
           width: '300px',

@@ -1,9 +1,29 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 
+/** 從 attendance.checkInDate 取得 YYYY-MM-DD 字串（支援多種格式） */
+function getDateStr(checkInDate) {
+  if (!checkInDate) return null;
+  if (checkInDate instanceof Date) {
+    return checkInDate.toISOString().split('T')[0];
+  }
+  if (typeof checkInDate === 'string') {
+    return checkInDate.includes('T') ? checkInDate.split('T')[0] : checkInDate;
+  }
+  const dateObj = new Date(checkInDate);
+  return !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : null;
+}
+
+/** 從 ref 取得 ObjectId 字串（支援 ObjectId 或 populated 物件） */
+function getEmpId(ref) {
+  if (!ref) return null;
+  if (typeof ref === 'object' && ref._id) return ref._id.toString();
+  return ref.toString();
+}
+
 /**
  * 獲取指定日期的員工打咭狀態（用於補打咭功能）
- * 返回員工列表和每個員工是否已打咭
+ * 返回員工列表和每個員工是否已打咭，以及當日打咭記錄（直接從 onboard 取，不依賴 salaries）
  */
 const getAttendanceByDate = async (req, res) => {
   try {
@@ -20,12 +40,16 @@ const getAttendanceByDate = async (req, res) => {
     const contractorId = req.contractor._id;
     const ContractorEmployee = mongoose.model('ContractorEmployee');
 
-    // 查找項目並驗證該 contractor 是否有權限訪問此項目
+    const dateStr = date.includes('T') ? date.split('T')[0] : date;
+
+    // 查找項目，populate onboard.contractorEmployee 以取得員工姓名
     const project = await Project.findOne({
       _id: projectId,
       contractors: contractorId,
       removed: false
-    });
+    })
+      .populate('onboard.contractorEmployee', 'name contractor')
+      .lean();
 
     if (!project) {
       return res.status(404).json({
@@ -34,96 +58,97 @@ const getAttendanceByDate = async (req, res) => {
       });
     }
 
-    // 從項目的 salaries 中獲取已分配的員工 ID
-    const assignedEmployeeIds = project.salaries.map(salary => salary.contractorEmployee);
-    
-    if (assignedEmployeeIds.length === 0) {
-      return res.status(200).json({
-        success: true,
-        result: {
-          date,
-          project: {
-            _id: project._id,
-            name: project.name
-          },
-          employees: [],
-          checkedInCount: 0,
-          totalCount: 0
-        },
-        message: '此項目暫無分配的員工'
+    const onboard = project.onboard || [];
+
+    // 直接從 onboard 篩選當日打咭記錄（不依賴 salaries）
+    const attendanceRecords = onboard.filter((attendance) => {
+      const d = getDateStr(attendance.checkInDate);
+      return d && d === dateStr;
+    });
+
+    // 只顯示屬於此 contractor 的員工記錄
+    const contractorIdStr = contractorId.toString();
+    const recordsForContractor = [];
+    const empIdsInRecords = new Set();
+
+    for (const att of attendanceRecords) {
+      const empRef = att.contractorEmployee;
+      const empId = getEmpId(empRef);
+      if (!empId) continue;
+      const emp = empRef && typeof empRef === 'object' && !(empRef instanceof mongoose.Types.ObjectId) ? empRef : null;
+      if (emp && emp.contractor) {
+        const empContractorId = (emp.contractor._id || emp.contractor).toString();
+        if (empContractorId !== contractorIdStr) continue;
+      }
+
+      empIdsInRecords.add(empId);
+      recordsForContractor.push({
+        _id: att._id,
+        contractorEmployee: empId,
+        name: emp && emp.name ? emp.name : '—',
+        checkInTime: att.checkInTime || null,
+        checkOutTime: att.checkOutTime || null,
+        workHours: att.workHours ?? null,
+        notes: att.notes || null
       });
     }
 
-    // 查找這些員工的詳細信息（只查找屬於該 contractor 的員工）
+    // 對無 populate 的記錄補查員工名稱，並排除不屬於此 contractor 的記錄
+    const toRemove = new Set();
+    for (const r of recordsForContractor) {
+      if (r.name === '—') {
+        const emp = await ContractorEmployee.findById(r.contractorEmployee)
+          .select('name contractor')
+          .lean();
+        if (!emp || (emp.contractor && emp.contractor.toString() !== contractorIdStr)) {
+          toRemove.add(r.contractorEmployee);
+        } else {
+          r.name = emp.name || '—';
+        }
+      }
+    }
+    const recordsFiltered = recordsForContractor.filter((r) => !toRemove.has(r.contractorEmployee));
+
+    // 從 salaries 取得員工列表（用於打咭表單）
+    const assignedEmployeeIds = (project.salaries || [])
+      .map((s) => {
+        const ref = s.contractorEmployee;
+        if (!ref) return null;
+        return (ref._id || ref).toString();
+      })
+      .filter(Boolean);
     const employees = await ContractorEmployee.find({
-      _id: { $in: assignedEmployeeIds },
+      _id: { $in: assignedEmployeeIds.length ? assignedEmployeeIds : [] },
       contractor: contractorId,
       removed: false,
       enabled: true
-    }).select('name phone email position').sort({ name: 1 });
+    })
+      .select('name phone email position')
+      .sort({ name: 1 })
+      .lean();
 
-    // 處理日期：確保正確的日期格式比較
-    let dateStr;
-    if (date.includes('T')) {
-      // 如果包含時間，只取日期部分
-      dateStr = date.split('T')[0];
-    } else {
-      dateStr = date; // 已經是 YYYY-MM-DD 格式
-    }
-
-    // 獲取該日期的所有打咭記錄
-    const attendanceRecords = project.onboard.filter(attendance => {
-      if (!attendance.checkInDate) return false;
-      
-      // 處理各種日期格式
-      let attendanceDateStr;
-      if (attendance.checkInDate instanceof Date) {
-        attendanceDateStr = attendance.checkInDate.toISOString().split('T')[0];
-      } else if (typeof attendance.checkInDate === 'string') {
-        if (attendance.checkInDate.includes('T')) {
-          attendanceDateStr = attendance.checkInDate.split('T')[0];
-        } else {
-          attendanceDateStr = attendance.checkInDate;
-        }
-      } else {
-        // 嘗試轉換為 Date 對象
-        const dateObj = new Date(attendance.checkInDate);
-        if (!isNaN(dateObj.getTime())) {
-          attendanceDateStr = dateObj.toISOString().split('T')[0];
-        } else {
-          return false;
-        }
-      }
-      
-      return attendanceDateStr === dateStr;
-    });
-
-    // 創建員工 ID 到打咭記錄的映射
     const attendanceMap = new Map();
-    attendanceRecords.forEach(attendance => {
-      const empId = attendance.contractorEmployee.toString();
-      attendanceMap.set(empId, attendance);
-    });
+    recordsFiltered.forEach((r) => attendanceMap.set(r.contractorEmployee, r));
 
-    // 為每個員工添加打咭狀態
-    const employeesWithStatus = employees.map(employee => {
-      const empId = employee._id.toString();
-      const attendance = attendanceMap.get(empId);
-      
+    const employeesWithStatus = employees.map((emp) => {
+      const empId = emp._id.toString();
+      const att = attendanceMap.get(empId);
       return {
-        _id: employee._id,
-        name: employee.name,
-        phone: employee.phone,
-        email: employee.email,
-        position: employee.position,
-        hasCheckedIn: !!attendance,
-        attendance: attendance ? {
-          _id: attendance._id,
-          checkInTime: attendance.checkInTime,
-          checkOutTime: attendance.checkOutTime,
-          workHours: attendance.workHours,
-          notes: attendance.notes
-        } : null
+        _id: emp._id,
+        name: emp.name,
+        phone: emp.phone,
+        email: emp.email,
+        position: emp.position,
+        hasCheckedIn: !!att,
+        attendance: att
+          ? {
+              _id: att._id,
+              checkInTime: att.checkInTime,
+              checkOutTime: att.checkOutTime,
+              workHours: att.workHours,
+              notes: att.notes
+            }
+          : null
       };
     });
 
@@ -131,17 +156,14 @@ const getAttendanceByDate = async (req, res) => {
       success: true,
       result: {
         date,
-        project: {
-          _id: project._id,
-          name: project.name
-        },
+        project: { _id: project._id, name: project.name },
         employees: employeesWithStatus,
-        checkedInCount: attendanceRecords.length,
+        attendanceRecords: recordsFiltered,
+        checkedInCount: recordsFiltered.length,
         totalCount: employees.length
       },
       message: '獲取員工打咭狀態成功'
     });
-
   } catch (error) {
     console.error('獲取員工打咭狀態失敗:', error);
     return res.status(500).json({
