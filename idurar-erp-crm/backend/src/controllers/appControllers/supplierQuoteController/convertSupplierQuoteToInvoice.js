@@ -32,7 +32,6 @@ const convert = async (req, res) => {
       subcontractorCount: supplierQuote.subcontractorCount,
       costPrice: supplierQuote.costPrice,
       date: supplierQuote.date,
-      expiredDate: supplierQuote.expiredDate,
       isCompleted: supplierQuote.isCompleted,
       invoiceNumber: supplierQuote.numberPrefix && supplierQuote.number ? `${supplierQuote.numberPrefix}-${supplierQuote.number}` : supplierQuote.invoiceNumber,
       contactPerson: supplierQuote.contactPerson,

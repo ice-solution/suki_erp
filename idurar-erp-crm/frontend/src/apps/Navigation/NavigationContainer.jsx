@@ -75,17 +75,17 @@ function Sidebar({ collapsible, isMobile = false }) {
     {
       key: 'supplierquote',
       icon: <FileSyncOutlined />,
-      label: <Link to={'/supplierquote'}>Supplier Quote(S單)</Link>,
+      label: <Link to={'/supplierquote'}>{translate('supplier_quote')}</Link>,
     },
     {
       key: 'shipquote',
       icon: <FileSyncOutlined />,
-      label: <Link to={'/shipquote'}>吊船Quote</Link>,
+      label: <Link to={'/shipquote'}>{translate('ship_quote')}</Link>,
     },
     {
       key: 'warehouse',
       icon: <DatabaseOutlined />,
-      label: <Link to={'/warehouse'}>存倉管理</Link>,
+      label: <Link to={'/warehouse'}>{translate('warehouse_management')}</Link>,
     },
     {
       key: 'project',
@@ -98,7 +98,7 @@ function Sidebar({ collapsible, isMobile = false }) {
         },
         {
           key: 'project-report',
-          label: <Link to={'/project/report'}>項目報告</Link>,
+          label: <Link to={'/project/report'}>{translate('project_report')}</Link>,
         },
       ],
     },
@@ -120,17 +120,17 @@ function Sidebar({ collapsible, isMobile = false }) {
     {
       key: 'ship',
       icon: <RocketOutlined />,
-      label: <Link to={'/ship'}>船隻管理</Link>,
+      label: <Link to={'/ship'}>{translate('ship_management')}</Link>,
     },
     {
       key: 'winch',
       icon: <ToolOutlined />,
-      label: <Link to={'/winch'}>爬攬器管理</Link>,
+      label: <Link to={'/winch'}>{translate('winch_management')}</Link>,
     },
     {
       key: 'accounting',
       icon: <CalculatorOutlined />,
-      label: <Link to={'/accounting'}>會員發票統計</Link>,
+      label: <Link to={'/accounting'}>{translate('member_invoice_stats')}</Link>,
     },
     {
       key: 'settings',

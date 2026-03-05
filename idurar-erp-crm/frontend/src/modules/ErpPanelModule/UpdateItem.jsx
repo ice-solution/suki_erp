@@ -92,6 +92,9 @@ export default function UpdateItem({ config, UpdateForm }) {
         }
         if (fieldsValue.expiredDate) {
           dataToUpdate.expiredDate = dayjs(fieldsValue.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else {
+          // 選填：清空時傳 null，避免後台 required 錯誤
+          dataToUpdate.expiredDate = null;
         }
       }
       

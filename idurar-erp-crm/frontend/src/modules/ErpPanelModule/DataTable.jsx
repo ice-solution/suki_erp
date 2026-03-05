@@ -6,11 +6,10 @@ import {
   FilePdfOutlined,
   RedoOutlined,
   PlusOutlined,
-  EllipsisOutlined,
   ArrowRightOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { Dropdown, Table, Button } from 'antd';
+import { Table, Button, Space } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
@@ -111,40 +110,16 @@ export default function DataTable({ config, extra = [] }) {
       title: '',
       key: 'action',
       fixed: 'right',
+      width: 120,
       render: (_, record) => (
-        <Dropdown
-          menu={{
-            items,
-            onClick: ({ key }) => {
-              switch (key) {
-                case 'read':
-                  handleRead(record);
-                  break;
-                case 'edit':
-                  handleEdit(record);
-                  break;
-                case 'download':
-                  handleDownload(record);
-                  break;
-                case 'delete':
-                  handleDelete(record);
-                  break;
-                case 'recordPayment':
-                  handleRecordPayment(record);
-                  break;
-                default:
-                  break;
-              }
-              // else if (key === '2')handleCloseTask
-            },
-          }}
-          trigger={['click']}
-        >
-          <EllipsisOutlined
-            style={{ cursor: 'pointer', fontSize: '24px' }}
-            onClick={(e) => e.preventDefault()}
-          />
-        </Dropdown>
+        <Space size="small">
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleRead(record)}>
+            {translate('show')}
+          </Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+            {translate('edit')}
+          </Button>
+        </Space>
       ),
     },
   ];

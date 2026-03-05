@@ -699,15 +699,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           <Form.Item
             name="expiredDate"
             label={translate('Expire Date')}
-            rules={[
-              {
-                required: false,
-                type: 'object',
-              },
-            ]}
-            initialValue={dayjs().add(30, 'days')}
+            rules={[{ required: false }]}
           >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
+            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('Expire Date') + '（選填）'} />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>

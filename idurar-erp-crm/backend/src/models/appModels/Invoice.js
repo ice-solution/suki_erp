@@ -10,7 +10,7 @@ const invoiceSchema = new mongoose.Schema({
   // Quote結構的字段 - 保持完全一致
   numberPrefix: {
     type: String,
-    enum: ['SML', 'QU', 'XX', 'INV'], // 為Invoice添加INV前綴
+    enum: ['SML', 'QU', 'XX', 'INV', 'SMI', 'VSE'], // Invoice type 選項
     default: 'INV',
     required: true,
   },
@@ -40,10 +40,6 @@ const invoiceSchema = new mongoose.Schema({
   date: {
     type: Date,
     required: true,
-  },
-  expiredDate: {
-    type: Date,
-    required: false,
   },
   isCompleted: {
     type: Boolean,

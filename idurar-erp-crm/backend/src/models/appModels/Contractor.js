@@ -14,9 +14,10 @@ const schema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  accountCode: {
+    type: String,
+  },
   phone: String,
-  country: String,
-  address: String,
   email: String,
   // 登入相關字段
   username: {

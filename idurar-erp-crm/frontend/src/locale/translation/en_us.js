@@ -459,6 +459,13 @@ const lang = {
   project_items: 'Project Items',
   contractor_management: 'Contractor Management',
   project_management: 'Project Management',
+  supplier_quote: 'Supplier Quote (S單)',
+  ship_quote: 'Ship Quote',
+  warehouse_management: 'Warehouse',
+  project_report: 'Project Report',
+  ship_management: 'Ships',
+  winch_management: 'Winches',
+  member_invoice_stats: 'Member Invoices',
 };
 
 export default lang;

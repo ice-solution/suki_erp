@@ -98,13 +98,13 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       client: quote.client, // 向後兼容
       project: quote.project,
       items: supplierQuoteItems,
-      // 不傳遞 subTotal, discountTotal, total，因為 SupplierQuote 會根據 materials 重新計算
+      // 只帶 items，不帶金額：轉成 S單後 subTotal、total 為 0，由材料及費用再計算
       subTotal: 0,
       discountTotal: 0,
       total: 0,
-      credit: 0, // Supplier Quote初始credit為0
+      credit: 0,
       currency: quote.currency,
-      discount: quote.discount,
+      discount: 0,
       notes: quote.notes,
       status: 'draft', // Supplier Quote初始狀態為draft
       createdBy: req.admin._id,

@@ -181,7 +181,7 @@ const summary = async (req, res) => {
         _id: null,
         total_amount: {
           $sum: {
-            $subtract: ['$total', '$credit'],
+            $subtract: ['$total', { $ifNull: ['$credit', 0] }],
           },
         },
       },

@@ -62,6 +62,12 @@ export default function DashboardModule() {
     {
       title: translate('number'),
       dataIndex: 'number',
+      render: (num, record) => {
+        if (record.numberPrefix != null && record.number != null && record.number !== '') {
+          return `${record.numberPrefix}-${record.number}`;
+        }
+        return record.invoiceNumber || num || '-';
+      },
     },
     {
       title: translate('Client'),

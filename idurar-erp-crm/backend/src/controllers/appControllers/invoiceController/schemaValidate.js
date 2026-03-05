@@ -12,7 +12,6 @@ const schema = Joi.object({
   costPrice: Joi.number().optional(),
   status: Joi.string().optional(),
   notes: Joi.string().allow(''),
-  expiredDate: Joi.date().optional(), // Changed to optional
   date: Joi.date().required(),
   invoiceDate: Joi.date().optional(),
   paymentDueDate: Joi.date().optional(),

@@ -132,7 +132,12 @@ html
       }
       
       .items-table .item-name {
-        width: 60%;
+        width: 35%;
+      }
+      
+      .items-table .item-desc {
+        width: 45%;
+        word-wrap: break-word;
       }
       
       .items-table .item-qty {
@@ -234,16 +239,16 @@ body
         thead
           tr
             th.item-name 項目
+            th.item-desc 描述
             th.item-qty 數量
-            th.item-unit 單位
         tbody
-          - const allItems = (model.items || []).concat((model.materials || []).map(m => ({ itemName: m.itemName, quantity: m.quantity, price: m.price, warehouse: m.warehouse })))
-          each item in allItems
+          - const itemsOnly = model.items || []
+          each item in itemsOnly
             tr
-              td.item-name #{item.itemName}
-              td.item-qty #{item.quantity}
-              td.item-unit Pcs
-          if allItems.length === 0
+              td.item-name #{item.itemName || ''}
+              td.item-desc #{item.description || ''}
+              td.item-qty #{item.quantity != null ? item.quantity : ''}
+          if itemsOnly.length === 0
             tr
               td(colspan='3' style='text-align: center;') 無項目
     

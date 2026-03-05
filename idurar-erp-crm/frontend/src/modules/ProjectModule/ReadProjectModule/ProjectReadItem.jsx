@@ -627,12 +627,28 @@ export default function ProjectReadItem({ config, selectedItem }) {
         <Descriptions.Item label="判頭費總計" span={3}>
           {currentProject.contractorFees && Array.isArray(currentProject.contractorFees) && currentProject.contractorFees.length > 0 ? (
             <div>
-              {currentProject.contractorFees.map((fee, index) => (
-                <div key={index} style={{ marginBottom: 8 }}>
-                  <Text strong>{fee.projectName || '判頭費'}: </Text>
-                  <Text>{moneyFormatter({ amount: fee.amount || 0 })}</Text>
-                </div>
-              ))}
+              {currentProject.contractorFees.map((fee, index) => {
+                const usedForThis = (currentProject.usedContractorFees || []).filter(
+                  u => (u.projectName || '').trim() === (fee.projectName || '').trim()
+                );
+                const usedAmount = usedForThis.reduce((sum, u) => sum + (u.amount || 0), 0);
+                const originalAmount = fee.amount || 0;
+                const remaining = originalAmount - usedAmount;
+                return (
+                  <div key={index} style={{ marginBottom: 8 }}>
+                    <Text strong>{fee.projectName || '判頭費'}: </Text>
+                    <Text>{moneyFormatter({ amount: originalAmount })}</Text>
+                    {usedAmount > 0 && (
+                      <>
+                        <Text type="secondary"> 已用 </Text>
+                        <Text type="secondary" style={{ color: '#ff4d4f' }}>-{moneyFormatter({ amount: usedAmount })}</Text>
+                        <Text strong> 剩餘 </Text>
+                        <Text strong>{moneyFormatter({ amount: remaining })}</Text>
+                      </>
+                    )}
+                  </div>
+                );
+              })}
               <Divider style={{ margin: '8px 0' }} />
               <Text strong>總計: </Text>
               <Text strong>
@@ -640,9 +656,37 @@ export default function ProjectReadItem({ config, selectedItem }) {
                   amount: currentProject.contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
                 })}
               </Text>
+              {(currentProject.usedContractorFees && currentProject.usedContractorFees.length > 0) && (() => {
+                const usedTotal = currentProject.usedContractorFees.reduce((sum, u) => sum + (u.amount || 0), 0);
+                const feeTotal = currentProject.contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
+                const remainingTotal = feeTotal - usedTotal;
+                return (
+                  <>
+                    <Text type="secondary"> 已用 </Text>
+                    <Text type="secondary" style={{ color: '#ff4d4f' }}>-{moneyFormatter({ amount: usedTotal })}</Text>
+                    <Text strong> 剩餘 </Text>
+                    <Text strong>{moneyFormatter({ amount: remainingTotal })}</Text>
+                  </>
+                );
+              })()}
             </div>
-          ) : currentProject.contractorFee ? (
-            <Text>{moneyFormatter({ amount: currentProject.contractorFee || 0 })}</Text>
+          ) : currentProject.contractorFee !== undefined && currentProject.contractorFee !== null ? (
+            <div>
+              <Text>{moneyFormatter({ amount: currentProject.contractorFee || 0 })}</Text>
+              {(currentProject.usedContractorFees && currentProject.usedContractorFees.length > 0) && (() => {
+                const usedTotal = currentProject.usedContractorFees.reduce((sum, u) => sum + (u.amount || 0), 0);
+                const feeTotal = currentProject.contractorFee || 0;
+                const remaining = feeTotal - usedTotal;
+                return (
+                  <>
+                    <Text type="secondary"> 已用 </Text>
+                    <Text type="secondary" style={{ color: '#ff4d4f' }}>-{moneyFormatter({ amount: usedTotal })}</Text>
+                    <Text strong> 剩餘 </Text>
+                    <Text strong>{moneyFormatter({ amount: remaining })}</Text>
+                  </>
+                );
+              })()}
+            </div>
           ) : (
             <Text>-</Text>
           )}

@@ -162,21 +162,6 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item
-            name="expiredDate"
-            label={translate('Expire Date')}
-            rules={[
-              {
-                required: true,
-                type: 'object',
-              },
-            ]}
-            initialValue={dayjs().add(30, 'days')}
-          >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
           <Form.Item label={translate('Note')} name="notes">
             <Input />
           </Form.Item>

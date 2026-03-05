@@ -163,7 +163,7 @@ function LoadQuoteForm({ subTotal = 0, current = null }) {
             label={translate('Expire Date')}
             rules={[
               {
-                required: true,
+                required: false,
                 type: 'object',
               },
             ]}

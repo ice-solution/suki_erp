@@ -60,23 +60,21 @@ export default function ProjectForm({ current = null }) {
       // 只從 Quote 中搜索 Quote Numbers (使用 numberPrefix 和 number)
       const quoteResponse = await request.search({ 
         entity: 'quote', 
-        options: { q: searchText, fields: 'numberPrefix,number' } 
+        options: { q: searchText, fields: 'numberPrefix,number,status' } 
       });
 
       const quoteNumbers = new Set();
       
-      // 從 quotations 收集 Quote Numbers (Quote Type + number)
-      if (quoteResponse?.result) {
-        quoteResponse.result.forEach(quote => {
-          if (quote.numberPrefix && quote.number) {
-            const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
-            quoteNumbers.add(quoteNumber);
-          } else if (quote.invoiceNumber) {
-            // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
-            quoteNumbers.add(quote.invoiceNumber);
-          }
-        });
-      }
+      // 只顯示 status = accepted 的 Quote
+      const acceptedQuotes = quoteResponse?.result?.filter(q => q.status === 'accepted') || [];
+      acceptedQuotes.forEach(quote => {
+        if (quote.numberPrefix && quote.number) {
+          const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
+          quoteNumbers.add(quoteNumber);
+        } else if (quote.invoiceNumber) {
+          quoteNumbers.add(quote.invoiceNumber);
+        }
+      });
 
       // 轉換為AutoComplete選項格式
       const options = Array.from(quoteNumbers).map(quoteNumber => ({
@@ -105,7 +103,7 @@ export default function ProjectForm({ current = null }) {
       // 只從 Quote 中查找相關資料（使用 Quote Type 和 number 搜索）
       const quotations = await request.search({ 
         entity: 'quote', 
-        options: { q: quoteNum, fields: 'numberPrefix,number' } 
+        options: { q: quoteNum, fields: 'numberPrefix,number,status,address,poNumber' } 
       });
       
       // 從 Quote 的 invoiceNumber 查找相關的 supplier quotes 和 invoices
@@ -189,6 +187,23 @@ export default function ProjectForm({ current = null }) {
       };
       
       setPreviewData(previewData);
+
+      // 用第一個匹配的 Quote 自動填入：Project name = Quote 的 Project Address，P.O Number = Quote 的 P.O Number
+      const matchedQuotes = quotations?.result?.filter(q => matchesQuoteNumber(q)) || [];
+      const firstQuote = matchedQuotes[0];
+      const updateValues = {};
+      if (firstQuote) {
+        if (firstQuote.address != null && firstQuote.address !== '') {
+          updateValues.name = firstQuote.address;
+        }
+        if (firstQuote.poNumber != null && firstQuote.poNumber !== '') {
+          updateValues.poNumber = firstQuote.poNumber;
+        }
+      }
+      if (Object.keys(updateValues).length > 0) {
+        form.setFieldsValue(updateValues);
+      }
+      // 若沒有匹配的 Quote 或沒有 address，且 Project name 仍為空，則用 Quote Number 作為備用
       if (!form.getFieldValue('name')) {
         form.setFieldsValue({ name: quoteNum });
       }
@@ -469,11 +484,7 @@ export default function ProjectForm({ current = null }) {
                     onSelect={(value) => {
                       setInvoiceNumber(value);
                       previewInvoiceNumber(value);
-                      const currentName = form.getFieldValue('name');
-                      form.setFieldsValue({
-                        invoiceNumber: value,
-                        name: currentName || value,
-                      });
+                      form.setFieldsValue({ invoiceNumber: value });
                     }}
                     onChange={(value) => {
                       setInvoiceNumber(value);
@@ -709,16 +720,6 @@ export default function ProjectForm({ current = null }) {
               )}
             </Row>
           </Card>
-        </Col>
-      </Row>
-
-      <Row style={{ marginTop: 16 }}>
-        <Col span={24}>
-          <Form.Item>
-            <Button type="primary" htmlType="submit" icon={<PlusOutlined />} block>
-              {current ? translate('Update Project') : translate('Create Project')}
-            </Button>
-          </Form.Item>
         </Col>
       </Row>
     </>

@@ -74,13 +74,6 @@ export default function Invoice() {
       },
     },
     {
-      title: translate('expired Date'),
-      dataIndex: 'expiredDate',
-      render: (date) => {
-        return dayjs(date).format(dateFormat);
-      },
-    },
-    {
       title: translate('Total'),
       dataIndex: 'total',
       onCell: () => {

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select, Checkbox } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -108,6 +108,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
   const [selectedPoNumber, setSelectedPoNumber] = useState(null);
   const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
+  const [convertToInvoiceModalVisible, setConvertToInvoiceModalVisible] = useState(false);
+  const [selectedItemIndices, setSelectedItemIndices] = useState([]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -134,46 +136,47 @@ export default function QuoteReadItem({ config, selectedItem }) {
     }
   }, [currentErp]);
 
-  // 處理Quote轉Invoice
+  // 處理Quote轉Invoice（可重複轉換、可選擇項目）
   const handleConvertToInvoice = () => {
-    // 檢查是否已經轉換
-    if (currentErp.converted && currentErp.converted.to === 'invoice') {
-      message.warning('此Quote已經轉換成Invoice');
+    if (!currentErp.items || currentErp.items.length === 0) {
+      message.warning('此 Quote 沒有項目，無法轉換');
       return;
     }
+    setSelectedItemIndices(currentErp.items.map((_, i) => i));
+    setConvertToInvoiceModalVisible(true);
+  };
 
-    Modal.confirm({
-      title: '確認轉換',
-      content: (
-        <div>
-          <p>您確定要將此Quote轉換成Invoice嗎？</p>
-          <p><strong>Quote編號：</strong>{`${currentErp.numberPrefix || 'QU'}-${currentErp.number}`}</p>
-          <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
-          <p style={{ color: '#ff4d4f', marginTop: 12 }}>⚠️ 轉換後將創建新的Invoice，此操作不可撤銷</p>
-        </div>
-      ),
-      okText: '確認轉換',
-      cancelText: '取消',
-      okType: 'primary',
-      onOk: async () => {
-        setConvertLoading(true);
-        try {
-          const response = await request.convert({ entity: 'quote', id: currentErp._id });
-          if (response && response.success) {
-            message.success('Quote成功轉換成Invoice！');
-            // 跳轉到新創建的Invoice
-            navigate(`/invoice/read/${response.result._id}`);
-          } else {
-            message.error('轉換失敗：' + (response?.message || '未知錯誤'));
-          }
-        } catch (error) {
-          console.error('轉換錯誤:', error);
-          message.error('轉換過程中發生錯誤');
-        } finally {
-          setConvertLoading(false);
-        }
-      },
-    });
+  const executeConvertToInvoice = async () => {
+    if (selectedItemIndices.length === 0) {
+      message.warning('請至少選擇一項項目');
+      return;
+    }
+    setConvertToInvoiceModalVisible(false);
+    setConvertLoading(true);
+    try {
+      axios.defaults.baseURL = API_BASE_URL;
+      axios.defaults.withCredentials = true;
+      const auth = storePersist.get('auth');
+      if (auth) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+      }
+      const query = selectedItemIndices.length === currentErp.items.length
+        ? ''
+        : `?itemIndices=${selectedItemIndices.join(',')}`;
+      const response = await axios.get(`quote/convert/${currentErp._id}${query}`);
+      if (response?.data?.success) {
+        message.success('Quote 已成功轉換成 Invoice！');
+        navigate(`/invoice/read/${response.data.result._id}`);
+        dispatch(erp.read({ entity, id: currentErp._id }));
+      } else {
+        message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('轉換錯誤:', error);
+      message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
+    } finally {
+      setConvertLoading(false);
+    }
   };
 
   // 處理Quote轉Supplier Quote（上單）
@@ -307,18 +310,13 @@ export default function QuoteReadItem({ config, selectedItem }) {
             onClick={handleConvertToInvoice}
             loading={convertLoading}
             icon={<RetweetOutlined />}
-            style={{ 
+            style={{
               display: entity === 'quote' ? 'inline-block' : 'none',
-              backgroundColor: currentErp.converted && currentErp.converted.to === 'invoice' ? '#52c41a' : undefined,
-              borderColor: currentErp.converted && currentErp.converted.to === 'invoice' ? '#52c41a' : undefined,
-              color: currentErp.converted && currentErp.converted.to === 'invoice' ? '#fff' : undefined,
             }}
-            disabled={currentErp.converted && currentErp.converted.to === 'invoice'}
           >
-            {currentErp.converted && currentErp.converted.to === 'invoice' 
-              ? '已轉換成Invoice' 
-              : translate('Convert to Invoice')
-            }
+            {currentErp.converted?.invoices?.length > 0
+              ? `轉換成 Invoice (已轉 ${currentErp.converted.invoices.length} 個)`
+              : translate('Convert to Invoice')}
           </Button>,
 
           <Button
@@ -519,6 +517,71 @@ export default function QuoteReadItem({ config, selectedItem }) {
         </div>
         <p style={{ color: '#1890ff', fontSize: '12px' }}>
           ℹ️ 只會轉換所選 P.O Number 的 items 到 Supplier Quote
+        </p>
+      </Modal>
+
+      {/* 轉換成 Invoice：選擇項目 Modal */}
+      <Modal
+        title="選擇要轉換的項目"
+        open={convertToInvoiceModalVisible}
+        onOk={executeConvertToInvoice}
+        onCancel={() => {
+          setConvertToInvoiceModalVisible(false);
+        }}
+        okText="確認轉換"
+        cancelText="取消"
+        okButtonProps={{ disabled: selectedItemIndices.length === 0 }}
+        width={560}
+      >
+        <div style={{ marginBottom: 12 }}>
+          <p>請勾選要轉換到 Invoice 的項目（可重複轉換）：</p>
+          <Checkbox
+            style={{ marginBottom: 8 }}
+            checked={
+              currentErp.items?.length > 0 &&
+              selectedItemIndices.length === currentErp.items.length
+            }
+            indeterminate={
+              selectedItemIndices.length > 0 &&
+              selectedItemIndices.length < (currentErp.items?.length || 0)
+            }
+            onChange={(e) => {
+              if (e.target.checked) {
+                setSelectedItemIndices(currentErp.items?.map((_, i) => i) || []);
+              } else {
+                setSelectedItemIndices([]);
+              }
+            }}
+          >
+            全選
+          </Checkbox>
+        </div>
+        <div style={{ maxHeight: 320, overflow: 'auto', border: '1px solid #f0f0f0', padding: 8, borderRadius: 4 }}>
+          {(currentErp.items || []).map((item, index) => (
+            <div key={item._id || index} style={{ marginBottom: 8 }}>
+              <Checkbox
+                checked={selectedItemIndices.includes(index)}
+                onChange={(e) => {
+                  if (e.target.checked) {
+                    setSelectedItemIndices((prev) => [...prev, index].sort((a, b) => a - b));
+                  } else {
+                    setSelectedItemIndices((prev) => prev.filter((i) => i !== index));
+                  }
+                }}
+              >
+                <span style={{ marginRight: 8 }}><strong>{item.itemName}</strong></span>
+                {item.description ? (
+                  <span style={{ display: 'block', color: '#666', fontSize: 12, marginTop: 2 }}>{item.description}</span>
+                ) : null}
+                <span style={{ color: '#888', fontSize: 12, display: 'block', marginTop: 2 }}>
+                  {item.quantity} × {moneyFormatter({ amount: item.price, currency_code: currentErp.currency })} = {moneyFormatter({ amount: item.total, currency_code: currentErp.currency })}
+                </span>
+              </Checkbox>
+            </div>
+          ))}
+        </div>
+        <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
+          ℹ️ 只會將所選項目轉成新 Invoice，可多次轉換
         </p>
       </Modal>
     </>

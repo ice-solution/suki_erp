@@ -1,9 +1,6 @@
 import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
-import { Avatar, Dropdown, Layout, Badge, Button } from 'antd';
-
-// import Notifications from '@/components/Notification';
-
+import { Avatar, Dropdown, Layout, Button } from 'antd';
 import { LogoutOutlined, ToolOutlined, UserOutlined } from '@ant-design/icons';
 
 import { selectCurrentAdmin } from '@/redux/auth/selectors';
@@ -11,14 +8,14 @@ import { selectCurrentAdmin } from '@/redux/auth/selectors';
 import { FILE_BASE_URL } from '@/config/serverApiConfig';
 
 import useLanguage from '@/locale/useLanguage';
-
-// import UpgradeButton from './UpgradeButton';
+import { useLocale } from '@/context/languageContext';
 
 export default function HeaderContent() {
   const currentAdmin = useSelector(selectCurrentAdmin);
   const { Header } = Layout;
 
   const translate = useLanguage();
+  const { locale, setLocale } = useLocale();
 
   const ProfileDropdown = () => {
     const navigate = useNavigate();
@@ -103,7 +100,6 @@ export default function HeaderContent() {
         placement="bottomRight"
         stye={{ width: '280px', float: 'right' }}
       >
-        {/* <Badge dot> */}
         <Avatar
           className="last"
           src={currentAdmin?.photo ? FILE_BASE_URL + currentAdmin?.photo : undefined}
@@ -118,12 +114,22 @@ export default function HeaderContent() {
         >
           {currentAdmin?.name?.charAt(0)?.toUpperCase()}
         </Avatar>
-        {/* </Badge> */}
       </Dropdown>
 
-      {/* <AppsButton /> */}
-
-      {/* <UpgradeButton /> */}
+      <Button
+        type={locale === 'zh_tw' ? 'primary' : 'default'}
+        size="small"
+        onClick={() => setLocale('zh_tw')}
+      >
+        中文
+      </Button>
+      <Button
+        type={locale === 'en_us' ? 'primary' : 'default'}
+        size="small"
+        onClick={() => setLocale('en_us')}
+      >
+        English
+      </Button>
     </Header>
   );
 }

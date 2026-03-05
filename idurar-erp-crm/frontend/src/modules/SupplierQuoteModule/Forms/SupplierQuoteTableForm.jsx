@@ -28,7 +28,7 @@ export default function SupplierQuoteTableForm({ subTotal = 0, current = null })
 function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
-  const { moneyFormatter } = useMoney();
+  const { moneyFormatter, amountFormatter, currency_symbol, currency_position, cent_precision, currency_code } = useMoney();
   const financeSettings = useSelector(selectFinanceSettings);
   const { last_supplier_quote_number } = financeSettings || {};
   const [lastNumber, setLastNumber] = useState(() => (last_supplier_quote_number || 0) + 1);
@@ -454,6 +454,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         materials: currentMaterials = [],
         clients: currentClients = [], 
         subTotal: currentSubTotal = 0,
+        total: currentTotal,
         shipType,
         ship: currentShip,
         winch: currentWinch
@@ -515,6 +516,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       
       setSubTotal(calculatedSubTotal || currentSubTotal);
       
+      // 載入既有 S單時同步 total state（若有儲存過的 total 則使用，否則由 discount 的 useEffect 計算）
+      if (currentTotal !== undefined && currentTotal !== null) {
+        setTotal(Number(currentTotal));
+      }
+      
       // 處理客戶數據（新舊格式兼容）
       let clientIds = [];
       
@@ -528,6 +534,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
+        const subVal = calculatedSubTotal || currentSubTotal;
+        const totalVal = currentTotal !== undefined && currentTotal !== null
+          ? Number(currentTotal)
+          : Number.parseFloat((subVal - (subVal * (discount / 100))).toFixed(2));
         form.setFieldsValue({ 
           items: currentItems,
           materials: currentMaterials,
@@ -535,7 +545,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           type: type,
           shipType: shipType,
           ship: currentShip ? (currentShip._id || currentShip) : null,
-          winch: currentWinch ? (currentWinch._id || currentWinch) : null
+          winch: currentWinch ? (currentWinch._id || currentWinch) : null,
+          subTotal: subVal,
+          total: totalVal,
         });
       }, 100);
     }
@@ -609,10 +621,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     
     setSubTotal(newSubTotal);
     
-    // 更新表單的items和materials字段
+    // 更新表單的 items、materials、subTotal；total 由下方 discount 的 useEffect 更新
+    const currentDiscount = form.getFieldValue('discount');
+    const discountVal = currentDiscount !== undefined && currentDiscount !== null ? Number(currentDiscount) : 0;
+    const discountAmt = calculate.multiply(newSubTotal, discountVal / 100);
+    const newTotal = calculate.sub(newSubTotal, discountAmt);
     form.setFieldsValue({ 
-      items: items,
-      materials: materials 
+      items,
+      materials,
+      subTotal: newSubTotal,
+      total: Number.parseFloat(newTotal.toFixed(2)),
     });
   }, [materials, items, form]);
 
@@ -626,7 +644,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     const currentTotal = calculate.sub(subTotal, discountAmount);
     setDiscountTotal(Number.parseFloat(discountAmount));
     setTotal(Number.parseFloat(currentTotal));
-  }, [subTotal, discount]);
+    form.setFieldsValue({ subTotal, total: Number.parseFloat(currentTotal.toFixed(2)), discountTotal: Number.parseFloat(discountAmount.toFixed(2)) });
+  }, [subTotal, discount, form]);
 
   // 同步文件列表到表單
   useEffect(() => {
@@ -1248,15 +1267,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           <Form.Item
             name="expiredDate"
             label={translate('Expire Date')}
-            rules={[
-              {
-                required: false,
-                type: 'object',
-              },
-            ]}
-            initialValue={dayjs().add(30, 'days')}
+            rules={[{ required: false }]}
           >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
+            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('Expire Date') + '（選填）'} />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
@@ -1680,7 +1693,17 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             </p>
           </Col>
           <Col className="gutter-row" span={5}>
-            <MoneyInputFormItem readOnly value={subTotal} />
+            <Form.Item name="subTotal">
+              <InputNumber
+                className="moneyInput"
+                precision={cent_precision ?? 2}
+                controls={false}
+                addonAfter={currency_position === 'after' ? currency_symbol : undefined}
+                addonBefore={currency_position === 'before' ? currency_symbol : undefined}
+                formatter={(value) => amountFormatter({ amount: value, currency_code })}
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
           </Col>
         </Row>
         <Row gutter={[12, -5]}>
@@ -1749,7 +1772,17 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             </p>
           </Col>
           <Col className="gutter-row" span={5}>
-            <MoneyInputFormItem readOnly value={total} />
+            <Form.Item name="total">
+              <InputNumber
+                className="moneyInput"
+                precision={cent_precision ?? 2}
+                controls={false}
+                addonAfter={currency_position === 'after' ? currency_symbol : undefined}
+                addonBefore={currency_position === 'before' ? currency_symbol : undefined}
+                formatter={(value) => amountFormatter({ amount: value, currency_code })}
+                style={{ width: '100%' }}
+              />
+            </Form.Item>
           </Col>
         </Row>
       </div>

@@ -592,7 +592,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={3}>
           <Form.Item
-            label="Quote Type"
+            label="Invoice Type"
             name="numberPrefix"
             initialValue="INV"
             rules={[
@@ -607,6 +607,8 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 { value: 'QU', label: 'QU' },
                 { value: 'XX', label: 'XX' },
                 { value: 'INV', label: 'INV' },
+                { value: 'SMI', label: 'SMI' },
+                { value: 'VSE', label: 'VSE' },
               ]}
             />
           </Form.Item>
@@ -695,11 +697,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               },
             ]}
           >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('Expire Date')} name="expiredDate">
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>

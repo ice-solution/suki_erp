@@ -7,10 +7,6 @@ const quoteSchema = new mongoose.Schema({
   },
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: true },
 
-  converted: {
-    type: Boolean,
-    default: false,
-  },
   numberPrefix: {
     type: String,
     enum: ['SML', 'QU'],
@@ -165,6 +161,11 @@ const quoteSchema = new mongoose.Schema({
       type: mongoose.Schema.ObjectId,
       ref: 'Invoice',
     },
+    // 可重複轉換時，記錄所有由此 Quote 轉出的 Invoice
+    invoices: [{
+      type: mongoose.Schema.ObjectId,
+      ref: 'Invoice',
+    }],
   },
   pdf: {
     type: String,

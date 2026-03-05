@@ -1,36 +1,17 @@
-import { Dropdown, Table } from 'antd';
+import { Table, Button, Space } from 'antd';
 
 import { request } from '@/request';
 import useFetch from '@/hooks/useFetch';
 
-import { EllipsisOutlined, EyeOutlined, EditOutlined, FilePdfOutlined } from '@ant-design/icons';
+import { EyeOutlined, EditOutlined } from '@ant-design/icons';
 import { useDispatch } from 'react-redux';
 import { erp } from '@/redux/erp/actions';
 import useLanguage from '@/locale/useLanguage';
 import { useNavigate } from 'react-router-dom';
-import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 
 export default function RecentTable({ ...props }) {
   const translate = useLanguage();
   let { entity, dataTableColumns } = props;
-
-  const items = [
-    {
-      label: translate('Show'),
-      key: 'read',
-      icon: <EyeOutlined />,
-    },
-    {
-      label: translate('Edit'),
-      key: 'edit',
-      icon: <EditOutlined />,
-    },
-    {
-      label: translate('Download'),
-      key: 'download',
-      icon: <FilePdfOutlined />,
-    },
-  ];
 
   const navigate = useNavigate();
   const dispatch = useDispatch();
@@ -43,43 +24,22 @@ export default function RecentTable({ ...props }) {
     dispatch(erp.currentAction({ actionType: 'update', data: record }));
     navigate(`/${entity}/update/${record._id}`);
   };
-  const handleDownload = (record) => {
-    window.open(`${DOWNLOAD_BASE_URL}${entity}/${entity}-${record._id}.pdf`, '_blank');
-  };
 
   dataTableColumns = [
     ...dataTableColumns,
     {
       title: '',
       key: 'action',
+      width: 120,
       render: (_, record) => (
-        <Dropdown
-          menu={{
-            items,
-            onClick: ({ key }) => {
-              switch (key) {
-                case 'read':
-                  handleRead(record);
-                  break;
-                case 'edit':
-                  handleEdit(record);
-                  break;
-                case 'download':
-                  handleDownload(record);
-                  break;
-
-                default:
-                  break;
-              }
-            },
-          }}
-          trigger={['click']}
-        >
-          <EllipsisOutlined
-            style={{ cursor: 'pointer', fontSize: '24px' }}
-            onClick={(e) => e.preventDefault()}
-          />
-        </Dropdown>
+        <Space size="small">
+          <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleRead(record)}>
+            {translate('show')}
+          </Button>
+          <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
+            {translate('edit')}
+          </Button>
+        </Space>
       ),
     },
   ];

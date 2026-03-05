@@ -242,7 +242,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
       </Descriptions>
       
       <Descriptions title={translate('Invoice Details')}>
-        <Descriptions.Item label="Quote Type">{currentErp.numberPrefix}</Descriptions.Item>
+        <Descriptions.Item label="Invoice Type">{currentErp.numberPrefix}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>

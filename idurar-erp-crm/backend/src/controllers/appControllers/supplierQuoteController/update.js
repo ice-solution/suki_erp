@@ -83,6 +83,19 @@ const update = async (req, res) => {
 
   let body = req.body;
 
+  // 若前端有送 subTotal / total（手動編輯），則採用並據此計算 discountTotal
+  const bodySubTotal = req.body.subTotal !== undefined && req.body.subTotal !== null && req.body.subTotal !== ''
+    ? Number(req.body.subTotal)
+    : undefined;
+  const bodyTotal = req.body.total !== undefined && req.body.total !== null && req.body.total !== ''
+    ? Number(req.body.total)
+    : undefined;
+  if (!Number.isNaN(bodySubTotal)) body['subTotal'] = bodySubTotal;
+  else body['subTotal'] = subTotal;
+  if (!Number.isNaN(bodyTotal)) body['total'] = bodyTotal;
+  else body['total'] = total;
+  body['discountTotal'] = Number(calculate.sub(body['subTotal'], body['total']).toFixed(2));
+
   // Parse other JSON fields from FormData
   if (typeof body.clients === 'string') {
     try {
@@ -92,9 +105,6 @@ const update = async (req, res) => {
     }
   }
 
-  body['subTotal'] = subTotal;
-  body['discountTotal'] = discountTotal;
-  body['total'] = total;
   body['items'] = items;
   body['materials'] = materials;
   body['pdf'] = 'supplier-quote-' + req.params.id + '.pdf';

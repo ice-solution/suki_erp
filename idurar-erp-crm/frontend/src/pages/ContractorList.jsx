@@ -112,6 +112,7 @@ const ContractorList = () => {
 
   const columns = [
     { title: '承辦商名稱', dataIndex: 'name', key: 'name' },
+    { title: 'Account Code', dataIndex: 'accountCode', key: 'accountCode' },
     { 
       title: '登入用戶名', 
       dataIndex: 'username', 
@@ -120,8 +121,6 @@ const ContractorList = () => {
     },
     { title: '電話', dataIndex: 'phone', key: 'phone' },
     { title: '電郵', dataIndex: 'email', key: 'email' },
-    { title: '地址', dataIndex: 'address', key: 'address' },
-    { title: '國家', dataIndex: 'country', key: 'country' },
     {
       title: '操作',
       key: 'action',
@@ -180,11 +179,8 @@ const ContractorList = () => {
           <Form.Item label="電郵" name="email"> 
             <Input />
           </Form.Item>
-          <Form.Item label="地址" name="address"> 
-            <Input />
-          </Form.Item>
-          <Form.Item label="國家" name="country"> 
-            <Input />
+          <Form.Item label="Account Code" name="accountCode"> 
+            <Input placeholder="帳戶代碼" />
           </Form.Item>
         </Form>
       </Modal>
