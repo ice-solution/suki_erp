@@ -749,7 +749,23 @@ export default function ProjectReadItem({ config, selectedItem }) {
         </Col>
 
         <Col span={24}>
-          <Card title={`Invoices (${currentProject.invoices?.length || 0})`} size="small">
+          <Card
+            title={`Invoices (${currentProject.invoices?.length || 0})`}
+            size="small"
+            extra={
+              (() => {
+                const unpaidTotal = (currentProject.invoices || [])
+                  .filter((inv) => inv.paymentStatus === 'unpaid' || inv.paymentStatus === 'partially')
+                  .reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+                if (unpaidTotal <= 0) return null;
+                return (
+                  <Text type="danger" strong>
+                    {translate('unpaid')} {translate('total')}: {moneyFormatter({ amount: unpaidTotal })}
+                  </Text>
+                );
+              })()
+            }
+          >
             <Table
               dataSource={currentProject.invoices || []}
               columns={invoiceColumns}
