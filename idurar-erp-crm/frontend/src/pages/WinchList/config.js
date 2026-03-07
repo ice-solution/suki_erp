@@ -11,9 +11,10 @@ export const fields = {
     show: true,
     renderAsTag: true,
     options: [
+      { value: 'pending_maintenance', label: '待保養', color: 'orange' },
       { value: 'normal', label: '正常', color: 'green' },
-      { value: 'returned_warehouse_hk', label: '回倉(表衣)', color: 'orange' },
-      { value: 'returned_warehouse_cn', label: '回倉(內地)', color: 'orange' },
+      { value: 'returned_warehouse_cn', label: '待回廠', color: 'orange' },
+      { value: 'returned_warehouse_hk', label: '香港倉', color: 'orange' },
       { value: 'in_use', label: '使用中', color: 'blue' },
     ],
   },

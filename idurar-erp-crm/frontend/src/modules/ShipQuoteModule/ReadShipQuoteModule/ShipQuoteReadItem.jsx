@@ -206,12 +206,8 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
     setPoNumberModalVisible(true);
   };
 
-  // Ship Quote 轉 S單（整單轉換，無需選 P.O）
+  // Ship Quote 轉 S單（整單轉換，無需選 P.O，可重覆上單）
   const handleConvertShipQuoteToS = () => {
-    if (currentErp.converted && currentErp.converted.supplierQuote) {
-      message.warning('此 Ship Quote 已經轉換成 S單');
-      return;
-    }
     Modal.confirm({
       title: '確認轉換到 S單',
       content: (
@@ -359,9 +355,8 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
               borderColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
               color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
             }}
-            disabled={currentErp.converted && currentErp.converted.supplierQuote}
           >
-            {currentErp.converted && currentErp.converted.supplierQuote ? '已轉S單' : '轉換到S單'}
+            {currentErp.converted && currentErp.converted.supplierQuote ? '已轉S單 / 重覆上單' : '轉換到S單'}
           </Button>,
           <Button
             key={`${uniqueId()}`}

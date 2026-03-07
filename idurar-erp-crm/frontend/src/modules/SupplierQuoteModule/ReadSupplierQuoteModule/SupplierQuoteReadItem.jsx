@@ -52,7 +52,7 @@ const Item = ({ item, currentErp }) => {
 
 const MaterialRow = ({ material, moneyFormatter, currency }) => (
   <Row gutter={[12, 0]}>
-    <Col span={4}>{material.warehouse ? `倉${material.warehouse}` : '-'}</Col>
+    <Col span={4}>{material.warehouse || '-'}</Col>
     <Col span={8}><strong>{material.itemName}</strong></Col>
     <Col span={4} style={{ textAlign: 'right' }}>{material.quantity != null ? Number(material.quantity).toFixed(2) : '-'}</Col>
     <Col span={8} style={{ textAlign: 'right', color: (material.price || 0) < 0 ? '#ff4d4f' : undefined }}>
@@ -201,7 +201,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         onBack={() => {
           navigate(`/${entity.toLowerCase()}`);
         }}
-        title={`${ENTITY_NAME} # ${currentErp.number}/${currentErp.year || ''}`}
+        title={`${entity === 'supplierquote' ? (currentErp.numberPrefix || 'S') + '單' : ENTITY_NAME} # ${currentErp.number}/${currentErp.year || ''}`}
         ghost={false}
         tags={[
           <Tag key="status" color={currentErp.status === 'draft' ? 'blue' : 'green'}>
@@ -338,7 +338,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice != null && currentErp.costPrice !== '' ? moneyFormatter({ amount: currentErp.costPrice }) : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
-        <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse || '-'}</Descriptions.Item>
         {currentErp.ship && (
           <Descriptions.Item label="船隻">
             <Tag color="blue">{currentErp.ship.registrationNumber || '—'}</Tag>
@@ -358,7 +358,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         </Col>
         <Col span={12}>
           <p><strong>倉庫:</strong></p>
-          <p>{currentErp.warehouse ? `倉${currentErp.warehouse}` : '-'}</p>
+          <p>{currentErp.warehouse || '-'}</p>
         </Col>
       </Row>
       

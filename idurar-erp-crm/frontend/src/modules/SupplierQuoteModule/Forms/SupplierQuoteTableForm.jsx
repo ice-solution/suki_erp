@@ -889,7 +889,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     if (!searchText) {
       return filteredItems.map(item => ({
         value: item.itemName,
-        label: `${item.itemName} (倉${item.warehouse}) - 庫存: ${item.quantity}`
+        label: `${item.itemName} (${item.warehouse}) - 庫存: ${item.quantity}`
       }));
     }
     
@@ -900,7 +900,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       )
       .map(item => ({
         value: item.itemName,
-        label: `${item.itemName} (倉${item.warehouse}) - 庫存: ${item.quantity}`
+        label: `${item.itemName} (${item.warehouse}) - 庫存: ${item.quantity}`
       }));
   };
 
@@ -1073,7 +1073,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       dataIndex: 'warehouse',
       key: 'warehouse',
       width: '15%',
-      render: (warehouse) => `倉${warehouse}`,
+      render: (warehouse) => warehouse || '-',
     },
     {
       title: translate('Item'),
@@ -1339,6 +1339,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <Input />
           </Form.Item>
         </Col>
+        <Col className="gutter-row" span={12}>
+          <Form.Item label="簽收單顯示名稱" name="receiptDisplayName">
+            <Input placeholder="簽收單 PDF 上顯示的收件人名稱（留空則使用客戶名稱）" />
+          </Form.Item>
+        </Col>
       </Row>
 
       <Divider orientation="left">文件上傳</Divider>
@@ -1457,10 +1462,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             onChange={(value) => updateCurrentMaterial('warehouse', value)}
             style={{ width: '100%' }}
             options={[
-              { value: 'A', label: '倉A' },
-              { value: 'B', label: '倉B' },
-              { value: 'C', label: '倉C' },
-              { value: 'D', label: '倉D' },
+              { value: 'A', label: 'A' },
+              { value: 'B', label: 'B' },
+              { value: 'C', label: 'C' },
+              { value: 'D', label: 'D' },
               { value: '其他', label: '其他' },
             ]}
           />

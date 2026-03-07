@@ -86,14 +86,15 @@ export default function UpdateItem({ config, UpdateForm }) {
     let dataToUpdate = { ...fieldsValue };
     if (fieldsValue) {
       // Handle different date field names for different entities
-      if (fieldsValue.date || fieldsValue.expiredDate) {
-        if (fieldsValue.date) {
-          dataToUpdate.date = dayjs(fieldsValue.date).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        }
+      if (fieldsValue.date) {
+        dataToUpdate.date = dayjs(fieldsValue.date).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+      }
+      // expiredDate 僅對 Quote、吊船Quote、S單：不傳給 Invoice
+      const entitiesWithExpiredDate = ['quote', 'shipquote', 'supplierquote'];
+      if (entitiesWithExpiredDate.includes((entity || '').toLowerCase())) {
         if (fieldsValue.expiredDate) {
           dataToUpdate.expiredDate = dayjs(fieldsValue.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
         } else {
-          // 選填：清空時傳 null，避免後台 required 錯誤
           dataToUpdate.expiredDate = null;
         }
       }
