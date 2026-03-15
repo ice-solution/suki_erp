@@ -101,7 +101,7 @@ html
       .info-section { width: 100%; margin-bottom: 16px; font-size: 10px; }
       .info-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .info-table td { vertical-align: top; font-size: 10px; }
-      .info-table .info-left { width: 55%; padding: 0 12px 0 0; }
+      .info-table .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
       .info-table .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 4px; }
       
@@ -223,13 +223,16 @@ body
     
     .info-section
       - const client = model.client || (model.clients && model.clients[0]) || {}
+      - const displayName = model.receiptDisplayName || client.name || ''
       table.info-table
         tr
           td.info-left
-            .info-row 致: #{client.name || ''}
-            .info-row #{model.address || client.address || ''}
-            if model.contactPerson
-              .info-row 收貨人: #{model.contactPerson}
+            .info-row 致: #{displayName}
+            .info-row #{client.address || ''}
+            if model.address
+              .info-row 工程地址: #{model.address}
+            if model.receiver || model.contactPerson
+              .info-row 簽收單收貨人: #{model.receiver || model.contactPerson}
           td.info-right
             .info-row 檔案編號 : #{model.invoiceNumber || (model.numberPrefix || 'SWP') + '-' + model.number + '/' + (model.year || '')}
             .info-row 日期 : #{moment(model.date).format('DD-MM-YYYY')}

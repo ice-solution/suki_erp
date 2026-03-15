@@ -84,6 +84,9 @@ const update = async (req, res) => {
       }
     });
 
+    account.modified_at = new Date();
+    account.updated = account.modified_at;
+    if (req.admin && req.admin._id) account.updatedBy = req.admin._id;
     await account.save();
 
     // 重新填充關聯數據

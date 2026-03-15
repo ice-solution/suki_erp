@@ -48,19 +48,20 @@ export default function ProjectForm({ current = null }) {
     }
   };
 
-  // 搜索 Quote Numbers (只從 Quote 搜索，使用 Quote Type + number)
+  // 搜索 Quote Numbers：至少 3 個字元才搜尋，支援子字串匹配（如 400 可匹配 QU-400、SML-4000）
   const searchInvoiceNumbers = async (searchText) => {
-    if (!searchText || searchText.length < 1) {
+    const trimmed = searchText ? searchText.trim() : '';
+    if (trimmed.length < 3) {
       setInvoiceOptions([]);
       return;
     }
 
     setSearchLoading(true);
     try {
-      // 只從 Quote 中搜索 Quote Numbers (使用 numberPrefix 和 number)
+      // 只從 Quote 中搜索 Quote Numbers（後端支援子字串匹配，如 400 可匹配 QU-400、SML-4000）
       const quoteResponse = await request.search({ 
         entity: 'quote', 
-        options: { q: searchText, fields: 'numberPrefix,number,status' } 
+        options: { q: trimmed, fields: 'numberPrefix,number,status' } 
       });
 
       const quoteNumbers = new Set();
@@ -477,7 +478,7 @@ export default function ProjectForm({ current = null }) {
                   rules={[{ required: true, message: 'Quote Number is required' }]}
                 >
                   <AutoComplete
-                    placeholder="輸入或搜索 Quote Number (例如: QU-123, SML-456)"
+                    placeholder="輸入至少 3 個字元搜索 (例如: 400 可匹配 QU-400、SML-4000)"
                     value={invoiceNumber}
                     options={invoiceOptions}
                     onSearch={searchInvoiceNumbers}
@@ -498,7 +499,13 @@ export default function ProjectForm({ current = null }) {
                     }}
                     style={{ width: '100%' }}
                     filterOption={false}
-                    notFoundContent={searchLoading ? "搜索中..." : "無匹配的 Quote Number"}
+                    notFoundContent={
+                      searchLoading
+                        ? "搜索中..."
+                        : (invoiceNumber && invoiceNumber.trim().length > 0 && invoiceNumber.trim().length < 3)
+                          ? "請輸入至少 3 個字元以搜索"
+                          : "無匹配的 Quote Number"
+                    }
                   />
                 </Form.Item>
               </Col>

@@ -1,0 +1,13 @@
+[
+  {
+    "settingCategory": "warehouse_settings",
+    "settingKey": "warehouse_list",
+    "settingValue": [
+      { "value": "A", "name": "倉A", "location": "" },
+      { "value": "B", "name": "倉B", "location": "" },
+      { "value": "C", "name": "倉C", "location": "" },
+      { "value": "D", "name": "倉D", "location": "" }
+    ],
+    "valueType": "array"
+  }
+]

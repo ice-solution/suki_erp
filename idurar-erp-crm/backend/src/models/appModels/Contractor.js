@@ -49,6 +49,8 @@ const schema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
 });
 
 // 添加索引

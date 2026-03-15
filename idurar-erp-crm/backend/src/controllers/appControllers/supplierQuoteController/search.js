@@ -2,6 +2,14 @@ const mongoose = require('mongoose');
 
 const Model = mongoose.model('SupplierQuote');
 
+// 將搜尋詞轉為「任意位置包含」的 regex，並跳脫特殊字元，使 1032 可匹配 PO1032
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+function substringRegex(searchTerm) {
+  return new RegExp(escapeRegex(searchTerm), 'i');
+}
+
 const search = async (req, res) => {
   if (req.query.q === undefined || req.query.q === '' || req.query.q === ' ') {
     return res
@@ -15,21 +23,31 @@ const search = async (req, res) => {
   }
 
   const searchTerm = req.query.q;
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['name'];
+  const fieldsArray = req.query.fields ? req.query.fields.split(',').map((f) => f.trim()) : [];
 
   const fields = { $or: [] };
+  const regex = substringRegex(searchTerm);
 
-  // 標準字段搜索
+  // PO Number、Address、Client 名字 搜索（任意位置包含搜尋詞，例如 1032 可匹配 PO1032）
+  fields.$or.push({ poNumber: { $regex: regex } });
+  fields.$or.push({ address: { $regex: regex } });
+
+  const ClientModel = mongoose.model('Client');
+  const matchingClients = await ClientModel.find({ name: { $regex: regex }, removed: false }).distinct('_id');
+  if (matchingClients && matchingClients.length > 0) {
+    fields.$or.push({ clients: { $in: matchingClients } });
+    fields.$or.push({ client: { $in: matchingClients } });
+  }
+
+  // 標準字段搜索（若傳入 fields）
   for (const field of fieldsArray) {
     if (field === 'number') {
-      // 對於number字段，嘗試數字匹配
       const numberValue = parseInt(searchTerm);
       if (!isNaN(numberValue)) {
         fields.$or.push({ [field]: numberValue });
       }
-    } else {
-      // 對於其他字段，使用正則表達式搜索
-      fields.$or.push({ [field]: { $regex: new RegExp(searchTerm, 'i') } });
+    } else if (field && !['poNumber', 'address'].includes(field)) {
+      fields.$or.push({ [field]: { $regex: regex } });
     }
   }
 
@@ -40,19 +58,17 @@ const search = async (req, res) => {
     const numberValue = parseInt(numberPart);
     
     if (prefixPart && !isNaN(numberValue)) {
-      // 優先匹配 numberPrefix + number
       fields.$or.push({
         $and: [
-          { numberPrefix: { $regex: new RegExp(prefixPart, 'i') } },
+          { numberPrefix: { $regex: substringRegex(prefixPart) } },
           { number: numberValue }
         ]
       });
     }
   } else {
-    // 如果沒有"-"，優先匹配 numberPrefix
-    fields.$or.push({ numberPrefix: { $regex: new RegExp(searchTerm, 'i') } });
+    // 任意位置包含搜尋詞（例如 1032 可匹配 PO1032、S-1032 等）
+    fields.$or.push({ numberPrefix: { $regex: regex } });
     
-    // 如果是數字，也嘗試匹配number字段
     const numberValue = parseInt(searchTerm);
     if (!isNaN(numberValue)) {
       fields.$or.push({ number: numberValue });

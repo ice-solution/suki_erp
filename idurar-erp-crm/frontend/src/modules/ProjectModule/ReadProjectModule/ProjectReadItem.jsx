@@ -27,7 +27,7 @@ import SalaryManagement from '@/components/SalaryManagement';
 
 const { Title, Text } = Typography;
 
-export default function ProjectReadItem({ config, selectedItem }) {
+export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl }) {
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
@@ -73,13 +73,13 @@ export default function ProjectReadItem({ config, selectedItem }) {
 
   useEffect(() => {
     const controller = new AbortController();
-    if (currentResult) {
+    const projectId = projectIdFromUrl || currentResult?._id;
+    if (currentResult && projectId) {
       setCurrentProject(currentResult);
-      // 載入WorkProgress列表
-      loadWorkProgress(currentResult._id);
+      loadWorkProgress(projectId);
     }
     return () => controller.abort();
-  }, [currentResult]);
+  }, [currentResult, projectIdFromUrl]);
 
 
   // 載入WorkProgress列表
@@ -236,6 +236,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
       render: (number, record) => (
         <Link 
           to={`/quote/read/${record._id}`}
+          state={{ fromProject: currentProject._id }}
           style={{ color: '#1890ff', textDecoration: 'none' }}
         >
           {`${record.numberPrefix || 'QU'}-${number}`}
@@ -276,6 +277,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
       render: (number, record) => (
         <Link 
           to={`/supplierquote/read/${record._id}`}
+          state={{ fromProject: currentProject._id }}
           style={{ color: '#1890ff', textDecoration: 'none' }}
         >
           {`${record.numberPrefix || 'QU'}-${number}`}
@@ -310,6 +312,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
       render: (number, record) => (
         <Link 
           to={`/shipquote/read/${record._id}`}
+          state={{ fromProject: currentProject._id }}
           style={{ color: '#1890ff', textDecoration: 'none' }}
         >
           {`${record.numberPrefix || 'QU'}-${number}`}
@@ -344,6 +347,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
       render: (number, record) => (
         <Link 
           to={`/invoice/read/${record._id}`}
+          state={{ fromProject: currentProject._id }}
           style={{ color: '#1890ff', textDecoration: 'none' }}
         >
           {`${record.numberPrefix || 'INV'}-${number}`}
@@ -624,6 +628,8 @@ export default function ProjectReadItem({ config, selectedItem }) {
           {currentProject.endDate ? dayjs(currentProject.endDate).format(dateFormat) : '-'}
         </Descriptions.Item>
         <Descriptions.Item label={translate('Cost By')}>{currentProject.costBy}</Descriptions.Item>
+        <Descriptions.Item label="修改時間">{currentProject.modified_at ? dayjs(currentProject.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="修改人">{currentProject.updatedBy ? (currentProject.updatedBy.name + (currentProject.updatedBy.surname ? ' ' + currentProject.updatedBy.surname : '') || currentProject.updatedBy.email || '-') : '-'}</Descriptions.Item>
         <Descriptions.Item label="判頭費總計" span={3}>
           {currentProject.contractorFees && Array.isArray(currentProject.contractorFees) && currentProject.contractorFees.length > 0 ? (
             <div>
@@ -849,7 +855,7 @@ export default function ProjectReadItem({ config, selectedItem }) {
 
         <Col span={24}>
           <SalaryManagement 
-            projectId={currentProject._id}
+            projectId={projectIdFromUrl || currentProject._id}
             workProgressList={workProgressList}
           />
         </Col>

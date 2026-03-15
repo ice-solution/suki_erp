@@ -51,6 +51,10 @@ const update = async (req, res) => {
   if (body.hasOwnProperty('currency')) {
     delete body.currency;
   }
+  const now = new Date();
+  body.modified_at = now;
+  body.updated = now;
+  if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
   // Find document by id and updates with the required fields
 
   const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {

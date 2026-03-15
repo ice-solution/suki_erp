@@ -8,7 +8,6 @@ export const fields = {
   },
   country: {
     type: 'country',
-    // color: 'red',
   },
   address: {
     type: 'string',

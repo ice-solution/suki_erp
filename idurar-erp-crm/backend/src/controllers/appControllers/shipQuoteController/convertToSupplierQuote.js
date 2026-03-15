@@ -20,13 +20,7 @@ const convertToSupplierQuote = async (req, res) => {
       });
     }
 
-    if (shipQuote.converted && shipQuote.converted.supplierQuote) {
-      return res.status(400).json({
-        success: false,
-        result: null,
-        message: '此 Ship Quote 已經轉換成 S單',
-      });
-    }
+    // 吊船Quote 可重覆上單，不檢查是否已轉換
 
     if (!shipQuote.items || shipQuote.items.length === 0) {
       return res.status(400).json({
@@ -43,12 +37,11 @@ const convertToSupplierQuote = async (req, res) => {
       ? supplierQuoteNumberResult.settingValue
       : 1;
 
+    // 與 Quote 上單一致：不帶銀碼，items 只有 itemName, description, quantity
     const supplierQuoteItems = shipQuote.items.map((item) => ({
       itemName: item.itemName,
       description: item.description || '',
       quantity: item.quantity,
-      price: item.price ?? 0,
-      total: item.total ?? 0,
     }));
 
     const supplierQuoteData = {
@@ -73,9 +66,9 @@ const convertToSupplierQuote = async (req, res) => {
       client: shipQuote.client,
       project: shipQuote.project,
       items: supplierQuoteItems,
-      subTotal: shipQuote.subTotal ?? 0,
-      discountTotal: shipQuote.discountTotal ?? 0,
-      total: shipQuote.total ?? 0,
+      subTotal: 0,
+      discountTotal: 0,
+      total: 0,
       credit: 0,
       currency: shipQuote.currency || 'NA',
       discount: shipQuote.discount ?? 0,

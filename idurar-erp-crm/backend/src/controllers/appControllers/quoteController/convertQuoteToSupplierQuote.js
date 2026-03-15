@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const QuoteModel = mongoose.model('Quote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
+const ProjectModel = mongoose.model('Project');
 
 const { increaseBySettingKey } = require('@/middlewares/settings');
 
@@ -16,6 +17,21 @@ const convertQuoteToSupplierQuote = async (req, res) => {
         result: null,
         message: 'Quote not found',
       });
+    }
+
+    // 檢查 Project Management 是否已建立此 Quote Number
+    const quoteNumber = quote.numberPrefix && quote.number
+      ? `${quote.numberPrefix}-${quote.number}`
+      : quote.invoiceNumber;
+    if (quoteNumber) {
+      const project = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
+      if (!project) {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: '請先在 Project Management 建立此 Quote Number 的項目，方可上單',
+        });
+      }
     }
 
     // Check if quote is already converted to supplier quote

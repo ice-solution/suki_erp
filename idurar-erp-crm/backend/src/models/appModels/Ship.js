@@ -19,7 +19,7 @@ const schema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['normal', 'returned_warehouse_hk', 'returned_warehouse_cn', 'in_use'],
+    enum: ['pending_maintenance', 'normal', 'returned_warehouse_cn', 'returned_warehouse_hk', 'in_use'],
     default: 'normal',
   },
   supplierNumber: {
@@ -41,6 +41,8 @@ const schema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
 });
 
 schema.plugin(require('mongoose-autopopulate'));

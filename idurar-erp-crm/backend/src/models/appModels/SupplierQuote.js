@@ -67,7 +67,13 @@ const supplierQuoteSchema = new mongoose.Schema({
   contactPerson: {
     type: String,
   },
+  receiver: {
+    type: String,
+  },
   address: {
+    type: String,
+  },
+  receiptDisplayName: {
     type: String,
   },
   warehouse: {
@@ -87,6 +93,11 @@ const supplierQuoteSchema = new mongoose.Schema({
     ref: 'Client',
     autopopulate: true,
   }],
+  supplier: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Supplier',
+    autopopulate: true,
+  },
   project: {
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
@@ -130,7 +141,7 @@ const supplierQuoteSchema = new mongoose.Schema({
     {
       warehouse: {
         type: String,
-        enum: ['A', 'B', 'C', 'D'],
+        enum: ['A', 'B', 'C', 'D', '其他'],
         required: true,
       },
       itemName: {
@@ -141,11 +152,14 @@ const supplierQuoteSchema = new mongoose.Schema({
         type: Number,
         required: true,
       },
+      unitPrice: { type: Number },
       price: {
         type: Number,
         required: false,
         default: 0,
       },
+      // 會計用：當「其他」+ 加工費 時為 'processing_fee'，供 accounting 計算
+      accountingType: { type: String },
     },
   ],
   subTotal: {
@@ -234,6 +248,8 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
     type: Date,
     default: Date.now,

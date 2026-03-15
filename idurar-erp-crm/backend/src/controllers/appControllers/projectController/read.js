@@ -9,7 +9,8 @@ const read = async (req, res) => {
       _id: req.params.id,
       removed: false,
     })
-      .populate('createdBy', 'name')
+      .populate('createdBy', 'name surname email')
+      .populate('updatedBy', 'name surname email')
       .populate('suppliers', 'name email phone address')
       .populate('contractors', 'name email phone address')
       .populate('quotations')

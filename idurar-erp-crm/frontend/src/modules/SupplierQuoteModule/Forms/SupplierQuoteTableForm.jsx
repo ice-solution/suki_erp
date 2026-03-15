@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings } from '@/redux/settings/selectors';
+import { selectFinanceSettings, selectWarehouseOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -30,6 +30,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const { dateFormat } = useDate();
   const { moneyFormatter, amountFormatter, currency_symbol, currency_position, cent_precision, currency_code } = useMoney();
   const financeSettings = useSelector(selectFinanceSettings);
+  const warehouseOptions = useSelector(selectWarehouseOptions);
   const { last_supplier_quote_number } = financeSettings || {};
   const [lastNumber, setLastNumber] = useState(() => (last_supplier_quote_number || 0) + 1);
   const navigate = useNavigate();
@@ -53,6 +54,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
   // Materials form states
@@ -199,6 +201,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   useEffect(() => {
     fetchProjectItems();
     fetchClients();
+    fetchSuppliers();
     fetchWarehouseItems();
     fetchShips();
     fetchWinches();
@@ -225,6 +228,21 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     } catch (error) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const response = await request.listAll({ entity: 'supplier' });
+      const data = response?.result;
+      if (Array.isArray(data)) {
+        setSuppliers(data.map(s => ({ value: s._id, label: s.name })));
+      } else {
+        setSuppliers([]);
+      }
+    } catch (error) {
+      console.error('獲取供應商列表失敗:', error);
+      setSuppliers([]);
     }
   };
 
@@ -538,10 +556,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         const totalVal = currentTotal !== undefined && currentTotal !== null
           ? Number(currentTotal)
           : Number.parseFloat((subVal - (subVal * (discount / 100))).toFixed(2));
+        const supplierId = current.supplier?._id || current.supplier || undefined;
         form.setFieldsValue({ 
           items: currentItems,
           materials: currentMaterials,
           clients: clientIds,
+          supplier: supplierId,
           type: type,
           shipType: shipType,
           ship: currentShip ? (currentShip._id || currentShip) : null,
@@ -874,11 +894,24 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
+  // 「其他」類別下的可選名稱（供輸入/選擇，加工費與會計計算有關）
+  const OTHER_MATERIAL_OPTIONS = [
+    { value: '加工費', label: '加工費' },
+    { value: '運費', label: '運費' },
+    { value: '雜項', label: '雜項' },
+  ];
+
   // 搜索倉庫項目
   const handleMaterialSearch = (searchText) => {
-    // 如果選擇了「其他」，不顯示任何項目（需要手動輸入）
+    // 如果選擇了「其他」，顯示可選名稱（如加工費）讓用戶選或輸入
     if (currentMaterial.warehouse === '其他') {
-      return [];
+      if (!searchText) {
+        return OTHER_MATERIAL_OPTIONS;
+      }
+      const lower = searchText.toLowerCase();
+      return OTHER_MATERIAL_OPTIONS.filter(
+        (opt) => opt.label.toLowerCase().includes(lower)
+      );
     }
     
     // 如果選擇了倉庫，只顯示該倉庫的項目
@@ -977,12 +1010,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         
         if (matches) {
           found = true;
-          // 保留原有的所有字段，更新為新的值
+          const accountingType =
+            currentMaterial.warehouse === '其他' && currentMaterial.itemName === '加工費'
+              ? 'processing_fee'
+              : undefined;
           const updatedMaterial = { 
             ...material,  // 保留所有原有字段
             ...currentMaterial,  // 用新值覆蓋
             key: material.key || editingMaterialKey,  // 確保 key 不變
-            _id: material._id  // 保留 _id
+            _id: material._id,  // 保留 _id
+            accountingType,
           };
           console.log('Updating material:', { old: material, new: updatedMaterial });
           return updatedMaterial;
@@ -1002,6 +1039,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       const newMaterial = {
         ...currentMaterial,
         key: Date.now(), // 用作唯一標識
+        // 會計用：當「其他」+ 加工費 時標記，供後續 accounting 計算
+        accountingType:
+          currentMaterial.warehouse === '其他' && currentMaterial.itemName === '加工費'
+            ? 'processing_fee'
+            : undefined,
       };
       updatedMaterials = [...materials, newMaterial];
     }
@@ -1073,7 +1115,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       dataIndex: 'warehouse',
       key: 'warehouse',
       width: '15%',
-      render: (warehouse) => warehouse || '-',
+      render: (warehouse) => {
+        const opt = warehouseOptions?.find((o) => o.value === warehouse);
+        return opt ? opt.label : (warehouse || '-');
+      },
     },
     {
       title: translate('Item'),
@@ -1123,7 +1168,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   return (
     <>
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={8}>
+        <Col className="gutter-row" span={6}>
           <Form.Item
             name="clients"
             label={translate('Clients')}
@@ -1145,6 +1190,25 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               style={{ width: '100%' }}
               loading={loading}
               notFoundContent="No clients found"
+            />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={6}>
+          <Form.Item
+            name="supplier"
+            label={translate('suppliers')}
+          >
+            <Select
+              placeholder={translate('suppliers')}
+              showSearch
+              allowClear
+              filterOption={(input, option) =>
+                option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+              options={suppliers}
+              style={{ width: '100%' }}
+              loading={loading}
+              notFoundContent="No suppliers found"
             />
           </Form.Item>
         </Col>
@@ -1325,23 +1389,30 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <Input placeholder="對方Invoice Number（選填）" />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('Contact Person')} name="contactPerson">
-            <Input />
+      </Row>
+
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={8}>
+          <Form.Item label="簽收單聯絡人" name="contactPerson">
+            <Input placeholder="簽收單聯絡人" />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={8}>
+          <Form.Item label="簽收單收貨人" name="receiver">
+            <Input placeholder="簽收單收貨人" />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={8}>
+          <Form.Item label="簽收單顯示名稱" name="receiptDisplayName">
+            <Input placeholder="簽收單 PDF 上顯示的收件人名稱（留空則使用客戶名稱）" />
           </Form.Item>
         </Col>
       </Row>
       
-      
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={12}>
+        <Col className="gutter-row" span={24}>
           <Form.Item label={translate('Project Address')} name="address">
             <Input />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={12}>
-          <Form.Item label="簽收單顯示名稱" name="receiptDisplayName">
-            <Input placeholder="簽收單 PDF 上顯示的收件人名稱（留空則使用客戶名稱）" />
           </Form.Item>
         </Col>
       </Row>
@@ -1462,10 +1533,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             onChange={(value) => updateCurrentMaterial('warehouse', value)}
             style={{ width: '100%' }}
             options={[
-              { value: 'A', label: 'A' },
-              { value: 'B', label: 'B' },
-              { value: 'C', label: 'C' },
-              { value: 'D', label: 'D' },
+              ...(warehouseOptions || []),
               { value: '其他', label: '其他' },
             ]}
           />

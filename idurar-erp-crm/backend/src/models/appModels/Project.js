@@ -243,6 +243,8 @@ const projectSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
 });
 
 projectSchema.plugin(require('mongoose-autopopulate'));

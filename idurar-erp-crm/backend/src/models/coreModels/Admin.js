@@ -27,6 +27,8 @@ const adminSchema = new Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   role: {
     type: String,
     default: 'owner',

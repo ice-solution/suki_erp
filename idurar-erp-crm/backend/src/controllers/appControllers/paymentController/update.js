@@ -53,7 +53,9 @@ const update = async (req, res) => {
     ref: req.body.ref,
     description: req.body.description,
     updated: updatedDate,
+    modified_at: updatedDate,
   };
+  if (req.admin && req.admin._id) updates.updatedBy = req.admin._id;
 
   const result = await Model.findOneAndUpdate(
     { _id: req.params.id, removed: false },

@@ -92,6 +92,11 @@ const shipQuoteSchema = new mongoose.Schema({
     ref: 'Client',
     autopopulate: true,
   }],
+  supplier: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Supplier',
+    autopopulate: true,
+  },
   project: {
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
@@ -180,6 +185,8 @@ const shipQuoteSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
     type: Date,
     default: Date.now,

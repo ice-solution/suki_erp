@@ -59,8 +59,7 @@ html
         font-weight:700;
       }
       .billTo p {
-        text-align: right !important;
-        float:right;
+        text-align: left !important;
         display:block;
         font-size:12px;
         width:100%;
@@ -226,6 +225,17 @@ body
       .col.col-24
         .space  
       .left.col-14
+          .billTo
+              p #{translate('Client')} :
+              - const client = model.client || (model.clients && model.clients[0]) || {}
+              p #{model.receiptDisplayName || client.name}
+              p #{client.address}
+              if model.address
+                p 工程地址: #{model.address}
+              p #{client.phone}
+              p #{client.email}
+            
+      .right.col-10
           h1.invoice
             | Supplier Quote
           div 
@@ -237,16 +247,7 @@ body
               p #{moment(model.expiredDate).format(dateFormat)}
             .col.col-8 
               p.strong #{translate('Number')} :
-              p # #{model.numberPrefix || 'E'}-#{model.number}/#{model.year || ""} 
-            
-      .right.col-10
-          .billTo
-              p #{translate('Client')} :
-              - const client = model.client || (model.clients && model.clients[0]) || {}
-              p #{client.name}
-              p #{client.address}
-              p #{client.phone}
-              p #{client.email}
+              p # #{model.numberPrefix || 'E'}-#{model.number}/#{model.year || ""}
       .col.col-24
         .space  
     main

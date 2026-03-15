@@ -20,19 +20,19 @@ export default function ShipList() {
   };
   const deleteModalLabels = ['registrationNumber'];
 
-  // 存儲 supplierNumber -> { id, address } 的映射
+  // 存儲 supplierNumber -> { id, address, invoiceNumber } 的映射
   const [supplierQuoteMap, setSupplierQuoteMap] = useState({});
 
-  // 根據 supplierNumber 查找 SupplierQuote 的 _id 和 address（Project Address）
+  // 根據 supplierNumber 查找 SupplierQuote 的 _id、address、invoiceNumber（Quote Number）
   const findSupplierQuoteInfo = async (supplierNumber) => {
     if (!supplierNumber) return null;
     const cached = supplierQuoteMap[supplierNumber];
-    if (cached) return typeof cached === 'object' ? cached : { id: cached, address: null };
+    if (cached) return typeof cached === 'object' ? cached : { id: cached, address: null, invoiceNumber: null };
 
     try {
       const response = await request.search({
         entity: 'supplierquote',
-        options: { q: supplierNumber, fields: 'numberPrefix,number' }
+        options: { q: supplierNumber, fields: 'numberPrefix,number,address,invoiceNumber' }
       });
 
       if (response.success && response.result && response.result.length > 0) {
@@ -42,7 +42,11 @@ export default function ShipList() {
         });
 
         if (matchedQuote) {
-          const info = { id: matchedQuote._id, address: matchedQuote.address || null };
+          const info = {
+            id: matchedQuote._id,
+            address: matchedQuote.address || null,
+            invoiceNumber: matchedQuote.invoiceNumber || null,
+          };
           setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
           return info;
         }
@@ -81,7 +85,7 @@ export default function ShipList() {
       },
     });
 
-    // Supplier Number列（可點擊）
+    // Supplier Quote Number 列（S單編號，可點擊）
     baseColumns.push({
       title: translate('Supplier Quote Number') || 'Supplier Quote Number',
       dataIndex: 'supplierNumber',
@@ -111,6 +115,23 @@ export default function ShipList() {
       },
     });
 
+    // Quote Number 列（報價單編號，S單使用中時顯示）
+    baseColumns.push({
+      title: 'Quote Number',
+      dataIndex: 'supplierNumber',
+      key: 'quoteNumber',
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') {
+          return '-';
+        }
+        const info = supplierQuoteMap[supplierNumber];
+        const invoiceNumber = typeof info === 'object' ? info?.invoiceNumber : null;
+        if (invoiceNumber) return invoiceNumber;
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
+      },
+    });
+
     // Project Address列（對應 Supplier Quote 的 address）
     baseColumns.push({
       title: translate('Project Address') || 'Project Address',
@@ -128,13 +149,23 @@ export default function ShipList() {
       },
     });
 
-    // Expired Date列（到期日）
+    // Expired Date列（到期日）：一個月內到期或已過期變色
     baseColumns.push({
       title: translate('expired Date') || '到期日',
       dataIndex: 'expiredDate',
       key: 'expiredDate',
       render: (date) => {
-        return date ? dayjs(date).format(dateFormat) : '-';
+        if (!date) return '-';
+        const d = dayjs(date);
+        const today = dayjs().startOf('day');
+        const diffDays = d.diff(today, 'day');
+        const withinOneMonth = diffDays >= -31 && diffDays <= 31;
+        const isPast = diffDays < 0;
+        let style = {};
+        if (withinOneMonth) {
+          style = { color: isPast ? '#cf1322' : '#fa8c16', fontWeight: 500 };
+        }
+        return <span style={style}>{d.format(dateFormat)}</span>;
       },
     });
 

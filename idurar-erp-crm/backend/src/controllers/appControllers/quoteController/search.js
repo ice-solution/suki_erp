@@ -14,55 +14,60 @@ const search = async (req, res) => {
       .end();
   }
 
-  const searchTerm = req.query.q;
+  const searchTerm = req.query.q.trim();
   const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['address', 'invoiceNumber'];
 
   const fields = { $or: [] };
 
+  // 脫逸正則特殊字元，供子字串匹配使用
+  const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // 完整 Quote Number 子字串匹配：例如 "400" 可匹配 QU-400、SML-4000（不需順序、不需完整）
+  const escapedSubstring = escapeRegex(searchTerm);
+  fields.$or.push({
+    $expr: {
+      $regexMatch: {
+        input: { $concat: [{ $ifNull: ['$numberPrefix', ''] }, '-', { $toString: '$number' }] },
+        regex: escapedSubstring,
+        options: 'i',
+      },
+    },
+  });
+
   // 標準字段搜索
   for (const field of fieldsArray) {
     if (field === 'number') {
-      // 對於number字段，嘗試數字匹配
       const numberValue = parseInt(searchTerm);
       if (!isNaN(numberValue)) {
         fields.$or.push({ [field]: numberValue });
       }
-    } else {
-      // 對於其他字段，使用正則表達式搜索
-      fields.$or.push({ [field]: { $regex: new RegExp(searchTerm, 'i') } });
+    } else if (field !== 'status') {
+      fields.$or.push({ [field]: { $regex: new RegExp(escapeRegex(searchTerm), 'i') } });
     }
   }
 
   // 特殊處理：搜索完整的Quote號碼 (Quote Type-number)
-  // 如果搜索詞包含"-"，嘗試分離Quote Type和number
   if (searchTerm.includes('-')) {
     const [quoteTypePart, numberPart] = searchTerm.split('-');
     const numberValue = parseInt(numberPart);
     
     if (quoteTypePart && !isNaN(numberValue)) {
-      // 優先匹配 Quote Type (numberPrefix) + number
       fields.$or.push({
         $and: [
-          { numberPrefix: { $regex: new RegExp(quoteTypePart, 'i') } },
-          { number: numberValue }
-        ]
+          { numberPrefix: { $regex: new RegExp(escapeRegex(quoteTypePart), 'i') } },
+          { number: numberValue },
+        ],
       });
-      // 向後兼容：也嘗試匹配 type (服務類型) + number
       fields.$or.push({
         $and: [
-          { type: { $regex: new RegExp(quoteTypePart, 'i') } },
-          { number: numberValue }
-        ]
+          { type: { $regex: new RegExp(escapeRegex(quoteTypePart), 'i') } },
+          { number: numberValue },
+        ],
       });
     }
   } else {
-    // 如果沒有"-"，優先匹配 Quote Type (numberPrefix)
-    fields.$or.push({ numberPrefix: { $regex: new RegExp(searchTerm, 'i') } });
-    
-    // 向後兼容：也嘗試匹配 type (服務類型)
-    fields.$or.push({ type: { $regex: new RegExp(searchTerm, 'i') } });
-    
-    // 如果是數字，也嘗試匹配number字段
+    fields.$or.push({ numberPrefix: { $regex: new RegExp(escapedSubstring, 'i') } });
+    fields.$or.push({ type: { $regex: new RegExp(escapedSubstring, 'i') } });
     const numberValue = parseInt(searchTerm);
     if (!isNaN(numberValue)) {
       fields.$or.push({ number: numberValue });

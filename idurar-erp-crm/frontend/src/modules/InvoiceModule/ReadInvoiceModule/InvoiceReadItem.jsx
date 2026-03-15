@@ -22,7 +22,7 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -72,6 +72,8 @@ export default function InvoiceReadItem({ config, selectedItem }) {
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromProject = location.state?.fromProject;
 
   const { moneyFormatter } = useMoney();
   const { send, isLoading: mailInProgress } = useMail({ entity });
@@ -123,7 +125,11 @@ export default function InvoiceReadItem({ config, selectedItem }) {
     <>
       <PageHeader
         onBack={() => {
-          navigate(`/${entity.toLowerCase()}`);
+          if (fromProject) {
+            navigate(-1);
+          } else {
+            navigate(`/${entity.toLowerCase()}`);
+          }
         }}
         title={`${ENTITY_NAME} # ${currentErp.numberPrefix || 'INV'}-${currentErp.number}/${currentErp.year || ''}`}
         ghost={false}
@@ -139,7 +145,11 @@ export default function InvoiceReadItem({ config, selectedItem }) {
           <Button
             key={`${uniqueId()}`}
             onClick={() => {
-              navigate(`/${entity.toLowerCase()}`);
+              if (fromProject) {
+                navigate(-1);
+              } else {
+                navigate(`/${entity.toLowerCase()}`);
+              }
             }}
             icon={<CloseCircleOutlined />}
           >
@@ -236,6 +246,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
             currentErp.client?.name || '-'
           )}
         </Descriptions.Item>
+        <Descriptions.Item label={translate('suppliers')}>{currentErp.supplier?.name || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Address')}>{client.address}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Email')}>{client.email}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Phone')}>{client.phone}</Descriptions.Item>
@@ -257,6 +268,8 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Invoice Date')}>{currentErp.invoiceDate ? dayjs(currentErp.invoiceDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Payment Due Date')}>{currentErp.paymentDueDate ? dayjs(currentErp.paymentDueDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Payment Terms')}>{currentErp.paymentTerms || '-'}</Descriptions.Item>
+        <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>

@@ -72,6 +72,11 @@ const invoiceSchema = new mongoose.Schema({
     autopopulate: true,
     required: true,
   }],
+  supplier: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Supplier',
+    autopopulate: true,
+  },
 
   // 項目關聯
   project: {
@@ -207,6 +212,8 @@ const invoiceSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
     type: Date,
     default: Date.now,

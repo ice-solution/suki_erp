@@ -56,6 +56,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
@@ -155,6 +156,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   useEffect(() => {
     fetchProjectItems();
     fetchClients();
+    fetchSuppliers();
   }, []);
 
   const fetchClients = async () => {
@@ -178,6 +180,21 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     } catch (error) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const response = await request.listAll({ entity: 'supplier' });
+      const data = response?.result;
+      if (Array.isArray(data)) {
+        setSuppliers(data.map(s => ({ value: s._id, label: s.name })));
+      } else {
+        setSuppliers([]);
+      }
+    } catch (error) {
+      console.error('獲取供應商列表失敗:', error);
+      setSuppliers([]);
     }
   };
 
@@ -365,11 +382,13 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         }
       }
       
+      const supplierId = current.supplier?._id || current.supplier || undefined;
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
         form.setFieldsValue({ 
           items: currentItems,
           clients: clientIds,
+          supplier: supplierId,
           type: type,
           shipType: shipType,
           subcontractorCount: subcontractorCount,
@@ -593,7 +612,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   return (
     <>
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={8}>
+        <Col className="gutter-row" span={6}>
           <Form.Item
             name="clients"
             label={translate('Clients')}
@@ -615,6 +634,25 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               style={{ width: '100%' }}
               loading={loading}
               notFoundContent="No clients found"
+            />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={6}>
+          <Form.Item
+            name="supplier"
+            label={translate('suppliers')}
+          >
+            <Select
+              placeholder={translate('suppliers')}
+              showSearch
+              allowClear
+              filterOption={(input, option) =>
+                option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+              options={suppliers}
+              style={{ width: '100%' }}
+              loading={loading}
+              notFoundContent="No suppliers found"
             />
           </Form.Item>
         </Col>
@@ -843,11 +881,17 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={8}>
-          <Input 
-            placeholder="描述"
+        <Col span={11}>
+          <Input.TextArea
+            placeholder="描述（Shift+Enter 換行）"
             value={currentItem.description}
             onChange={(e) => updateCurrentItem('description', e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+            }}
+            rows={2}
+            autoSize={{ minRows: 2, maxRows: 6 }}
+            style={{ width: '100%' }}
           />
         </Col>
         <Col span={3}>

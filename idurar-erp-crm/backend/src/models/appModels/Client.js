@@ -10,6 +10,10 @@ const schema = new mongoose.Schema({
     default: true,
   },
 
+  accountCode: {
+    type: String,
+    trim: true,
+  },
   name: {
     type: String,
     required: true,
@@ -28,6 +32,8 @@ const schema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
 });
 
 schema.plugin(require('mongoose-autopopulate'));

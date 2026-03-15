@@ -207,7 +207,7 @@ export default function DataTable({ config, extra = [] }) {
 
       <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
         <Input.Search
-          placeholder="搜索地址、Quote號碼或P.O Number"
+          placeholder="搜索地址、吊船Quote號碼或P.O Number"
           value={searchValue}
           onChange={handleSearchInput}
           onSearch={handleSearchSubmit}
@@ -225,7 +225,7 @@ export default function DataTable({ config, extra = [] }) {
         pagination={isSearchMode ? false : (pagination || {})}
         loading={isSearchMode ? searchIsLoading : listIsLoading}
         onChange={isSearchMode ? undefined : handelDataTableLoad}
-        scroll={{ x: true }}
+        scroll={{ x: 1500 }}
       />
     </>
   );

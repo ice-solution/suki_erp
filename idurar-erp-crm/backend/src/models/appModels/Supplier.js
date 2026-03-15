@@ -9,28 +9,19 @@ const schema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
-  name: {
+
+  accountCode: {
     type: String,
-    required: false,
+    trim: true,
   },
-  serialNumber: {
+  name: {
     type: String,
     required: true,
   },
-  status: {
-    type: String,
-    enum: ['pending_maintenance', 'normal', 'returned_warehouse_cn', 'returned_warehouse_hk', 'in_use'],
-    default: 'normal',
-  },
-  supplierNumber: {
-    type: String,
-  },
-  expiredDate: {
-    type: Date,
-  },
-  description: {
-    type: String,
-  },
+  phone: String,
+  country: String,
+  address: String,
+  email: String,
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   assigned: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
@@ -47,11 +38,4 @@ const schema = new mongoose.Schema({
 
 schema.plugin(require('mongoose-autopopulate'));
 
-module.exports = mongoose.model('Winch', schema);
-
-
-
-
-
-
-
+module.exports = mongoose.model('Supplier', schema);

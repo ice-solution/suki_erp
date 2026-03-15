@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   EyeOutlined,
   EditOutlined,
@@ -9,10 +9,9 @@ import {
   ArrowRightOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { Table, Button, Space } from 'antd';
+import { Table, Button, Space, Input } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 
-import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import { useSelector, useDispatch } from 'react-redux';
 import useLanguage from '@/locale/useLanguage';
 import { erp } from '@/redux/erp/actions';
@@ -45,8 +44,15 @@ export default function DataTable({ config, extra = [] }) {
   const { DATATABLE_TITLE } = config;
 
   const { result: listResult, isLoading: listIsLoading } = useSelector(selectListItems);
+  const { result: searchResult, isLoading: searchIsLoading } = useSelector((state) => state.erp?.search || {});
 
-  const { pagination, items: dataSource } = listResult || { pagination: {}, items: [] };
+  const [searchValue, setSearchValue] = useState('');
+  const [isSearchMode, setIsSearchMode] = useState(false);
+
+  const currentData = isSearchMode
+    ? { pagination: {}, items: Array.isArray(searchResult) ? searchResult : [] }
+    : (listResult || { pagination: {}, items: [] });
+  const { pagination, items: dataSource } = currentData;
 
   const { erpContextAction } = useErpContext();
   const { modal } = erpContextAction;
@@ -129,7 +135,7 @@ export default function DataTable({ config, extra = [] }) {
   ];
 
   const handelDataTableLoad = (pagination) => {
-    const options = { page: pagination.current || 1, items: pagination.pageSize || 10 };
+    const options = { page: pagination?.current || 1, items: pagination?.pageSize || 10 };
     dispatch(erp.list({ entity, options }));
   };
 
@@ -145,9 +151,25 @@ export default function DataTable({ config, extra = [] }) {
     };
   }, []);
 
-  const filterTable = (value) => {
-    const options = { equal: value, filter: searchConfig?.entity };
-    dispatch(erp.list({ entity, options }));
+  const handleSearchInput = (e) => {
+    setSearchValue(e.target.value);
+  };
+
+  const handleSearchSubmit = (value) => {
+    if (value && value.trim()) {
+      setIsSearchMode(true);
+      const options = { q: value.trim(), fields: 'address,number,numberPrefix,invoiceNumber' };
+      dispatch(erp.search({ entity, options }));
+    } else {
+      setIsSearchMode(false);
+      dispatch(erp.list({ entity }));
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchValue('');
+    setIsSearchMode(false);
+    dispatch(erp.list({ entity }));
   };
 
   return (
@@ -158,17 +180,9 @@ export default function DataTable({ config, extra = [] }) {
         onBack={() => window.history.back()}
         backIcon={<ArrowLeftOutlined />}
         extra={[
-          <AutoCompleteAsync
-            key={`${uniqueId()}`}
-            entity={searchConfig?.entity}
-            displayLabels={['name']}
-            searchFields={'name'}
-            onChange={filterTable}
-          />,
-          <Button onClick={handelDataTableLoad} key={`${uniqueId()}`} icon={<RedoOutlined />}>
+          <Button onClick={handelDataTableLoad} key="refresh-button" icon={<RedoOutlined />}>
             {translate('Refresh')}
           </Button>,
-
           !disableAdd && <AddNewItem config={config} key={`${uniqueId()}`} />,
         ]}
         style={{
@@ -176,14 +190,27 @@ export default function DataTable({ config, extra = [] }) {
         }}
       ></PageHeader>
 
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+        <Input.Search
+          placeholder="搜索地址、S單號碼或P.O Number"
+          value={searchValue}
+          onChange={handleSearchInput}
+          onSearch={handleSearchSubmit}
+          onPressEnter={(e) => handleSearchSubmit(e.target.value)}
+          style={{ width: 350 }}
+          allowClear
+          onClear={handleClearSearch}
+        />
+      </div>
+
       <Table
         columns={dataTableColumns}
         rowKey={(item) => item._id}
         dataSource={Array.isArray(dataSource) ? dataSource : []}
-        pagination={pagination || {}}
-        loading={listIsLoading}
-        onChange={handelDataTableLoad}
-        scroll={{ x: true }}
+        pagination={isSearchMode ? false : (pagination || {})}
+        loading={isSearchMode ? searchIsLoading : listIsLoading}
+        onChange={isSearchMode ? undefined : handelDataTableLoad}
+        scroll={{ x: 1500 }}
       />
     </>
   );

@@ -136,7 +136,8 @@ const request = {
       includeToken();
       let query = '?';
       for (var key in options) {
-        query += key + '=' + options[key] + '&';
+        const val = options[key];
+        query += key + '=' + encodeURIComponent(val != null ? val : '') + '&';
       }
       query = query.slice(0, -1);
       // headersInstance.cancelToken = source.token;
@@ -466,6 +467,58 @@ const request = {
         notifyOnSuccess: false,
         notifyOnFailed: true,
       });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+
+  // 登入帳號管理（Settings - 登入帳號）
+  adminList: async () => {
+    try {
+      includeToken();
+      const response = await axios.get('admin');
+      successHandler(response, { notifyOnSuccess: false, notifyOnFailed: true });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  adminCreate: async (jsonData) => {
+    try {
+      includeToken();
+      const response = await axios.post('admin', jsonData);
+      successHandler(response, { notifyOnSuccess: true, notifyOnFailed: true });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  adminUpdate: async (id, jsonData) => {
+    try {
+      includeToken();
+      const response = await axios.put(`admin/${id}`, jsonData);
+      successHandler(response, { notifyOnSuccess: true, notifyOnFailed: true });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  adminDelete: async (id) => {
+    try {
+      includeToken();
+      const response = await axios.delete(`admin/${id}`);
+      successHandler(response, { notifyOnSuccess: true, notifyOnFailed: true });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+  adminUpdatePassword: async (id, password) => {
+    try {
+      includeToken();
+      const response = await axios.patch(`admin/password-update/${id}`, { password });
+      successHandler(response, { notifyOnSuccess: true, notifyOnFailed: true });
       return response.data;
     } catch (error) {
       return errorHandler(error);

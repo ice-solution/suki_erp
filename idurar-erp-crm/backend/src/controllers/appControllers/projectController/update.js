@@ -81,11 +81,14 @@ const update = async (req, res) => {
       totalContractorFee
     );
 
+    const now = new Date();
     // 更新項目數據
     const updateData = {
       grossProfit,
-      updated: new Date(),
+      updated: now,
+      modified_at: now,
     };
+    if (req.admin && req.admin._id) updateData.updatedBy = req.admin._id;
 
     // 如果有新的 contractorFees 值，則更新它
     if (contractorFees !== undefined) {

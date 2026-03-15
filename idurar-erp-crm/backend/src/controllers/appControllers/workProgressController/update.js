@@ -106,6 +106,11 @@ const update = async (req, res) => {
       }
     }
 
+    const now = new Date();
+    updateData.modified_at = now;
+    updateData.updated = now;
+    if (req.admin && req.admin._id) updateData.updatedBy = req.admin._id;
+
     console.log('📤 Update data to be saved:', updateData);
 
     const result = await Model.findOneAndUpdate(

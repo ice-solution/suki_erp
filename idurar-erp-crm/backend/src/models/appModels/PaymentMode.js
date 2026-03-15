@@ -29,6 +29,9 @@ const paymentModeSchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  updated: { type: Date },
+  modified_at: { type: Date },
+  updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
 });
 
 module.exports = mongoose.model('PaymentMode', paymentModeSchema);

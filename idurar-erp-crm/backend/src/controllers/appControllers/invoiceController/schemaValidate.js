@@ -15,6 +15,7 @@ const schema = Joi.object({
   date: Joi.date().required(),
   invoiceDate: Joi.date().optional(),
   paymentDueDate: Joi.date().optional(),
+  expiredDate: Joi.date().allow(null, '').optional(), // Invoice 無 expiredDate，選填避免 required 錯誤
   paymentTerms: Joi.string().optional(),
   paymentStatus: Joi.string().optional(),
   isCompleted: Joi.boolean().optional(),

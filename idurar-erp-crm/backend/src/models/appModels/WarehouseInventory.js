@@ -102,6 +102,7 @@ const warehouseInventorySchema = new mongoose.Schema({
     type: Date,
     default: Date.now,
   },
+  modified_at: { type: Date },
   
 }, {
   timestamps: true,

@@ -20,11 +20,12 @@ import { erp } from '@/redux/erp/actions';
 import { generate as uniqueId } from 'shortid';
 
 import { selectCurrentItem } from '@/redux/erp/selectors';
+import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
 
 const Item = ({ item, currentErp }) => {
@@ -50,9 +51,13 @@ const Item = ({ item, currentErp }) => {
   );
 };
 
-const MaterialRow = ({ material, moneyFormatter, currency }) => (
+const MaterialRow = ({ material, moneyFormatter, currency, warehouseOptions }) => {
+  const warehouseLabel = material.warehouse
+    ? (warehouseOptions?.find((o) => o.value === material.warehouse)?.label || `倉${material.warehouse} / -`)
+    : '-';
+  return (
   <Row gutter={[12, 0]}>
-    <Col span={4}>{material.warehouse || '-'}</Col>
+    <Col span={4}>{warehouseLabel}</Col>
     <Col span={8}><strong>{material.itemName}</strong></Col>
     <Col span={4} style={{ textAlign: 'right' }}>{material.quantity != null ? Number(material.quantity).toFixed(2) : '-'}</Col>
     <Col span={8} style={{ textAlign: 'right', color: (material.price || 0) < 0 ? '#ff4d4f' : undefined }}>
@@ -60,18 +65,22 @@ const MaterialRow = ({ material, moneyFormatter, currency }) => (
     </Col>
     <Divider dashed style={{ marginTop: 0, marginBottom: 15 }} />
   </Row>
-);
+  );
+};
 
 export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromProject = location.state?.fromProject;
 
   const { moneyFormatter } = useMoney();
   const { send, isLoading: mailInProgress } = useMail({ entity });
 
   const { result: currentResult } = useSelector(selectCurrentItem);
+  const warehouseOptions = useSelector(selectWarehouseOptions);
 
   const resetErp = {
     status: '',
@@ -199,7 +208,11 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
     <>
       <PageHeader
         onBack={() => {
-          navigate(`/${entity.toLowerCase()}`);
+          if (fromProject) {
+            navigate(-1);
+          } else {
+            navigate(`/${entity.toLowerCase()}`);
+          }
         }}
         title={`${entity === 'supplierquote' ? (currentErp.numberPrefix || 'S') + '單' : ENTITY_NAME} # ${currentErp.number}/${currentErp.year || ''}`}
         ghost={false}
@@ -212,7 +225,11 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           <Button
             key={`${uniqueId()}`}
             onClick={() => {
-              navigate(`/${entity.toLowerCase()}`);
+              if (fromProject) {
+                navigate(-1);
+              } else {
+                navigate(`/${entity.toLowerCase()}`);
+              }
             }}
             icon={<CloseCircleOutlined />}
           >
@@ -319,6 +336,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             currentErp.client?.name || '-'
           )}
         </Descriptions.Item>
+        <Descriptions.Item label={translate('suppliers')}>{currentErp.supplier?.name || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Address')}>{client.address}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Email')}>{client.email}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Phone')}>{client.phone}</Descriptions.Item>
@@ -332,13 +350,19 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
-        <Descriptions.Item label="Quote Number">{currentErp.numberPrefix && currentErp.number ? `${currentErp.numberPrefix}-${currentErp.number}` : currentErp.invoiceNumber || '-'}</Descriptions.Item>
+        <Descriptions.Item label="Quote Number">{currentErp.invoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label="對方Invoice Number">{currentErp.counterpartyInvoiceNumber || '-'}</Descriptions.Item>
-        <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
+        <Descriptions.Item label="簽收單聯絡人">{currentErp.contactPerson || '-'}</Descriptions.Item>
+        <Descriptions.Item label="簽收單收貨人">{currentErp.receiver || '-'}</Descriptions.Item>
+        <Descriptions.Item label="簽收單顯示名稱">{currentErp.receiptDisplayName || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice != null && currentErp.costPrice !== '' ? moneyFormatter({ amount: currentErp.costPrice }) : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
-        <Descriptions.Item label={translate('Warehouse')}>{currentErp.warehouse || '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('Warehouse')}>
+          {currentErp.warehouse
+            ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `倉${currentErp.warehouse} / -`)
+            : '-'}
+        </Descriptions.Item>
         {currentErp.ship && (
           <Descriptions.Item label="船隻">
             <Tag color="blue">{currentErp.ship.registrationNumber || '—'}</Tag>
@@ -349,6 +373,8 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
           </Descriptions.Item>
         )}
+        <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>
@@ -358,7 +384,11 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         </Col>
         <Col span={12}>
           <p><strong>倉庫:</strong></p>
-          <p>{currentErp.warehouse || '-'}</p>
+          <p>
+            {currentErp.warehouse
+              ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `倉${currentErp.warehouse} / -`)
+              : '-'}
+          </p>
         </Col>
       </Row>
       
@@ -449,6 +479,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
               material={{ ...material, key: material.key ?? material._id ?? index }}
               moneyFormatter={moneyFormatter}
               currency={currentErp.currency}
+              warehouseOptions={warehouseOptions}
             />
           ))}
         </>

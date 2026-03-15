@@ -69,6 +69,11 @@ const update = async (req, res) => {
     total === credit ? 'paid' : credit > 0 ? 'partially' : 'unpaid';
   body['paymentStatus'] = paymentStatus;
 
+  const now = new Date();
+  body.modified_at = now;
+  body.updated = now;
+  if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+
   const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {
     new: true, // return the new result instead of the old one
   }).exec();

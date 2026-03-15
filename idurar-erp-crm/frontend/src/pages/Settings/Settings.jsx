@@ -5,6 +5,8 @@ import {
   FileImageOutlined,
   TrophyOutlined,
   BuildOutlined,
+  InboxOutlined,
+  UserOutlined,
 } from '@ant-design/icons';
 
 import TabsContent from '@/components/TabsContent/TabsContent';
@@ -16,6 +18,8 @@ import CompanySettings from './CompanySettings';
 import FinanceSettings from './FinanceSettings';
 import MoneyFormatSettings from './MoneyFormatSettings';
 import ProjectItemSettings from './ProjectItemSettings';
+import WarehouseSettings from './WarehouseSettings';
+import AccountSettings from './AccountSettings';
 
 import useLanguage from '@/locale/useLanguage';
 import { useParams } from 'react-router-dom';
@@ -65,6 +69,18 @@ export default function Settings() {
       label: '工程項目管理',
       icon: <BuildOutlined />,
       children: <ProjectItemSettings />,
+    },
+    {
+      key: 'warehouse_settings',
+      label: '倉庫設定',
+      icon: <InboxOutlined />,
+      children: <WarehouseSettings />,
+    },
+    {
+      key: 'account_settings',
+      label: '登入帳號',
+      icon: <UserOutlined />,
+      children: <AccountSettings />,
     },
   ];
 

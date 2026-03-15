@@ -24,7 +24,7 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 import { DOWNLOAD_BASE_URL, API_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
@@ -77,6 +77,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromProject = location.state?.fromProject;
 
   const { moneyFormatter } = useMoney();
   const { send, isLoading: mailInProgress } = useMail({ entity });
@@ -180,10 +182,29 @@ export default function QuoteReadItem({ config, selectedItem }) {
   };
 
   // 處理Quote轉Supplier Quote（上單）
-  const handleConvertToSupplierQuote = () => {
+  const handleConvertToSupplierQuote = async () => {
     // 檢查是否已經轉換（檢查 converted.supplierQuote 是否存在）
     if (currentErp.converted && currentErp.converted.supplierQuote) {
       message.warning('此Quote已經轉換成Supplier Quote');
+      return;
+    }
+
+    // 檢查 Project Management 是否已建立此 Quote Number
+    const quoteNumber = currentErp.numberPrefix && currentErp.number
+      ? `${currentErp.numberPrefix}-${currentErp.number}`
+      : currentErp.invoiceNumber;
+    if (!quoteNumber) {
+      message.warning('無法取得 Quote 編號');
+      return;
+    }
+    try {
+      const checkResult = await request.checkProject({ invoiceNumber: quoteNumber });
+      if (!checkResult?.success || !checkResult?.result) {
+        message.error('請先在 Project Management 建立此 Quote Number 的項目，方可上單');
+        return;
+      }
+    } catch (err) {
+      message.error('請先在 Project Management 建立此 Quote Number 的項目，方可上單');
       return;
     }
 
@@ -246,7 +267,11 @@ export default function QuoteReadItem({ config, selectedItem }) {
     <>
       <PageHeader
         onBack={() => {
-          navigate(`/${entity.toLowerCase()}`);
+          if (fromProject) {
+            navigate(-1);
+          } else {
+            navigate(`/${entity.toLowerCase()}`);
+          }
         }}
         title={`${ENTITY_NAME} # ${currentErp.number}/${currentErp.year || ''}`}
         ghost={false}
@@ -259,7 +284,11 @@ export default function QuoteReadItem({ config, selectedItem }) {
           <Button
             key={`${uniqueId()}`}
             onClick={() => {
-              navigate(`/${entity.toLowerCase()}`);
+              if (fromProject) {
+                navigate(-1);
+              } else {
+                navigate(`/${entity.toLowerCase()}`);
+              }
             }}
             icon={<CloseCircleOutlined />}
           >
@@ -387,6 +416,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
             currentErp.client?.name || '-'
           )}
         </Descriptions.Item>
+        <Descriptions.Item label={translate('suppliers')}>{currentErp.supplier?.name || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Address')}>{client.address}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Email')}>{client.email}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Phone')}>{client.phone}</Descriptions.Item>
@@ -402,6 +432,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
+        <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>

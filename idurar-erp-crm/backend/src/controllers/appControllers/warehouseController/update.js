@@ -50,9 +50,11 @@ const update = async (req, res) => {
     const quantityChange = newQuantity - oldQuantity;
 
     // 更新記錄
+    const now = new Date();
     const updateData = {
       updatedBy: req.admin._id,
-      lastUpdated: new Date()
+      lastUpdated: now,
+      modified_at: now,
     };
 
     if (itemName !== undefined) updateData.itemName = itemName;

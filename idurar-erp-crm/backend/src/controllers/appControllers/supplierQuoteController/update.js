@@ -242,6 +242,11 @@ const update = async (req, res) => {
   // 先獲取現有的SupplierQuote記錄，以便檢查之前的ship和winch
   const existingQuote = await Model.findOne({ _id: req.params.id, removed: false }).exec();
   
+  const now = new Date();
+  body.modified_at = now;
+  body.updated = now;
+  if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+
   // Find document by id and updates with the required fields
   const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {
     new: true, // return the new result instead of the old one

@@ -55,6 +55,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
@@ -154,6 +155,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   useEffect(() => {
     fetchProjectItems();
     fetchClients();
+    fetchSuppliers();
   }, []);
 
   const fetchClients = async () => {
@@ -173,6 +175,21 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     } catch (error) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
+    }
+  };
+
+  const fetchSuppliers = async () => {
+    try {
+      const response = await request.listAll({ entity: 'supplier' });
+      const data = response?.result;
+      if (Array.isArray(data)) {
+        setSuppliers(data.map(s => ({ value: s._id, label: s.name })));
+      } else {
+        setSuppliers([]);
+      }
+    } catch (error) {
+      console.error('獲取供應商列表失敗:', error);
+      setSuppliers([]);
     }
   };
 
@@ -344,11 +361,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         clientIds = [current.client._id || current.client];
       }
       
+      const supplierId = current.supplier?._id || current.supplier || undefined;
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
         form.setFieldsValue({ 
           items: currentItems,
           clients: clientIds,
+          supplier: supplierId,
           type: type,
           shipType: shipType,
           subcontractorCount: subcontractorCount,
@@ -565,7 +584,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   return (
     <>
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={8}>
+        <Col className="gutter-row" span={6}>
           <Form.Item
             name="clients"
             label={translate('Clients')}
@@ -590,11 +609,30 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             />
           </Form.Item>
         </Col>
+        <Col className="gutter-row" span={6}>
+          <Form.Item
+            name="supplier"
+            label={translate('suppliers')}
+          >
+            <Select
+              placeholder={translate('suppliers')}
+              showSearch
+              allowClear
+              filterOption={(input, option) =>
+                option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
+              }
+              options={suppliers}
+              style={{ width: '100%' }}
+              loading={loading}
+              notFoundContent="No suppliers found"
+            />
+          </Form.Item>
+        </Col>
         <Col className="gutter-row" span={3}>
           <Form.Item
             label="Invoice Type"
             name="numberPrefix"
-            initialValue="INV"
+            initialValue={current?.numberPrefix || 'SMI'}
             rules={[
               {
                 required: true,
@@ -602,14 +640,22 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             ]}
           >
             <Select
-              options={[
-                { value: 'SML', label: 'SML' },
-                { value: 'QU', label: 'QU' },
-                { value: 'XX', label: 'XX' },
-                { value: 'INV', label: 'INV' },
-                { value: 'SMI', label: 'SMI' },
-                { value: 'VSE', label: 'VSE' },
-              ]}
+              placeholder="選擇 Invoice Type"
+              options={
+                current
+                  ? [
+                      { value: 'SML', label: 'SML' },
+                      { value: 'QU', label: 'QU' },
+                      { value: 'XX', label: 'XX' },
+                      { value: 'INV', label: 'INV' },
+                      { value: 'SMI', label: 'SMI' },
+                      { value: 'VSE', label: 'VSE' },
+                    ]
+                  : [
+                      { value: 'SMI', label: 'SMI' },
+                      { value: 'VSE', label: 'VSE' },
+                    ]
+              }
             />
           </Form.Item>
         </Col>

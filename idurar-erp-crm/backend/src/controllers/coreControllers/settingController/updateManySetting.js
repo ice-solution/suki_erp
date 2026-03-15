@@ -19,7 +19,13 @@ const updateManySetting = async (req, res) => {
     updateDataArray.push({
       updateOne: {
         filter: { settingKey: settingKey },
-        update: { settingValue: settingValue },
+        update: {
+          $set: {
+            settingValue: settingValue,
+            ...(settingKey === 'warehouse_list' && { settingCategory: 'warehouse_settings' }),
+          },
+        },
+        upsert: true,
       },
     });
   }
@@ -40,7 +46,7 @@ const updateManySetting = async (req, res) => {
   }
   const result = await Model.bulkWrite(updateDataArray);
 
-  if (!result || result.nMatched < 1) {
+  if (!result) {
     return res.status(404).json({
       success: false,
       result: null,

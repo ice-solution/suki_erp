@@ -225,7 +225,7 @@ export default function DataTable({ config, extra = [] }) {
         pagination={isSearchMode ? false : (pagination || {})}
         loading={isSearchMode ? searchIsLoading : listIsLoading}
         onChange={isSearchMode ? undefined : handelDataTableLoad}
-        scroll={{ x: true }}
+        scroll={{ x: 1500 }}
       />
     </>
   );

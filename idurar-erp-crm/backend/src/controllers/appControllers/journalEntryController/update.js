@@ -40,6 +40,9 @@ const update = async (req, res) => {
       }
     });
 
+    journalEntry.modified_at = new Date();
+    journalEntry.updated = journalEntry.modified_at;
+    if (req.admin && req.admin._id) journalEntry.updatedBy = req.admin._id;
     await journalEntry.save();
 
     // 重新填充關聯數據

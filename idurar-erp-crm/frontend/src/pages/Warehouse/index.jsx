@@ -26,6 +26,8 @@ import {
   WarningOutlined
 } from '@ant-design/icons';
 import { request } from '@/request';
+import { useSelector } from 'react-redux';
+import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -48,14 +50,7 @@ export default function Warehouse() {
   const [form] = Form.useForm();
   const [adjustForm] = Form.useForm();
   const [transferForm] = Form.useForm();
-
-  // 倉庫選項
-  const warehouseOptions = [
-    { value: 'A', label: '倉A' },
-    { value: 'B', label: '倉B' },
-    { value: 'C', label: '倉C' },
-    { value: 'D', label: '倉D' }
-  ];
+  const warehouseOptions = useSelector(selectWarehouseOptions);
 
   // 狀態選項
   const statusOptions = [
@@ -244,8 +239,13 @@ export default function Warehouse() {
       title: '倉庫',
       dataIndex: 'warehouse',
       key: 'warehouse',
-      width: 80,
-      render: (warehouse) => `倉${warehouse}`,
+      width: 200,
+      ellipsis: false,
+      render: (warehouse, record) => {
+        const opt = warehouseOptions.find((o) => o.value === warehouse);
+        const text = opt ? opt.label : (warehouse ? `倉${warehouse} / -` : '-');
+        return <span style={{ whiteSpace: 'nowrap' }}>{text}</span>;
+      },
       filters: warehouseOptions.map(opt => ({ text: opt.label, value: opt.value })),
     },
     {
@@ -338,13 +338,13 @@ export default function Warehouse() {
           </Col>
           <Col span={6}>
             <Statistic 
-              title="倉A項目" 
+              title={`${warehouseOptions.find((o) => o.value === 'A')?.label || '倉A'}項目`} 
               value={inventoryList.filter(item => item.warehouse === 'A').length} 
             />
           </Col>
           <Col span={6}>
             <Statistic 
-              title="倉B項目" 
+              title={`${warehouseOptions.find((o) => o.value === 'B')?.label || '倉B'}項目`} 
               value={inventoryList.filter(item => item.warehouse === 'B').length} 
             />
           </Col>
@@ -382,7 +382,7 @@ export default function Warehouse() {
             setFilters(filters);
           }}
           rowKey="_id"
-          scroll={{ x: 1200 }}
+          scroll={{ x: 1350 }}
         />
       </Card>
 
@@ -646,7 +646,7 @@ export default function Warehouse() {
         >
           <Form.Item label="源倉庫">
             <span style={{ fontSize: 16, fontWeight: 'bold' }}>
-              倉{editingItem?.warehouse}
+              {warehouseOptions.find((o) => o.value === editingItem?.warehouse)?.label || (editingItem?.warehouse ? `倉${editingItem.warehouse}` : '-')}
             </span>
           </Form.Item>
 

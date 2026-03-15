@@ -34,6 +34,11 @@ const update = async (req, res) => {
     if (isFrequent !== undefined) updateData.isFrequent = Boolean(isFrequent);
     if (notes !== undefined) updateData.notes = notes?.trim();
 
+    const now = new Date();
+    updateData.modified_at = now;
+    updateData.updated = now;
+    if (req.admin && req.admin._id) updateData.updatedBy = req.admin._id;
+
     const result = await Model.findOneAndUpdate(
       { _id: req.params.id, removed: false },
       updateData,
