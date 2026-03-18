@@ -77,9 +77,8 @@ const convertQuoteToInvoice = async (req, res) => {
       subcontractorCount: quote.subcontractorCount,
       costPrice: quote.costPrice,
       date: new Date(),
-      invoiceDate: new Date(),
       paymentDueDate: null,
-      paymentTerms: '30天',
+      paymentTerms: '一個月',
       isCompleted: quote.isCompleted,
       invoiceNumber:
         quote.numberPrefix && quote.number

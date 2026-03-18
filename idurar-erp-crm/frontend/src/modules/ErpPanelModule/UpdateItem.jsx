@@ -100,13 +100,8 @@ export default function UpdateItem({ config, UpdateForm }) {
       }
       
       // Handle Invoice-specific date fields
-      if (fieldsValue.invoiceDate || fieldsValue.paymentDueDate) {
-        if (fieldsValue.invoiceDate) {
-          dataToUpdate.invoiceDate = dayjs(fieldsValue.invoiceDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        }
-        if (fieldsValue.paymentDueDate) {
-          dataToUpdate.paymentDueDate = dayjs(fieldsValue.paymentDueDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        }
+      if (fieldsValue.paymentDueDate) {
+        dataToUpdate.paymentDueDate = dayjs(fieldsValue.paymentDueDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
       }
       
       // Handle Project-specific date fields
@@ -224,9 +219,6 @@ export default function UpdateItem({ config, UpdateForm }) {
       }
       
       // Handle Invoice-specific date fields
-      if (formData.invoiceDate) {
-        formData.invoiceDate = dayjs(formData.invoiceDate);
-      }
       if (formData.paymentDueDate) {
         formData.paymentDueDate = dayjs(formData.paymentDueDate);
       }

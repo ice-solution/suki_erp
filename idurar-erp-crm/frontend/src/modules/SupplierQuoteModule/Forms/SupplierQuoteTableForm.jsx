@@ -15,6 +15,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
+import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 
@@ -1277,13 +1278,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           >
             <Select
               onChange={(value) => setSelectedType(value)}
-              options={[
-                { value: '人工', label: '人工' },
-                { value: '服務', label: '服務' },
-                { value: '材料', label: '材料' },
-                { value: '服務&材料', label: '服務&材料' },
-                { value: '吊船', label: '吊船' },
-              ]}
+              options={SERVICE_TYPE_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: `${opt.label} (${opt.accountCode})`,
+              }))}
             />
           </Form.Item>
         </Col>

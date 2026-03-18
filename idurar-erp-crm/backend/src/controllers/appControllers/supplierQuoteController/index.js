@@ -12,6 +12,7 @@ const convert = require('./convertSupplierQuoteToInvoice');
 const linkProject = require('./linkProject');
 const mail = require('./sendMail');
 const deleteFile = require('./deleteFile');
+const exportXeroPo = require('./exportXeroPo');
 
 module.exports = {
   create,
@@ -28,4 +29,5 @@ module.exports = {
   linkProject,
   mail,
   deleteFile,
+  exportXeroPo,
 };

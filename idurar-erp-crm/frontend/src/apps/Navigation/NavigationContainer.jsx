@@ -73,6 +73,15 @@ function Sidebar({ collapsible, isMobile = false }) {
       label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
     },
     {
+      key: 'xero-export',
+      icon: <FileOutlined />,
+      label: 'xero 滙出',
+      children: [
+        { key: 'xero-invoice', label: <Link to="/invoice/xero-export">發票滙出</Link> },
+        { key: 'xero-po', label: <Link to="/supplierquote/xero-po-export">PO單滙出</Link> },
+      ],
+    },
+    {
       key: 'quote',
       icon: <FileSyncOutlined />,
       label: <Link to={'/quote'}>{translate('quote')}</Link>,

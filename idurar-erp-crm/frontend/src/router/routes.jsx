@@ -65,6 +65,8 @@ const JournalEntries = lazy(() => import('@/pages/JournalEntries.jsx'));
 const FinancialReports = lazy(() => import('@/pages/FinancialReports.jsx'));
 const AccountingPeriods = lazy(() => import('@/pages/AccountingPeriods.jsx'));
 const Accounting = lazy(() => import('@/pages/Accounting.jsx'));
+const XeroExport = lazy(() => import('@/pages/XeroExport.jsx'));
+const XeroPOExport = lazy(() => import('@/pages/XeroPOExport.jsx'));
 
 let routes = {
   expense: [],
@@ -122,6 +124,10 @@ let routes = {
       element: <InvoiceRecordPayment />,
     },
     {
+      path: '/invoice/xero-export',
+      element: <XeroExport />,
+    },
+    {
       path: '/quote',
       element: <Quote />,
     },
@@ -160,6 +166,10 @@ let routes = {
     {
       path: '/supplierquote/table/update/:id',
       element: <SupplierQuoteTableUpdate />,
+    },
+    {
+      path: '/supplierquote/xero-po-export',
+      element: <XeroPOExport />,
     },
     {
       path: '/shipquote',

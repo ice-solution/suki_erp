@@ -15,6 +15,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
+import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 
@@ -63,6 +64,36 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const numberValue = Form.useWatch('number', form);
   const [quoteOptions, setQuoteOptions] = useState([]);
   const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
+
+  // Payment due date = 所選日期 + Payment Terms 月數，該月最後一天
+  const getPaymentDueDate = (dateVal, terms) => {
+    if (!dateVal) return null;
+    const d = dayjs.isDayjs(dateVal) ? dateVal : dayjs(dateVal);
+    const monthsToAdd = { '即時付款': 0, '一個月': 1, '兩個月': 2, '三個月': 3 }[terms || '一個月'];
+    return d.add(monthsToAdd, 'month').endOf('month');
+  };
+  const updatePaymentDueDateFromTerms = (termsValue) => {
+    const dateVal = form.getFieldValue('date');
+    const due = getPaymentDueDate(dateVal, termsValue);
+    if (due) form.setFieldValue('paymentDueDate', due);
+  };
+  const onDateChange = () => {
+    const terms = form.getFieldValue('paymentTerms');
+    updatePaymentDueDateFromTerms(terms);
+  };
+  // 新增發票時依預設 date + paymentTerms 自動帶出 Payment due date
+  useEffect(() => {
+    if (current) return;
+    const timer = setTimeout(() => {
+      const d = form.getFieldValue('date');
+      const t = form.getFieldValue('paymentTerms') || '一個月';
+      if (d && t) {
+        const due = getPaymentDueDate(d, t);
+        if (due) form.setFieldValue('paymentDueDate', due);
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [current]);
 
   // 注意：invoiceNumber 字段是用來搜索和選擇 Quote 的，不是 Invoice 自己的編號
   // Invoice 自己的編號會從 Quote Type + Number 自動生成（在後端處理）
@@ -649,11 +680,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                       { value: 'XX', label: 'XX' },
                       { value: 'INV', label: 'INV' },
                       { value: 'SMI', label: 'SMI' },
-                      { value: 'VSE', label: 'VSE' },
+                      { value: 'WSE', label: 'WSE' },
+                      { value: 'SP', label: 'SP' },
                     ]
                   : [
                       { value: 'SMI', label: 'SMI' },
-                      { value: 'VSE', label: 'VSE' },
+                      { value: 'WSE', label: 'WSE' },
+                      { value: 'SP', label: 'SP' },
                     ]
               }
             />
@@ -700,13 +733,10 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           >
             <Select
               onChange={(value) => setSelectedType(value)}
-              options={[
-                { value: '人工', label: '人工' },
-                { value: '服務', label: '服務' },
-                { value: '材料', label: '材料' },
-                { value: '服務&材料', label: '服務&材料' },
-                { value: '吊船', label: '吊船' },
-              ]}
+              options={SERVICE_TYPE_OPTIONS.map((opt) => ({
+                value: opt.value,
+                label: `${opt.label} (${opt.accountCode})`,
+              }))}
             />
           </Form.Item>
         </Col>
@@ -738,12 +768,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               },
             ]}
           >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={5}>
-          <Form.Item label={translate('Invoice Date')} name="invoiceDate" initialValue={dayjs()}>
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
+            <DatePicker style={{ width: '100%' }} format={dateFormat} onChange={onDateChange} />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={5}>
@@ -850,7 +875,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               options={[
                 { value: 'unpaid', label: translate('Unpaid') },
                 { value: 'paid', label: translate('Paid') },
-                { value: 'partially', label: translate('Partially Paid') },
               ]}
             />
           </Form.Item>
@@ -864,22 +888,32 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Form.Item
             label={translate('Payment Terms')}
             name="paymentTerms"
-            initialValue="30天"
+            initialValue="一個月"
           >
             <Select
               options={[
                 { value: '即時付款', label: '即時付款' },
-                { value: '7天', label: '7天' },
-                { value: '14天', label: '14天' },
-                { value: '30天', label: '30天' },
-                { value: '60天', label: '60天' },
-                { value: '90天', label: '90天' },
+                { value: '一個月', label: '一個月' },
+                { value: '兩個月', label: '兩個月' },
+                { value: '三個月', label: '三個月' },
               ]}
+              onChange={(value) => updatePaymentDueDateFromTerms(value)}
             />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          {/* 空列用於平衡 */}
+          <Form.Item
+            label="部份付款 (Partially paid)"
+            name="credit"
+            initialValue={0}
+          >
+            <InputNumber
+              min={0}
+              precision={2}
+              style={{ width: '100%' }}
+              placeholder="0"
+            />
+          </Form.Item>
         </Col>
       </Row>
 

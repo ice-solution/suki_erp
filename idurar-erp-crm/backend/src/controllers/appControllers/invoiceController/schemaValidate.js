@@ -13,11 +13,11 @@ const schema = Joi.object({
   status: Joi.string().optional(),
   notes: Joi.string().allow(''),
   date: Joi.date().required(),
-  invoiceDate: Joi.date().optional(),
   paymentDueDate: Joi.date().optional(),
   expiredDate: Joi.date().allow(null, '').optional(), // Invoice 無 expiredDate，選填避免 required 錯誤
   paymentTerms: Joi.string().optional(),
   paymentStatus: Joi.string().optional(),
+  credit: Joi.number().min(0).optional(),
   isCompleted: Joi.boolean().optional(),
   invoiceNumber: Joi.string().allow('').optional(),
   contactPerson: Joi.string().allow('').optional(),

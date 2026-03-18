@@ -10,8 +10,10 @@ const paginatedList = require('./paginatedList');
 const read = require('./read');
 const linkProject = require('./linkProject');
 const search = require('./search');
+const exportXero = require('./exportXero');
 
 methods.mail = sendMail;
+methods.exportXero = exportXero;
 methods.create = create;
 methods.update = update;
 methods.delete = remove;

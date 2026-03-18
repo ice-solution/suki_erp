@@ -10,7 +10,7 @@ const invoiceSchema = new mongoose.Schema({
   // Quote結構的字段 - 保持完全一致
   numberPrefix: {
     type: String,
-    enum: ['SML', 'QU', 'XX', 'INV', 'SMI', 'VSE'], // Invoice type 選項
+    enum: ['SML', 'QU', 'XX', 'INV', 'SMI', 'WSE', 'SP'], // Invoice type 選項
     default: 'INV',
     required: true,
   },
@@ -24,7 +24,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['人工', '服務', '材料', '服務&材料', '吊船'],
+    enum: ['安裝', '人工', '服務', '材料', '服務&材料', '吊船'],
     required: true,
   },
   shipType: { // 當type為'吊船'時使用
@@ -146,19 +146,15 @@ const invoiceSchema = new mongoose.Schema({
   paymentStatus: {
     type: String,
     default: 'unpaid',
-    enum: ['unpaid', 'paid', 'partially'],
+    enum: ['unpaid', 'paid'],
   },
   paymentDueDate: { // 付款截止日期
     type: Date,
   },
-  invoiceDate: { // 開票日期
-    type: Date,
-    default: Date.now,
-  },
   paymentTerms: { // 付款條款
     type: String,
-    enum: ['即時付款', '7天', '14天', '30天', '60天', '90天'],
-    default: '30天',
+    enum: ['即時付款', '一個月', '兩個月', '三個月'],
+    default: '一個月',
   },
   isOverdue: {
     type: Boolean,
@@ -169,6 +165,11 @@ const invoiceSchema = new mongoose.Schema({
     default: false,
   },
   
+  // 已付金額（由 Payment 記錄累加）
+  credit: {
+    type: Number,
+    default: 0,
+  },
   // 付款記錄
   payment: [{
     type: mongoose.Schema.ObjectId,

@@ -244,9 +244,10 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       ),
     },
     {
-      title: translate('Year'),
-      dataIndex: 'year',
-      key: 'year',
+      title: '年月日',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : '-',
     },
     {
       title: translate('Status'),
@@ -285,9 +286,10 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       ),
     },
     {
-      title: translate('Year'),
-      dataIndex: 'year',
-      key: 'year',
+      title: '年月日',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : '-',
     },
     {
       title: translate('Status'),
@@ -320,9 +322,10 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       ),
     },
     {
-      title: translate('Year'),
-      dataIndex: 'year',
-      key: 'year',
+      title: '年月日',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : '-',
     },
     {
       title: translate('Status'),
@@ -355,9 +358,10 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       ),
     },
     {
-      title: translate('Year'),
-      dataIndex: 'year',
-      key: 'year',
+      title: '年月日',
+      dataIndex: 'date',
+      key: 'date',
+      render: (date) => date ? dayjs(date).format('YYYY-MM-DD') : '-',
     },
     {
       title: translate('Status'),
@@ -370,6 +374,22 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       dataIndex: 'total',
       key: 'total',
       render: (amount) => moneyFormatter({ amount: amount || 0 }),
+    },
+    {
+      title: '部份付款',
+      dataIndex: 'credit',
+      key: 'credit',
+      render: (credit, record) => moneyFormatter({ amount: credit != null ? credit : 0, currency_code: record.currency || 'HKD' }),
+    },
+    {
+      title: '未付',
+      key: 'unpaid',
+      render: (_, record) => {
+        const total = Number(record.total) || 0;
+        const credit = Number(record.credit) || 0;
+        const unpaid = total - credit;
+        return moneyFormatter({ amount: unpaid, currency_code: record.currency || 'HKD' });
+      },
     },
   ];
 
@@ -760,9 +780,10 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             size="small"
             extra={
               (() => {
-                const unpaidTotal = (currentProject.invoices || [])
-                  .filter((inv) => inv.paymentStatus === 'unpaid' || inv.paymentStatus === 'partially')
-                  .reduce((sum, inv) => sum + (Number(inv.total) || 0), 0);
+                const unpaidTotal = (currentProject.invoices || []).reduce(
+                  (sum, inv) => sum + Math.max(0, (Number(inv.total) || 0) - (Number(inv.credit) || 0)),
+                  0
+                );
                 if (unpaidTotal <= 0) return null;
                 return (
                   <Text type="danger" strong>

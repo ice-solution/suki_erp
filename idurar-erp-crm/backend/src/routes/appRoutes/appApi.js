@@ -13,6 +13,7 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/create-with-files`).post(catchErrors(controller['create']));
     router.route(`/${entity}/update-with-files/:id`).patch(catchErrors(controller['update']));
     router.route(`/${entity}/delete-file/:id`).delete(catchErrors(controller['deleteFile']));
+    router.route(`/${entity}/export-xero-po`).get(catchErrors(controller['exportXeroPo']));
   }
 
   router.route(`/${entity}/create`).post(catchErrors(controller['create']));
@@ -28,6 +29,7 @@ const routerApp = (entity, controller) => {
   
   if (entity === 'invoice') {
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
+    router.route(`/${entity}/export-xero`).get(catchErrors(controller['exportXero']));
   }
 
   if (entity === 'quote') {

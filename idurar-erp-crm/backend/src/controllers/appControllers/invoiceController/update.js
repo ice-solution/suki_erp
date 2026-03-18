@@ -63,11 +63,13 @@ const update = async (req, res) => {
   // 注意：invoiceNumber 是用來關聯 Quote 的，如果用戶提供了就使用，否則保持原值
   // Invoice 自己的編號是從 numberPrefix + number 生成的（用於顯示）
   
-  // Find document by id and updates with the required fields
-
-  let paymentStatus =
-    total === credit ? 'paid' : credit > 0 ? 'partially' : 'unpaid';
-  body['paymentStatus'] = paymentStatus;
+  // 優先使用用戶在表單選擇的付款狀態；未提供時才依 total 與 credit 自動計算
+  const validStatuses = ['unpaid', 'paid'];
+  if (req.body.paymentStatus && validStatuses.includes(req.body.paymentStatus)) {
+    body['paymentStatus'] = req.body.paymentStatus;
+  } else {
+    body['paymentStatus'] = total === credit ? 'paid' : 'unpaid';
+  }
 
   const now = new Date();
   body.modified_at = now;

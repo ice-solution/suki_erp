@@ -37,12 +37,9 @@ const update = async (req, res) => {
     });
   }
 
-  let paymentStatus =
-    calculate.sub(total, discount) === calculate.add(previousCredit, changedAmount)
-      ? 'paid'
-      : calculate.add(previousCredit, changedAmount) > 0
-      ? 'partially'
-      : 'unpaid';
+  const newCredit = calculate.add(previousCredit || 0, changedAmount);
+  const paymentStatus =
+    calculate.sub(total, discount) === newCredit ? 'paid' : 'unpaid';
 
   const updatedDate = new Date();
   const updates = {

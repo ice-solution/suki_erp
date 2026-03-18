@@ -56,12 +56,9 @@ const create = async (req, res) => {
   const { _id: paymentId, amount } = result;
   const { id: invoiceId, total, discount, credit } = currentInvoice;
 
-  let paymentStatus =
-    calculate.sub(total, discount) === calculate.add(credit, amount)
-      ? 'paid'
-      : calculate.add(credit, amount) > 0
-      ? 'partially'
-      : 'unpaid';
+  const newCredit = calculate.add(credit || 0, amount);
+  const paymentStatus =
+    calculate.sub(total, discount) === newCredit ? 'paid' : 'unpaid';
 
   const invoiceUpdate = await Invoice.findOneAndUpdate(
     { _id: req.body.invoice },

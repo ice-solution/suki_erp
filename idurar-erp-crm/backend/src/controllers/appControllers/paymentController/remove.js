@@ -35,12 +35,9 @@ const remove = async (req, res) => {
   ).exec();
   // If no results found, return document not found
 
-  let paymentStatus =
-    total - discount === previousCredit - previousAmount
-      ? 'paid'
-      : previousCredit - previousAmount > 0
-      ? 'partially'
-      : 'unpaid';
+  const newCredit = (previousCredit || 0) - previousAmount;
+  const paymentStatus =
+    total - discount === newCredit ? 'paid' : 'unpaid';
 
   const updateInvoice = await Invoice.findOneAndUpdate(
     { _id: invoiceId },
