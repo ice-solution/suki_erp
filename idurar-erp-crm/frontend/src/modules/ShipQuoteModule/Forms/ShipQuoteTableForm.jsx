@@ -529,45 +529,45 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
     form.setFieldsValue({ items: updatedItems });
   };
 
-  // Table columns
+  // Table columns：項目, Description, 數量, 單價, 總計
   const columns = [
     {
-      title: translate('Item'),
+      title: '項目',
       dataIndex: 'itemName',
       key: 'itemName',
-      width: '5%',
+      width: '12%',
     },
     {
-      title: translate('Description'),
+      title: 'Description',
       dataIndex: 'description',
       key: 'description',
-      width: '45%',
+      width: '38%',
     },
     {
-      title: translate('P.O Number'),
-      dataIndex: 'poNumber',
-      key: 'poNumber',
-      width: '15%',
-    },
-    {
-      title: translate('Quantity'),
+      title: '數量',
       dataIndex: 'quantity',
       key: 'quantity',
       width: '10%',
     },
     {
-      title: translate('Price'),
+      title: '單價',
       dataIndex: 'price',
       key: 'price',
       width: '12%',
       render: (price) => moneyFormatter({ amount: price || 0 }),
     },
     {
-      title: translate('Total'),
+      title: '總計',
       dataIndex: 'total',
       key: 'total',
       width: '10%',
       render: (total) => moneyFormatter({ amount: total || 0 }),
+    },
+    {
+      title: translate('P.O Number'),
+      dataIndex: 'poNumber',
+      key: 'poNumber',
+      width: '10%',
     },
     {
       title: '',

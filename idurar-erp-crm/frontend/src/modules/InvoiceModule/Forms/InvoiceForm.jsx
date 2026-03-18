@@ -134,13 +134,12 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
                 required: false,
               },
             ]}
-            initialValue={'draft'}
+            initialValue={'sent'}
           >
             <Select
               options={[
-                { value: 'draft', label: translate('Draft') },
-                { value: 'pending', label: translate('Pending') },
                 { value: 'sent', label: translate('Sent') },
+                { value: 'paid', label: translate('Paid') },
               ]}
             ></Select>
           </Form.Item>

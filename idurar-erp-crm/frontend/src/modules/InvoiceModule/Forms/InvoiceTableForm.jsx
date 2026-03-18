@@ -717,17 +717,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Form.Item
             label={translate('Status')}
             name="status"
-            initialValue="draft"
+            initialValue="sent"
           >
             <Select
               options={[
-                { value: 'draft', label: translate('Draft') },
-                { value: 'pending', label: translate('Pending') },
                 { value: 'sent', label: translate('Sent') },
                 { value: 'paid', label: translate('Paid') },
-                { value: 'overdue', label: translate('Overdue') },
-                { value: 'cancelled', label: translate('Cancelled') },
-                { value: 'refunded', label: translate('Refunded') },
               ]}
             />
           </Form.Item>

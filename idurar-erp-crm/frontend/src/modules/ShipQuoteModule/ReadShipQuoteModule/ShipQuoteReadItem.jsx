@@ -29,42 +29,28 @@ import { request } from '@/request';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
 
+// 表格欄位順序：項目, Description, 數量, 單價, 總計
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
   return (
     <Row gutter={[12, 0]} key={item._id}>
-      <Col className="gutter-row" span={11}>
-        <p style={{ marginBottom: 5 }}>
-          <strong>{item.itemName}</strong>
-        </p>
-        <p>{item.description}</p>
-      </Col>
-      <Col className="gutter-row" span={4}>
-        <p
-          style={{
-            textAlign: 'right',
-          }}
-        >
-          {moneyFormatter({ amount: item.price, currency_code: currentErp.currency })}
-        </p>
-      </Col>
-      <Col className="gutter-row" span={4}>
-        <p
-          style={{
-            textAlign: 'right',
-          }}
-        >
-          {item.quantity}
-        </p>
-      </Col>
       <Col className="gutter-row" span={5}>
-        <p
-          style={{
-            textAlign: 'right',
-            fontWeight: '700',
-          }}
-        >
-          {moneyFormatter({ amount: item.total, currency_code: currentErp.currency })}
+        <p style={{ marginBottom: 0 }}>{item.itemName || '-'}</p>
+      </Col>
+      <Col className="gutter-row" span={8}>
+        <p style={{ marginBottom: 0 }}>{item.description || '-'}</p>
+      </Col>
+      <Col className="gutter-row" span={3}>
+        <p style={{ textAlign: 'right', marginBottom: 0 }}>{item.quantity ?? '-'}</p>
+      </Col>
+      <Col className="gutter-row" span={4}>
+        <p style={{ textAlign: 'right', marginBottom: 0 }}>
+          {item.price != null ? moneyFormatter({ amount: item.price, currency_code: currentErp.currency }) : '-'}
+        </p>
+      </Col>
+      <Col className="gutter-row" span={4}>
+        <p style={{ textAlign: 'right', fontWeight: '700', marginBottom: 0 }}>
+          {item.total != null ? moneyFormatter({ amount: item.total, currency_code: currentErp.currency }) : '-'}
         </p>
       </Col>
       <Divider dashed style={{ marginTop: 0, marginBottom: 15 }} />
@@ -486,37 +472,20 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
       </Row>
       <Divider />
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={11}>
-          <p>
-            <strong>{translate('Product')}</strong>
-          </p>
-        </Col>
-        <Col className="gutter-row" span={4}>
-          <p
-            style={{
-              textAlign: 'right',
-            }}
-          >
-            <strong>{translate('Price')}</strong>
-          </p>
-        </Col>
-        <Col className="gutter-row" span={4}>
-          <p
-            style={{
-              textAlign: 'right',
-            }}
-          >
-            <strong>{translate('Quantity')}</strong>
-          </p>
-        </Col>
         <Col className="gutter-row" span={5}>
-          <p
-            style={{
-              textAlign: 'right',
-            }}
-          >
-            <strong>{translate('Total')}</strong>
-          </p>
+          <p><strong>項目</strong></p>
+        </Col>
+        <Col className="gutter-row" span={8}>
+          <p><strong>Description</strong></p>
+        </Col>
+        <Col className="gutter-row" span={3}>
+          <p style={{ textAlign: 'right' }}><strong>數量</strong></p>
+        </Col>
+        <Col className="gutter-row" span={4}>
+          <p style={{ textAlign: 'right' }}><strong>單價</strong></p>
+        </Col>
+        <Col className="gutter-row" span={4}>
+          <p style={{ textAlign: 'right' }}><strong>總計</strong></p>
         </Col>
       </Row>
       {itemslist.map((item) => (

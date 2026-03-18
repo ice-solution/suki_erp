@@ -134,7 +134,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         title={`${ENTITY_NAME} # ${currentErp.numberPrefix || 'INV'}-${currentErp.number}/${currentErp.year || ''}`}
         ghost={false}
         tags={[
-          <Tag key="status" color={currentErp.status === 'draft' ? 'blue' : 'green'}>
+          <Tag key="status" color={currentErp.status === 'paid' ? 'green' : 'blue'}>
             {currentErp.status && translate(currentErp.status)}
           </Tag>,
           <Tag key="paymentStatus" color={currentErp.paymentStatus === 'paid' ? 'green' : 'red'}>

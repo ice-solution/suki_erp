@@ -37,7 +37,8 @@ html
       .quotation-table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 10px; table-layout: fixed; }
       .quotation-table th, .quotation-table td { border: 1px solid #ddd; padding: 6px 5px; vertical-align: top; }
       .quotation-table th { background: #f0f0f0; font-weight: bold; text-align: left; font-size: 10px; }
-      .quotation-table .col-desc { width: 48%; word-wrap: break-word; font-size: 10px; }
+      .quotation-table .col-item { width: 12%; word-wrap: break-word; font-size: 10px; }
+      .quotation-table .col-desc { width: 36%; word-wrap: break-word; font-size: 10px; }
       .quotation-table .col-qty { width: 12%; text-align: center; }
       .quotation-table .col-unit { width: 20%; text-align: right; font-size: 9px; word-break: break-all; }
       .quotation-table .col-amount { width: 20%; text-align: right; font-size: 9px; word-break: break-all; }
@@ -84,9 +85,12 @@ html
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment(model.date).format('DD-MM-YYYY') : ''
+    - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
     - const contactPerson = model.contactPerson || ''
     - const projectAddress = model.address || ''
+    - const deliveryAddress = model.address || clientAddress || ''
+    - const poNumber = model.poNumber || 'N/A'
+    - const consigneeLine = contactPerson ? (client.phone ? contactPerson + ' ' + client.phone : contactPerson) : (client.phone || '')
     - const mainItems = (model.items || []).map(i => ({ itemName: i.itemName, description: i.description || '', quantity: i.quantity, price: i.price != null ? i.price : 0, total: i.total != null ? i.total : (i.quantity || 0) * (i.price || 0) }))
     - const materials = (model.materials || []).map(m => ({ itemName: m.itemName, description: '', quantity: m.quantity, price: m.price != null ? m.price : 0, total: (m.quantity || 0) * (m.price || 0) }))
     - const allRows = mainItems.concat(materials)
@@ -111,8 +115,8 @@ html
           td.header-right
             .certification-section
               .certification-logos
-                span.iso-text ISO 9001 : 2008
-                span.iso-text Certificate No : Q368
+                span.iso-text ISO 9001: 2008
+                span.iso-text Certificate No: Q368
               .header-page Page 1
 
     .doc-title 導向吊船租賃報價
@@ -121,38 +125,39 @@ html
       table.info-table
         tr
           td.info-left
-            .info-row 致: #{clientName}
-            if clientAddress
-              .info-row #{clientAddress}
-            if contactPerson
-              .info-row 聯絡人: #{contactPerson}
-            if projectAddress
-              .info-row 工程地址/機號: #{projectAddress}
+            .info-row TO: #{clientName}
+            if clientAddress || projectAddress
+              .info-row #{projectAddress || clientAddress}
           td.info-right
-            .info-row 檔案編號 : #{docNumber}
-            .info-row 日期 : #{docDate}
+            .info-row Invoice NO : #{model.invoiceNumber || ''}
+            .info-row 報價編號: #{docNumber}
+            .info-row Your P/O NO : #{poNumber}
+        tr
+          td.info-left
+            .info-row 送貨地址: #{deliveryAddress || '-'}
+            .info-row 收貨人: #{consigneeLine || '-'}
+            .info-row 日期: #{docDate}
+          td.info-right
 
     table.quotation-table
       thead
         tr
-          th.col-desc 摘要
+          th.col-item 項目
+          th.col-desc Description
           th.col-qty 數量
           th.col-unit 單價 HKD $
-          th.col-amount 金額 HKD $
+          th.col-amount 總計
       tbody
         each row in allRows
           tr
-            td.col-desc
-              | #{row.itemName || ''}
-              if row.description
-                br
-                span(style='font-size:10px;color:#666') #{row.description}
+            td.col-item #{row.itemName || '-'}
+            td.col-desc #{row.description || '-'}
             td.col-qty.num #{row.quantity != null ? row.quantity : '-'}
             td.col-unit.num #{row.price != null ? moneyFormatter({ amount: row.price, currency_code: currency }) : '-'}
             td.col-amount.num #{row.total != null ? moneyFormatter({ amount: row.total, currency_code: currency }) : '-'}
         if allRows.length === 0
           tr
-            td(colspan='4' style='text-align:center') 無項目
+            td(colspan='5' style='text-align:center') 無項目
 
     .totals-block
       .totals-row
@@ -185,8 +190,8 @@ html
           td.header-right
             .certification-section
               .certification-logos
-                span.iso-text ISO 9001 : 2008
-                span.iso-text Certificate No : Q368
+                span.iso-text ISO 9001: 2008
+                span.iso-text Certificate No: Q368
               .header-page Page 2
 
     .doc-title 導向吊船租賃報價
@@ -195,12 +200,11 @@ html
       table.info-table
         tr
           td.info-left
-            .info-row 致: #{clientName}
-            if contactPerson
-              .info-row 聯絡人: #{contactPerson}
+            .info-row TO: #{clientName}
+            .info-row 日期: #{docDate}
           td.info-right
-            .info-row 檔案編號 : #{docNumber}
-            .info-row 日期 : #{docDate}
+            .info-row 報價編號: #{docNumber}
+            .info-row Your P/O NO : #{poNumber}
 
     if model.notes
       .notes-block
