@@ -70,7 +70,9 @@ html
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const displayName = client.name || ''
-    - const docNumber = (model.numberPrefix || 'QU') + model.number
+    - const invoiceNo = (model.numberPrefix || 'WSE') + '-' + (model.number || '')
+    - const smlNo = model.invoiceNumber || ''
+    - const poNo = model.poNumber || ''
     - const docDate = model.date ? moment(model.date).format('DD-MM-YYYY') : ''
     - const itemsOnly = model.items || []
     - const ITEMS_PER_PAGE = 8
@@ -99,10 +101,12 @@ html
                   if client.address
                     .header-info-row #{client.address}
                 td.info-right
-                  .header-info-row 檔案編號：#{docNumber}
-                  .header-info-row 日期：#{docDate}
+                  .header-info-row INVOICE NO. : #{invoiceNo}
+                  .header-info-row SML NO. : #{smlNo}
+                  .header-info-row DATE : #{docDate}
+                  .header-info-row YOUR.P.O.NO. : #{poNo}
 
-          .doc-title 報價
+          .doc-title INVOICE
 
           if model.contactPerson
             .project-contact-line 聯絡人：#{model.contactPerson}
@@ -147,34 +151,14 @@ html
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
 
             .notes-block
-              .notes-title 注：
-              .notes-content
-                | 1) 此報價有效期為90天
-                if model.notes
-                  br
-                  | #{model.notes}
 
             .signature-section
               .prepared-by-row
-                span.prepared-by-label 制單人：
-                if model.createdBy && model.createdBy.name
-                  span #{model.createdBy.name}
-                else
-                  span.prepared-by-space
               table.signature-table
                 tr
-                  td.sig-left
+                  td.sig-right(colspan='2')
                     .issuer-block
-                      .issuer-name-line 核實者
-                      .issuer-name-line 同意及確定
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
-                  td.sig-right
-                    .issuer-block
-                      .issuer-name-line 發出者
-                      .issuer-name-line 永順鐵器工程公司
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
+                      .issuer-name-line ISSUED BY
 
             .end-marker End
 

@@ -76,6 +76,12 @@ const shipQuoteSchema = new mongoose.Schema({
   contactPerson: {
     type: String,
   },
+  receiver: {
+    type: String,
+  },
+  receiptDisplayName: {
+    type: String,
+  },
   address: {
     type: String,
   },

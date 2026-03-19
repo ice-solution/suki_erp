@@ -1,18 +1,165 @@
 doctype html
 html
   head
-    meta(charset="utf-8")
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
     style.
-      body { width: 100%; max-width: 100%; margin: 0; padding: 6px 16px 10px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
-      *, *:before, *:after { box-sizing: border-box; color: #222; }
+      .sheet {
+        margin: 0;
+        width: 100%; 
+        height: 297mm;
+      }
+
+      body {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 6px 16px 10px;
+        background: #fff;
+        font-family: Arial, sans-serif;
+        font-size: 10px;
+        color: #222;
+        box-sizing: border-box;
+      }
+      *, *:before, *:after {
+        box-sizing: inherit;
+        color:#222
+      }
+
+      .clearfix {
+        display: block; }
+      .left{
+        float:left;
+      }
+      .right{
+        float:right;
+      }
+      .top-area {    
+        display: block;
+        width:100%;
+        
+      }
+      alignRight :{
+        text-align: right !important;
+      }
+      alignLeft :{
+        text-align: left;
+      }
+      .logo {
+        width: 150px;
+      }
+      .company-info{
+        text-align: right;
+        font-size:12px;
+      }
+      h1.invoice{
+        font-size:32px;
+        color:#52008c;
+        margin-top:0;
+      }
+      p.strong{
+        font-weight:700;
+      }
+      .billTo p {
+        text-align: left !important;
+        display:block;
+        font-size:12px;
+        width:100%;
+        margin-top:0;
+        margin-bottom:10px;
+        
+      }
+
+      .tableHeader{
+        color:#52008c;
+      }
+      .clearfix {
+        display: block; }
+      .col {
+        float:left;
+      }
+      .col-1 {
+        width: 4.16667%; }
+
+      .col-2 {
+        width: 8.33333%; }
+
+      .col-3 {
+        width: 12.5%; }
+
+      .col-4 {
+        width: 16.66667%; }
+
+      .col-5 {
+        width: 20.83333%; }
+
+      .col-6 {
+        width: 25%; }
+
+      .col-7 {
+        width: 29.16667%; }
+
+      .col-8 {
+        width: 33.33333%; }
+
+      .col-9 {
+        width: 37.5%; }
+
+      .col-10 {
+        width: 41.66667%; }
+
+      .col-11 {
+        width: 45.83333%; }
+
+      .col-12 {
+        width: 50%; }
+
+      .col-13 {
+        width: 54.16667%; }
+
+      .col-14 {
+        width: 58.33333%; }
+
+      .col-15 {
+        width: 62.5%; }
+
+      .col-16 {
+        width: 66.66667%; }
+
+      .col-17 {
+        width: 70.83333%; }
+
+      .col-18 {
+        width: 75%; }
+
+      .col-19 {
+        width: 79.16667%; }
+
+      .col-20 {
+        width: 83.33333%; }
+
+      .col-21 {
+        width: 87.5%; }
+
+      .col-22 {
+        width: 91.66667%; }
+
+      .col-23 {
+        width: 95.83333%; }
+
+      .col-24 {
+        width: 100%; }
+      .space {
+        margin-top: 30px;
+        margin-bottom: 40px;
+        width:100%;
+      }
       .footer-section { margin-top: auto; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
       .footer-line-1 { margin-bottom: 2px; }
       .footer-line-2 { }
-      .rental-page { page-break-after: always; display: flex; flex-direction: column; min-height: 297mm; height: 297mm; }
-      .rental-page.rental-page-last { page-break-after: auto !important; }
-      .rental-page-body { flex: 1 1 auto; min-height: 0; }
+      .sml-page { page-break-after: always; display: flex; flex-direction: column; min-height: 297mm; height: 297mm; }
+      .sml-page.sml-page-last { page-break-after: auto !important; }
+      .sml-page-body { flex: 1 1 auto; min-height: 0; }
       .header-section { width: 100%; margin-bottom: 6px; }
       .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .header-table td { vertical-align: top; }
@@ -56,16 +203,6 @@ html
       .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; text-decoration-style: double; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
-      .extra-section { margin-top: 12px; }
-      .extra-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; }
-      .extra-table th, .extra-table td { border: none; padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; }
-      .extra-table th { background: transparent; font-weight: bold; }
-      .extra-table .col-desc { width: auto; }
-      .extra-table .col-price { text-align: right; width: 120px; }
-      .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
-      .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
-      .terms-section ol { margin: 0; padding-left: 18px; }
-      .terms-section li { margin-bottom: 4px; }
       .signature-section { margin-top: 12px; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .signature-table td { vertical-align: top; font-size: 10px; }
@@ -79,11 +216,12 @@ html
       .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; margin-top: 4px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
-  body
+
+body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
-    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
+    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'SML') + '-' + model.number + '/' + (model.year || '')
     - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
     - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
     - const deliveryAddress = model.address || clientAddress || ''
@@ -99,8 +237,8 @@ html
     - const currency = model.currency || 'HKD'
 
     each chunk, pageIndex in itemChunks
-      .rental-page(class=pageIndex === itemChunks.length - 1 ? 'rental-page-last' : '')
-        .rental-page-body
+      .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
+        .sml-page-body
           .header-section
             table.header-table
               tr
@@ -124,16 +262,19 @@ html
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row #{model.address || clientAddress || ''}
+                .info-row #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
+                if !model.shipType && model.address
+                  .info-row 工程地址：#{model.address}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
                 .info-row 日期(Date) : #{docDate}
-            tr
-              td.info-left
-                .info-row 送貨地址: #{deliveryAddress || '-'}
-                .info-row 收貨人: #{consigneeLine || '-'}
-              td.info-right
-          .doc-title 導向吊船租賃報價
+            if model.shipType
+              tr
+                td.info-left
+                  .info-row 送貨地址: #{deliveryAddress || '-'}
+                  .info-row 收貨人: #{consigneeLine || '-'}
+                td.info-right
+          .doc-title 導向吊船續租報價
           if model.contactPerson
             .project-contact-line 聯絡人：#{model.contactPerson}
           if model.address
@@ -180,50 +321,6 @@ html
                 if model.notes
                   br
                   | #{model.notes}
-            .extra-section
-              .notes-title 附加項目
-              table.extra-table
-                thead
-                  tr
-                    th.col-desc 摘要
-                    th.col-price 單價 HKD $
-                tbody
-                  tr
-                    td 續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}
-                    td.col-price -
-                  tr
-                    td 額外電源線(200米以外部份)
-                    td.col-price -
-                  tr
-                    td 因井道漏水落雨整壞爬纜器,需更換爬纜器
-                    td.col-price -
-                  tr
-                    td 因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器
-                    td.col-price -
-                  tr
-                    td 吊船改吊點重新安排檢驗F2/F3證書
-                    td.col-price -
-                  tr
-                    td 三角足場續租(每14日)
-                    td.col-price -
-            .terms-section
-              h4 租賃說明
-              ol
-                li 租用價格包括吊船交機及來回運輸費用(不包括離島地區)。
-                li 由確定收到租金起計, 90天後送貨。
-                li 價格第二及三項為消耗品, 恕不提供租用服務。
-                li 租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。
-                li 預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。
-                li 租用期間如因壞機而影響地盤工作, 本公司可恕不負責。
-                li 地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。
-                li 在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。
-                li 租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。
-                li 所有地盤使用人員及第三者保險由租用者負責。
-                li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
-              h4 付款方法
-              p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
-              h4 報價有效期
-              p #{model.expiredDate ? moment(model.expiredDate).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
             .signature-section
               .prepared-by-row
                 span.prepared-by-label 制單人：

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Divider, Card, Table, Typography, Modal, message, Form, Select, DatePicker, InputNumber } from 'antd';
+import { Divider, Card, Table, Typography, Modal, message, Form, Select, DatePicker, InputNumber, Input } from 'antd';
 import dayjs from 'dayjs';
 
 import { Button, Row, Col, Descriptions, Statistic, Tag } from 'antd';
@@ -59,6 +59,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
   const [workProgressLoading, setWorkProgressLoading] = useState(false);
   const [workProgressList, setWorkProgressList] = useState([]);
   const [contractorFeesModalVisible, setContractorFeesModalVisible] = useState(false);
+  const [editingUsedFeeIndex, setEditingUsedFeeIndex] = useState(null);
   const [contractorFeesForm] = Form.useForm();
   
   // 從 contractorFees 中提取工程名選項
@@ -98,7 +99,24 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     }
   };
 
-  // 處理添加使用判頭費
+  const resetUsedFeeModal = () => {
+    setContractorFeesModalVisible(false);
+    setEditingUsedFeeIndex(null);
+    contractorFeesForm.resetFields();
+  };
+
+  const handleEditUsedContractorFee = (record, index) => {
+    setEditingUsedFeeIndex(index);
+    contractorFeesForm.setFieldsValue({
+      projectName: record.projectName || '',
+      date: record.date ? dayjs(record.date) : null,
+      eoNumber: record.eoNumber || '',
+      amount: record.amount ?? 0,
+    });
+    setContractorFeesModalVisible(true);
+  };
+
+  // 處理新增/修改使用判頭費
   const handleAddContractorFee = async (values) => {
     try {
       // 獲取當前的 usedContractorFees 數組
@@ -108,10 +126,20 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       const newUsedContractorFee = {
         projectName: values.projectName,
         date: values.date ? dayjs(values.date).toDate() : new Date(),
+        eoNumber: values.eoNumber || '',
         amount: values.amount || 0,
       };
       
-      const updatedUsedContractorFees = [...currentUsedContractorFees, newUsedContractorFee];
+      let updatedUsedContractorFees = [];
+      if (editingUsedFeeIndex !== null && editingUsedFeeIndex >= 0) {
+        updatedUsedContractorFees = [...currentUsedContractorFees];
+        updatedUsedContractorFees[editingUsedFeeIndex] = {
+          ...updatedUsedContractorFees[editingUsedFeeIndex],
+          ...newUsedContractorFee,
+        };
+      } else {
+        updatedUsedContractorFees = [...currentUsedContractorFees, newUsedContractorFee];
+      }
       
       // 更新項目
       const response = await request.update({
@@ -123,13 +151,12 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       });
       
       if (response.success) {
-        message.success('使用判頭費記錄添加成功！');
-        setContractorFeesModalVisible(false);
-        contractorFeesForm.resetFields();
+        message.success(editingUsedFeeIndex !== null ? '使用判頭費記錄修改成功！' : '使用判頭費記錄添加成功！');
+        resetUsedFeeModal();
         // 重新載入項目數據
         dispatch(erp.read({ entity: entity.toLowerCase(), id: currentProject._id }));
       } else {
-        message.error('添加失敗：' + (response.message || '未知錯誤'));
+        message.error((editingUsedFeeIndex !== null ? '修改失敗：' : '添加失敗：') + (response.message || '未知錯誤'));
       }
     } catch (error) {
       console.error('Error adding used contractor fee:', error);
@@ -405,6 +432,13 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       },
     },
     {
+      title: 'EO number',
+      dataIndex: 'eoNumber',
+      key: 'eoNumber',
+      width: 220,
+      render: (eoNumber) => eoNumber || '-',
+    },
+    {
       title: '日期',
       dataIndex: 'date',
       key: 'date',
@@ -421,6 +455,23 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       render: (amount) => {
         return <Text strong>{moneyFormatter({ amount: amount || 0 })}</Text>;
       },
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 84,
+      align: 'center',
+      render: (_, record, index) => (
+        <Button
+          type="link"
+          size="small"
+          icon={<EditOutlined />}
+          onClick={() => handleEditUsedContractorFee(record, index)}
+          style={{ paddingInline: 0 }}
+        >
+          Edit
+        </Button>
+      ),
     },
   ];
 
@@ -830,13 +881,18 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
                 const total = (pageData || []).reduce((sum, record) => {
                   return sum + (record.amount || 0);
                 }, 0);
+                const amountColIndex = Math.max(
+                  0,
+                  contractorFeesColumns.findIndex((col) => col.key === 'amount')
+                );
+                const labelColSpan = amountColIndex; // 其餘欄位合併顯示
                 return (
                   <Table.Summary fixed>
                     <Table.Summary.Row>
-                      <Table.Summary.Cell index={0} colSpan={2}>
+                      <Table.Summary.Cell index={0} colSpan={labelColSpan}>
                         <Text strong>總計</Text>
                       </Table.Summary.Cell>
-                      <Table.Summary.Cell index={1} align="right">
+                      <Table.Summary.Cell index={amountColIndex} align="right">
                         <Text strong>{moneyFormatter({ amount: total })}</Text>
                       </Table.Summary.Cell>
                     </Table.Summary.Row>
@@ -884,12 +940,9 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
 
       {/* 使用判頭費 建立資料 模态框 */}
       <Modal
-        title="建立使用判頭費資料"
+        title={editingUsedFeeIndex !== null ? '修改使用判頭費資料' : '建立使用判頭費資料'}
         open={contractorFeesModalVisible}
-        onCancel={() => {
-          setContractorFeesModalVisible(false);
-          contractorFeesForm.resetFields();
-        }}
+        onCancel={resetUsedFeeModal}
         footer={null}
         width={500}
       >
@@ -927,6 +980,13 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           </Form.Item>
 
           <Form.Item
+            label="EO number"
+            name="eoNumber"
+          >
+            <Input placeholder="EO number" />
+          </Form.Item>
+
+          <Form.Item
             label="金額"
             name="amount"
             rules={[{ required: true, message: '請輸入金額' }]}
@@ -943,15 +1003,12 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
             <Button 
               style={{ marginRight: 8 }} 
-              onClick={() => {
-                setContractorFeesModalVisible(false);
-                contractorFeesForm.resetFields();
-              }}
+              onClick={resetUsedFeeModal}
             >
               取消
             </Button>
             <Button type="primary" htmlType="submit">
-              建立資料
+              {editingUsedFeeIndex !== null ? '儲存修改' : '建立資料'}
             </Button>
           </Form.Item>
         </Form>

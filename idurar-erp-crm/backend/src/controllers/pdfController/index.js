@@ -8,7 +8,9 @@ const { getData } = require('@/middlewares/serverData');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 
-const pugFiles = ['invoice', 'offer', 'quote', 'payment', 'sml', 'no', 'po', 'swp', 's', 's-rental', 'e', 'y'];
+// 注意：在不同 OS/部署環境下，pdf 模板檔名大小寫敏感度不同。
+// 為避免「只有小寫 pug 檔」時找不到模板，這裡不再以固定清單限制可用模板，
+// 而是直接嘗試在候選路徑中尋找實際存在的 .pug 檔案（統一使用小寫檔名）。
 
 /**
  * 依單據類型回傳對應的 logo 設定 key（如 company_logo_no）。
@@ -98,6 +100,17 @@ exports.generatePdf = async (
         templateName = 'quote';
       }
     }
+
+    // 如果是 Invoice，根據 numberPrefix 選擇模板
+    if ((modelName.toLowerCase() === 'invoice' || modelName === 'Invoice') && result.numberPrefix) {
+      if (result.numberPrefix === 'SMI') {
+        templateName = 'smi';
+      } else if (result.numberPrefix === 'WSE') {
+        templateName = 'wse';
+      } else {
+        templateName = 'invoice';
+      }
+    }
     
     // 如果是 SupplierQuote，根據 numberPrefix 選擇模板（S單用簽收單等格式，不用租貨格式）
     if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
@@ -115,48 +128,48 @@ exports.generatePdf = async (
     // 如果是 ShipQuote（船報價），依 shipType 選擇模板
     if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {
       if (result.shipType === '租貨') {
-        templateName = 's-rental';  // 導向吊船租賃報價（租貨格式）
+        templateName = 'shipquote-rental'; // 船報價（吊船租貨）
       } else {
-        templateName = 'sml';       // 續租或預設用 SML 報價格式
+        templateName = 'shipquote-renewal'; // 船報價（吊船續租）
       }
     }
 
-    // 檢查模板是否存在於 pugFiles 中（一律使用小寫檔名，避免 Linux 大小寫敏感導致找不到）
-    const templateNameLower = templateName.toLowerCase();
-    if (pugFiles.includes(templateNameLower)) {
-      const fileName = templateNameLower + '.pug';
-      // 依序嘗試多個路徑，以支援不同部署方式（本機 __dirname、從 backend 目錄執行、從專案根目錄執行）
-      const candidates = [
-        path.join(__dirname, '../../pdf', fileName),
-        path.join(process.cwd(), 'src', 'pdf', fileName),
-        path.join(process.cwd(), 'backend', 'src', 'pdf', fileName),
-      ];
-      let templatePath = candidates.find((p) => fs.existsSync(p));
-      if (!templatePath) {
-        templatePath = candidates[0]; // 錯誤訊息顯示第一個預期路徑
-        throw new Error(`Template file not found: ${templatePath}. Tried: ${candidates.join(', ')}`);
-      }
+    // 一律使用小寫檔名（避免 Linux 大小寫敏感導致找不到）
+    const templateNameLower = (templateName || '').toLowerCase();
+    const fileNameLower = templateNameLower + '.pug';
 
-      const htmlContent = pug.renderFile(templatePath, {
-        model: result,
-        settings,
-        translate,
-        dateFormat,
-        moneyFormatter,
-        moment: moment,
+    // 依序嘗試多個路徑，以支援不同部署方式（本機 __dirname、從 backend 目錄執行、從專案根目錄執行）
+    const candidates = [
+      path.join(__dirname, '../../pdf', fileNameLower),
+      path.join(process.cwd(), 'src', 'pdf', fileNameLower),
+      path.join(process.cwd(), 'backend', 'src', 'pdf', fileNameLower),
+    ];
+
+    let templatePath = candidates.find((p) => fs.existsSync(p));
+    if (!templatePath) {
+      templatePath = candidates[0]; // 錯誤訊息顯示第一個預期路徑
+      throw new Error(`Template file not found: ${templatePath}. Tried: ${candidates.join(', ')}`);
+    }
+
+    const htmlContent = pug.renderFile(templatePath, {
+      model: result,
+      settings,
+      translate,
+      dateFormat,
+      moneyFormatter,
+      moment: moment,
+    });
+
+    pdf
+      .create(htmlContent, {
+        format: info.format,
+        orientation: 'portrait',
+        border: '10mm',
+      })
+      .toFile(targetLocation, function (error) {
+        if (error) throw new Error(error);
+        if (callback) callback();
       });
-
-      pdf
-        .create(htmlContent, {
-          format: info.format,
-          orientation: 'portrait',
-          border: '10mm',
-        })
-        .toFile(targetLocation, function (error) {
-          if (error) throw new Error(error);
-          if (callback) callback();
-        });
-    }
   } catch (error) {
     throw new Error(error);
   }

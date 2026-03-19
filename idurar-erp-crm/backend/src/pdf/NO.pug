@@ -1,350 +1,124 @@
 doctype html
 html
   head
+    meta(charset="utf-8")
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
     style.
-      .sheet {
-        margin: 0;
-        width: 100%; 
-        height: 297mm;
-      }
+      .sheet { margin: 0; width: 100%; min-height: 297mm; box-sizing: border-box; }
+      body { width: 100%; max-width: 100%; margin: 0; padding: 10px 16px 14px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
+      *, *:before, *:after { box-sizing: border-box; color: #222; }
 
-      body{
-        width: 100%; 
-        margin: 0;
-        padding: 0px 20px;
-        background: #ffffff;
-        font-family: Arial, sans-serif;
-        font-size:12px;
-        color:#222;
-      }
-      *, *:before, *:after {
-        box-sizing: inherit;
-        color:#222
-      }
+      .header-section { width: 100%; margin-bottom: 10px; }
+      .header-top-row { width: 100%; text-align: right; margin-bottom: 2px; }
+      .header-page { font-size: 8px; color: #666; }
+      .header-company-wrap { width: 100%; text-align: center; margin-bottom: 8px; }
+      .company-name-qu { font-size: 1.8em; font-weight: bold; line-height: 1.3; letter-spacing: 0.2em; }
+      .company-name-qu-english { font-size: 1.2em; color: #222; margin-top: 2px; }
 
-      .clearfix {
-        display: block; }
-      .clearfix:after {
-        content: "";
-        display: table;
-        clear: both;
-      }
-      .left{
-        float:left;
-      }
-      .right{
-        float:right;
-      }
-      
-      .header-section {
-        width: 100%;
-        margin-bottom: 20px;
-      }
-      
-      .company-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 15px;
-      }
-      
-      .logo-section {
-        display: flex;
-        align-items: center;
-      }
-      
-      .logo {
-        width: 80px;
-        height: 80px;
-        margin-right: 15px;
-      }
-      
-      .company-name {
-        font-size: 18px;
-        font-weight: bold;
-        color: #222;
-        line-height: 1.4;
-      }
-      
-      .company-name-english {
-        font-size: 14px;
-        font-weight: normal;
-        color: #666;
-      }
-      
-      .document-title {
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-        margin: 20px 0;
-        color: #222;
-      }
-      
-      .info-section { width: 100%; margin-bottom: 16px; font-size: 10px; }
-      .info-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      .info-table td { vertical-align: top; font-size: 10px; }
-      .info-table .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
-      .info-table .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
-      .info-row { margin-bottom: 4px; }
-      
-      .table-container {
-        width: 100%;
-        margin: 20px 0;
-      }
-      
-      .quotation-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-      }
-      
-      .quotation-table th {
-        background-color: #f0f0f0;
-        border: 1px solid #ddd;
-        padding: 10px;
-        text-align: left;
-        font-weight: bold;
-        font-size: 12px;
-      }
-      
-      .quotation-table td {
-        border: 1px solid #ddd;
-        padding: 10px;
-        font-size: 12px;
-      }
-      
-      .quotation-table .item-content {
-        width: 30%;
-      }
-      
-      .quotation-table .item-desc {
-        width: 50%;
-        word-wrap: break-word;
-      }
-      
-      .quotation-table .item-qty {
-        width: 20%;
-        text-align: center;
-      }
-      
-      .quotation-table .item-unit {
-        width: 20%;
-        text-align: right;
-      }
-      
-      .quotation-table .item-amount {
-        width: 25%;
-        text-align: right;
-      }
-      
-      .summary-section {
-        width: 100%;
-        margin: 20px 0;
-        text-align: right;
-      }
-      
-      .summary-row {
-        display: flex;
-        justify-content: flex-end;
-        margin-bottom: 8px;
-        font-size: 12px;
-      }
-      
-      .summary-label {
-        width: 150px;
-        text-align: right;
-        font-weight: bold;
-        padding-right: 10px;
-      }
-      
-      .summary-value {
-        width: 150px;
-        text-align: right;
-      }
-      
-      .summary-total {
-        font-weight: bold;
-        font-size: 14px;
-        border-top: 2px solid #222;
-        padding-top: 5px;
-        margin-top: 5px;
-      }
-      
-      .notes-section {
-        margin-top: 20px;
-        font-size: 12px;
-      }
-      
-      .notes-title {
-        font-weight: bold;
-        margin-bottom: 5px;
-      }
-      
-      .signature-section {
-        margin-top: 40px;
-        width: 100%;
-      }
-      
-      .signature-grid {
-        display: flex;
-        justify-content: space-between;
-        margin-top: 20px;
-      }
-      
-      .signature-item {
-        flex: 1;
-        margin-right: 20px;
-        text-align: center;
-      }
-      
-      .signature-item:last-child {
-        margin-right: 0;
-      }
-      
-      .signature-label {
-        font-weight: bold;
-        margin-bottom: 10px;
-        font-size: 12px;
-      }
-      
-      .signature-line {
-        border-bottom: 1px solid #222;
-        width: 100%;
-        height: 40px;
-        margin: 0 auto;
-      }
-      
-      .issuer-section {
-        margin-top: 30px;
-        text-align: center;
-      }
-      
-      .issuer-name {
-        font-weight: bold;
-        margin-bottom: 10px;
-        font-size: 12px;
-      }
-      
-      .issuer-stamp {
-        border-bottom: 1px solid #222;
-        width: 200px;
-        height: 50px;
-        margin: 0 auto;
-      }
-      
-      .footer-section {
-        margin-top: 40px;
-        text-align: center;
-        font-size: 11px;
-        color: #666;
-        border-top: 1px solid #ddd;
-        padding-top: 15px;
-      }
-      
-      .footer-line-1 {
-        margin-bottom: 4px;
-        line-height: 1.6;
-      }
-      .footer-line-2 {
-        line-height: 1.6;
-      }
-      
-      .end-marker {
-        text-align: center;
-        font-weight: bold;
-        margin-bottom: 10px;
-        font-size: 12px;
-      }
+      .header-info-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .header-info-table td { vertical-align: top; font-size: 10px; }
+      .header-info-table .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
+      .header-info-table .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .header-info-row { margin-bottom: 4px; }
 
-body
-  .header-section
-    .company-header
-      .logo-section
-        img.logo(src=settings.public_server_file+settings.company_logo)
-        .company-name-section
-          .company-name #{settings.company_name}
-          .company-name-english Wing Shun Metal Eng Co (O/B Super Pioneer Ltd)
-    
-    .document-title 報價
-    
-    .info-section
-      - const client = model.client || (model.clients && model.clients[0]) || {}
-      - const displayName = model.receiptDisplayName || client.name || ''
-      table.info-table
+      .sub-info { margin: 8px 0 6px; }
+      .sub-info-row { margin-bottom: 4px; }
+
+      .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 10px 0 8px; color: #222; }
+
+      .items-table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 10px; table-layout: fixed; }
+      .items-table thead tr { border-top: 1px solid #222; border-bottom: 1px solid #222; }
+      .items-table tbody tr { border-bottom: 1px solid #222; }
+      .items-table th, .items-table td { padding: 6px 8px; vertical-align: top; }
+      .items-table th { font-weight: bold; text-align: center; }
+      .items-table .col-no { width: 6%; text-align: center; }
+      .items-table .col-content { width: 74%; text-align: left; word-wrap: break-word; }
+      .items-table .col-qty { width: 20%; text-align: right; white-space: nowrap; }
+
+      .ack-section { margin-top: 24px; }
+      .ack-right { width: 28%; margin-left: auto; text-align: left; }
+      .ack-title { font-weight: bold; margin-bottom: 6px; }
+      .ack-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+      .ack-label { min-width: 70px; font-weight: bold; }
+      .ack-line { flex: 1; border-bottom: 1px solid #222; height: 18px; }
+
+      .end-marker { text-align: center; font-weight: bold; margin: 14px 0 6px; font-size: 10px; }
+      .footer-section { margin-top: 16px; padding-top: 8px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
+      .footer-line-1 { margin-bottom: 2px; }
+      .footer-line-2 { }
+
+  body
+    - const client = model.client || (model.clients && model.clients[0]) || {}
+    - const displayName = model.receiptDisplayName || client.name || ''
+    - const siteAddress = model.address || client.address || ''
+    - const deliveryAddress = model.receiptDisplayName || ''
+    - const consignee = model.receiver || ''
+    - const poNumber = model.poNumber || ''
+    - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
+    - const invoiceNo = (model.numberPrefix || 'NO') + '-' + (model.number || '')
+    - const quoteNo = model.invoiceNumber || ''
+    - const itemsOnly = model.items || []
+
+    .header-section
+      .header-top-row
+        .header-page Page 1
+      .header-company-wrap
+        .company-name-qu 永 順 鐵 器 工 程 公 司
+        .company-name-qu-english Wing Shun Metal Eng Co (O/B Super Pioneer Ltd)
+      table.header-info-table
         tr
           td.info-left
-            .info-row 致: #{displayName}
-            .info-row #{client.address || ''}
-            if model.contactPerson || client.contactPerson
-              .info-row 聯絡人: #{model.contactPerson || client.contactPerson || ''}
-            if model.address
-              .info-row 工程地址: #{model.address}
-            if model.content || model.notes
-              .info-row 機號: #{model.content || model.notes || ''}
+            .header-info-row TO : #{displayName}
+            if siteAddress
+              .header-info-row 地盤地址 : #{siteAddress}
           td.info-right
-            .info-row 檔案編號 : #{model.numberPrefix || 'NO'}-#{model.number}/#{model.year || ''}
-            .info-row 日期 : #{moment(model.date).format('DD-MM-YYYY')}
-    
-    .table-container
-      table.quotation-table
-        thead
+            .header-info-row Invoice NO :
+            .header-info-row 報價編號 : #{quoteNo}
+            .header-info-row Your P/O NO : #{poNumber}
+
+      .sub-info
+        if deliveryAddress
+          .sub-info-row 送貨地址 : #{deliveryAddress}
+        if consignee
+          .sub-info-row 收 貨 人 : #{consignee}
+        if docDate
+          .sub-info-row 日　　期 : #{docDate}
+        .sub-info-row 上單編號 : #{invoiceNo}
+
+    .doc-title 發收單
+
+    table.items-table
+      thead
+        tr
+          th.col-no
+          th.col-content 工程內容
+          th.col-qty 數量
+      tbody
+        each item, idx in itemsOnly
           tr
-            th.item-content 項目
-            th.item-desc 描述
-            th.item-qty 數量
-        tbody
-          - const itemsOnly = model.items || []
-          each item in itemsOnly
-            tr
-              td.item-content #{item.itemName || ''}
-              td.item-desc #{item.description || ''}
-              td.item-qty #{item.quantity != null ? item.quantity : ''}
-          if itemsOnly.length === 0
-            tr
-              td(colspan='3' style='text-align: center;') 無項目
-    
-    .summary-section
-      .summary-row
-        .summary-label 合共港幣:
-        .summary-value #{moneyFormatter({amount:model.subTotal || 0})}
-      .summary-row
-        .summary-label 折扣%:
-        .summary-value #{model.discount || 0}%
-      .summary-row
-        .summary-label 折扣金額:
-        .summary-value #{moneyFormatter({amount:model.discountTotal || 0})}
-      .summary-row.summary-total
-        .summary-label 總金額:
-        .summary-value #{moneyFormatter({amount:model.total || 0})}
-    
-    .notes-section
-      .notes-title 注:
-      .notes-content
-        | 1) 此報價有效期為90天
-    
-    .signature-section
-      .signature-grid
-        .signature-item
-          .signature-label 制單人
-          .signature-line
-        .signature-item
-          .signature-label 核實者
-          .signature-line
-        .signature-item
-          .signature-label 同意及確定
-          .signature-line
-        .signature-item
-          .signature-label 公司簽署及蓋章
-          .signature-line
-      
-      .issuer-section
-        .issuer-name 發出者: #{settings.company_name || '永順鐵器工程公司'}
-        .issuer-stamp
-    
+            td.col-no #{idx + 1}
+            td.col-content #{item.itemName || ''}#{item.description ? ' ' + item.description : ''}
+            td.col-qty #{item.quantity != null ? item.quantity : ''}#{item.unit ? ' / ' + item.unit : ' / Job'}
+        if itemsOnly.length === 0
+          tr
+            td(colspan='3' style='text-align:center') 無項目
+
+    .ack-section
+      .ack-right
+        .ack-title 發收人：
+        .ack-row
+          .ack-label 裝箱方式：
+          .ack-line
+        .ack-row
+          .ack-label 發收人：
+          .ack-line
+        .ack-row
+          .ack-label 日　期：
+          .ack-line
+
     .end-marker End
-    
+
     .footer-section
-      .footer-line-1 #{settings.company_address || '新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室'} 電話: #{settings.company_phone || '2776 4793, 2756 7579'} 傳真: #{settings.company_fax || '2776 4796'}
-      .footer-line-2 #{settings.company_address_english || 'Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T.'} Tel: #{settings.company_phone || '2776 4793, 2756 7579'} Fax: #{settings.company_fax || '2776 4796'}
+      .footer-line-1 新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室 電話: 2776 4793, 2756 7579 傳真: 2776 4796
+      .footer-line-2 Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T. Tel: 2776 4793, 2756 7579 Fax: 2776 4796

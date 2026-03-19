@@ -456,7 +456,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
         <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
-        <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
+        <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>

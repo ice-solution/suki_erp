@@ -229,7 +229,8 @@ export default function ProjectForm({ current = null }) {
       if (Array.isArray(contractorData)) {
         const contractorOptions = contractorData.map(contractor => ({
           value: contractor._id,
-          label: contractor.name,
+          // 在選單顯示承辦商代碼，方便用戶快速辨識
+          label: contractor.accountCode ? `${contractor.name} (${contractor.accountCode})` : contractor.name,
         }));
         console.log('✅ Project: 承包商選項:', contractorOptions);
         setContractors(contractorOptions);
@@ -277,7 +278,7 @@ export default function ProjectForm({ current = null }) {
         if (contractor && contractor._id && contractor.name) {
           contractorsToAdd.push({
             value: contractor._id,
-            label: contractor.name
+            label: contractor.accountCode ? `${contractor.name} (${contractor.accountCode})` : contractor.name
           });
         }
       });

@@ -79,6 +79,7 @@ function Sidebar({ collapsible, isMobile = false }) {
       children: [
         { key: 'xero-invoice', label: <Link to="/invoice/xero-export">發票滙出</Link> },
         { key: 'xero-po', label: <Link to="/supplierquote/xero-po-export">PO單滙出</Link> },
+        { key: 'xero-eo', label: <Link to="/project/xero-eo-export">EO單滙出</Link> },
       ],
     },
     {

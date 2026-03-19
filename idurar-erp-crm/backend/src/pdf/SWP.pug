@@ -211,9 +211,10 @@ body
           .company-name #{settings.company_name}
           .company-name-english SUPER MAX ENGINEERING CO.
           .company-ownership (Wholly Owned By Super Pioneer Ltd.)
-      .certification-section
-        .certification-logos
-          | ISO 9001: 2008
+.certification-section
+  .certification-logos
+    img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:120px;height:auto;display:block;margin-bottom:4px;')
+    | ISO 9001: 2008
           br
           | Certificate No: Q368
         .page-number
@@ -227,12 +228,10 @@ body
       table.info-table
         tr
           td.info-left
-            .info-row 致: #{displayName}
-            .info-row #{client.address || ''}
+            .info-row 客戶: #{displayName}
+            .info-row 客戶地址: #{client.address || ''}
             if model.address
               .info-row 工程地址: #{model.address}
-            if model.receiver || model.contactPerson
-              .info-row 簽收單收貨人: #{model.receiver || model.contactPerson}
           td.info-right
             .info-row 檔案編號 : #{model.invoiceNumber || (model.numberPrefix || 'SWP') + '-' + model.number + '/' + (model.year || '')}
             .info-row 日期 : #{moment(model.date).format('DD-MM-YYYY')}

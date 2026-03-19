@@ -1479,10 +1479,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           />
         </Col>
         <Col span={14}>
-          <Input 
-            placeholder="描述"
+          <Input.TextArea
+            placeholder="描述（Shift+Enter 換行）"
             value={currentItem.description}
             onChange={(e) => updateCurrentItem('description', e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+            }}
+            rows={2}
+            autoSize={{ minRows: 2, maxRows: 6 }}
+            style={{ width: '100%' }}
           />
         </Col>
         <Col span={3}>

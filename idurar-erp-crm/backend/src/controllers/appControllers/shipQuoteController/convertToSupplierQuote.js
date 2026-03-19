@@ -61,6 +61,8 @@ const convertToSupplierQuote = async (req, res) => {
           ? `${shipQuote.numberPrefix}-${shipQuote.number}/${shipQuote.year || ''}`
           : shipQuote.invoiceNumber,
       contactPerson: shipQuote.contactPerson,
+      receiver: shipQuote.receiver,
+      receiptDisplayName: shipQuote.receiptDisplayName,
       address: shipQuote.address,
       clients: shipQuote.clients,
       client: shipQuote.client,

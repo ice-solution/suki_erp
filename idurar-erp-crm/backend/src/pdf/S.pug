@@ -4,299 +4,132 @@ html
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
     style.
-      .sheet {
-        margin: 0;
-        width: 100%; 
-        height: 297mm;
-        box-sizing: border-box;
-      }
+      .sheet { margin: 0; width: 100%; height: 297mm; }
+      body { width: 100%; max-width: 100%; margin: 0; padding: 6px 16px 10px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
+      *, *:before, *:after { box-sizing: inherit; color: #222; }
 
-      body{
-        width: 100%; 
-        max-width: 100%;
-        margin: 0;
-        padding: 12px 16px 0 16px;
-        background: #ffffff;
-        font-family: Arial, sans-serif;
-        font-size:12px;
-        color:#222;
-        box-sizing: border-box;
-        overflow-x: hidden;
-      }
-      *, *:before, *:after {
-        box-sizing: border-box;
-        color:#222
-      }
+      .header-section { width: 100%; margin-bottom: 6px; }
+      .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .header-table td { vertical-align: top; }
+      .header-table td.header-left { width: 55%; padding: 0 12px 0 0; }
+      .header-table td.header-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .header-left-inner { display: table; width: 100%; }
+      .header-logo-cell { width: 56px; padding-right: 10px; vertical-align: top; }
+      .header-logo { width: 56px; height: 56px; display: block; }
+      .header-text-cell { vertical-align: top; }
+      .company-name { font-size: 13px; font-weight: bold; line-height: 1.3; word-wrap: break-word; letter-spacing: 0.25em; }
+      .company-name-english { font-size: 12px; font-weight: bold; color: #222; word-wrap: break-word; margin-top: 2px; }
+      .company-ownership { font-size: 10px; color: #666; margin-top: 2px; word-wrap: break-word; }
+      .certification-section { font-size: 8px; color: #666; line-height: 1.4; }
+      .certification-logos .iso-text { display: block; margin-top: 2px; }
+      .header-page { margin-top: 2px; font-size: 8px; }
 
-      .clearfix {
-        display: block; }
-      .clearfix:after {
-        content: "";
-        display: table;
-        clear: both;
-      }
-      .left{
-        float:left;
-      }
-      .right{
-        float:right;
-      }
-      
-      .header-section {
-        width: 100%;
-        max-width: 100%;
-        margin-bottom: 20px;
-      }
-      
-      .company-header {
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        margin-bottom: 15px;
-        gap: 12px;
-        min-width: 0;
-      }
-      
-      .logo-section {
-        display: flex;
-        align-items: center;
-        flex-shrink: 0;
-      }
-      
-      .logo {
-        width: 72px;
-        height: 72px;
-        margin-right: 12px;
-      }
-      
-      .company-name-section {
-        min-width: 0;
-        flex: 1;
-        max-width: 55%;
-      }
-      
-      .company-name {
-        font-size: 16px;
-        font-weight: bold;
-        color: #222;
-        line-height: 1.4;
-        word-wrap: break-word;
-      }
-      
-      .company-name-english {
-        font-size: 12px;
-        font-weight: normal;
-        color: #666;
-        word-wrap: break-word;
-      }
-      
-      .company-ownership {
-        font-size: 9px;
-        color: #666;
-        margin-top: 4px;
-        word-wrap: break-word;
-      }
-      
-      .certification-section {
-        flex-shrink: 0;
-        text-align: right;
-        font-size: 9px;
-        color: #666;
-        max-width: 95px;
-        line-height: 1.35;
-      }
-      
-      .certification-logos {
-        margin-bottom: 4px;
-        word-break: keep-all;
-        white-space: normal;
-      }
-      
-      .document-title {
-        text-align: center;
-        font-size: 24px;
-        font-weight: bold;
-        margin: 30px 0;
-        color: #222;
-      }
-      
-      .info-section { width: 100%; max-width: 100%; margin-bottom: 16px; font-size: 10px; }
-      .info-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      .info-table td { vertical-align: top; font-size: 10px; }
-      .info-table .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
-      .info-table .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
-      .info-row { margin-bottom: 4px; }
-      
-      .table-container {
-        width: 100%;
-        max-width: 100%;
-        margin: 20px 0;
-        overflow-x: hidden;
-      }
-      
-      .items-table {
-        width: 100%;
-        max-width: 100%;
-        border-collapse: collapse;
-        margin-bottom: 20px;
-        table-layout: fixed;
-      }
-      
-      .items-table th {
-        background-color: #f0f0f0;
-        border: 1px solid #ddd;
-        padding: 10px;
-        text-align: left;
-        font-weight: bold;
-        font-size: 12px;
-      }
-      
-      .items-table td {
-        border: 1px solid #ddd;
-        padding: 10px;
-        font-size: 12px;
-        word-wrap: break-word;
-        overflow-wrap: break-word;
-      }
-      
-      .items-table .item-name {
-        width: 35%;
-        word-wrap: break-word;
-      }
-      
-      .items-table .item-desc {
-        width: 45%;
-        word-wrap: break-word;
-      }
-      
-      .items-table .item-qty {
-        width: 20%;
-        text-align: center;
-      }
-      
-      .items-table .item-unit {
-        width: 20%;
-        text-align: center;
-      }
-      
-      .acknowledgement-section {
-        margin-top: 40px;
-        width: 100%;
-      }
-      
-      .acknowledgement-title {
-        text-align: center;
-        font-size: 20px;
-        font-weight: bold;
-        margin-bottom: 20px;
-      }
-      
-      .acknowledgement-info {
-        display: flex;
-        justify-content: space-around;
-        margin-bottom: 30px;
-      }
-      
-      .acknowledgement-item {
-        text-align: center;
-      }
-      
-      .acknowledgement-label {
-        font-weight: bold;
-        margin-bottom: 10px;
-        font-size: 12px;
-      }
-      
-      .acknowledgement-line {
-        border-bottom: 1px solid #222;
-        width: 150px;
-        height: 30px;
-        margin: 0 auto;
-      }
-      
-      .footer-section {
-        margin-top: 40px;
-        text-align: center;
-        font-size: 11px;
-        color: #666;
-        border-top: 1px solid #ddd;
-        padding-top: 15px;
-      }
-      
-      .footer-line-1 {
-        margin-bottom: 4px;
-        line-height: 1.6;
-      }
-      .footer-line-2 {
-        line-height: 1.6;
-      }
+      .info-table-ship { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 6px; font-size: 10px; }
+      .info-table-ship td { vertical-align: top; }
+      .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
+      .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .info-row { margin-bottom: 2px; }
+
+      .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
+
+      .quotation-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 10px; table-layout: fixed; }
+      .quotation-table th, .quotation-table td { border: none; padding: 6px 8px; vertical-align: top; }
+      .quotation-table thead tr { border-top: 1px solid #222; border-bottom: 1px solid #222; }
+      .quotation-table tbody tr { border-bottom: 1px solid #222; }
+      .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
+      .quotation-table .col-no { width: 6%; text-align: center; }
+      .quotation-table .col-desc { width: 80%; word-wrap: break-word; text-align: left; }
+      .quotation-table .col-qty { width: 14%; text-align: right; white-space: nowrap; }
+
+      .ack-section { margin-top: 12px; }
+      .ack-right { width: 28%; margin-left: auto; text-align: left; }
+      .ack-title { font-weight: bold; margin-bottom: 6px; font-size: 10px; }
+      .ack-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
+      .ack-label { min-width: 70px; font-weight: bold; }
+      .ack-line { flex: 1; border-bottom: 1px solid #222; height: 18px; }
+
+      .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
+      .footer-section { margin-top: auto; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
+      .footer-line-1 { margin-bottom: 2px; }
+      .footer-line-2 { }
 
 body
+  - const client = model.client || (model.clients && model.clients[0]) || {}
+  - const displayName = model.receiptDisplayName || client.name || ''
+  - const siteAddress = model.address || client.address || ''
+  - const deliveryAddress = model.receiptDisplayName || ''
+  - const consignee = model.receiver || ''
+  - const docDate = model.date ? moment(model.date).format('DD-MM-YYYY') : ''
+  - const fileNo = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + (model.number || '') + '/' + (model.year || '')
+  - const itemsOnly = model.items || []
+
   .header-section
-    .company-header
-      .logo-section
-        img.logo(src=settings.public_server_file+settings.company_logo)
-        .company-name-section
-          .company-name #{settings.company_name}
-          .company-name-english SUPER MAX ENGINEERING CO.
-          .company-ownership (Wholly Owned By Super Pioneer Ltd.)
-      .certification-section
-        .certification-logos
-          | ISO 9001: 2008
-          br
-          | Certificate No: Q368
-        .page-number
-          | Page
-    
-    .document-title 簽收單
-    
-    .info-section
-      - const client = model.client || (model.clients && model.clients[0]) || {}
-      - const displayName = model.receiptDisplayName || client.name || ''
-      table.info-table
+    table.header-table
+      tr
+        td.header-left
+          table.header-left-inner
+            tr
+              td.header-logo-cell
+                img.header-logo(src=settings.public_server_file+settings.company_logo)
+              td.header-text-cell
+                .company-name-english #{settings.company_name_english || 'SUPER MAX ENGINEERING CO.'}
+                .company-ownership (Wholly Owned By Super Pioneer Ltd.)
+        td.header-right
+          .certification-section
+            .certification-logos
+              img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:120px;height:auto;display:block;margin-bottom:4px;')
+              span.iso-text ISO 9001 : 2008
+              span.iso-text Certificate No : Q368
+          .header-page Page 1
+
+  table.info-table-ship
+    tr
+      td.info-left
+        .info-row MESSRS : #{displayName}
+        if siteAddress
+          .info-row ADDRESS : #{siteAddress}
+        if deliveryAddress
+          .info-row 送貨地址 : #{deliveryAddress}
+        if consignee
+          .info-row 收貨人 : #{consignee}
+      td.info-right
+        .info-row INVOICE NO. :
+        .info-row 報價編號 : #{fileNo}
+        .info-row DATE : #{docDate}
+
+  .doc-title 簽收單
+
+  table.quotation-table
+    thead
+      tr
+        th.col-no
+        th.col-desc 描述
+        th.col-qty 數量
+    tbody
+      each item, idx in itemsOnly
         tr
-          td.info-left
-            .info-row 致: #{displayName}
-            .info-row #{client.address || ''}
-            if model.address
-              .info-row 工程地址: #{model.address}
-            if model.receiver || model.contactPerson
-              .info-row 簽收單收貨人: #{model.receiver || model.contactPerson}
-          td.info-right
-            .info-row 檔案編號 : #{model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')}
-            .info-row 日期 : #{moment(model.date).format('DD-MM-YYYY')}
-    
-    .table-container
-      table.items-table
-        thead
-          tr
-            th.item-name 項目
-            th.item-desc 描述
-            th.item-qty 數量
-        tbody
-          - const itemsOnly = model.items || []
-          each item in itemsOnly
-            tr
-              td.item-name #{item.itemName || ''}
-              td.item-desc #{item.description || ''}
-              td.item-qty #{item.quantity != null ? item.quantity : ''}
-          if itemsOnly.length === 0
-            tr
-              td(colspan='3' style='text-align: center;') 無項目
-    
-    .acknowledgement-section
-      .acknowledgement-title 簽收單
-      .acknowledgement-info
-        .acknowledgement-item
-          .acknowledgement-label 裝箱方式
-          .acknowledgement-line
-        .acknowledgement-item
-          .acknowledgement-label 簽收人
-          .acknowledgement-line
-        .acknowledgement-item
-          .acknowledgement-label 日期
-          .acknowledgement-line
-    
-    .footer-section
-      .footer-line-1 #{settings.company_address || '新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室'} 電話: #{settings.company_phone || '2776 4793, 2756 7579'} 傳真: #{settings.company_fax || '2776 4796'}
-      .footer-line-2 #{settings.company_address_english || 'Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T.'} Tel: #{settings.company_phone || '2776 4793, 2756 7579'} Fax: #{settings.company_fax || '2776 4796'}
+          td.col-no #{idx + 1}
+          td.col-desc #{(item.itemName || '') + (item.description ? ' ' + item.description : '')}
+          td.col-qty #{item.quantity != null ? item.quantity : ''}
+      if itemsOnly.length === 0
+        tr
+          td(colspan='3' style='text-align:center') 無項目
+
+  .ack-section
+    .ack-right
+      .ack-title 簽收
+      .ack-row
+        .ack-label 裝箱方式：
+        .ack-line
+      .ack-row
+        .ack-label 簽收人：
+        .ack-line
+      .ack-row
+        .ack-label 日　期：
+        .ack-line
+
+  .end-marker End
+
+  .footer-section
+    .footer-line-1 新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室 電話: 2776 4793, 2756 7579 傳真: 2776 4796
+    .footer-line-2 Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T. Tel: 2776 4793, 2756 7579 Fax: 2776 4796

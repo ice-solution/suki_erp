@@ -784,11 +784,6 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('Contact Person')} name="contactPerson">
-            <Input />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
           <Form.Item 
             label={translate('Subcontractor Count')} 
             name="subcontractorCount"
@@ -801,8 +796,13 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           </Form.Item>
         </Col>
       </Row>
-      
+
       <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={6}>
+          <Form.Item label={translate('Contact Person')} name="contactPerson">
+            <Input placeholder="聯絡人" />
+          </Form.Item>
+        </Col>
         <Col className="gutter-row" span={6}>
           <Form.Item 
             label={translate('Cost Price')} 
@@ -864,10 +864,16 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           />
         </Col>
         <Col span={11}>
-          <Input 
-            placeholder="描述"
+          <Input.TextArea
+            placeholder="描述（Shift+Enter 換行）"
             value={currentItem.description}
             onChange={(e) => updateCurrentItem('description', e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) e.preventDefault();
+            }}
+            rows={2}
+            autoSize={{ minRows: 2, maxRows: 6 }}
+            style={{ width: '100%' }}
           />
         </Col>
         <Col span={3}>

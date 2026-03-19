@@ -145,7 +145,7 @@ const ContractorEmployeeList = () => {
             <Select placeholder="請選擇承辦商">
               {contractors.map(contractor => (
                 <Select.Option key={contractor._id} value={contractor._id}>
-                  {contractor.name}
+                  {contractor.accountCode ? `${contractor.name} (${contractor.accountCode})` : contractor.name}
                 </Select.Option>
               ))}
             </Select>

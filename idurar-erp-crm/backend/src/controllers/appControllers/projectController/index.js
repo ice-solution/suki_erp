@@ -20,6 +20,7 @@ const updateAttendance = require('./updateAttendance');
 const deleteAttendance = require('./deleteAttendance');
 const recalculateWorkDays = require('./recalculateWorkDays');
 const getProjectReport = require('./getProjectReport');
+const exportXeroEo = require('./exportXeroEo');
 
 module.exports = {
   create,
@@ -44,4 +45,5 @@ module.exports = {
   deleteAttendance,
   recalculateWorkDays,
   getProjectReport,
+  exportXeroEo,
 };
