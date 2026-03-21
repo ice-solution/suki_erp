@@ -113,8 +113,9 @@ export default function WorkProgressCreate() {
             const projectEmployees = allEmployees.filter(employee => {
               const employeeContractorId = employee.contractor?._id || employee.contractor;
               const isMatch = contractorIds.includes(employeeContractorId);
+              const employed = (employee.employmentStatus || '在職') === '在職';
               console.log(`🔍 Employee ${employee.name}: contractor=${employeeContractorId}, match=${isMatch}`);
-              return isMatch;
+              return isMatch && employed;
             });
             
             console.log('✅ Filtered project employees:', projectEmployees);

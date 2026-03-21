@@ -2,6 +2,15 @@ const express = require('express');
 const router = express.Router();
 const ContractorEmployee = require('../models/appModels/ContractorEmployee');
 
+function normalizeEmployeePayload(body) {
+  const payload = { ...body };
+  if (payload.phone !== undefined && String(payload.phone || '').trim() === '') {
+    delete payload.phone;
+    return { payload, unsetPhone: true };
+  }
+  return { payload, unsetPhone: false };
+}
+
 // 查詢所有承辦商員工
 router.get('/', async (req, res) => {
   try {
@@ -16,7 +25,8 @@ router.get('/', async (req, res) => {
 // 新增承辦商員工
 router.post('/', async (req, res) => {
   try {
-    const employee = new ContractorEmployee(req.body);
+    const { payload } = normalizeEmployeePayload(req.body);
+    const employee = new ContractorEmployee(payload);
     await employee.save();
     res.status(201).json(employee);
   } catch (err) {
@@ -39,7 +49,17 @@ router.get('/:id', async (req, res) => {
 // 更新承辦商員工
 router.put('/:id', async (req, res) => {
   try {
-    const employee = await ContractorEmployee.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    const { payload, unsetPhone } = normalizeEmployeePayload(req.body);
+    const update =
+      unsetPhone && Object.keys(payload).length > 0
+        ? { $set: payload, $unset: { phone: 1 } }
+        : unsetPhone
+          ? { $unset: { phone: 1 } }
+          : payload;
+    const employee = await ContractorEmployee.findByIdAndUpdate(req.params.id, update, {
+      new: true,
+      runValidators: true,
+    });
     if (!employee) return res.status(404).json({ error: 'Not found' });
     res.json(employee);
   } catch (err) {

@@ -54,81 +54,70 @@ html
       .footer-line-2 { }
 
 body
-  - const client = model.client || (model.clients && model.clients[0]) || {}
-  - const displayName = model.receiptDisplayName || client.name || ''
-  - const siteAddress = model.address || client.address || ''
-  - const deliveryAddress = model.receiptDisplayName || ''
-  - const consignee = model.receiver || ''
-  - const docDate = model.date ? moment(model.date).format('DD-MM-YYYY') : ''
-  - const fileNo = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + (model.number || '') + '/' + (model.year || '')
-  - const itemsOnly = model.items || []
-
-  .header-section
-    table.header-table
-      tr
-        td.header-left
-          table.header-left-inner
+    
+    header.clearfix
+      .top-area
+        img.logo.left(src=settings.public_server_file+settings.company_logo)
+        .right.company-info
+            p.strong #{settings.company_name}
+            p #{settings.company_address}
+            p #{settings.company_reg_number}
+            
+      .col.col-24
+        .space  
+      .left.col-14
+          h1.invoice
+            | Supplier Quote
+          div 
+            .col.col-7
+              p.strong #{translate('Date')} :
+              p #{moment(model.date).format(dateFormat)}
+            .col.col-9
+              p.strong #{translate('Expired Date')} :
+              p #{moment(model.expiredDate).format(dateFormat)}
+            .col.col-8 
+              p.strong #{translate('Number')} :
+              p # #{model.numberPrefix || 'NO'}-#{model.number}/#{model.year || ""} 
+            
+      .right.col-10
+          .billTo
+              p #{translate('Client')} :
+              - const client = model.client || (model.clients && model.clients[0]) || {}
+              p #{client.name}
+              p #{client.address}
+              p #{client.phone}
+              p #{client.email}
+      .col.col-24
+        .space  
+    main
+      table.table-invoice
+        thead
+          tr.tableHeader
+            th.service #{translate('item')}
+            th #{translate('Quantity')}
+            th #{translate('PRICE')}
+            th #{translate('TOTAL')}
+        tbody
+          - const allItems = (model.items || []).concat((model.materials || []).map(m => ({ itemName: m.itemName, quantity: m.quantity, price: m.price, total: m.quantity * m.price })))
+          each item in allItems
             tr
-              td.header-logo-cell
-                img.header-logo(src=settings.public_server_file+settings.company_logo)
-              td.header-text-cell
-                .company-name-english #{settings.company_name_english || 'SUPER MAX ENGINEERING CO.'}
-                .company-ownership (Wholly Owned By Super Pioneer Ltd.)
-        td.header-right
-          .certification-section
-            .certification-logos
-              img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:120px;height:auto;display:block;margin-bottom:4px;')
-              span.iso-text ISO 9001 : 2008
-              span.iso-text Certificate No : Q368
-          .header-page Page 1
-
-  table.info-table-ship
-    tr
-      td.info-left
-        .info-row MESSRS : #{displayName}
-        if siteAddress
-          .info-row ADDRESS : #{siteAddress}
-        if deliveryAddress
-          .info-row 送貨地址 : #{deliveryAddress}
-        if consignee
-          .info-row 收貨人 : #{consignee}
-      td.info-right
-        .info-row INVOICE NO. :
-        .info-row 報價編號 : #{fileNo}
-        .info-row DATE : #{docDate}
-
-  .doc-title 簽收單
-
-  table.quotation-table
-    thead
-      tr
-        th.col-no
-        th.col-desc 描述
-        th.col-qty 數量
-    tbody
-      each item, idx in itemsOnly
-        tr
-          td.col-no #{idx + 1}
-          td.col-desc #{(item.itemName || '') + (item.description ? ' ' + item.description : '')}
-          td.col-qty #{item.quantity != null ? item.quantity : ''}
-      if itemsOnly.length === 0
-        tr
-          td(colspan='3' style='text-align:center') 無項目
-
-  .ack-section
-    .ack-right
-      .ack-title 簽收
-      .ack-row
-        .ack-label 裝箱方式：
-        .ack-line
-      .ack-row
-        .ack-label 簽收人：
-        .ack-line
-      .ack-row
-        .ack-label 日　期：
-        .ack-line
-
-  .end-marker End
+              td.service #{item.itemName}
+              td.qty #{item.quantity}  
+              td.unit  #{moneyFormatter({amount:item.price})}
+              td.total #{moneyFormatter({amount:item.total})}
+          tr
+            td(colspan='3') #{translate('SUB TOTAL')}
+            td.total #{moneyFormatter({amount:model.subTotal})}
+          tr
+            td(colspan='3') #{translate('DISCOUNT')} #{model.discount} %
+            td.total #{moneyFormatter({amount:model.discountTotal})}
+          tr
+            td.grand.total(colspan='3')  #{translate('TOTAL')} 
+            td.grand.total #{moneyFormatter({amount:model.total})}
+      
+    .col.col-24
+        .space     
+    footer.footer-invoice
 
   .footer-section
     .footer-line-1 新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室 電話: 2776 4793, 2756 7579 傳真: 2776 4796

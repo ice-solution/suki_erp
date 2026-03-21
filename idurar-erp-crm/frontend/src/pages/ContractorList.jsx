@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Popconfirm, message, Modal, Form, Input, Tag } from 'antd';
+import { Table, Button, Popconfirm, message, Modal, Form, Input, Tag, Space } from 'antd';
 import { KeyOutlined } from '@ant-design/icons';
 import axios from 'axios';
 
 const ContractorList = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchName, setSearchName] = useState('');
+  const [searchAccountCode, setSearchAccountCode] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [form] = Form.useForm();
@@ -144,15 +146,47 @@ const ContractorList = () => {
     },
   ];
 
+  const filteredData = data.filter((item) => {
+    const name = (item?.name || '').toString();
+    const accountCode = (item?.accountCode || '').toString();
+    const nameOk = !searchName || name.toLowerCase().includes(searchName.trim().toLowerCase());
+    const codeOk = !searchAccountCode || accountCode.toLowerCase().includes(searchAccountCode.trim().toLowerCase());
+    return nameOk && codeOk;
+  });
+
   return (
     <div>
       <h2>承辦商列表</h2>
       <Button type="primary" style={{ marginBottom: 16 }} onClick={() => showModal()}>
         新增承辦商
       </Button>
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Input
+          placeholder="搜尋承辦商名稱"
+          value={searchName}
+          onChange={(e) => setSearchName(e.target.value)}
+          allowClear
+          style={{ width: 240 }}
+        />
+        <Input
+          placeholder="搜尋 Account Code"
+          value={searchAccountCode}
+          onChange={(e) => setSearchAccountCode(e.target.value)}
+          allowClear
+          style={{ width: 200 }}
+        />
+        <Button
+          onClick={() => {
+            setSearchName('');
+            setSearchAccountCode('');
+          }}
+        >
+          清除
+        </Button>
+      </Space>
       <Table
         columns={columns}
-        dataSource={data}
+        dataSource={filteredData}
         rowKey="_id"
         loading={loading}
         pagination={{ pageSize: 20 }}

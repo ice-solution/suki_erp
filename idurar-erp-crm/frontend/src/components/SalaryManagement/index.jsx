@@ -37,6 +37,8 @@ import dayjs from 'dayjs';
 
 const { Option } = Select;
 
+const isEmployedStatus = (employee) => (employee?.employmentStatus || '在職') === '在職';
+
 export default function SalaryManagement({ projectId, workProgressList = [] }) {
   const { moneyFormatter } = useMoney();
   const [salaries, setSalaries] = useState([]);
@@ -467,11 +469,21 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
                 option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
             >
-              {contractorEmployees.map(employee => (
-                <Option key={employee._id} value={employee._id}>
-                  {employee.name} ({employee.contractor?.name || '無承包商'})
-                </Option>
-              ))}
+              {contractorEmployees
+                .filter((employee) => {
+                  if (
+                    editingSalary?.contractorEmployee &&
+                    String(employee._id) === String(editingSalary.contractorEmployee._id)
+                  ) {
+                    return true;
+                  }
+                  return isEmployedStatus(employee);
+                })
+                .map((employee) => (
+                  <Option key={employee._id} value={employee._id}>
+                    {employee.name} ({employee.contractor?.name || '無承包商'})
+                  </Option>
+                ))}
             </Select>
           </Form.Item>
 
@@ -577,11 +589,21 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
                 option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
             >
-              {contractorEmployees.map(employee => (
-                <Option key={employee._id} value={employee._id}>
-                  {employee.name} ({employee.contractor?.name || '無承包商'})
-                </Option>
-              ))}
+              {contractorEmployees
+                .filter((employee) => {
+                  if (
+                    selectedEmployee &&
+                    String(employee._id) === String(selectedEmployee._id)
+                  ) {
+                    return true;
+                  }
+                  return isEmployedStatus(employee);
+                })
+                .map((employee) => (
+                  <Option key={employee._id} value={employee._id}>
+                    {employee.name} ({employee.contractor?.name || '無承包商'})
+                  </Option>
+                ))}
             </Select>
           </Form.Item>
 

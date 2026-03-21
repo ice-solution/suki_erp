@@ -3,7 +3,7 @@ const Model = mongoose.model('SupplierQuote');
 
 /**
  * GET /supplierquote/export-xero-po?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
- * 依 S單 date 篩選日期範圍，只取 numberPrefix = 'PO' 的 S單，回傳用於 Xero PO 滙出（含 supplier 以取得供應商名與 accountCode）
+ * 依 S單 date 篩選日期範圍，只取 numberPrefix = 'PO' 且 isCompleted = true 的 S單，回傳用於 Xero PO 滙出（含 supplier 以取得供應商名與 accountCode）
  */
 const exportXeroPo = async (req, res) => {
   try {
@@ -30,6 +30,7 @@ const exportXeroPo = async (req, res) => {
     const result = await Model.find({
       removed: false,
       numberPrefix: 'PO',
+      isCompleted: true,
       date: { $gte: from, $lte: to },
     })
       .populate('supplier', 'name email accountCode')

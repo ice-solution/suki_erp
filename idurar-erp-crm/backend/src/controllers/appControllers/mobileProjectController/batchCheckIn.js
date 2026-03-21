@@ -46,7 +46,8 @@ const batchCheckIn = async (req, res) => {
       _id: { $in: employeeIds },
       contractor: contractorId,
       removed: false,
-      enabled: true
+      enabled: true,
+      employmentStatus: { $ne: '離職' },
     });
 
     if (employees.length !== employeeIds.length) {

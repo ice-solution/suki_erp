@@ -36,7 +36,7 @@ export default function XeroPOExport() {
       });
       const list = data?.result || [];
       if (list.length === 0) {
-        message.info('該日期範圍內沒有 PO 單（S單 supplier type = PO）');
+        message.info('該日期範圍內沒有符合條件的 PO 單（須為 PO 類型且 Completed = 是）');
         setLoading(false);
         return;
       }
@@ -97,7 +97,7 @@ export default function XeroPOExport() {
       <Card title="Xero PO單滙出" style={{ maxWidth: 560 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 8 }}>選擇日期範圍（依 S單日期，僅 PO 單）</label>
+            <label style={{ display: 'block', marginBottom: 8 }}>選擇日期範圍（依 S單日期，僅 PO 單且 Completed = 是）</label>
             <RangePicker
               value={dateRange}
               onChange={(dates) => setDateRange(dates || [])}
@@ -115,7 +115,7 @@ export default function XeroPOExport() {
           </Button>
         </Space>
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          滙出 S單（Supplier type = PO）的資料：InvoiceNumber、InvoiceDate、DueDate、ContactName（供應商）、AccountCode、TaxType、每張 PO 的「材料及費用管理」列（Description、Quantity、UnitAmount）、Currency = HKD。
+          僅滙出 S單中 Supplier type = PO 且<strong> Completed（已完成）= 是</strong>的紀錄。欄位：InvoiceNumber、InvoiceDate、DueDate、ContactName（供應商）、AccountCode、TaxType、每張 PO 的「材料及費用管理」列（Description、Quantity、UnitAmount）、Currency = HKD。
         </p>
       </Card>
     </div>

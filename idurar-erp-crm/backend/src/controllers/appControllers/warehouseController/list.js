@@ -1,12 +1,17 @@
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const { catchErrors } = require('../../../handlers/errorHandlers');
 
+function escapeRegex(str) {
+  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 const list = async (req, res) => {
   try {
     const {
       page = 1,
       limit = 10,
       search,
+      itemName,
       warehouse,
       status,
       supplier,
@@ -18,13 +23,18 @@ const list = async (req, res) => {
     // 建立查詢條件
     const query = { removed: false };
 
-    // 搜索條件
-    if (search) {
+    // 僅依貨品名稱（模糊搜尋）
+    if (itemName && String(itemName).trim()) {
+      const safe = escapeRegex(String(itemName).trim());
+      query.itemName = { $regex: safe, $options: 'i' };
+    } else if (search && String(search).trim()) {
+      // 通用搜尋：貨品名稱、描述、SKU、位置
+      const safe = escapeRegex(String(search).trim());
       query.$or = [
-        { itemName: { $regex: search, $options: 'i' } },
-        { description: { $regex: search, $options: 'i' } },
-        { sku: { $regex: search, $options: 'i' } },
-        { location: { $regex: search, $options: 'i' } }
+        { itemName: { $regex: safe, $options: 'i' } },
+        { description: { $regex: safe, $options: 'i' } },
+        { sku: { $regex: safe, $options: 'i' } },
+        { location: { $regex: safe, $options: 'i' } },
       ];
     }
 

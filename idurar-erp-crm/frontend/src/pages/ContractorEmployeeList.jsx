@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Popconfirm, message, Modal, Form, Input, Select } from 'antd';
+import { Table, Button, Popconfirm, message, Modal, Form, Input, Select, Space, Tag } from 'antd';
 import axios from 'axios';
 
 const ContractorEmployeeList = () => {
   const [data, setData] = useState([]);
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchName, setSearchName] = useState('');
+  const [searchAccountCode, setSearchAccountCode] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [form] = Form.useForm();
@@ -79,13 +81,46 @@ const ContractorEmployeeList = () => {
     if (item) {
       form.setFieldsValue({
         ...item,
-        contractor: item.contractor?._id || item.contractor
+        contractor: item.contractor?._id || item.contractor,
+        employmentStatus: item.employmentStatus || '在職',
       });
     } else {
       form.resetFields();
+      form.setFieldsValue({ employmentStatus: '在職' });
     }
     setModalVisible(true);
   };
+
+  const resolveContractor = (record) => {
+    const c = record.contractor;
+    if (c && typeof c === 'object' && c.name != null) return c;
+    const id = c?._id || c;
+    if (!id) return null;
+    return contractors.find(
+      (x) => x._id === id || String(x._id) === String(id)
+    );
+  };
+
+  const filteredData = data.filter((item) => {
+    const contractor = resolveContractor(item);
+    const employeeName = (item?.name || '').toString();
+    const contractorName = (contractor?.name || '').toString();
+    const accountCode = (contractor?.accountCode || '').toString();
+
+    const nameQ = searchName.trim().toLowerCase();
+    const codeQ = searchAccountCode.trim().toLowerCase();
+
+    if (nameQ) {
+      const matchName =
+        employeeName.toLowerCase().includes(nameQ) ||
+        contractorName.toLowerCase().includes(nameQ);
+      if (!matchName) return false;
+    }
+    if (codeQ) {
+      if (!accountCode.toLowerCase().includes(codeQ)) return false;
+    }
+    return true;
+  });
 
   const columns = [
     { title: '員工姓名', dataIndex: 'name', key: 'name' },
@@ -95,7 +130,15 @@ const ContractorEmployeeList = () => {
       key: 'contractor',
       render: (contractor) => contractor?.name || contractor
     },
-    { title: '職位', dataIndex: 'position', key: 'position' },
+    {
+      title: '在職狀態',
+      dataIndex: 'employmentStatus',
+      key: 'employmentStatus',
+      render: (v) => {
+        const active = (v || '在職') === '在職';
+        return <Tag color={active ? 'green' : 'red'}>{active ? '在職' : '離職'}</Tag>;
+      },
+    },
     { title: '電話', dataIndex: 'phone', key: 'phone' },
     { title: '電郵', dataIndex: 'email', key: 'email' },
     {
@@ -118,9 +161,33 @@ const ContractorEmployeeList = () => {
       <Button type="primary" style={{ marginBottom: 16 }} onClick={() => showModal()}>
         新增員工
       </Button>
+      <Space style={{ marginBottom: 16 }} wrap>
+        <Input
+          placeholder="搜尋名字（員工姓名或承辦商名稱）"
+          value={searchName}
+          onChange={(e) => setSearchName(e.target.value)}
+          allowClear
+          style={{ width: 280 }}
+        />
+        <Input
+          placeholder="搜尋承辦商 Account Code"
+          value={searchAccountCode}
+          onChange={(e) => setSearchAccountCode(e.target.value)}
+          allowClear
+          style={{ width: 220 }}
+        />
+        <Button
+          onClick={() => {
+            setSearchName('');
+            setSearchAccountCode('');
+          }}
+        >
+          清除
+        </Button>
+      </Space>
       <Table
         columns={columns}
-        dataSource={data}
+        dataSource={filteredData}
         rowKey="_id"
         loading={loading}
         pagination={{ pageSize: 20 }}
@@ -153,18 +220,36 @@ const ContractorEmployeeList = () => {
           <Form.Item label="職位" name="position"> 
             <Input />
           </Form.Item>
-          <Form.Item 
-            label="電話" 
-            name="phone" 
+          <Form.Item
+            label="在職狀態"
+            name="employmentStatus"
+            rules={[{ required: true, message: '請選擇在職狀態' }]}
+          >
+            <Select
+              placeholder="請選擇"
+              options={[
+                { value: '在職', label: '在職' },
+                { value: '離職', label: '離職' },
+              ]}
+            />
+          </Form.Item>
+          <Form.Item
+            label="電話"
+            name="phone"
             rules={[
-              { required: true, message: '請輸入電話號碼' },
-              { 
-                pattern: /^(\+852|852)?[5-9]\d{7}$|^(\+886|886)?09\d{8}$|^09\d{8}$|^[5-9]\d{7}$/,
-                message: '請輸入有效的手機號碼'
-              }
+              {
+                validator: (_, value) => {
+                  const v = value != null ? String(value).trim() : '';
+                  if (!v) return Promise.resolve();
+                  const ok = /^(\+852|852)?[5-9]\d{7}$|^(\+886|886)?09\d{8}$|^09\d{8}$|^[5-9]\d{7}$/.test(v);
+                  return ok
+                    ? Promise.resolve()
+                    : Promise.reject(new Error('請輸入有效的手機號碼'));
+                },
+              },
             ]}
-          > 
-            <Input placeholder="例如：98765432 或 +85298765432" />
+          >
+            <Input placeholder="選填，例如：98765432 或 +85298765432" />
           </Form.Item>
           <Form.Item label="電郵" name="email"> 
             <Input />

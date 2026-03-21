@@ -23,7 +23,8 @@ import {
   DeleteOutlined,
   SwapOutlined,
   SettingOutlined,
-  WarningOutlined
+  WarningOutlined,
+  SearchOutlined,
 } from '@ant-design/icons';
 import { request } from '@/request';
 import { useSelector } from 'react-redux';
@@ -41,6 +42,9 @@ export default function Warehouse() {
     total: 0
   });
   const [filters, setFilters] = useState({});
+  /** 已套用的貨品名稱關鍵字（僅在按搜尋／Enter 時更新） */
+  const [itemNameSearch, setItemNameSearch] = useState('');
+  const [searchDraft, setSearchDraft] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [adjustModalVisible, setAdjustModalVisible] = useState(false);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
@@ -62,9 +66,12 @@ export default function Warehouse() {
 
   useEffect(() => {
     fetchInventoryList();
+  }, [pagination.current, pagination.pageSize, filters, itemNameSearch]);
+
+  useEffect(() => {
     fetchSuppliers();
     fetchProjects();
-  }, [pagination.current, pagination.pageSize, filters]);
+  }, []);
 
   const fetchInventoryList = async () => {
     setLoading(true);
@@ -72,15 +79,24 @@ export default function Warehouse() {
       const params = {
         page: pagination.current,
         limit: pagination.pageSize,
-        ...filters
       };
-      const response = await request.get({ entity: 'warehouse' });
-      
+      const nameQ = itemNameSearch.trim();
+      if (nameQ) {
+        params.itemName = nameQ;
+      }
+      if (filters.warehouse && filters.warehouse.length) {
+        params.warehouse = filters.warehouse[0];
+      }
+      if (filters.status && filters.status.length) {
+        params.status = filters.status[0];
+      }
+      const response = await request.get({ entity: 'warehouse', params });
+
       if (response.success) {
         setInventoryList(response.result);
-        setPagination(prev => ({
+        setPagination((prev) => ({
           ...prev,
-          total: response.pagination.totalItems
+          total: response.pagination?.totalItems ?? prev.total,
         }));
       }
     } catch (error) {
@@ -357,14 +373,28 @@ export default function Warehouse() {
           </Col>
         </Row>
 
-        <div style={{ marginBottom: 16 }}>
-          <Button 
-            type="primary" 
-            icon={<PlusOutlined />} 
+        <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
             onClick={handleCreate}
           >
             新增存倉記錄
           </Button>
+          <Input.Search
+            allowClear
+            placeholder="搜尋貨品名稱"
+            prefix={<SearchOutlined style={{ color: 'rgba(0,0,0,.45)' }} />}
+            style={{ width: 280 }}
+            value={searchDraft}
+            onChange={(e) => setSearchDraft(e.target.value)}
+            onSearch={(value) => {
+              setSearchDraft(value);
+              setItemNameSearch((value || '').trim());
+              setPagination((prev) => ({ ...prev, current: 1 }));
+            }}
+            enterButton="搜尋"
+          />
         </div>
 
         <Table
@@ -377,9 +407,14 @@ export default function Warehouse() {
             showQuickJumper: true,
             showTotal: (total, range) => `第 ${range[0]}-${range[1]} 項，共 ${total} 項`,
           }}
-          onChange={(pag, filters) => {
-            setPagination(pag);
-            setFilters(filters);
+          onChange={(pag, tableFilters) => {
+            setPagination((prev) => ({
+              ...prev,
+              current: pag.current,
+              pageSize: pag.pageSize,
+              total: prev.total,
+            }));
+            setFilters(tableFilters || {});
           }}
           rowKey="_id"
           scroll={{ x: 1350 }}

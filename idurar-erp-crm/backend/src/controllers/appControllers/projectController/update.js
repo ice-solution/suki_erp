@@ -7,6 +7,7 @@ const ShipQuote = mongoose.model('ShipQuote');
 const Invoice = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
+const { allocateNextEoNumbers, needsAutoEo } = require('@/helpers/usedContractorFeeEoSequence');
 
 const update = async (req, res) => {
   try {
@@ -95,9 +96,27 @@ const update = async (req, res) => {
       updateData.contractorFees = contractorFeesArray;
     }
 
-    // 如果有新的 usedContractorFees 值，則更新它
+    // 如果有新的 usedContractorFees 值，則更新它（EO 編號空白時由全站序號自動配發）
     if (usedContractorFees !== undefined) {
-      updateData.usedContractorFees = usedContractorFees;
+      let fees = Array.isArray(usedContractorFees) ? [...usedContractorFees] : [];
+      fees = fees.map((f) => ({
+        projectName: f && f.projectName !== undefined ? String(f.projectName) : '',
+        date: f && f.date ? new Date(f.date) : new Date(),
+        eoNumber:
+          f && f.eoNumber !== undefined && f.eoNumber !== null ? String(f.eoNumber).trim() : '',
+        amount: f && f.amount !== undefined && f.amount !== null ? f.amount : 0,
+      }));
+      const needIndices = [];
+      fees.forEach((f, i) => {
+        if (needsAutoEo(f.eoNumber)) needIndices.push(i);
+      });
+      if (needIndices.length > 0) {
+        const nums = await allocateNextEoNumbers(needIndices.length);
+        needIndices.forEach((idx, j) => {
+          fees[idx].eoNumber = nums[j];
+        });
+      }
+      updateData.usedContractorFees = fees;
     }
 
     // 添加可選字段

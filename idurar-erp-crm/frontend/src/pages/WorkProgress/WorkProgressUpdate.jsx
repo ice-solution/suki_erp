@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Form, Input, InputNumber, Button, Select, DatePicker, Card, message, Row, Col, Descriptions, Tag } from 'antd';
 import { ArrowLeftOutlined, SaveOutlined } from '@ant-design/icons';
@@ -78,6 +78,18 @@ export default function WorkProgressUpdate() {
       console.error('Error fetching contractor employees:', error);
     }
   };
+
+  const contractorEmployeeSelectOptions = useMemo(() => {
+    const currentId = workProgress?.contractorEmployee?._id || workProgress?.contractorEmployee;
+    const list = contractorEmployees.filter((employee) => {
+      if (currentId && String(employee._id) === String(currentId)) return true;
+      return (employee.employmentStatus || '在職') === '在職';
+    });
+    return list.map((employee) => ({
+      value: employee._id,
+      label: `${employee.name} (${employee.contractor?.name || '未知承包商'})`,
+    }));
+  }, [contractorEmployees, workProgress]);
 
   const onSubmit = async (values) => {
     try {
@@ -229,10 +241,7 @@ export default function WorkProgressUpdate() {
                         filterOption={(input, option) =>
                           option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
                         }
-                        options={contractorEmployees.map(employee => ({
-                          value: employee._id,
-                          label: `${employee.name} (${employee.contractor?.name || '未知承包商'})`
-                        }))}
+                        options={contractorEmployeeSelectOptions}
                       />
                     </Form.Item>
                   </Col>

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react';
 import { Divider, Card, Table, Typography, Modal, message, Form, Select, DatePicker, InputNumber, Input } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Space } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
+  DeleteOutlined,
   CloseCircleOutlined,
   SyncOutlined,
   PlusOutlined,
@@ -61,6 +62,8 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
   const [contractorFeesModalVisible, setContractorFeesModalVisible] = useState(false);
   const [editingUsedFeeIndex, setEditingUsedFeeIndex] = useState(null);
   const [contractorFeesForm] = Form.useForm();
+  const [nextEoPreview, setNextEoPreview] = useState('');
+  const [nextEoLoading, setNextEoLoading] = useState(false);
   
   // 從 contractorFees 中提取工程名選項
   const projectNameOptions = currentProject.contractorFees && Array.isArray(currentProject.contractorFees)
@@ -82,6 +85,33 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     return () => controller.abort();
   }, [currentResult, projectIdFromUrl]);
 
+  // 建立使用判頭費時預覽即將指派的 EO 編號（不佔用序號，與他人同時操作時實際號碼可能順延）
+  useEffect(() => {
+    if (!contractorFeesModalVisible || editingUsedFeeIndex !== null) {
+      return undefined;
+    }
+    let cancelled = false;
+    setNextEoLoading(true);
+    setNextEoPreview('');
+    (async () => {
+      try {
+        const res = await request.get({ entity: 'project/next-used-contractor-fee-eo' });
+        if (cancelled) return;
+        if (res?.success && res?.result?.nextEoNumber) {
+          setNextEoPreview(res.result.nextEoNumber);
+        } else {
+          setNextEoPreview('');
+        }
+      } catch {
+        if (!cancelled) setNextEoPreview('');
+      } finally {
+        if (!cancelled) setNextEoLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [contractorFeesModalVisible, editingUsedFeeIndex]);
 
   // 載入WorkProgress列表
   const loadWorkProgress = async (projectId) => {
@@ -162,6 +192,43 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       console.error('Error adding used contractor fee:', error);
       message.error('添加過程中發生錯誤');
     }
+  };
+
+  // 刪除單筆使用判頭費
+  const handleDeleteUsedContractorFee = (index) => {
+    const list = currentProject.usedContractorFees || [];
+    const row = list[index];
+    const label = row?.projectName || row?.eoNumber || `第 ${index + 1} 筆`;
+    Modal.confirm({
+      title: '刪除使用判頭費',
+      content: `確定要刪除「${label}」這筆記錄嗎？此操作無法復原。`,
+      okText: '刪除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        if (index < 0 || index >= list.length) return;
+        const updatedUsedContractorFees = list.filter((_, i) => i !== index);
+        try {
+          const response = await request.update({
+            entity: 'project',
+            id: currentProject._id,
+            jsonData: {
+              usedContractorFees: updatedUsedContractorFees,
+            },
+          });
+          if (response.success) {
+            message.success('已刪除使用判頭費記錄');
+            if (contractorFeesModalVisible) resetUsedFeeModal();
+            dispatch(erp.read({ entity: entity.toLowerCase(), id: currentProject._id }));
+          } else {
+            message.error(response.message || '刪除失敗');
+          }
+        } catch (error) {
+          console.error('Error deleting used contractor fee:', error);
+          message.error('刪除過程中發生錯誤');
+        }
+      },
+    });
   };
 
   // 處理同步功能
@@ -459,18 +526,30 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     {
       title: '操作',
       key: 'action',
-      width: 84,
+      width: 168,
       align: 'center',
       render: (_, record, index) => (
-        <Button
-          type="link"
-          size="small"
-          icon={<EditOutlined />}
-          onClick={() => handleEditUsedContractorFee(record, index)}
-          style={{ paddingInline: 0 }}
-        >
-          Edit
-        </Button>
+        <Space size={16} wrap align="center">
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEditUsedContractorFee(record, index)}
+            style={{ paddingInline: 4 }}
+          >
+            Edit
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDeleteUsedContractorFee(index)}
+            style={{ paddingInline: 4 }}
+          >
+            刪除
+          </Button>
+        </Space>
       ),
     },
   ];
@@ -863,7 +942,11 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
               <Button 
                 type="primary" 
                 icon={<PlusOutlined />}
-                onClick={() => setContractorFeesModalVisible(true)}
+                onClick={() => {
+                  setEditingUsedFeeIndex(null);
+                  contractorFeesForm.resetFields();
+                  setContractorFeesModalVisible(true);
+                }}
                 size="small"
               >
                 建立資料
@@ -979,12 +1062,25 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             />
           </Form.Item>
 
-          <Form.Item
-            label="EO number"
-            name="eoNumber"
-          >
-            <Input placeholder="EO number" />
-          </Form.Item>
+          {editingUsedFeeIndex !== null ? (
+            <Form.Item label="EO number" name="eoNumber">
+              <Input disabled placeholder="—" />
+            </Form.Item>
+          ) : (
+            <Form.Item
+              label="EO number"
+              extra="儲存時會使用此編號（全站唯一）。若期間其他人已新增紀錄，實際編號可能為下一號。"
+            >
+              <Input
+                disabled
+                value={
+                  nextEoLoading
+                    ? '載入中…'
+                    : nextEoPreview || '無法預覽，儲存後將自動指派'
+                }
+              />
+            </Form.Item>
+          )}
 
           <Form.Item
             label="金額"

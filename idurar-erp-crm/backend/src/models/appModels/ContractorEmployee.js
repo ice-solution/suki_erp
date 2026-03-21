@@ -22,19 +22,28 @@ const schema = new mongoose.Schema({
   },
   phone: {
     type: String,
-    required: true,
-    unique: true,
+    required: false,
+    set(v) {
+      if (v == null || String(v).trim() === '') return undefined;
+      return String(v).trim();
+    },
     validate: {
-      validator: function(v) {
-        // 驗證手機號碼格式（支持香港和台灣格式）
+      validator: function (v) {
+        if (v == null || v === '') return true;
         return /^(\+852|852)?[5-9]\d{7}$|^(\+886|886)?09\d{8}$|^09\d{8}$|^[5-9]\d{7}$/.test(v);
       },
-      message: '請輸入有效的手機號碼'
-    }
+      message: '請輸入有效的手機號碼',
+    },
   },
   email: String,
   position: String,
-  
+  /** 在職狀態（與帳號 isActive 分開） */
+  employmentStatus: {
+    type: String,
+    enum: ['在職', '離職'],
+    default: '在職',
+  },
+
   // 添加登入相關欄位
   hashedPassword: {
     type: String,
@@ -68,8 +77,8 @@ const schema = new mongoose.Schema({
   updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
 });
 
-// 添加索引
-schema.index({ phone: 1 });
+// 添加索引（電話選填：有填寫時才參與唯一性，避免多筆空值衝突）
+schema.index({ phone: 1 }, { unique: true, sparse: true });
 schema.index({ contractor: 1, removed: 1 });
 
 // 虛擬欄位：是否被鎖定

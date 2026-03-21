@@ -47,8 +47,9 @@ const getProjectEmployees = async (req, res) => {
       _id: { $in: assignedEmployeeIds },
       contractor: contractorId,
       removed: false,
-      enabled: true
-    }).select('name phone email position').sort({ name: 1 });
+      enabled: true,
+      employmentStatus: { $ne: '離職' },
+    }).select('name phone email position employmentStatus').sort({ name: 1 });
 
     return res.status(200).json({
       success: true,

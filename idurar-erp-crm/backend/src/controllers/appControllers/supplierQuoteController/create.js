@@ -7,6 +7,10 @@ const Winch = mongoose.model('Winch');
 const custom = require('@/controllers/pdfController');
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
+const {
+  applySupplierQuoteMaterialsWarehouseSync,
+  revertAppliedSupplierQuoteStockChanges,
+} = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
 
 const create = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -184,14 +188,53 @@ const create = async (req, res) => {
 
   // Creating a new document in the collection
   const result = await new Model(body).save();
+
+  // 材料及費用管理：新增 S 單時依材料從倉庫扣庫（與 WarehouseInventory 貨品名稱、倉 A–D 需一致）
+  let warehouseApplied = [];
+  try {
+    const syncRes = await applySupplierQuoteMaterialsWarehouseSync({
+      oldMaterials: [],
+      newMaterials: result.materials || [],
+      supplierQuoteId: result._id,
+      adminId: req.admin && req.admin._id,
+    });
+    warehouseApplied = syncRes.applied || [];
+  } catch (syncErr) {
+    await Model.findByIdAndDelete(result._id);
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: syncErr.message || '倉庫庫存同步失敗',
+    });
+  }
+
   const fileId = 'supplier-quote-' + result._id + '.pdf';
-  const updateResult = await Model.findOneAndUpdate(
-    { _id: result._id },
-    { pdf: fileId },
-    {
-      new: true,
+  let updateResult;
+  try {
+    updateResult = await Model.findOneAndUpdate(
+      { _id: result._id },
+      { pdf: fileId },
+      {
+        new: true,
+      }
+    ).exec();
+  } catch (pdfErr) {
+    try {
+      await revertAppliedSupplierQuoteStockChanges(
+        warehouseApplied,
+        result._id,
+        req.admin && req.admin._id
+      );
+    } catch (revertErr) {
+      console.error('S單建立後 PDF 更新失敗且庫存回滾失敗:', revertErr);
     }
-  ).exec();
+    await Model.findByIdAndDelete(result._id);
+    return res.status(500).json({
+      success: false,
+      result: null,
+      message: pdfErr.message || '建立失敗',
+    });
+  }
 
   // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
   const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;

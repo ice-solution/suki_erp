@@ -48,6 +48,9 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/check/:invoiceNumber`).get(catchErrors(controller['checkByInvoiceNumber']));
     router.route(`/${entity}/check-invoice-change`).get(catchErrors(controller['checkInvoiceNumberChange']));
     router.route(`/${entity}/export-xero-eo`).get(catchErrors(controller['exportXeroEo']));
+    router
+      .route(`/${entity}/next-used-contractor-fee-eo`)
+      .get(catchErrors(controller['peekNextUsedContractorFeeEo']));
     router.route(`/${entity}/:projectId/salary`).post(catchErrors(controller['addSalary']));
     router.route(`/${entity}/:projectId/salary/:salaryId`).patch(catchErrors(controller['updateSalary']));
     router.route(`/${entity}/:projectId/salary/:salaryId`).delete(catchErrors(controller['deleteSalary']));

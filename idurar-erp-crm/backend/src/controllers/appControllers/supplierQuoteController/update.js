@@ -7,6 +7,10 @@ const Winch = mongoose.model('Winch');
 const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
+const {
+  applySupplierQuoteMaterialsWarehouseSync,
+  revertAppliedSupplierQuoteStockChanges,
+} = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -241,16 +245,75 @@ const update = async (req, res) => {
   }
   // 先獲取現有的SupplierQuote記錄，以便檢查之前的ship和winch
   const existingQuote = await Model.findOne({ _id: req.params.id, removed: false }).exec();
-  
+  if (!existingQuote) {
+    return res.status(404).json({
+      success: false,
+      result: null,
+      message: 'Supplier Quote not found',
+    });
+  }
+
+  // 材料及費用管理：依舊→新差異同步倉庫（先扣/退庫存，再寫入 S 單；失敗則不更新 S 單）
+  let warehouseApplied = [];
+  try {
+    const syncRes = await applySupplierQuoteMaterialsWarehouseSync({
+      oldMaterials: existingQuote.materials || [],
+      newMaterials: materials,
+      supplierQuoteId: req.params.id,
+      adminId: req.admin && req.admin._id,
+    });
+    warehouseApplied = syncRes.applied || [];
+  } catch (syncErr) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: syncErr.message || '倉庫庫存同步失敗',
+    });
+  }
+
   const now = new Date();
   body.modified_at = now;
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
 
-  // Find document by id and updates with the required fields
-  const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {
-    new: true, // return the new result instead of the old one
-  }).exec();
+  let result;
+  try {
+    result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {
+      new: true,
+    }).exec();
+  } catch (updateErr) {
+    try {
+      await revertAppliedSupplierQuoteStockChanges(
+        warehouseApplied,
+        req.params.id,
+        req.admin && req.admin._id
+      );
+    } catch (revertErr) {
+      console.error('S單更新失敗且庫存回滾失敗:', revertErr);
+    }
+    return res.status(500).json({
+      success: false,
+      result: null,
+      message: updateErr.message || '更新失敗',
+    });
+  }
+
+  if (!result) {
+    try {
+      await revertAppliedSupplierQuoteStockChanges(
+        warehouseApplied,
+        req.params.id,
+        req.admin && req.admin._id
+      );
+    } catch (revertErr) {
+      console.error('S單未找到且庫存回滾失敗:', revertErr);
+    }
+    return res.status(404).json({
+      success: false,
+      result: null,
+      message: 'Supplier Quote not found',
+    });
+  }
 
   // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
   const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
