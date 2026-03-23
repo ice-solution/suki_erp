@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('SupplierQuote');
 const Ship = mongoose.model('Ship');
 const Winch = mongoose.model('Winch');
+const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 
 const custom = require('@/controllers/pdfController');
 const { increaseBySettingKey } = require('@/middlewares/settings');
@@ -239,23 +240,54 @@ const create = async (req, res) => {
   // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
   const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
   const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
+  const quoteNumber = result.invoiceNumber || '';
 
   if (body.ship) {
-    await Ship.findByIdAndUpdate(body.ship, {
+    const shipId = typeof body.ship === 'object' ? body.ship._id : body.ship;
+    await Ship.findByIdAndUpdate(shipId, {
       status: 'in_use',
       supplierNumber: supplierQuoteNumber,
       expiredDate: expiredDate,
       updated: new Date()
     });
+
+    // 記錄：這次 S單綁定到船隻
+    try {
+      await SupplierQuoteAssetBinding.create({
+        assetType: 'ship',
+        ship: shipId,
+        supplierQuote: result._id,
+        supplierQuoteNumber,
+        quoteNumber,
+        createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
+      });
+    } catch (bindingErr) {
+      console.error('新增 SupplierQuoteAssetBinding（ship）失敗:', bindingErr);
+    }
   }
 
   if (body.winch) {
-    await Winch.findByIdAndUpdate(body.winch, {
+    const winchId = typeof body.winch === 'object' ? body.winch._id : body.winch;
+    await Winch.findByIdAndUpdate(winchId, {
       status: 'in_use',
       supplierNumber: supplierQuoteNumber,
       expiredDate: expiredDate,
       updated: new Date()
     });
+
+    // 記錄：這次 S單綁定到爬攬器
+    try {
+      await SupplierQuoteAssetBinding.create({
+        assetType: 'winch',
+        winch: winchId,
+        supplierQuote: result._id,
+        supplierQuoteNumber,
+        quoteNumber,
+        createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
+      });
+    } catch (bindingErr) {
+      console.error('新增 SupplierQuoteAssetBinding（winch）失敗:', bindingErr);
+    }
   }
 
   increaseBySettingKey({

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Tag } from 'antd';
+import { Modal, Table, Tag } from 'antd';
 import CrudModule from '@/modules/CrudModule/CrudModule';
 import { fields } from './WinchList/config';
 import WinchForm from './WinchList/WinchForm';
@@ -14,6 +14,34 @@ export default function WinchList() {
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
   const entity = 'winch';
+
+  const [bindingModalOpen, setBindingModalOpen] = useState(false);
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [bindingRows, setBindingRows] = useState([]);
+
+  const openBindingHistory = async (winchId) => {
+    if (!winchId) return;
+    setBindingModalOpen(true);
+    setBindingLoading(true);
+    setBindingRows([]);
+    try {
+      const res = await request.get({
+        entity: 'winch/bindings',
+        params: { winchId },
+      });
+      if (res?.success) {
+        setBindingRows(res.result || []);
+      } else {
+        setBindingRows([]);
+      }
+    } catch (err) {
+      console.error('查詢 winch bindings 失敗:', err);
+      setBindingRows([]);
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
   const searchConfig = {
     displayLabels: ['serialNumber'],
     searchFields: 'serialNumber',
@@ -66,7 +94,19 @@ export default function WinchList() {
       title: translate('serialNumber') || '序列號',
       dataIndex: 'serialNumber',
       key: 'serialNumber',
-      render: (text) => text || '-',
+      render: (text, record) => (
+        <span
+          style={{ color: '#1890ff', cursor: 'pointer' }}
+          onClick={() => openBindingHistory(record?._id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') openBindingHistory(record?._id);
+          }}
+        >
+          {text || '-'}
+        </span>
+      ),
     });
 
     // Status列
@@ -199,11 +239,49 @@ export default function WinchList() {
     deleteModalLabels,
   };
   return (
-    <CrudModule
-      createForm={<WinchForm isUpdateForm={false} />}
-      updateForm={<WinchForm isUpdateForm={true} />}
-      config={config}
-    />
+    <>
+      <CrudModule
+        createForm={<WinchForm isUpdateForm={false} />}
+        updateForm={<WinchForm isUpdateForm={true} />}
+        config={config}
+      />
+
+      <Modal
+        title="S單綁定歷史"
+        open={bindingModalOpen}
+        onCancel={() => setBindingModalOpen(false)}
+        footer={null}
+        width={700}
+      >
+        <Table
+          size="small"
+          rowKey={(row) => row.bindingId || `${row.supplierQuoteId || 'na'}-${row.created || ''}`}
+          loading={bindingLoading}
+          pagination={false}
+          columns={[
+            {
+              title: 'Supplier Quote Number',
+              dataIndex: 'supplierQuoteNumber',
+              key: 'supplierQuoteNumber',
+              render: (val, row) =>
+                row?.supplierQuoteId ? (
+                  <Link to={`/supplierquote/read/${row.supplierQuoteId}`}>{val}</Link>
+                ) : (
+                  val || '-'
+                ),
+            },
+            { title: 'Quote Number', dataIndex: 'quoteNumber', key: 'quoteNumber', render: (v) => v || '-' },
+            {
+              title: 'Created',
+              dataIndex: 'created',
+              key: 'created',
+              render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
+            },
+          ]}
+          dataSource={bindingRows}
+        />
+      </Modal>
+    </>
   );
 }
 

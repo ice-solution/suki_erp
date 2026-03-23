@@ -62,6 +62,14 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/report`).get(catchErrors(controller['getProjectReport']));
   }
 
+  if (entity === 'ship') {
+    router.route(`/${entity}/bindings`).get(catchErrors(controller['bindings']));
+  }
+
+  if (entity === 'winch') {
+    router.route(`/${entity}/bindings`).get(catchErrors(controller['bindings']));
+  }
+
   if (entity === 'workprogress') {
     router.route(`/${entity}/upload-image`).post(catchErrors(controller['uploadImage']));
   }

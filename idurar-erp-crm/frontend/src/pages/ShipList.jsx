@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Tag } from 'antd';
+import { Modal, Table, Tag } from 'antd';
 import CrudModule from '@/modules/CrudModule/CrudModule';
 import { fields } from './ShipList/config';
 import ShipForm from './ShipList/ShipForm';
@@ -14,6 +14,34 @@ export default function ShipList() {
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
   const entity = 'ship';
+
+  const [bindingModalOpen, setBindingModalOpen] = useState(false);
+  const [bindingLoading, setBindingLoading] = useState(false);
+  const [bindingRows, setBindingRows] = useState([]);
+
+  const openBindingHistory = async (shipId) => {
+    if (!shipId) return;
+    setBindingModalOpen(true);
+    setBindingLoading(true);
+    setBindingRows([]);
+    try {
+      const res = await request.get({
+        entity: 'ship/bindings',
+        params: { shipId },
+      });
+      if (res?.success) {
+        setBindingRows(res.result || []);
+      } else {
+        setBindingRows([]);
+      }
+    } catch (err) {
+      console.error('查詢 ship bindings 失敗:', err);
+      setBindingRows([]);
+    } finally {
+      setBindingLoading(false);
+    }
+  };
+
   const searchConfig = {
     displayLabels: ['registrationNumber'],
     searchFields: 'registrationNumber',
@@ -66,7 +94,19 @@ export default function ShipList() {
       title: translate('registrationNumber') || '登記號碼',
       dataIndex: 'registrationNumber',
       key: 'registrationNumber',
-      render: (text) => text || '-',
+      render: (text, record) => (
+        <span
+          style={{ color: '#1890ff', cursor: 'pointer' }}
+          onClick={() => openBindingHistory(record?._id)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') openBindingHistory(record?._id);
+          }}
+        >
+          {text || '-'}
+        </span>
+      ),
     });
 
     // Status列
@@ -199,11 +239,49 @@ export default function ShipList() {
     deleteModalLabels,
   };
   return (
-    <CrudModule
-      createForm={<ShipForm isUpdateForm={false} />}
-      updateForm={<ShipForm isUpdateForm={true} />}
-      config={config}
-    />
+    <>
+      <CrudModule
+        createForm={<ShipForm isUpdateForm={false} />}
+        updateForm={<ShipForm isUpdateForm={true} />}
+        config={config}
+      />
+
+      <Modal
+        title="S單綁定歷史"
+        open={bindingModalOpen}
+        onCancel={() => setBindingModalOpen(false)}
+        footer={null}
+        width={700}
+      >
+        <Table
+          size="small"
+          rowKey={(row) => row.bindingId || `${row.supplierQuoteId || 'na'}-${row.created || ''}`}
+          loading={bindingLoading}
+          pagination={false}
+          columns={[
+            {
+              title: 'Supplier Quote Number',
+              dataIndex: 'supplierQuoteNumber',
+              key: 'supplierQuoteNumber',
+              render: (val, row) =>
+                row?.supplierQuoteId ? (
+                  <Link to={`/supplierquote/read/${row.supplierQuoteId}`}>{val}</Link>
+                ) : (
+                  val || '-'
+                ),
+            },
+            { title: 'Quote Number', dataIndex: 'quoteNumber', key: 'quoteNumber', render: (v) => v || '-' },
+            {
+              title: 'Created',
+              dataIndex: 'created',
+              key: 'created',
+              render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
+            },
+          ]}
+          dataSource={bindingRows}
+        />
+      </Modal>
+    </>
   );
 }
 
