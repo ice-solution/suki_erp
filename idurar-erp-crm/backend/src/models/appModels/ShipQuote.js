@@ -23,8 +23,8 @@ const shipQuoteSchema = new mongoose.Schema({
   },
   numberPrefix: {
     type: String,
-    enum: ['SML', 'QU', 'XX'],
-    default: 'QU',
+    enum: ['SML'],
+    default: 'SML',
     required: true,
   },
   number: {

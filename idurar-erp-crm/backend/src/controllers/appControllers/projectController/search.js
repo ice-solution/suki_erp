@@ -27,7 +27,19 @@ const search = async (req, res) => {
       .where({ removed: false })
       .sort({ invoiceNumber: 1 })
       .limit(10)
-      .populate('suppliers', 'name');
+      .populate('suppliers', 'name')
+      .populate({
+        path: 'quotations',
+        select: 'numberPrefix number year total status isCompleted',
+      })
+      .populate({
+        path: 'invoices',
+        select: 'invoiceNumber numberPrefix number year total status',
+      })
+      .populate({
+        path: 'shipQuotations',
+        select: 'numberPrefix number year total status isCompleted',
+      });
 
     if (results.length >= 1) {
       return res.status(200).json({

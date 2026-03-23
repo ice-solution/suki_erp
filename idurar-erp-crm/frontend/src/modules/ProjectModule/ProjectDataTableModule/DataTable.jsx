@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   EyeOutlined,
   EditOutlined,
@@ -7,10 +7,9 @@ import {
   PlusOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { Table, Button, Space } from 'antd';
+import { Table, Button, Space, Input, message } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 
-import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import { useSelector, useDispatch } from 'react-redux';
 import useLanguage from '@/locale/useLanguage';
 import { erp } from '@/redux/erp/actions';
@@ -18,6 +17,7 @@ import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
 import { generate as uniqueId } from 'shortid';
 import { useNavigate } from 'react-router-dom';
+import { request } from '@/request';
 
 function AddNewItem({ config }) {
   const navigate = useNavigate();
@@ -125,9 +125,40 @@ export default function DataTable({ config, extra = [] }) {
     };
   }, []);
 
-  const filterTable = (value) => {
-    const options = { equal: value, filter: searchConfig?.entity };
-    dispatch(erp.list({ entity, options }));
+  // Project list：支援真正的文字搜尋（後端 project/search）
+  const [searchKeyword, setSearchKeyword] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  const searchFields = useMemo(() => {
+    return searchConfig?.searchFields || 'name';
+  }, [searchConfig]);
+
+  const handleSearch = async (keyword) => {
+    const q = (keyword || '').trim();
+    setSearchKeyword(keyword);
+
+    if (!q) {
+      setSearching(false);
+      setSearchResults([]);
+      dispatcher();
+      return;
+    }
+
+    setSearching(true);
+    try {
+      const res = await request.search({
+        entity: searchConfig?.entity || entity,
+        options: { q, fields: searchFields },
+      });
+      setSearchResults((res && res.success && Array.isArray(res.result) ? res.result : []) || []);
+    } catch (err) {
+      console.error('Project list search failed:', err);
+      message.error('搜尋失敗');
+      setSearchResults([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
   return (
@@ -138,13 +169,26 @@ export default function DataTable({ config, extra = [] }) {
         onBack={() => window.history.back()}
         backIcon={<ArrowLeftOutlined />}
         extra={[
-          <AutoCompleteAsync
-            key={`${uniqueId()}`}
-            entity={searchConfig?.entity}
-            displayLabels={['name']}
-            searchFields={'name'}
-            onChange={filterTable}
-          />,
+          searchConfig ? (
+            <Input.Search
+              key={`${uniqueId()}`}
+              allowClear
+              placeholder={translate('Search')}
+              style={{ minWidth: 240 }}
+              value={searchKeyword}
+              loading={searching}
+              onChange={(e) => {
+                const v = e.target.value;
+                setSearchKeyword(v);
+                if (!v.trim()) {
+                  setSearchResults([]);
+                  dispatcher();
+                }
+              }}
+              onSearch={(value) => handleSearch(value)}
+              enterButton
+            />
+          ) : null,
           <Button onClick={handelDataTableLoad} key={`${uniqueId()}`} icon={<RedoOutlined />}>
             {translate('Refresh')}
           </Button>,
@@ -159,10 +203,10 @@ export default function DataTable({ config, extra = [] }) {
       <Table
         columns={dataTableColumns}
         rowKey={(item) => item._id}
-        dataSource={Array.isArray(dataSource) ? dataSource : []}
-        pagination={pagination || {}}
+        dataSource={Array.isArray(searchResults) && searchKeyword.trim() ? searchResults : Array.isArray(dataSource) ? dataSource : []}
+        pagination={searchKeyword.trim() ? false : pagination || {}}
         loading={listIsLoading}
-        onChange={handelDataTableLoad}
+        onChange={searchKeyword.trim() ? undefined : handelDataTableLoad}
         scroll={{ x: true }}
       />
     </>

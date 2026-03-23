@@ -25,6 +25,7 @@ export default function ProjectForm({ current = null }) {
   const [contractorsLoading, setContractorsLoading] = useState(false);
   const [invoiceNumberChangeWarning, setInvoiceNumberChangeWarning] = useState(null);
   const [originalInvoiceNumber, setOriginalInvoiceNumber] = useState('');
+  const [contractorNameOptions, setContractorNameOptions] = useState([]);
 
   // 檢查 Invoice Number 變更
   const checkInvoiceNumberChange = async (newInvoiceNumber) => {
@@ -58,27 +59,40 @@ export default function ProjectForm({ current = null }) {
 
     setSearchLoading(true);
     try {
-      // 只從 Quote 中搜索 Quote Numbers（後端支援子字串匹配，如 400 可匹配 QU-400、SML-4000）
-      const quoteResponse = await request.search({ 
-        entity: 'quote', 
-        options: { q: trimmed, fields: 'numberPrefix,number,status' } 
-      });
+      const [quoteResponse, shipQuoteResponse] = await Promise.all([
+        request.search({
+          entity: 'quote',
+          options: { q: trimmed, fields: 'numberPrefix,number,status' },
+        }),
+        request.search({
+          entity: 'shipquote',
+          options: { q: trimmed, fields: 'numberPrefix,number,isCompleted,address,poNumber,costPrice' },
+        }),
+      ]);
 
       const quoteNumbers = new Set();
-      
-      // 只顯示 status = accepted 的 Quote
-      const acceptedQuotes = quoteResponse?.result?.filter(q => q.status === 'accepted') || [];
-      acceptedQuotes.forEach(quote => {
+
+      // Quote：只顯示 status = accepted
+      const acceptedQuotes = quoteResponse?.result?.filter((q) => q.status === 'accepted') || [];
+      acceptedQuotes.forEach((quote) => {
         if (quote.numberPrefix && quote.number) {
-          const quoteNumber = `${quote.numberPrefix}-${quote.number}`;
-          quoteNumbers.add(quoteNumber);
+          quoteNumbers.add(`${quote.numberPrefix}-${quote.number}`);
         } else if (quote.invoiceNumber) {
           quoteNumbers.add(quote.invoiceNumber);
         }
       });
 
-      // 轉換為AutoComplete選項格式
-      const options = Array.from(quoteNumbers).map(quoteNumber => ({
+      // 吊船 ShipQuote：只顯示 isCompleted = true
+      const acceptedShipQuotes = shipQuoteResponse?.result?.filter((sq) => sq.isCompleted === true) || [];
+      acceptedShipQuotes.forEach((sq) => {
+        if (sq.numberPrefix && sq.number) {
+          quoteNumbers.add(`${sq.numberPrefix}-${sq.number}`);
+        } else if (sq.invoiceNumber) {
+          quoteNumbers.add(sq.invoiceNumber);
+        }
+      });
+
+      const options = Array.from(quoteNumbers).map((quoteNumber) => ({
         value: quoteNumber,
         label: quoteNumber,
       }));
@@ -92,7 +106,7 @@ export default function ProjectForm({ current = null }) {
     }
   };
 
-  // 預覽 Quote Number 相關資料（只從 Quote 搜索）
+  // 預覽 Quote Number 相關資料（Quote + 吊船 ShipQuote）
   const previewInvoiceNumber = async (quoteNum) => {
     if (!quoteNum) {
       setPreviewData(null);
@@ -101,23 +115,29 @@ export default function ProjectForm({ current = null }) {
 
     setLoading(true);
     try {
-      // 只從 Quote 中查找相關資料（使用 Quote Type 和 number 搜索）
-      const quotations = await request.search({ 
-        entity: 'quote', 
-        options: { q: quoteNum, fields: 'numberPrefix,number,status,address,poNumber' } 
-      });
-      
-      // 從 Quote 的 invoiceNumber 查找相關的 supplier quotes 和 invoices
-      const [supplierQuotations, invoices] = await Promise.all([
-        request.search({ 
-          entity: 'supplierquote', 
-          options: { q: quoteNum, fields: 'invoiceNumber' } 
+      const [quotationsRes, shipQuotationsRes, supplierQuotationsRes, invoicesRes] = await Promise.all([
+        request.search({
+          entity: 'quote',
+          options: { q: quoteNum, fields: 'numberPrefix,number,status,address,poNumber' },
         }),
-        request.search({ 
-          entity: 'invoice', 
-          options: { q: quoteNum, fields: 'invoiceNumber' } 
-        })
+        request.search({
+          entity: 'shipquote',
+          options: { q: quoteNum, fields: 'numberPrefix,number,isCompleted,address,poNumber,costPrice' },
+        }),
+        request.search({
+          entity: 'supplierquote',
+          options: { q: quoteNum, fields: 'invoiceNumber' },
+        }),
+        request.search({
+          entity: 'invoice',
+          options: { q: quoteNum, fields: 'invoiceNumber' },
+        }),
       ]);
+
+      const quotations = quotationsRes;
+      const shipQuotations = shipQuotationsRes;
+      const supplierQuotations = supplierQuotationsRes;
+      const invoices = invoicesRes;
 
       // 計算總額
       let totalCost = 0;
@@ -131,6 +151,14 @@ export default function ProjectForm({ current = null }) {
           return recordQuoteNumber === quoteNum;
         }
         // 向後兼容：如果沒有 numberPrefix 和 number，使用 invoiceNumber
+        return record.invoiceNumber === quoteNum;
+      };
+
+      const matchesShipQuoteNumber = (record) => {
+        if (record.numberPrefix && record.number) {
+          const recordQuoteNumber = `${record.numberPrefix}-${record.number}`;
+          return recordQuoteNumber === quoteNum;
+        }
         return record.invoiceNumber === quoteNum;
       };
 
@@ -148,6 +176,22 @@ export default function ProjectForm({ current = null }) {
           if (quote.clients) {
             quote.clients.forEach(client => {
               if (client.name) suppliers.add(client.name);
+            });
+          }
+        });
+      }
+
+      // ShipQuote：加入成本價計算（需要 isCompleted=true）
+      if (shipQuotations?.result) {
+        shipQuotations.result.forEach((sq) => {
+          if (!sq) return;
+          if (sq.isCompleted !== true) return;
+          if (matchesShipQuoteNumber(sq)) {
+            if (sq.costPrice) totalCost = calculate.add(totalCost, sq.costPrice);
+          }
+          if (sq.clients) {
+            sq.clients.forEach((client) => {
+              if (client?.name) suppliers.add(client.name);
             });
           }
         });
@@ -189,17 +233,18 @@ export default function ProjectForm({ current = null }) {
       
       setPreviewData(previewData);
 
-      // 用第一個匹配的 Quote 自動填入：Project name = Quote 的 Project Address，P.O Number = Quote 的 P.O Number
-      const matchedQuotes = quotations?.result?.filter(q => matchesQuoteNumber(q)) || [];
-      const firstQuote = matchedQuotes[0];
+      // 用第一個匹配的（Quote 或 ShipQuote）自動填入：Project name / P.O Number
+      const matchedQuotes = quotations?.result?.filter((q) => matchesQuoteNumber(q) && q.status === 'accepted') || [];
+      const matchedShipQuotes =
+        shipQuotations?.result?.filter((sq) => matchesShipQuoteNumber(sq) && sq.isCompleted === true) || [];
+
+      const firstQuote = matchedQuotes[0] || matchedShipQuotes[0];
       const updateValues = {};
       if (firstQuote) {
-        if (firstQuote.address != null && firstQuote.address !== '') {
-          updateValues.name = firstQuote.address;
-        }
-        if (firstQuote.poNumber != null && firstQuote.poNumber !== '') {
-          updateValues.poNumber = firstQuote.poNumber;
-        }
+        const addr = firstQuote.address != null ? firstQuote.address : '';
+        if (addr !== '') updateValues.name = addr;
+        const po = firstQuote.poNumber != null ? firstQuote.poNumber : '';
+        if (po !== '') updateValues.poNumber = po;
       }
       if (Object.keys(updateValues).length > 0) {
         form.setFieldsValue(updateValues);
@@ -234,13 +279,24 @@ export default function ProjectForm({ current = null }) {
         }));
         console.log('✅ Project: 承包商選項:', contractorOptions);
         setContractors(contractorOptions);
+
+        // 判頭費選擇用：存到 Project.contractorFees[].projectName 需要是承辦商 name（用於 exportXeroEo 的 accountCode 對照）
+        const names = contractorData
+          .filter((c) => c && c.name)
+          .map((c) => ({
+            value: c.name,
+            label: c.accountCode ? `${c.name} (${c.accountCode})` : c.name,
+          }));
+        setContractorNameOptions(names);
       } else {
         console.warn('⚠️ Project: 承包商數據不是數組格式:', contractorData);
         setContractors([]);
+        setContractorNameOptions([]);
       }
     } catch (error) {
       console.error('❌ Project: 獲取承包商列表失敗:', error);
       setContractors([]);
+      setContractorNameOptions([]);
     } finally {
       setContractorsLoading(false);
     }
@@ -629,10 +685,29 @@ export default function ProjectForm({ current = null }) {
                               <Form.Item
                                 {...restField}
                                 name={[name, 'projectName']}
-                                rules={[{ required: true, message: '請輸入工程名' }]}
+                                rules={[{ required: true, message: '請選擇承辦商' }]}
                                 style={{ marginBottom: 0 }}
                               >
-                                <Input placeholder="工程名" />
+                                {(() => {
+                                  const currentVal =
+                                    form?.getFieldValue?.(['contractorFees', name, 'projectName']) || '';
+                                  const hasCurrentOption = contractorNameOptions.some((o) => o.value === currentVal);
+                                  const safeOptions = hasCurrentOption || !currentVal
+                                    ? contractorNameOptions
+                                    : [
+                                        ...contractorNameOptions,
+                                        { value: currentVal, label: currentVal },
+                                      ];
+
+                                  return (
+                                    <Select
+                                      placeholder="選擇承辦商"
+                                      options={safeOptions}
+                                      loading={contractorsLoading}
+                                      allowClear
+                                    />
+                                  );
+                                })()}
                               </Form.Item>
                             </Col>
                             <Col span={10}>

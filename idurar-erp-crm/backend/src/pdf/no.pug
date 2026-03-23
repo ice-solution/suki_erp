@@ -73,7 +73,10 @@ html
             if siteAddress
               .header-info-row 地盤地址 : #{siteAddress}
           td.info-right
-            .header-info-row Invoice NO :
+            .header-info-row
+              | Invoice NO :
+              // 用透明佔位，讓右對齊時「Invoice NO :」的起點對齊「報價編號 :」的標籤
+              span(style="visibility:hidden;") #{invoiceNo}
             .header-info-row 報價編號 : #{quoteNo}
             .header-info-row Your P/O NO : #{poNumber}
 

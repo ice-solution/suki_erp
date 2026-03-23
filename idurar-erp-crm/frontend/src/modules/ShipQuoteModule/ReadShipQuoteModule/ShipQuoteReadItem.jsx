@@ -136,7 +136,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
       content: (
         <div>
           <p>您確定要將此Quote轉換成Invoice嗎？</p>
-          <p><strong>Quote編號：</strong>{`${currentErp.numberPrefix || 'QU'}-${currentErp.number}`}</p>
+          <p><strong>Quote編號：</strong>{`${currentErp.numberPrefix || 'SML'}-${currentErp.number}`}</p>
           <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
           <p style={{ color: '#ff4d4f', marginTop: 12 }}>⚠️ 轉換後將創建新的Invoice，此操作不可撤銷</p>
         </div>

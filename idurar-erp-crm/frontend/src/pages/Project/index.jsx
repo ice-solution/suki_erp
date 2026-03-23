@@ -14,16 +14,43 @@ export default function Project() {
 
   const searchConfig = {
     entity: 'project',
-    displayLabels: ['invoiceNumber', 'description'],
-    searchFields: 'invoiceNumber,description',
+    // Quote number（目前 Project.invoiceNumber）+ Project name
+    displayLabels: ['invoiceNumber', 'name'],
+    searchFields: 'invoiceNumber,name',
   };
-  const deleteModalLabels = ['invoiceNumber', 'description'];
+  const deleteModalLabels = ['invoiceNumber', 'name'];
   
   const dataTableColumns = [
     {
-      title: 'Invoice Number',
-      dataIndex: 'invoiceNumber',
-      key: 'invoiceNumber',
+      title: 'Quote Number',
+      dataIndex: 'invoices',
+      key: 'quoteNumber',
+      render: (_, record) => {
+        const acceptedShip = (record?.shipQuotations || []).find((q) => q?.isCompleted === true);
+        if (acceptedShip) {
+          if (acceptedShip.invoiceNumber) return acceptedShip.invoiceNumber;
+          if (acceptedShip.numberPrefix && acceptedShip.number) {
+            return `${acceptedShip.numberPrefix}-${acceptedShip.number}`;
+          }
+        }
+
+        const acceptedQuotation = (record?.quotations || []).find((q) => q?.status === 'accepted');
+        if (acceptedQuotation) {
+          if (acceptedQuotation.invoiceNumber) return acceptedQuotation.invoiceNumber;
+          if (acceptedQuotation.numberPrefix && acceptedQuotation.number) {
+            return `${acceptedQuotation.numberPrefix}-${acceptedQuotation.number}`;
+          }
+        }
+
+        // Project.invoiceNumber 在此頁面實際上也存的是 Quote Number
+        return record?.invoiceNumber || '-';
+      },
+    },
+    {
+      title: translate('Project Name'),
+      dataIndex: 'name',
+      key: 'name',
+      render: (text) => text || '-',
     },
     {
       title: translate('Description'),

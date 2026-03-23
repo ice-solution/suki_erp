@@ -24,7 +24,7 @@ export default function ShipQuote() {
       width: 120,
       ellipsis: false,
       render: (number, record) => {
-        const quoteType = record.numberPrefix || 'QU';
+        const quoteType = record.numberPrefix || 'SML';
         return `${quoteType}-${number}`;
       },
     },

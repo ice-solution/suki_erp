@@ -63,8 +63,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const poNumbers = Form.useWatch('poNumbers', form) || [];
-  const quoteTypeValue = Form.useWatch('numberPrefix', form);
-  const numberValue = Form.useWatch('number', form);
+  // 吊船報價的 Quote Type 固定為 SML（移除不需要的 QU/XX）
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 
@@ -639,7 +638,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           <Form.Item
             label="Quote Type"
             name="numberPrefix"
-            initialValue="QU"
+            initialValue="SML"
             rules={[
               {
                 required: true,
@@ -649,8 +648,6 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             <Select
               options={[
                 { value: 'SML', label: 'SML' },
-                { value: 'QU', label: 'QU' },
-                { value: 'XX', label: 'XX' },
               ]}
             />
           </Form.Item>

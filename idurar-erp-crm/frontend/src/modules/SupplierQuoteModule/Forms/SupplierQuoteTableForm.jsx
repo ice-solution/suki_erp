@@ -567,6 +567,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           shipType: shipType,
           ship: currentShip ? (currentShip._id || currentShip) : null,
           winch: currentWinch ? (currentWinch._id || currentWinch) : null,
+          renewalQuoteNumber: current?.renewalQuoteNumber,
           subTotal: subVal,
           total: totalVal,
         });
@@ -1264,8 +1265,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
         </Col>
+      </Row>
 
-        <Col className="gutter-row" span={5}>
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={8}>
           <Form.Item
             label={translate('Type')}
             name="type"
@@ -1285,10 +1288,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             />
           </Form.Item>
         </Col>
-      </Row>
-      
-      <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={6}>
+
+        <Col className="gutter-row" span={8}>
           <Form.Item
             label={translate('status')}
             name="status"
@@ -1310,34 +1311,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            name="date"
-            label={translate('Date')}
-            rules={[
-              {
-                required: true,
-                type: 'object',
-              },
-            ]}
-            initialValue={dayjs()}
-          >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            name="expiredDate"
-            label={translate('Expire Date')}
-            rules={[{ required: false }]}
-          >
-            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('Expire Date') + '（選填）'} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
+
+        <Col className="gutter-row" span={8}>
           {selectedType === '吊船' ? (
-            <Form.Item 
-              label={translate('Ship Type')} 
+            <Form.Item
+              label={translate('Ship Type')}
               name="shipType"
               rules={[{ required: selectedType === '吊船', message: 'Please select ship type' }]}
             >
@@ -1351,6 +1329,101 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             </Form.Item>
           ) : null}
         </Col>
+      </Row>
+
+      <Row gutter={[12, 0]}>
+        {selectedType === '吊船' ? (
+          <>
+            <Col className="gutter-row" span={6}>
+              <Form.Item
+                name="date"
+                label="上單日期"
+                rules={[
+                  {
+                    required: true,
+                    type: 'object',
+                  },
+                ]}
+                initialValue={current?.date ? dayjs(current.date) : dayjs()}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format={dateFormat}
+                  onChange={(value) => {
+                    // 確保「上單日期」與「開單日期」顯示相同
+                    form.setFieldsValue({ openDate: value });
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col className="gutter-row" span={6}>
+              <Form.Item
+                name="openDate"
+                label="開單日期"
+                rules={[{ required: false }]}
+                initialValue={current?.date ? dayjs(current.date) : undefined}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format={dateFormat}
+                  onChange={(value) => {
+                    // 允許使用者直接改「開單日期」，同步更新到「上單日期」
+                    form.setFieldsValue({ date: value, openDate: value });
+                  }}
+                />
+              </Form.Item>
+            </Col>
+            <Col className="gutter-row" span={6}>
+              <Form.Item
+                name="expiredDate"
+                label="租賃到期日"
+                rules={[{ required: false }]}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format={dateFormat}
+                  placeholder="租賃到期日（選填）"
+                />
+              </Form.Item>
+            </Col>
+            <Col className="gutter-row" span={6}>
+              <Form.Item name="renewalQuoteNumber" label="續租報價編號" rules={[{ required: false }]}>
+                <Input placeholder="續租報價編號" />
+              </Form.Item>
+            </Col>
+          </>
+        ) : (
+          <>
+            <Col className="gutter-row" span={12}>
+              <Form.Item
+                name="date"
+                label={translate('Date')}
+                rules={[
+                  {
+                    required: true,
+                    type: 'object',
+                  },
+                ]}
+                initialValue={dayjs()}
+              >
+                <DatePicker style={{ width: '100%' }} format={dateFormat} />
+              </Form.Item>
+            </Col>
+            <Col className="gutter-row" span={12}>
+              <Form.Item
+                name="expiredDate"
+                label={translate('Expire Date')}
+                rules={[{ required: false }]}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format={dateFormat}
+                  placeholder={translate('Expire Date') + '（選填）'}
+                />
+              </Form.Item>
+            </Col>
+          </>
+        )}
       </Row>
       
       <Row gutter={[12, 0]}>

@@ -19,19 +19,21 @@ const list = async (req, res) => {
     .populate('contractors', 'name')
     .populate({
       path: 'quotations',
-      select: 'number year total status'
+      select: 'numberPrefix number year total status isCompleted'
     })
     .populate({
       path: 'supplierQuotations', 
-      select: 'number year total status'
+      select: 'numberPrefix number year total status isCompleted'
     })
     .populate({
       path: 'shipQuotations', 
-      select: 'number year total status'
+      select: 'numberPrefix number year total status isCompleted'
     })
     .populate({
       path: 'invoices',
-      select: 'number year total status'
+      // 需要 invoiceNumber 用於 Project list 第一欄顯示
+      // numberPrefix/number 也一併取回，以防 invoiceNumber 欄位未填
+      select: 'invoiceNumber numberPrefix number year total status'
     });
 
   // Counting the total documents

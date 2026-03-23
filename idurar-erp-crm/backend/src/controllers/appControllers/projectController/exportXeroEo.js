@@ -6,7 +6,7 @@ const Contractor = mongoose.model('Contractor');
 /**
  * GET /project/export-xero-eo?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
  *
- * 依 Project.startDate 篩選日期範圍，並把每個 Project 的 usedContractorFees 轉成
+ * 依 usedContractorFees[].date 篩選日期範圍，並把每個 Project 的 usedContractorFees 轉成
  * Xero EO（Bill）CSV rows 格式所需資料。
  */
 const exportXeroEo = async (req, res) => {
@@ -35,11 +35,11 @@ const exportXeroEo = async (req, res) => {
     // 當日結束時間
     to.setHours(23, 59, 59, 999);
 
+    // 先不在 DB 層面用 startDate 篩專案，避免專案起始日不在範圍內但實際 EO 日期在範圍內的情況
     const projects = await Project.find({
       removed: false,
-      startDate: { $gte: from, $lte: to },
     })
-      .select('name startDate usedContractorFees')
+      .select('name usedContractorFees')
       .lean()
       .exec();
 
@@ -47,6 +47,9 @@ const exportXeroEo = async (req, res) => {
     const contractorNames = new Set();
     projects.forEach((p) => {
       (p.usedContractorFees || []).forEach((fee) => {
+        const feeDate = fee?.date ? new Date(fee.date) : null;
+        if (!fee?.eoNumber) return;
+        if (!feeDate || feeDate < from || feeDate > to) return;
         if (fee?.projectName) contractorNames.add(fee.projectName);
       });
     });
@@ -68,8 +71,13 @@ const exportXeroEo = async (req, res) => {
 
     const result = projects.map((p) => {
       const usedContractorFees = (p.usedContractorFees || [])
-        // 只匯出有 EO number 的記錄
-        .filter((fee) => fee?.eoNumber)
+        // 只匯出有 EO number 且 fee.date 在指定範圍內的記錄
+        .filter((fee) => {
+          if (!fee?.eoNumber) return false;
+          const feeDate = fee?.date ? new Date(fee.date) : null;
+          if (!feeDate) return false;
+          return feeDate >= from && feeDate <= to;
+        })
         .map((fee) => ({
           eoNumber: fee.eoNumber,
           date: fee.date,
