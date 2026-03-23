@@ -1345,7 +1345,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 placeholder="選擇類型"
                 options={[
                   { value: '續租', label: '續租' },
-                  { value: '租貨', label: '租貨' },
+                  { value: '租賃', label: '租賃' },
                 ]}
               />
             </Form.Item>

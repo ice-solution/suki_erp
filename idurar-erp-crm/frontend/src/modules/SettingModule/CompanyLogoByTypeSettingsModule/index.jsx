@@ -11,7 +11,7 @@ const LOGO_OPTIONS = [
   { key: 'company_logo', label: '預設 / 通用', desc: 'Invoice、Quote 等未指定類型時使用' },
   { key: 'company_logo_no', label: '永順 (NO)', desc: 'S單 類型 NO' },
   { key: 'company_logo_po', label: '永順 (PO)', desc: 'S單 類型 PO' },
-  { key: 'company_logo_s', label: '超越 (S)', desc: 'S單 類型 S、Ship Quote 租貨' },
+  { key: 'company_logo_s', label: '超越 (S)', desc: 'S單 類型 S、Ship Quote 租賃' },
   { key: 'company_logo_swp', label: '超越 (SWP)', desc: 'S單 類型 SWP' },
   { key: 'company_logo_e', label: '廠用 (E)', desc: 'S單 類型 E' },
   { key: 'company_logo_y', label: '有榮 (Y)', desc: 'S單 類型 Y' },

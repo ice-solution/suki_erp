@@ -29,7 +29,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   shipType: { // 當type為'吊船'時使用
     type: String,
-    enum: ['續租', '租貨'],
+    enum: ['續租', '租賃'],
   },
   subcontractorCount: {
     type: Number,

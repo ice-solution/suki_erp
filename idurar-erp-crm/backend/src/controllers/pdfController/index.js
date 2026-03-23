@@ -29,7 +29,7 @@ function resolveLogoSettingKey(modelName, result) {
     return 'company_logo_sml';
   }
   if (name === 'shipquote') {
-    if (result && result.shipType === '租貨') return 'company_logo_s';
+    if (result && result.shipType === '租賃') return 'company_logo_s';
     return 'company_logo_sml';
   }
   return null;
@@ -112,7 +112,7 @@ exports.generatePdf = async (
       }
     }
     
-    // 如果是 SupplierQuote，根據 numberPrefix 選擇模板（S單用簽收單等格式，不用租貨格式）
+    // 如果是 SupplierQuote，根據 numberPrefix 選擇模板（S單用簽收單等格式，不用租賃格式）
     if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
       const prefixMap = {
         'NO': 'no',
@@ -127,8 +127,8 @@ exports.generatePdf = async (
 
     // 如果是 ShipQuote（船報價），依 shipType 選擇模板
     if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {
-      if (result.shipType === '租貨') {
-        templateName = 'shipquote-rental'; // 船報價（吊船租貨）
+      if (result.shipType === '租賃') {
+        templateName = 'shipquote-rental'; // 船報價（吊船租賃）
       } else {
         templateName = 'shipquote-renewal'; // 船報價（吊船續租）
       }

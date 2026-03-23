@@ -33,7 +33,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   // 吊船相關字段
   shipType: {
     type: String,
-    enum: ['續租', '租貨'],
+    enum: ['續租', '租賃'],
   },
   subcontractorCount: {
     type: Number,
