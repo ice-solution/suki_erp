@@ -189,18 +189,9 @@ html
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
-      .quotation-table .col-content { width: 44%; word-wrap: break-word; text-align: left; }
+      .quotation-table .col-content { width: 78%; word-wrap: break-word; text-align: left; }
       .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
-      .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
-      .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
       .quotation-table td.num { text-align: right; }
-      .summary-wrap { margin-top: 8px; display: flex; justify-content: flex-end; }
-      .summary-block { text-align: right; font-size: 10px; }
-      .summary-row { margin-bottom: 4px; }
-      .summary-label { font-weight: bold; display: inline-block; min-width: 90px; text-align: right; padding-right: 8px; }
-      .summary-value { display: inline-block; min-width: 100px; text-align: right; }
-      .summary-row.subtotal .summary-value { text-decoration: underline; }
-      .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; text-decoration-style: double; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
       .signature-section { margin-top: 12px; }
@@ -230,10 +221,6 @@ body
     - const itemChunks = []
     - for (let i = 0; i < itemsOnly.length; i += ITEMS_PER_PAGE) { itemChunks.push(itemsOnly.slice(i, i + ITEMS_PER_PAGE)) }
     - if (itemChunks.length === 0) itemChunks.push([])
-    - const subTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
-    - const discount = model.discount != null ? model.discount : 0
-    - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
-    - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
 
     each chunk, pageIndex in itemChunks
@@ -285,8 +272,6 @@ body
                 th.col-no
                 th.col-content 工程內容
                 th.col-qty 數量 / Job
-                th.col-unit 單價 HKD$
-                th.col-amount 金額 HKD$
             tbody
               each item, idx in chunk
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
@@ -294,26 +279,10 @@ body
                   td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / Job
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / Job' : ''}
-                  td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
               if chunk.length === 0
                 tr
-                  td(colspan='5' style='text-align:center') 無項目
+                  td(colspan='3' style='text-align:center') 無項目
           if pageIndex === itemChunks.length - 1
-            .summary-wrap
-              .summary-block
-                .summary-row.subtotal
-                  span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                .summary-row
-                  span.summary-label 折扣%：
-                  span.summary-value #{discount}%
-                .summary-row
-                  span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
-                .summary-row.grand
-                  span.summary-label 總金額：
-                  span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
             .notes-block
               .notes-title 注：
               .notes-content
