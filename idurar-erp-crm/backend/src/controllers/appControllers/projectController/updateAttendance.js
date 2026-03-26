@@ -87,7 +87,7 @@ const updateAttendance = async (req, res) => {
     const finalProject = await Project.findById(projectId)
       .populate('onboard.contractorEmployee', 'name contractor')
       .populate('onboard.contractorEmployee.contractor', 'name')
-      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
       .populate('salaries.contractorEmployee.contractor', 'name');
 
     return res.status(200).json({

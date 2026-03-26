@@ -44,6 +44,13 @@ const schema = new mongoose.Schema({
     default: '在職',
   },
 
+  // 離職日期（當 employmentStatus = '離職' 時通常需要填寫）
+  resignationDate: {
+    type: Date,
+    required: false,
+    default: null,
+  },
+
   // 添加登入相關欄位
   hashedPassword: {
     type: String,

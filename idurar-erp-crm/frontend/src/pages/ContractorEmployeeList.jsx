@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Popconfirm, message, Modal, Form, Input, Select, Space, Tag } from 'antd';
+import { Table, Button, Popconfirm, message, Modal, Form, Input, Select, Space, Tag, DatePicker } from 'antd';
 import axios from 'axios';
+import dayjs from 'dayjs';
 
 const ContractorEmployeeList = () => {
   const [data, setData] = useState([]);
@@ -50,6 +51,9 @@ const ContractorEmployeeList = () => {
   const handleCreate = () => {
     form.validateFields().then(async (values) => {
       try {
+        if (values.resignationDate) {
+          values.resignationDate = values.resignationDate.toDate();
+        }
         await axios.post('/contractor-employee', values);
         message.success('新增成功');
         setModalVisible(false);
@@ -64,6 +68,9 @@ const ContractorEmployeeList = () => {
   const handleEdit = () => {
     form.validateFields().then(async (values) => {
       try {
+        if (values.resignationDate) {
+          values.resignationDate = values.resignationDate.toDate();
+        }
         await axios.put(`/contractor-employee/${editingItem._id}`, values);
         message.success('編輯成功');
         setModalVisible(false);
@@ -83,10 +90,11 @@ const ContractorEmployeeList = () => {
         ...item,
         contractor: item.contractor?._id || item.contractor,
         employmentStatus: item.employmentStatus || '在職',
+        resignationDate: item.resignationDate ? dayjs(item.resignationDate) : null,
       });
     } else {
       form.resetFields();
-      form.setFieldsValue({ employmentStatus: '在職' });
+      form.setFieldsValue({ employmentStatus: '在職', resignationDate: null });
     }
     setModalVisible(true);
   };
@@ -138,6 +146,12 @@ const ContractorEmployeeList = () => {
         const active = (v || '在職') === '在職';
         return <Tag color={active ? 'green' : 'red'}>{active ? '在職' : '離職'}</Tag>;
       },
+    },
+    {
+      title: '離職日期',
+      dataIndex: 'resignationDate',
+      key: 'resignationDate',
+      render: (v) => (v ? dayjs(v).format('YYYY-MM-DD') : '-'),
     },
     { title: '電話', dataIndex: 'phone', key: 'phone' },
     { title: '電郵', dataIndex: 'email', key: 'email' },
@@ -231,6 +245,13 @@ const ContractorEmployeeList = () => {
                 { value: '在職', label: '在職' },
                 { value: '離職', label: '離職' },
               ]}
+            />
+          </Form.Item>
+          <Form.Item label="離職日期" name="resignationDate">
+            <DatePicker
+              style={{ width: '100%' }}
+              format="YYYY-MM-DD"
+              allowClear
             />
           </Form.Item>
           <Form.Item

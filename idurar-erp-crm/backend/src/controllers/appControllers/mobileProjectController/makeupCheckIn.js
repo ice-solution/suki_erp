@@ -124,7 +124,7 @@ const makeupCheckIn = async (req, res) => {
       try {
         const workDays = await calculateWorkDaysFromAttendance(projectId, result.employeeId);
         const projectWithSalaries = await Project.findById(projectId)
-          .populate('salaries.contractorEmployee', 'name contractor')
+          .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
           .lean();
         const salaryRecord = (projectWithSalaries?.salaries || []).find(
           (s) => {
@@ -148,7 +148,7 @@ const makeupCheckIn = async (req, res) => {
     // 重新查詢項目以獲取最新數據
     const updatedProject = await Project.findById(projectId)
       .populate('onboard.contractorEmployee', 'name contractor')
-      .populate('salaries.contractorEmployee', 'name contractor');
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate');
 
     return res.status(200).json({
       success: true,

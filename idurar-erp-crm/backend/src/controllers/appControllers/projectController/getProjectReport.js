@@ -42,7 +42,7 @@ const getProjectReport = async (req, res) => {
       ]
     })
       .populate('contractors', 'name')
-      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
       .populate('salaries.contractorEmployee.contractor', 'name')
       .sort({ created: -1 });
 

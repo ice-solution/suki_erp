@@ -107,11 +107,14 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
   };
 
   const handleEdit = (record) => {
+    const employee = record?.contractorEmployee || {};
     setEditingSalary(record);
     form.setFieldsValue({
       contractorEmployee: record.contractorEmployee._id,
       dailySalary: record.dailySalary,
-      notes: record.notes
+      notes: record.notes,
+      employmentStatus: employee.employmentStatus || '在職',
+      resignationDate: employee.resignationDate ? dayjs(employee.resignationDate) : null,
       // 工作天數會根據打咭記錄自動計算，不需要設置
     });
     setModalVisible(true);
@@ -133,6 +136,21 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
           jsonData: salaryData 
         });
         if (response.success) {
+          // 同步更新判頭員工的離職狀態與日期
+          const selectedEmployeeId = values.contractorEmployee;
+          if (selectedEmployeeId) {
+            await request.update({
+              entity: 'contractoremployee',
+              id: selectedEmployeeId,
+              jsonData: {
+                employmentStatus: values.employmentStatus || '在職',
+                resignationDate:
+                  values.employmentStatus === '離職' && values.resignationDate
+                    ? values.resignationDate.toDate()
+                    : null,
+              },
+            });
+          }
           message.success('人工記錄更新成功');
         }
       } else {
@@ -278,6 +296,29 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
             </div>
           </div>
         );
+      },
+    },
+    {
+      title: '判頭員工是否離職',
+      dataIndex: 'contractorEmployee',
+      key: 'employmentStatus',
+      render: (employee) => {
+        const status = employee?.employmentStatus || '在職';
+        const resigned = status === '離職';
+        return (
+          <Tag color={resigned ? 'red' : 'green'}>
+            {resigned ? '離職' : '在職'}
+          </Tag>
+        );
+      },
+    },
+    {
+      title: '離職日期',
+      dataIndex: 'contractorEmployee',
+      key: 'resignationDate',
+      render: (employee) => {
+        if (!employee?.resignationDate) return '-';
+        return dayjs(employee.resignationDate).format('YYYY-MM-DD');
       },
     },
     {
@@ -499,6 +540,42 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
               style={{ width: '100%' }}
               addonBefore="$"
             />
+          </Form.Item>
+
+          <Form.Item
+            name="employmentStatus"
+            label="判頭員工是否離職"
+            initialValue="在職"
+          >
+            <Select
+              options={[
+                { value: '在職', label: '在職' },
+                { value: '離職', label: '離職' },
+              ]}
+            />
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prevValues, currentValues) =>
+              prevValues.employmentStatus !== currentValues.employmentStatus
+            }
+          >
+            {({ getFieldValue }) =>
+              getFieldValue('employmentStatus') === '離職' ? (
+                <Form.Item
+                  name="resignationDate"
+                  label="離職日期"
+                  rules={[{ required: true, message: '請選擇離職日期' }]}
+                >
+                  <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                </Form.Item>
+              ) : (
+                <Form.Item name="resignationDate" label="離職日期">
+                  <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" disabled />
+                </Form.Item>
+              )
+            }
           </Form.Item>
 
           <Form.Item

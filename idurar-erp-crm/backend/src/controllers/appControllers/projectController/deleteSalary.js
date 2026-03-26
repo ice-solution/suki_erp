@@ -35,7 +35,7 @@ const deleteSalary = async (req, res) => {
 
     // 重新查詢項目並 populate 所有 salaries
     const updatedProject = await Project.findById(projectId)
-      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
       .populate('salaries.contractorEmployee.contractor', 'name');
 
     return res.status(200).json({

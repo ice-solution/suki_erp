@@ -75,7 +75,7 @@ const addAttendance = async (req, res) => {
       
       // 重新查詢項目以獲取最新的數據（包含剛剛添加的打咭記錄）
       const projectWithNewAttendance = await Project.findById(projectId)
-        .populate('salaries.contractorEmployee', 'name contractor')
+        .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
         .populate('salaries.contractorEmployee.contractor', 'name');
       
       // 查找該員工的工資記錄並更新
@@ -126,7 +126,7 @@ const addAttendance = async (req, res) => {
     const finalProject = await Project.findById(projectId)
       .populate('onboard.contractorEmployee', 'name contractor')
       .populate('onboard.contractorEmployee.contractor', 'name')
-      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
       .populate('salaries.contractorEmployee.contractor', 'name');
 
     return res.status(200).json({

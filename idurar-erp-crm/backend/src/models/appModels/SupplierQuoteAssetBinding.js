@@ -45,6 +45,8 @@ const supplierQuoteAssetBindingSchema = new mongoose.Schema({
 
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: { type: Date, default: Date.now },
+  // 當資產改為待回廠/香港倉時記錄回廠日期
+  returnDate: { type: Date, default: null },
 });
 
 supplierQuoteAssetBindingSchema.index({ assetType: 1, ship: 1, winch: 1 });

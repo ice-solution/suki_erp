@@ -18,6 +18,15 @@ const updateShip = async (req, res) => {
   const returnedStatuses = ['returned_warehouse_cn', 'returned_warehouse_hk'];
   if (req.body.status && returnedStatuses.includes(req.body.status)) {
     const shipId = req.params.id;
+    const returnDateValue = req.body.returnDate;
+    const parsedReturnDate = returnDateValue ? new Date(returnDateValue) : null;
+    if (!parsedReturnDate || Number.isNaN(parsedReturnDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: '狀態為待回廠/香港倉時必須填寫回廠日期',
+      });
+    }
 
     // 先抓出所有仍綁定到此船的 S單，做「歷史記錄」並解除關聯
     const supplierQuotes = await SupplierQuote.find({
@@ -54,6 +63,7 @@ const updateShip = async (req, res) => {
             quoteNumber: sq.invoiceNumber || '',
             createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
             created: sq.created || sq.date || now,
+            returnDate: parsedReturnDate,
           };
         });
 
@@ -61,6 +71,18 @@ const updateShip = async (req, res) => {
         // bulk insert 可以大幅減少多次 create 的開銷
         await SupplierQuoteAssetBinding.insertMany(createPayloads);
       }
+
+      // 既有綁定補寫回廠日期（只更新尚未寫入 returnDate 的記錄）
+      await SupplierQuoteAssetBinding.updateMany(
+        {
+          removed: false,
+          assetType: 'ship',
+          ship: shipId,
+          supplierQuote: { $in: supplierQuoteIds },
+          $or: [{ returnDate: null }, { returnDate: { $exists: false } }],
+        },
+        { $set: { returnDate: parsedReturnDate } }
+      );
 
       // 解除關聯：把此船從所有 S單的 ship 欄位清掉
       const updatePayload = {
@@ -79,6 +101,7 @@ const updateShip = async (req, res) => {
     req.body.expiredDate = null;
     req.body.supplierNumber = null;
     req.body.assigned = null;
+    req.body.returnDate = parsedReturnDate;
   }
 
   const result = await Model.findOneAndUpdate(

@@ -277,6 +277,12 @@ export default function ShipList() {
               key: 'created',
               render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
             },
+            {
+              title: '回廠日期',
+              dataIndex: 'returnDate',
+              key: 'returnDate',
+              render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
+            },
           ]}
           dataSource={bindingRows}
         />

@@ -17,7 +17,7 @@ const read = async (req, res) => {
       .populate('supplierQuotations')
       .populate('shipQuotations')
       .populate('invoices')
-      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
       .populate('salaries.contractorEmployee.contractor', 'name')
       .populate('onboard.contractorEmployee', 'name contractor')
       .populate('onboard.contractorEmployee.contractor', 'name')

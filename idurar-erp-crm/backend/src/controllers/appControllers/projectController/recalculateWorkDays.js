@@ -24,7 +24,7 @@ const recalculateWorkDays = async (req, res) => {
 
     // 重新查詢項目以獲取最新的數據
     const updatedProject = await Project.findById(projectId)
-      .populate('salaries.contractorEmployee', 'name contractor')
+      .populate('salaries.contractorEmployee', 'name contractor employmentStatus resignationDate')
       .populate('salaries.contractorEmployee.contractor', 'name')
       .populate('onboard.contractorEmployee', 'name contractor')
       .populate('onboard.contractorEmployee.contractor', 'name');

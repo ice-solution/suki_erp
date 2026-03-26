@@ -1,4 +1,4 @@
-import { Form, Input, Select } from 'antd';
+import { Form, Input, Select, DatePicker } from 'antd';
 import DynamicForm from '@/forms/DynamicForm';
 import { fields } from './config';
 import useLanguage from '@/locale/useLanguage';
@@ -43,6 +43,25 @@ export default function WinchForm({ isUpdateForm = false }) {
                 rules={[{ required: false }]}
               >
                 <Input placeholder="輸入 Supplier Quote Number" />
+              </Form.Item>
+            );
+          }
+          return null;
+        }}
+      </Form.Item>
+
+      {/* 回廠日期 - 只在狀態為待回廠/香港倉時顯示且必填 */}
+      <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}>
+        {({ getFieldValue }) => {
+          const statusValue = getFieldValue('status');
+          if (statusValue === 'returned_warehouse_cn' || statusValue === 'returned_warehouse_hk') {
+            return (
+              <Form.Item
+                label="回廠日期"
+                name="returnDate"
+                rules={[{ required: true, message: '請填寫回廠日期' }]}
+              >
+                <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
               </Form.Item>
             );
           }

@@ -180,8 +180,10 @@ export default function WorkProgressRead() {
       if (editingHistory) {
         // 編輯現有記錄 - 找到對應的記錄並更新
         updatedHistory = currentHistory.map(h => {
-          // 使用索引或其他唯一標識來匹配記錄
-          if (h.date === editingHistory.date && h.description === editingHistory.description) {
+          // 使用 _id 精準匹配，避免 date/description 相同導致更新錯列
+          const hId = h?._id ? String(h._id) : null;
+          const eId = editingHistory?._id ? String(editingHistory._id) : null;
+          if (hId && eId && hId === eId) {
             return { ...h, ...historyData };
           }
           return h;
@@ -462,7 +464,8 @@ export default function WorkProgressRead() {
           <Card title="進度歷史記錄" size="small">
             <Table
               dataSource={workProgress.history || []}
-              rowKey={(record, index) => index}
+              // 用子document 的 _id 做 key，避免新增/刪除後列資料錯位
+              rowKey={(record) => record._id || record.date}
               size="small"
               pagination={false}
               locale={{ emptyText: '暫無進度記錄' }}

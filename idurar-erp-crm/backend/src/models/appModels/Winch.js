@@ -28,6 +28,10 @@ const schema = new mongoose.Schema({
   expiredDate: {
     type: Date,
   },
+  // 狀態為待回廠/香港倉時，記錄回廠日期
+  returnDate: {
+    type: Date,
+  },
   description: {
     type: String,
   },

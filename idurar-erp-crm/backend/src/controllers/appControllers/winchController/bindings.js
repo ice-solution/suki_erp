@@ -22,7 +22,7 @@ const bindings = async (req, res) => {
       winch: winchId,
     })
       .sort({ created: -1 })
-      .select('_id supplierQuote supplierQuoteNumber quoteNumber created')
+      .select('_id supplierQuote supplierQuoteNumber quoteNumber created returnDate')
       .lean()
       .exec();
 
@@ -53,6 +53,7 @@ const bindings = async (req, res) => {
         supplierQuoteNumber: r.supplierQuoteNumber,
         quoteNumber: r.quoteNumber || '',
         created: r.created,
+        returnDate: r.returnDate || null,
       })),
       ...placeholderRows,
     ].sort((a, b) => {
