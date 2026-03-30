@@ -118,10 +118,10 @@ warehouseInventorySchema.index({ status: 1 });
 // 虛擬字段：倉庫顯示名稱
 warehouseInventorySchema.virtual('warehouseDisplay').get(function() {
   const warehouseMap = {
-    'A': '倉A',
-    'B': '倉B', 
-    'C': '倉C',
-    'D': '倉D'
+    'A': 'A',
+    'B': 'B',
+    'C': 'C',
+    'D': 'D'
   };
   return warehouseMap[this.warehouse] || this.warehouse;
 });

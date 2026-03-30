@@ -19,4 +19,8 @@ export const fields = {
   email: {
     type: 'email',
   },
+  contacts: {
+    type: 'contactList',
+    label: 'contact_list',
+  },
 };

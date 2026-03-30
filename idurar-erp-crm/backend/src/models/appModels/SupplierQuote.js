@@ -27,7 +27,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['安裝', '人工', '服務', '材料', '服務&材料', '吊船'],
+    enum: ['人工', '服務', '材料', '服務&材料', '吊船'],
     required: true,
   },
   // 吊船相關字段
@@ -141,7 +141,7 @@ const supplierQuoteSchema = new mongoose.Schema({
     {
       warehouse: {
         type: String,
-        enum: ['A', 'B', 'C', 'D', '其他'],
+        enum: ['A', 'B', 'C', 'D', '供應商管理', '其他'],
         required: true,
       },
       itemName: {

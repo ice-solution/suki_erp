@@ -60,6 +60,7 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/:projectId/attendance/:attendanceId`).delete(catchErrors(controller['deleteAttendance']));
     router.route(`/${entity}/:projectId/recalculate-workdays`).post(catchErrors(controller['recalculateWorkDays']));
     router.route(`/${entity}/report`).get(catchErrors(controller['getProjectReport']));
+    router.route(`/${entity}/contractor-report`).get(catchErrors(controller['getContractorReport']));
   }
 
   if (entity === 'ship') {

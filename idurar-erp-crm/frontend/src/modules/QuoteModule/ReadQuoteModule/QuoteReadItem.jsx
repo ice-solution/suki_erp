@@ -442,6 +442,12 @@ export default function QuoteReadItem({ config, selectedItem }) {
           <p>{currentErp.address || '-'}</p>
         </Col>
       </Row>
+      <Row gutter={[12, 0]} style={{ marginBottom: 16 }}>
+        <Col span={12}>
+          <p><strong>{translate('notes')}:</strong></p>
+          <p style={{ whiteSpace: 'pre-wrap' }}>{currentErp.notes || '-'}</p>
+        </Col>
+      </Row>
       <Divider />
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={11}>

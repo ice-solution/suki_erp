@@ -259,7 +259,7 @@ export default function Warehouse() {
       ellipsis: false,
       render: (warehouse, record) => {
         const opt = warehouseOptions.find((o) => o.value === warehouse);
-        const text = opt ? opt.label : (warehouse ? `倉${warehouse} / -` : '-');
+        const text = opt ? opt.label : (warehouse ? `${warehouse} / -` : '-');
         return <span style={{ whiteSpace: 'nowrap' }}>{text}</span>;
       },
       filters: warehouseOptions.map(opt => ({ text: opt.label, value: opt.value })),
@@ -354,13 +354,13 @@ export default function Warehouse() {
           </Col>
           <Col span={6}>
             <Statistic 
-              title={`${warehouseOptions.find((o) => o.value === 'A')?.label || '倉A'}項目`} 
+              title={`${warehouseOptions.find((o) => o.value === 'A')?.label || 'A / -'}項目`} 
               value={inventoryList.filter(item => item.warehouse === 'A').length} 
             />
           </Col>
           <Col span={6}>
             <Statistic 
-              title={`${warehouseOptions.find((o) => o.value === 'B')?.label || '倉B'}項目`} 
+              title={`${warehouseOptions.find((o) => o.value === 'B')?.label || 'B / -'}項目`} 
               value={inventoryList.filter(item => item.warehouse === 'B').length} 
             />
           </Col>
@@ -681,7 +681,7 @@ export default function Warehouse() {
         >
           <Form.Item label="源倉庫">
             <span style={{ fontSize: 16, fontWeight: 'bold' }}>
-              {warehouseOptions.find((o) => o.value === editingItem?.warehouse)?.label || (editingItem?.warehouse ? `倉${editingItem.warehouse}` : '-')}
+              {warehouseOptions.find((o) => o.value === editingItem?.warehouse)?.label || (editingItem?.warehouse ? `${editingItem.warehouse}` : '-')}
             </span>
           </Form.Item>
 

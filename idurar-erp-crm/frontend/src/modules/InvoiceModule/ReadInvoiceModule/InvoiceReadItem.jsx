@@ -264,8 +264,16 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('project_percentage')}>
+          {currentErp.projectPercentage != null && currentErp.projectPercentage !== ''
+            ? `${currentErp.projectPercentage}%`
+            : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label={translate('Payment Due Date')}>{currentErp.paymentDueDate ? dayjs(currentErp.paymentDueDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('paid_date')}>
+          {currentErp.paidDate ? dayjs(currentErp.paidDate).format('YYYY-MM-DD') : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('Payment Terms')}>{currentErp.paymentTerms || '-'}</Descriptions.Item>
         <Descriptions.Item label="部份付款 (Partially paid)">{currentErp.credit != null ? moneyFormatter({ amount: currentErp.credit, currency_code: currentErp.currency }) : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>

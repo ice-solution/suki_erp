@@ -10,11 +10,27 @@ export const dataForRead = ({ fields, translate }) => {
 
   Object.keys(fields).forEach((key) => {
     let field = fields[key];
-    columns.push({
-      title: field.label ? field.label : key,
+    const col = {
+      title: field.label ? (translate ? translate(field.label) : field.label) : key,
       dataIndex: field.dataIndex ? field.dataIndex.join('.') : key,
       isDate: field.type === 'date',
-    });
+    };
+    if (field.type === 'contactList') {
+      col.formatter = (record) => {
+        const arr = record[key];
+        if (!arr || !Array.isArray(arr) || arr.length === 0) return '—';
+        return arr
+          .map((c) => {
+            const n = (c && c.name) ? String(c.name).trim() : '';
+            const p = (c && c.phone) ? String(c.phone).trim() : '';
+            if (n && p) return `${n} / ${p}`;
+            return n || p || '';
+          })
+          .filter(Boolean)
+          .join('； ');
+      };
+    }
+    columns.push(col);
   });
 
   return columns;
@@ -184,6 +200,30 @@ export function dataForTable({ fields, translate, moneyFormatter, dateFormat }) 
               {selectedCountry?.label && translate(selectedCountry.label)}
             </Tag>
           );
+        },
+      },
+      contactList: {
+        title: field.label ? translate(field.label) : translate(key),
+        dataIndex: keyIndex,
+        render: (_, record) => {
+          const arr = record[key];
+          if (!arr || !Array.isArray(arr) || arr.length === 0) return '—';
+          const rows = arr
+            .map((c, i) => {
+              const n = c?.name ? String(c.name).trim() : '';
+              const p = c?.phone ? String(c.phone).trim() : '';
+              if (!n && !p) return null;
+              return (
+                <div key={i}>
+                  {n}
+                  {n && p ? ' · ' : ''}
+                  {p}
+                </div>
+              );
+            })
+            .filter(Boolean);
+          if (rows.length === 0) return '—';
+          return <div>{rows}</div>;
         },
       },
     };

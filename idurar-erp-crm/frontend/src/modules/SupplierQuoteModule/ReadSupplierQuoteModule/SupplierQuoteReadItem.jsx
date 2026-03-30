@@ -53,7 +53,7 @@ const Item = ({ item, currentErp }) => {
 
 const MaterialRow = ({ material, moneyFormatter, currency, warehouseOptions }) => {
   const warehouseLabel = material.warehouse
-    ? (warehouseOptions?.find((o) => o.value === material.warehouse)?.label || `倉${material.warehouse} / -`)
+    ? (warehouseOptions?.find((o) => o.value === material.warehouse)?.label || `${material.warehouse} / -`)
     : '-';
   return (
   <Row gutter={[12, 0]}>
@@ -360,7 +360,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label={translate('Warehouse')}>
           {currentErp.warehouse
-            ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `倉${currentErp.warehouse} / -`)
+            ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `${currentErp.warehouse} / -`)
             : '-'}
         </Descriptions.Item>
         {currentErp.ship && (
@@ -386,14 +386,14 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           <p><strong>倉庫:</strong></p>
           <p>
             {currentErp.warehouse
-              ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `倉${currentErp.warehouse} / -`)
+              ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `${currentErp.warehouse} / -`)
               : '-'}
           </p>
         </Col>
       </Row>
       
       <Descriptions title="文件信息">
-        <Descriptions.Item label="DM文件" span={3}>
+        <Descriptions.Item label="DN文件" span={3}>
           {currentErp.dmFiles && currentErp.dmFiles.length > 0 ? (
             <div>
               {currentErp.dmFiles.map((file, index) => (

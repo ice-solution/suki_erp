@@ -51,7 +51,7 @@ export default function XeroEOExport() {
           [
             escapeCsvCell(contactName),
             '', // EmailAddress
-            '', '', '', '', '', '', '', '', '', '', // PO address (10 fields)
+            '', '', '', '', '', '', '', '', // POAddressLine1–4, POCity, PORegion, POPostalCode, POCountry（8 欄，須與表頭一致）
             escapeCsvCell(invoiceNumber),
             escapeCsvCell(invoiceDate),
             escapeCsvCell(dueDate),

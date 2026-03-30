@@ -6,10 +6,10 @@ import { settingsAction } from '@/redux/settings/actions';
 import { selectWarehouseSettings } from '@/redux/settings/selectors';
 
 const DEFAULT_WAREHOUSE_LIST = [
-  { value: 'A', name: '倉A', location: '' },
-  { value: 'B', name: '倉B', location: '' },
-  { value: 'C', name: '倉C', location: '' },
-  { value: 'D', name: '倉D', location: '' },
+  { value: 'A', name: 'A', location: '' },
+  { value: 'B', name: 'B', location: '' },
+  { value: 'C', name: 'C', location: '' },
+  { value: 'D', name: 'D', location: '' },
 ];
 
 export default function WarehouseSettings() {
@@ -50,7 +50,7 @@ export default function WarehouseSettings() {
       }
       const warehouseItem = {
         value: values.value,
-        name: values.name || `倉${values.value}`,
+        name: values.name || String(values.value),
         location: values.location || '',
       };
       if (editingIndex !== null) {

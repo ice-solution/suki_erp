@@ -18,6 +18,7 @@ import calculate from '@/utils/calculate';
 import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
+import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
 
 export default function InvoiceTableForm({ subTotal = 0, current = null }) {
   const { last_invoice_number } = useSelector(selectFinanceSettings);
@@ -56,10 +57,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [clientRecords, setClientRecords] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
+  const watchedClients = Form.useWatch('clients', form) || [];
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
   const [quoteOptions, setQuoteOptions] = useState([]);
@@ -195,6 +198,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       
       const clientData = response?.result;
       if (Array.isArray(clientData)) {
+        setClientRecords(clientData);
         const clientOptions = clientData.map(client => ({
           value: client._id,
           label: client.name,
@@ -202,10 +206,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         setClients(clientOptions);
       } else {
         setClients([]);
+        setClientRecords([]);
       }
     } catch (error) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
+      setClientRecords([]);
     }
   };
 
@@ -809,7 +815,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={5}>
           <Form.Item label={translate('Contact Person')} name="contactPerson">
-            <Input />
+            <ContactPersonAutoComplete
+              clientIds={watchedClients}
+              clientRecords={clientRecords}
+              placeholder={translate('contact_person')}
+            />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={5}>
@@ -855,9 +865,25 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={18}>
+        <Col className="gutter-row" span={12}>
           <Form.Item label={translate('Project Address')} name="address">
             <Input />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={6}>
+          <Form.Item
+            label={translate('project_percentage')}
+            name="projectPercentage"
+            tooltip={translate('project_percentage_hint')}
+          >
+            <InputNumber
+              min={0}
+              max={100}
+              precision={2}
+              style={{ width: '100%' }}
+              placeholder="0–100"
+              addonAfter="%"
+            />
           </Form.Item>
         </Col>
       </Row>
@@ -913,6 +939,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               style={{ width: '100%' }}
               placeholder="0"
             />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={6}>
+          <Form.Item label={translate('paid_date')} name="paidDate">
+            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('paid_date')} />
           </Form.Item>
         </Col>
       </Row>

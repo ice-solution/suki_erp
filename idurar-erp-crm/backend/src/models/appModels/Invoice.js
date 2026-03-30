@@ -24,7 +24,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['安裝', '人工', '服務', '材料', '服務&材料', '吊船'],
+    enum: ['人工', '服務', '材料', '服務&材料', '吊船'],
     required: true,
   },
   shipType: { // 當type為'吊船'時使用
@@ -82,6 +82,12 @@ const invoiceSchema = new mongoose.Schema({
   project: {
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
+  },
+  /** 此發票佔整個專案的比例（0–100，單位：百分比） */
+  projectPercentage: {
+    type: Number,
+    min: 0,
+    max: 100,
   },
 
   // Quote轉換信息
@@ -149,6 +155,10 @@ const invoiceSchema = new mongoose.Schema({
     enum: ['unpaid', 'paid'],
   },
   paymentDueDate: { // 付款截止日期
+    type: Date,
+  },
+  paidDate: {
+    // 已付款日期（手動填寫）
     type: Date,
   },
   paymentTerms: { // 付款條款

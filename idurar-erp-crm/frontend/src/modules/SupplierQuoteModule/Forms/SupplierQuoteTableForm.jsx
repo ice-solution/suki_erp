@@ -18,6 +18,7 @@ import calculate from '@/utils/calculate';
 import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
+import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
 
 export default function SupplierQuoteTableForm({ subTotal = 0, current = null }) {
   const { last_supplier_quote_number } = useSelector(selectFinanceSettings);
@@ -55,6 +56,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [clientRecords, setClientRecords] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -86,6 +88,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const [invoiceFileList, setInvoiceFileList] = useState([]);
   
   const form = Form.useFormInstance();
+  const watchedClients = Form.useWatch('clients', form) || [];
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
@@ -216,6 +219,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 確保result是數組
       const clientData = response?.result;
       if (Array.isArray(clientData)) {
+        setClientRecords(clientData);
         const clientOptions = clientData.map(client => ({
           value: client._id,
           label: client.name,
@@ -225,10 +229,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       } else {
         console.warn('客戶數據不是數組格式:', clientData);
         setClients([]);
+        setClientRecords([]);
       }
     } catch (error) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
+      setClientRecords([]);
     }
   };
 
@@ -313,8 +319,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setMaterialsLoading(true);
       console.log('🔍 Fetching Warehouse Items from API...', selectedWarehouse ? `for warehouse ${selectedWarehouse}` : 'all warehouses');
       
-      // 如果選擇「其他」，不從 API 獲取數據
-      if (selectedWarehouse === '其他') {
+      // 「供應商管理」「其他」不對應實體倉庫，不從 API 獲取
+      if (selectedWarehouse === '其他' || selectedWarehouse === '供應商管理') {
         setWarehouseItems([]);
         setMaterialsLoading(false);
         return;
@@ -905,8 +911,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 搜索倉庫項目
   const handleMaterialSearch = (searchText) => {
-    // 如果選擇了「其他」，顯示可選名稱（如加工費）讓用戶選或輸入
-    if (currentMaterial.warehouse === '其他') {
+    // 「供應商管理」「其他」：顯示可選名稱（如加工費）讓用戶選或輸入
+    if (currentMaterial.warehouse === '其他' || currentMaterial.warehouse === '供應商管理') {
       if (!searchText) {
         return OTHER_MATERIAL_OPTIONS;
       }
@@ -1465,7 +1471,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={8}>
           <Form.Item label="簽收單聯絡人" name="contactPerson">
-            <Input placeholder="簽收單聯絡人" />
+            <ContactPersonAutoComplete
+              clientIds={watchedClients}
+              clientRecords={clientRecords}
+              placeholder="從已選客戶聯絡人選擇或手動輸入"
+            />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={8}>
@@ -1492,7 +1502,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={12}>
-          <Form.Item label="DM文件" name="dmFiles">
+          <Form.Item label="DN文件" name="dmFiles">
             <Upload
               multiple
               beforeUpload={beforeUpload}
@@ -1500,7 +1510,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               fileList={dmFileList}
               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
             >
-              <Button icon={<UploadOutlined />}>選擇DM文件</Button>
+              <Button icon={<UploadOutlined />}>選擇DN文件</Button>
             </Upload>
             <div style={{ marginTop: 8, fontSize: '12px', color: '#666' }}>
               支持 PDF、DOC、XLS、JPG、PNG 格式
@@ -1611,6 +1621,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
             options={[
               ...(warehouseOptions || []),
+              { value: '供應商管理', label: '供應商管理' },
               { value: '其他', label: '其他' },
             ]}
           />

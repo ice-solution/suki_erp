@@ -18,6 +18,7 @@ import calculate from '@/utils/calculate';
 import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
+import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
 
 export default function QuoteTableForm({ subTotal = 0, current = null }) {
   const { last_quote_number } = useSelector(selectFinanceSettings);
@@ -57,6 +58,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
+  const [clientRecords, setClientRecords] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
@@ -64,6 +66,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const poNumbers = Form.useWatch('poNumbers', form) || [];
+  const watchedClients = Form.useWatch('clients', form) || [];
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
 
@@ -168,6 +171,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       // 確保result是數組
       const clientData = response?.result;
       if (Array.isArray(clientData)) {
+        setClientRecords(clientData);
         const clientOptions = clientData.map(client => ({
           value: client._id,
           label: client.name,
@@ -177,10 +181,12 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       } else {
         console.warn('客戶數據不是數組格式:', clientData);
         setClients([]);
+        setClientRecords([]);
       }
     } catch (error) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
+      setClientRecords([]);
     }
   };
 
@@ -774,11 +780,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('Expire Date') + '（選填）'} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('Note')} name="notes">
-            <Input />
-          </Form.Item>
-        </Col>
       </Row>
       
       <Row gutter={[12, 0]}>
@@ -817,7 +818,11 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Col>
         <Col className="gutter-row" span={6}>
           <Form.Item label={translate('Contact Person')} name="contactPerson">
-            <Input />
+            <ContactPersonAutoComplete
+              clientIds={watchedClients}
+              clientRecords={clientRecords}
+              placeholder={translate('contact_person')}
+            />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
@@ -855,6 +860,13 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col className="gutter-row" span={12}>
           <Form.Item label={translate('Project Address')} name="address">
             <Input />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={12}>
+          <Form.Item label={translate('notes')} name="notes">
+            <Input.TextArea rows={4} placeholder={translate('notes')} autoSize={{ minRows: 3, maxRows: 12 }} />
           </Form.Item>
         </Col>
       </Row>

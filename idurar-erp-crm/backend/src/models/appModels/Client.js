@@ -22,6 +22,15 @@ const schema = new mongoose.Schema({
   country: String,
   address: String,
   email: String,
+  contacts: {
+    type: [
+      {
+        name: { type: String, trim: true },
+        phone: { type: String, trim: true },
+      },
+    ],
+    default: [],
+  },
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   assigned: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: {
@@ -34,6 +43,15 @@ const schema = new mongoose.Schema({
   },
   modified_at: { type: Date },
   updatedBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
+});
+
+schema.pre('save', function (next) {
+  if (Array.isArray(this.contacts)) {
+    this.contacts = this.contacts.filter(
+      (c) => c && (String(c.name || '').trim() || String(c.phone || '').trim())
+    );
+  }
+  next();
 });
 
 schema.plugin(require('mongoose-autopopulate'));

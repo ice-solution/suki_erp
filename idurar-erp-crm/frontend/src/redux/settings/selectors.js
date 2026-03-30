@@ -33,10 +33,10 @@ export const selectCompanySettings = createSelector(
 );
 
 const DEFAULT_WAREHOUSE_LIST = [
-  { value: 'A', name: '倉A', location: '' },
-  { value: 'B', name: '倉B', location: '' },
-  { value: 'C', name: '倉C', location: '' },
-  { value: 'D', name: '倉D', location: '' },
+  { value: 'A', name: 'A', location: '' },
+  { value: 'B', name: 'B', location: '' },
+  { value: 'C', name: 'C', location: '' },
+  { value: 'D', name: 'D', location: '' },
 ];
 
 export const selectWarehouseSettings = createSelector(
@@ -51,12 +51,12 @@ export const selectWarehouseOptions = createSelector(
     if (!list || !Array.isArray(list) || list.length === 0) {
       return DEFAULT_WAREHOUSE_LIST.map((w) => ({
         value: w.value,
-        label: w.location ? `倉${w.value} / ${w.location}` : `倉${w.value} / -`,
+        label: w.location ? `${w.value} / ${w.location}` : `${w.value} / -`,
       }));
     }
     return list.map((w) => ({
       value: w.value,
-      label: w.location ? `倉${w.value} / ${w.location}` : `倉${w.value} / -`,
+      label: w.location ? `${w.value} / ${w.location}` : `${w.value} / -`,
     }));
   }
 );

@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { DatePicker, Input, Form, Select, InputNumber, Switch, Tag } from 'antd';
+import { DatePicker, Input, Form, Select, InputNumber, Switch, Tag, Space, Button } from 'antd';
 
-import { CloseOutlined, CheckOutlined } from '@ant-design/icons';
+import { CloseOutlined, CheckOutlined, PlusOutlined, MinusCircleOutlined } from '@ant-design/icons';
 import useLanguage from '@/locale/useLanguage';
 import { useMoney, useDate } from '@/settings';
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
@@ -163,6 +163,44 @@ function FormElement({ field, feedback, setFeedback }) {
       </Select>
     </Form.Item>
   );
+  const ContactListComponent = () => (
+    <Form.Item label={translate(field.label)} required={field.required || false}>
+      <Form.List name={field.name} initialValue={[]}>
+        {(fields, { add, remove }) => (
+          <div>
+            {fields.map(({ key, name, ...restField }) => (
+              <Space key={key} style={{ display: 'flex', marginBottom: 8, width: '100%' }} align="baseline">
+                <Form.Item
+                  {...restField}
+                  name={[name, 'name']}
+                  rules={[{ required: false }]}
+                  style={{ flex: 1, marginBottom: 0 }}
+                >
+                  <Input placeholder={translate('name')} />
+                </Form.Item>
+                <Form.Item
+                  {...restField}
+                  name={[name, 'phone']}
+                  rules={[{ required: false }]}
+                  style={{ flex: 1, marginBottom: 0 }}
+                >
+                  <Input placeholder={translate('phone')} />
+                </Form.Item>
+                <MinusCircleOutlined
+                  onClick={() => remove(name)}
+                  style={{ cursor: 'pointer', color: '#ff4d4f', marginBottom: 24 }}
+                />
+              </Space>
+            ))}
+            <Button type="dashed" onClick={() => add()} block icon={<PlusOutlined />} style={{ marginTop: 8 }}>
+              {translate('add_contact')}
+            </Button>
+          </div>
+        )}
+      </Form.List>
+    </Form.Item>
+  );
+
   const TagComponent = () => (
     <Form.Item
       label={translate(field.label)}
@@ -281,6 +319,7 @@ function FormElement({ field, feedback, setFeedback }) {
   };
 
   const formItemComponent = {
+    contactList: <ContactListComponent />,
     select: <SelectComponent />,
     selectWithTranslation: <SelectWithTranslationComponent />,
     selectWithFeedback: (

@@ -485,6 +485,17 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         return moneyFormatter({ amount: unpaid, currency_code: record.currency || 'HKD' });
       },
     },
+    {
+      title: translate('project_percentage_short'),
+      key: 'projectPercentage',
+      width: 96,
+      align: 'center',
+      render: (_, record) => {
+        const v = record.projectPercentage;
+        if (v == null || v === '') return '-';
+        return `${Number(v)}%`;
+      },
+    },
   ];
 
   // 使用判頭費表格列

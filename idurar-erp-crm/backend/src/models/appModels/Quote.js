@@ -23,7 +23,7 @@ const quoteSchema = new mongoose.Schema({
   },
   type: {
     type: String,
-    enum: ['安裝', '人工', '服務', '材料', '服務&材料'],
+    enum: ['人工', '服務', '材料', '服務&材料'],
     required: true,
   },
   subcontractorCount: {

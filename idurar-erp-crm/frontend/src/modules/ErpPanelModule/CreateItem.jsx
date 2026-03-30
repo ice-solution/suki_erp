@@ -25,6 +25,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { request } from '@/request';
 import { message } from 'antd';
+import dayjs from 'dayjs';
 
 function SaveForm({ form }) {
   const translate = useLanguage();
@@ -134,6 +135,14 @@ export default function CreateItem({ config, CreateForm }) {
         // 如果 poNumbers 為空數組，設置 poNumber 為空字符串
         dataToSubmit.poNumber = '';
         delete dataToSubmit.poNumbers;
+      }
+
+      if (entity === 'invoice') {
+        if (dataToSubmit.paidDate) {
+          dataToSubmit.paidDate = dayjs(dataToSubmit.paidDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else {
+          dataToSubmit.paidDate = null;
+        }
       }
       
       // Check if this is a supplierquote with actual file objects (not just empty arrays)

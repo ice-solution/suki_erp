@@ -75,6 +75,9 @@ export default function UpdateForm({ config, formElements, withUpload = false })
           updated: dayjs(newValues['updated']).format('YYYY-MM-DDTHH:mm:ss.SSSZ'),
         };
       }
+      if (entity === 'client' && (newValues.contacts === undefined || newValues.contacts === null)) {
+        newValues.contacts = [];
+      }
       form.resetFields();
       form.setFieldsValue(newValues);
     }

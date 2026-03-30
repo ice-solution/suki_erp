@@ -125,6 +125,13 @@ const lang = {
   company_settings: '公司設定',
   finance_settings: '財務設定',
   money_format_settings: '金額格式設定',
+  contact_list: '聯絡人',
+  add_contact: '新增聯絡人',
+  phone: '電話',
+  project_percentage: '專案佔比 (%)',
+  project_percentage_short: '佔比',
+  project_percentage_hint: '此發票金額佔整個專案的比例（0–100）',
+  paid_date: '已付款日期',
 };
 
 export default lang; 

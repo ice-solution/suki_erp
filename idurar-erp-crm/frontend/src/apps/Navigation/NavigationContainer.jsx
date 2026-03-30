@@ -115,6 +115,10 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'project-report',
           label: <Link to={'/project/report'}>{translate('project_report')}</Link>,
         },
+        {
+          key: 'project-contractor-report',
+          label: <Link to={'/project/contractor-report'}>承辦商報告</Link>,
+        },
       ],
     },
     {
@@ -164,6 +168,8 @@ function Sidebar({ collapsible, isMobile = false }) {
           // 處理項目報告路徑
           if (path === 'project/report') {
             setCurrentPath('project-report');
+          } else if (path === 'project/contractor-report') {
+            setCurrentPath('project-contractor-report');
           } else {
             setCurrentPath(path);
           }
