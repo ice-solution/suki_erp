@@ -131,7 +131,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
             navigate(`/${entity.toLowerCase()}`);
           }
         }}
-        title={`${ENTITY_NAME} # ${currentErp.numberPrefix || 'INV'}-${currentErp.number}/${currentErp.year || ''}`}
+        title={`${ENTITY_NAME} # ${currentErp.numberPrefix || 'SMI'}-${currentErp.number}/${currentErp.year || ''}`}
         ghost={false}
         tags={[
           <Tag key="status" color={currentErp.status === 'paid' ? 'green' : 'blue'}>
@@ -199,36 +199,37 @@ export default function InvoiceReadItem({ config, selectedItem }) {
           padding: '20px 0px',
         }}
       >
-        <Row>
-          <Statistic title="Status" value={currentErp.status} />
-          <Statistic title="Payment Status" value={currentErp.paymentStatus} />
-          <Statistic
-            title={translate('SubTotal')}
-            value={moneyFormatter({
-              amount: currentErp.subTotal,
-              currency_code: currentErp.currency,
-            })}
-            style={{
-              margin: '0 32px',
-            }}
-          />
-          <Statistic
-            title={translate('Total')}
-            value={moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}
-            style={{
-              margin: '0 32px',
-            }}
-          />
-          <Statistic
-            title={translate('Paid')}
-            value={moneyFormatter({
-              amount: currentErp.credit,
-              currency_code: currentErp.currency,
-            })}
-            style={{
-              margin: '0 32px',
-            }}
-          />
+        <Row gutter={[24, 16]}>
+          <Col xs={24} sm={12} md={6}>
+            <Statistic title="Status" value={currentErp.status} />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Statistic title="Payment Status" value={currentErp.paymentStatus} />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Statistic
+              title={translate('SubTotal')}
+              value={moneyFormatter({
+                amount: currentErp.subTotal,
+                currency_code: currentErp.currency,
+              })}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Statistic
+              title={translate('Total')}
+              value={moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}
+            />
+          </Col>
+          <Col xs={24} sm={12} md={6}>
+            <Statistic
+              title={translate('Paid')}
+              value={moneyFormatter({
+                amount: currentErp.credit,
+                currency_code: currentErp.currency,
+              })}
+            />
+          </Col>
         </Row>
       </PageHeader>
       <Divider dashed />
@@ -276,6 +277,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         </Descriptions.Item>
         <Descriptions.Item label={translate('Payment Terms')}>{currentErp.paymentTerms || '-'}</Descriptions.Item>
         <Descriptions.Item label="部份付款 (Partially paid)">{currentErp.credit != null ? moneyFormatter({ amount: currentErp.credit, currency_code: currentErp.currency }) : '-'}</Descriptions.Item>
+        <Descriptions.Item label="Full paid">{currentErp.fullPaid === true ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>

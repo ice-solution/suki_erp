@@ -49,11 +49,17 @@ export default function Quote() {
       },
     },
     {
-      title: translate('suppliers'),
-      dataIndex: ['supplier', 'name'],
+      title: '制單人',
+      dataIndex: 'updatedBy',
       width: 150,
       ellipsis: false,
-      render: (name, record) => record.supplier?.name || '-',
+      render: (_, record) => {
+        const u = record.updatedBy || record.createdBy;
+        if (!u) return '-';
+        const name =
+          (u.name || '') + (u.surname ? ` ${u.surname}` : '');
+        return (name.trim() || u.email || '-');
+      },
     },
     {
       title: translate('Date'),

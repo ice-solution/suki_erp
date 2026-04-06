@@ -69,7 +69,7 @@ const convertQuoteToInvoice = async (req, res) => {
         from: 'quote',
         quote: quote._id,
       },
-      numberPrefix: 'INV',
+      numberPrefix: 'SMI',
       number: invoiceNumber.toString(),
       year: new Date().getFullYear(),
       type: quote.type,
@@ -97,7 +97,8 @@ const convertQuoteToInvoice = async (req, res) => {
       currency: quote.currency,
       discount: quote.discount,
       notes: quote.notes,
-      status: 'draft',
+      // Invoice.status 僅允許 sent | paid（與 Quote 的 draft 等不同）
+      status: 'sent',
       paymentStatus: 'unpaid',
       isOverdue: false,
       approved: false,

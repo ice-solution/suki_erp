@@ -19,12 +19,17 @@ const create = async (req, res) => {
     });
   }
 
-  const { items = [], discount = 0 } = value;
+  const { items = [], discount = 0, projectPercentage: rawProjectPct } = value;
 
   // default
   let subTotal = 0;
   let discountTotal = 0;
   let total = 0;
+
+  const projectPct =
+    rawProjectPct != null && rawProjectPct !== ''
+      ? Math.min(100, Math.max(0, Number(rawProjectPct)))
+      : 100;
 
   //Calculate the items array with subTotal, total, discountTotal（允許負數影響總額）
   items.map((item) => {
@@ -34,6 +39,7 @@ const create = async (req, res) => {
   });
   discountTotal = calculate.multiply(subTotal, discount / 100);
   total = calculate.sub(subTotal, discountTotal);
+  total = calculate.multiply(total, projectPct / 100);
 
   body['subTotal'] = subTotal;
   body['discountTotal'] = discountTotal;

@@ -27,7 +27,7 @@ const update = async (req, res) => {
 
   const { credit } = previousInvoice;
 
-  const { items = [], discount = 0 } = req.body;
+  const { items = [], discount = 0, projectPercentage: rawProjectPct } = req.body;
 
   if (items.length === 0) {
     return res.status(400).json({
@@ -42,6 +42,11 @@ const update = async (req, res) => {
   let discountTotal = 0;
   let total = 0;
 
+  const projectPct =
+    rawProjectPct != null && rawProjectPct !== ''
+      ? Math.min(100, Math.max(0, Number(rawProjectPct)))
+      : 100;
+
   //Calculate the items array with subTotal, total, discountTotal（允許負數影響總額）
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
@@ -50,6 +55,7 @@ const update = async (req, res) => {
   });
   discountTotal = calculate.multiply(subTotal, discount / 100);
   total = calculate.sub(subTotal, discountTotal);
+  total = calculate.multiply(total, projectPct / 100);
 
   body['subTotal'] = subTotal;
   body['discountTotal'] = discountTotal;

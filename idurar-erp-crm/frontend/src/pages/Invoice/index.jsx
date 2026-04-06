@@ -1,5 +1,6 @@
 import dayjs from 'dayjs';
 import { Tag } from 'antd';
+import { Link } from 'react-router-dom';
 import useLanguage from '@/locale/useLanguage';
 import { tagColor } from '@/utils/statusTagColor';
 
@@ -26,8 +27,14 @@ export default function Invoice() {
       width: 120,
       ellipsis: false,
       render: (number, record) => {
-        const quoteType = record.numberPrefix || 'INV';
-        return `${quoteType}-${number}`;
+        const quoteType = record.numberPrefix || 'SMI';
+        const label = `${quoteType}-${number}`;
+        if (!record._id) return label;
+        return (
+          <Link to={`/invoice/read/${record._id}`} onClick={(e) => e.stopPropagation()}>
+            {label}
+          </Link>
+        );
       },
     },
     {

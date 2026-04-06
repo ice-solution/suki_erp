@@ -119,6 +119,14 @@ function Sidebar({ collapsible, isMobile = false }) {
           key: 'project-contractor-report',
           label: <Link to={'/project/contractor-report'}>承辦商報告</Link>,
         },
+        {
+          key: 'project-contractor-employee-report',
+          label: <Link to={'/project/contractor-employee-report'}>承辦商員工報告</Link>,
+        },
+        {
+          key: 'quote-operational-report',
+          label: <Link to={'/quote/operational-report'}>報價／發票營運報告</Link>,
+        },
       ],
     },
     {
@@ -170,6 +178,10 @@ function Sidebar({ collapsible, isMobile = false }) {
             setCurrentPath('project-report');
           } else if (path === 'project/contractor-report') {
             setCurrentPath('project-contractor-report');
+          } else if (path === 'project/contractor-employee-report') {
+            setCurrentPath('project-contractor-employee-report');
+          } else if (path === 'quote/operational-report') {
+            setCurrentPath('quote-operational-report');
           } else {
             setCurrentPath(path);
           }

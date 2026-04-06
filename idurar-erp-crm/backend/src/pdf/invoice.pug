@@ -1,5 +1,5 @@
 doctype html
-html
+html(class=isPuppeteer ? 'puppeteer-invoice' : '')
   head
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
@@ -254,6 +254,10 @@ html
         padding: 20px 0;
         text-align: center;
       }
+    if isPuppeteer
+      style.
+        html.puppeteer-invoice .footer-section,
+        html.puppeteer-invoice footer.footer-invoice { display: none !important; }
  
   body
     

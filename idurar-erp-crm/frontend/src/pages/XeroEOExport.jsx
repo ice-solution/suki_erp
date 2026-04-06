@@ -32,7 +32,7 @@ export default function XeroEOExport() {
     let rowIndex = 0;
 
     for (const project of projects) {
-      const contactName = project?.projectName || '';
+      const projectDescription = project?.projectName || '';
       const used = project?.usedContractorFees || [];
 
       for (const fee of used) {
@@ -41,7 +41,9 @@ export default function XeroEOExport() {
         const invoiceNumber = fee.eoNumber;
         const invoiceDate = fee.date ? dayjs(fee.date).format('YYYY-MM-DD') : '';
         const dueDate = invoiceDate;
-        const description = fee.contractorName || '';
+        // ContactName = 承辦商；Description = 專案名稱／工程地址（與 Xero 欄位語意一致）
+        const contactName = fee.contractorName || '';
+        const description = projectDescription;
 
         const quantity = 1;
         const unitAmount = fee.amount != null ? fee.amount : 0;
@@ -212,8 +214,7 @@ export default function XeroEOExport() {
         </div>
 
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          滙出內容：InvoiceNumber/InvoiceDate/DueDate/ContactName/AccountCode（來自承辦商），以及每條
-          used判頭費對應 1 row（Description、Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。
+          ContactName 為承辦商名稱；Description 為專案名稱／工程地址。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。
         </p>
 
         {previewRows.length > 0 && (

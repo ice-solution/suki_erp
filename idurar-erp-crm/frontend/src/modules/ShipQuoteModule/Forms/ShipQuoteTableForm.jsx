@@ -18,6 +18,16 @@ import calculate from '@/utils/calculate';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 
+/** 吊船租賃 PDF「附加項目」預設列（與 shipquote-rental.pug 後備一致） */
+export const DEFAULT_SHIP_RENTAL_EXTRA_ITEMS = [
+  { description: '續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}', unitPrice: undefined },
+  { description: '額外電源線(200米以外部份)', unitPrice: undefined },
+  { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: undefined },
+  { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: undefined },
+  { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: undefined },
+  { description: '三角足場續租(每14日)', unitPrice: undefined },
+];
+
 export default function ShipQuoteTableForm({ subTotal = 0, current = null }) {
   const { last_quote_number } = useSelector(selectFinanceSettings);
 
@@ -60,6 +70,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
+  const shipTypeWatched = Form.useWatch('shipType', form);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const poNumbers = Form.useWatch('poNumbers', form) || [];
@@ -313,7 +324,8 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
         subTotal: currentSubTotal = 0,
         shipType,
         subcontractorCount,
-        costPrice 
+        costPrice,
+        rentalExtraItems: currentRentalExtras,
       } = current;
       
       setDiscount(discount);
@@ -378,6 +390,21 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       }
       
       const supplierId = current.supplier?._id || current.supplier || undefined;
+
+      let rentalExtraFormValue;
+      if (shipType === '租賃') {
+        if (currentRentalExtras && currentRentalExtras.length > 0) {
+          rentalExtraFormValue = currentRentalExtras.map((r) => ({
+            description: r.description || '',
+            unitPrice: r.unitPrice != null && r.unitPrice !== '' ? Number(r.unitPrice) : undefined,
+          }));
+        } else {
+          rentalExtraFormValue = [...DEFAULT_SHIP_RENTAL_EXTRA_ITEMS];
+        }
+      } else {
+        rentalExtraFormValue = [];
+      }
+
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
         form.setFieldsValue({ 
@@ -388,11 +415,24 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           shipType: shipType,
           subcontractorCount: subcontractorCount,
           costPrice: costPrice,
-          poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined
+          poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined,
+          rentalExtraItems: rentalExtraFormValue,
         });
       }, 100);
     }
   }, [current, form, clients]);
+
+  useEffect(() => {
+    if (shipTypeWatched === undefined || shipTypeWatched === null) return;
+    if (shipTypeWatched === '租賃') {
+      const ex = form.getFieldValue('rentalExtraItems');
+      if (!ex || !ex.length) {
+        form.setFieldsValue({ rentalExtraItems: [...DEFAULT_SHIP_RENTAL_EXTRA_ITEMS] });
+      }
+    } else {
+      form.setFieldsValue({ rentalExtraItems: [] });
+    }
+  }, [shipTypeWatched, form]);
 
   // 計算subTotal當items改變時
   useEffect(() => {
@@ -838,6 +878,50 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           </Form.Item>
         </Col>
       </Row>
+
+      {shipTypeWatched === '租賃' && (
+        <>
+          <Divider orientation="left">租賃附加項目（PDF「附加項目」區）</Divider>
+          <Form.List name="rentalExtraItems">
+            {(fields, { add, remove }) => (
+              <>
+                {fields.map(({ key, name, ...restField }) => (
+                  <Row gutter={[8, 0]} key={key} align="top" style={{ marginBottom: 8 }}>
+                    <Col span={15}>
+                      <Form.Item
+                        {...restField}
+                        name={[name, 'description']}
+                        rules={[{ required: true, message: '請填摘要' }]}
+                      >
+                        <Input.TextArea rows={2} placeholder="摘要" />
+                      </Form.Item>
+                    </Col>
+                    <Col span={7}>
+                      <Form.Item {...restField} name={[name, 'unitPrice']}>
+                        <InputNumber
+                          min={0}
+                          precision={2}
+                          style={{ width: '100%' }}
+                          placeholder="單價 HKD（可留空）"
+                          addonBefore="$"
+                        />
+                      </Form.Item>
+                    </Col>
+                    <Col span={2}>
+                      <Button type="link" danger onClick={() => remove(name)}>
+                        刪除
+                      </Button>
+                    </Col>
+                  </Row>
+                ))}
+                <Button type="dashed" onClick={() => add({ description: '', unitPrice: undefined })} block icon={<PlusOutlined />}>
+                  新增附加項目
+                </Button>
+              </>
+            )}
+          </Form.List>
+        </>
+      )}
 
       <Divider dashed />
 

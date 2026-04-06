@@ -17,6 +17,7 @@ export const dataForRead = ({ fields, translate }) => {
     };
     if (field.type === 'contactList') {
       col.formatter = (record) => {
+        if (record == null) return '—';
         const arr = record[key];
         if (!arr || !Array.isArray(arr) || arr.length === 0) return '—';
         return arr
@@ -206,6 +207,7 @@ export function dataForTable({ fields, translate, moneyFormatter, dateFormat }) 
         title: field.label ? translate(field.label) : translate(key),
         dataIndex: keyIndex,
         render: (_, record) => {
+          if (record == null) return '—';
           const arr = record[key];
           if (!arr || !Array.isArray(arr) || arr.length === 0) return '—';
           const rows = arr

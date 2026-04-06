@@ -5,6 +5,8 @@ const InvoiceModel = mongoose.model('Invoice');
 
 const { increaseBySettingKey } = require('@/middlewares/settings');
 
+const INVOICE_PREFIXES = new Set(['SMI', 'WSE', 'SP']);
+
 const convert = async (req, res) => {
   try {
     // Find the supplier quote by id
@@ -18,13 +20,17 @@ const convert = async (req, res) => {
       });
     }
 
+    const invoiceNumberPrefix = INVOICE_PREFIXES.has(supplierQuote.numberPrefix)
+      ? supplierQuote.numberPrefix
+      : 'SMI';
+
     // Create invoice data from supplier quote
     const invoiceData = {
       converted: {
         from: 'supplierQuote',
         supplierQuote: supplierQuote._id,
       },
-      numberPrefix: supplierQuote.numberPrefix,
+      numberPrefix: invoiceNumberPrefix,
       number: supplierQuote.number,
       year: supplierQuote.year,
       type: supplierQuote.type,
@@ -46,7 +52,8 @@ const convert = async (req, res) => {
       currency: supplierQuote.currency,
       discount: supplierQuote.discount,
       notes: supplierQuote.notes,
-      status: 'draft',
+      status: 'sent',
+      paymentStatus: 'unpaid',
       createdBy: req.admin._id,
     };
 

@@ -1,5 +1,5 @@
 doctype html
-html
+html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
   head
     meta(charset="utf-8")
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
@@ -62,12 +62,16 @@ html
       .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; margin-top: 4px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
-      .footer-section { margin-top: auto; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
+      .footer-section { margin-top: 12px; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
       .footer-line-1 { margin-bottom: 2px; }
       .footer-line-2 { }
-      .quote-page { page-break-after: always; display: flex; flex-direction: column; min-height: 297mm; height: 297mm; }
-      .quote-page.quote-page-last { page-break-after: auto !important; }
-      .quote-body { flex: 1 1 auto; min-height: 0; }
+      /* 避免 height:297mm + page-break-after 造成內容溢出後多出一頁空白；改由「下一 chunk 前換頁」 */
+      .quote-page { display: block; page-break-inside: auto; }
+      .quote-page + .quote-page { page-break-before: always; }
+      .quote-body { display: block; }
+    if isPuppeteer
+      style.
+        html.puppeteer-default-quote .footer-section { display: none !important; }
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const displayName = client.name || ''

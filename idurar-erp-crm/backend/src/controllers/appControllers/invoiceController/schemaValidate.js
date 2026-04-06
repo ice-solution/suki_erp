@@ -3,7 +3,7 @@ const schema = Joi.object({
   // Support both old client and new clients fields for backward compatibility
   client: Joi.alternatives().try(Joi.string(), Joi.object()).optional(),
   clients: Joi.array().items(Joi.alternatives().try(Joi.string(), Joi.object())).optional(),
-  numberPrefix: Joi.string().optional(),
+  numberPrefix: Joi.string().valid('SMI', 'WSE', 'SP').optional(),
   number: Joi.alternatives().try(Joi.number(), Joi.string()).required(),
   year: Joi.number().required(),
   type: Joi.string().optional(),
@@ -18,6 +18,7 @@ const schema = Joi.object({
   paymentTerms: Joi.string().optional(),
   paymentStatus: Joi.string().optional(),
   credit: Joi.number().min(0).optional(),
+  fullPaid: Joi.boolean().optional(),
   isCompleted: Joi.boolean().optional(),
   invoiceNumber: Joi.string().allow('').optional(),
   contactPerson: Joi.string().allow('').optional(),

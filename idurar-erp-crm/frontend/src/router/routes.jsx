@@ -22,6 +22,7 @@ const QuoteRead = lazy(() => import('@/pages/Quote/QuoteRead'));
 const QuoteUpdate = lazy(() => import('@/pages/Quote/QuoteUpdate'));
 const QuoteTableCreate = lazy(() => import('@/pages/Quote/QuoteTableCreate'));
 const QuoteTableUpdate = lazy(() => import('@/pages/Quote/QuoteTableUpdate'));
+const QuoteOperationalReport = lazy(() => import('@/pages/QuoteOperationalReport'));
 const SupplierQuote = lazy(() => import('@/pages/SupplierQuote/index'));
 const SupplierQuoteRead = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteRead'));
 const SupplierQuoteTableCreate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableCreate'));
@@ -37,6 +38,7 @@ const ProjectRead = lazy(() => import('@/pages/Project/ProjectRead'));
 const ProjectUpdate = lazy(() => import('@/pages/Project/ProjectUpdate'));
 const ProjectReport = lazy(() => import('@/pages/ProjectReport'));
 const ContractorReport = lazy(() => import('@/pages/ContractorReport'));
+const ContractorEmployeeReport = lazy(() => import('@/pages/ContractorEmployeeReport'));
 const WorkProgressCreate = lazy(() => import('@/pages/WorkProgress/WorkProgressCreate'));
 const WorkProgressRead = lazy(() => import('@/pages/WorkProgress/WorkProgressRead'));
 const WorkProgressUpdate = lazy(() => import('@/pages/WorkProgress/WorkProgressUpdate'));
@@ -138,6 +140,10 @@ let routes = {
       element: <QuoteCreate />,
     },
     {
+      path: '/quote/operational-report',
+      element: <QuoteOperationalReport />,
+    },
+    {
       path: '/quote/read/:id',
       element: <QuoteRead />,
     },
@@ -220,6 +226,10 @@ let routes = {
     {
       path: '/project/contractor-report',
       element: <ContractorReport />,
+    },
+    {
+      path: '/project/contractor-employee-report',
+      element: <ContractorEmployeeReport />,
     },
     {
       path: '/workprogress/create',

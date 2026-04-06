@@ -36,6 +36,9 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/convert/:id`).get(catchErrors(controller['convert']));
     router.route(`/${entity}/convertToSupplierQuote/:id`).get(catchErrors(controller['convertToSupplierQuote']));
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
+    router
+      .route(`/${entity}/operational-report`)
+      .get(catchErrors(controller['getQuoteInvoiceOperationalReport']));
   }
 
   if (entity === 'shipquote') {
@@ -61,6 +64,9 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/:projectId/recalculate-workdays`).post(catchErrors(controller['recalculateWorkDays']));
     router.route(`/${entity}/report`).get(catchErrors(controller['getProjectReport']));
     router.route(`/${entity}/contractor-report`).get(catchErrors(controller['getContractorReport']));
+    router
+      .route(`/${entity}/contractor-employee-report`)
+      .get(catchErrors(controller['getContractorEmployeeReport']));
   }
 
   if (entity === 'ship') {

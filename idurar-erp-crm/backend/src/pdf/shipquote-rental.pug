@@ -1,5 +1,5 @@
 doctype html
-html
+html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
   head
     meta(charset="utf-8")
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
@@ -7,24 +7,24 @@ html
     style.
       body { width: 100%; max-width: 100%; margin: 0; padding: 6px 16px 10px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
       *, *:before, *:after { box-sizing: border-box; color: #222; }
-      .footer-section { margin-top: auto; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
+      .footer-section { margin-top: 12px; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
       .footer-line-1 { margin-bottom: 2px; }
       .footer-line-2 { }
-      .rental-page { page-break-after: always; display: flex; flex-direction: column; min-height: 297mm; height: 297mm; }
-      .rental-page.rental-page-last { page-break-after: auto !important; }
-      .rental-page-body { flex: 1 1 auto; min-height: 0; }
+      .rental-page { display: block; page-break-inside: auto; }
+      .rental-page + .rental-page { page-break-before: always; }
+      .rental-page-body { display: block; }
       .header-section { width: 100%; margin-bottom: 6px; }
       .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .header-table td { vertical-align: top; }
-      .header-table td.header-left { width: 55%; padding: 0 12px 0 0; }
-      .header-table td.header-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
-      .header-left-inner { display: table; width: 100%; }
-      .header-logo-cell { width: 72px; padding-right: 10px; vertical-align: top; }
-      .header-logo { width: 72px; height: 72px; display: block; }
-      .header-text-cell { vertical-align: top; }
-      .company-name { font-size: 13px; font-weight: bold; line-height: 1.3; word-wrap: break-word; letter-spacing: 0.25em; }
-      .company-name-english { font-size: 12px; font-weight: bold; color: #222; word-wrap: break-word; margin-top: 2px; }
-      .company-ownership { font-size: 10px; color: #666; margin-top: 2px; word-wrap: break-word; }
+      .header-table td.header-left { width: 67%; padding: 0 8px 0 0; }
+      .header-table td.header-right { width: 33%; text-align: right; padding: 0 0 0 8px; }
+      .header-left-inner { display: table; width: 100%; table-layout: fixed; }
+      .header-logo-cell { width: 100px; padding-right: 12px; vertical-align: top; }
+      .header-logo { width: 100px; height: 100px; display: block; object-fit: contain; }
+      .header-text-cell { vertical-align: top; width: auto; min-width: 0; }
+      .company-name { font-family: "Times New Roman", Times, serif; font-size: 13px; font-weight: bold; line-height: 1.3; word-wrap: break-word; letter-spacing: 0.25em; }
+      .company-name-english { font-family: "Times New Roman", Times, serif; font-size: 15px; font-weight: bold; color: #222; margin-top: 2px; white-space: nowrap; letter-spacing: 0; }
+      .company-ownership { font-family: "Times New Roman", Times, serif; font-size: 10px; color: #222; margin-top: 2px; word-wrap: break-word; }
       .certification-section { font-size: 8px; color: #666; line-height: 1.4; }
       .certification-logos .iso-text { display: block; margin-top: 2px; }
       .header-page { margin-top: 2px; font-size: 8px; }
@@ -57,7 +57,18 @@ html
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
       .extra-section { margin-top: 12px; }
-      .extra-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; }
+      /* 避免「附加項目」標題單獨留在上一頁、表格被推到下一頁 */
+      .extra-section-block { page-break-inside: avoid; break-inside: avoid; }
+      .extra-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; page-break-inside: auto; }
+      .extra-table caption.extra-section-caption {
+        caption-side: top;
+        text-align: left;
+        font-weight: bold;
+        margin: 0 0 4px;
+        padding: 0;
+        page-break-after: avoid;
+        break-after: avoid;
+      }
       .extra-table th, .extra-table td { border: none; padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; }
       .extra-table th { background: transparent; font-weight: bold; }
       .extra-table .col-desc { width: auto; }
@@ -79,6 +90,9 @@ html
       .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; margin-top: 4px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
+    if isPuppeteer
+      style.
+        html.puppeteer-ship-quote-rental .footer-section { display: none !important; }
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
@@ -116,7 +130,7 @@ html
                 td.header-right
                   .certification-section
                     .certification-logos
-                      img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:120px;height:auto;display:block;margin-bottom:4px;margin-left:auto;')
+                      img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:96px;height:auto;display:block;margin-bottom:4px;margin-left:auto;')
                       span.iso-text ISO 9001 : 2008
                       span.iso-text Certificate No : Q368
                   .header-page Page #{pageIndex + 1}
@@ -181,31 +195,36 @@ html
                   br
                   | #{model.notes}
             .extra-section
-              .notes-title 附加項目
-              table.extra-table
-                thead
-                  tr
-                    th.col-desc 摘要
-                    th.col-price 單價 HKD $
-                tbody
-                  tr
-                    td 續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}
-                    td.col-price -
-                  tr
-                    td 額外電源線(200米以外部份)
-                    td.col-price -
-                  tr
-                    td 因井道漏水落雨整壞爬纜器,需更換爬纜器
-                    td.col-price -
-                  tr
-                    td 因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器
-                    td.col-price -
-                  tr
-                    td 吊船改吊點重新安排檢驗F2/F3證書
-                    td.col-price -
-                  tr
-                    td 三角足場續租(每14日)
-                    td.col-price -
+              .extra-section-block
+                -
+                  const defaultRentalExtras = [
+                    { description: '續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}', unitPrice: null },
+                    { description: '額外電源線(200米以外部份)', unitPrice: null },
+                    { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: null },
+                    { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: null },
+                    { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: null },
+                    { description: '三角足場續租(每14日)', unitPrice: null },
+                  ];
+                  const rentalRows = (model.rentalExtraItems && model.rentalExtraItems.length)
+                    ? model.rentalExtraItems
+                    : defaultRentalExtras;
+                table.extra-table
+                  caption.extra-section-caption 附加項目
+                  thead
+                    tr
+                      th.col-desc 摘要
+                      th.col-price 單價 HKD $
+                  tbody
+                    each row in rentalRows
+                      - const desc = (row && row.description) ? row.description : ''
+                      - const up = row && row.unitPrice
+                      tr
+                        td #{desc}
+                        td.col-price.num
+                          if up != null && up !== '' && !isNaN(Number(up))
+                            | #{moneyFormatter({ amount: Number(up), currency_code: currency })}
+                          else
+                            | -
             .terms-section
               h4 租賃說明
               ol

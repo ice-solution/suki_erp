@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider, Card, Table, Typography, Modal, message, Form, Select, DatePicker, InputNumber, Input } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Space } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Space, Tooltip } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -25,6 +25,7 @@ import { useMoney, useDate } from '@/settings';
 import { useNavigate } from 'react-router-dom';
 import { request } from '@/request';
 import SalaryManagement from '@/components/SalaryManagement';
+import calculate from '@/utils/calculate';
 
 const { Title, Text } = Typography;
 
@@ -140,7 +141,9 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     contractorFeesForm.setFieldsValue({
       projectName: record.projectName || '',
       date: record.date ? dayjs(record.date) : null,
+      invoiceNo: record.invoiceNo || '',
       eoNumber: record.eoNumber || '',
+      remark: record.remark || '',
       amount: record.amount ?? 0,
     });
     setContractorFeesModalVisible(true);
@@ -151,12 +154,39 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     try {
       // 獲取當前的 usedContractorFees 數組
       const currentUsedContractorFees = currentProject.usedContractorFees || [];
-      
+      const projectName = values.projectName;
+      const newAmount = Number(values.amount) || 0;
+
+      // 財務信息中該工程名的判頭費總額度（可有多行同工程名則加總）
+      const allocated = (currentProject.contractorFees || [])
+        .filter((f) => f && f.projectName === projectName)
+        .reduce((sum, f) => calculate.add(sum, Number(f.amount) || 0), 0);
+
+      // 同工程名下已使用金額（修改時排除正在編輯的那一筆）
+      let usedSum = 0;
+      currentUsedContractorFees.forEach((u, i) => {
+        if (!u || u.projectName !== projectName) return;
+        if (editingUsedFeeIndex !== null && i === editingUsedFeeIndex) return;
+        usedSum = calculate.add(usedSum, Number(u.amount) || 0);
+      });
+
+      const remaining = calculate.sub(allocated, usedSum);
+      if (calculate.sub(newAmount, remaining) > 0) {
+        Modal.warning({
+          title: '提示',
+          content: `${projectName || '—'}，金額不足`,
+          okText: '知道了',
+        });
+        return;
+      }
+
       // 添加新的使用判頭費記錄
       const newUsedContractorFee = {
         projectName: values.projectName,
         date: values.date ? dayjs(values.date).toDate() : new Date(),
         eoNumber: values.eoNumber || '',
+        invoiceNo: values.invoiceNo != null ? String(values.invoiceNo).trim() : '',
+        remark: values.remark != null ? String(values.remark).trim() : '',
         amount: values.amount || 0,
       };
       
@@ -447,7 +477,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           state={{ fromProject: currentProject._id }}
           style={{ color: '#1890ff', textDecoration: 'none' }}
         >
-          {`${record.numberPrefix || 'INV'}-${number}`}
+          {`${record.numberPrefix || 'SMI'}-${number}`}
         </Link>
       ),
     },
@@ -498,38 +528,95 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     },
   ];
 
-  // 使用判頭費表格列
+  // 使用判頭費表格列（固定欄寬 + 金額 nowrap；Remark 限高可捲動，避免撐爆版面）
   const contractorFeesColumns = [
     {
       title: '工程名',
       dataIndex: 'projectName',
       key: 'projectName',
+      width: 120,
+      ellipsis: true,
+      onCell: () => ({
+        style: { verticalAlign: 'top', maxWidth: 120 },
+      }),
       render: (projectName) => {
         if (!projectName) return '-';
-        return <Text strong>{projectName}</Text>;
+        return (
+          <Tooltip title={projectName}>
+            <Text strong style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
+              {projectName}
+            </Text>
+          </Tooltip>
+        );
       },
     },
     {
       title: 'EO number',
       dataIndex: 'eoNumber',
       key: 'eoNumber',
-      width: 220,
+      width: 128,
+      ellipsis: true,
       render: (eoNumber) => eoNumber || '-',
+    },
+    {
+      title: 'Remark',
+      dataIndex: 'remark',
+      key: 'remark',
+      width: 200,
+      onCell: () => ({
+        style: { verticalAlign: 'top', maxWidth: 200 },
+      }),
+      render: (remark) =>
+        remark ? (
+          <Tooltip title={remark} placement="topLeft">
+            <div
+              style={{
+                maxWidth: 200,
+                maxHeight: 72,
+                overflowY: 'auto',
+                fontSize: 12,
+                lineHeight: 1.45,
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+              }}
+            >
+              {remark}
+            </div>
+          </Tooltip>
+        ) : (
+          '-'
+        ),
     },
     {
       title: '日期',
       dataIndex: 'date',
       key: 'date',
+      width: 108,
       render: (date) => {
         if (!date) return '-';
         return dayjs(date).format(dateFormat);
       },
     },
     {
+      title: 'Invoice No',
+      dataIndex: 'invoiceNo',
+      key: 'invoiceNo',
+      width: 140,
+      ellipsis: true,
+      render: (invoiceNo) => invoiceNo || '-',
+    },
+    {
       title: '金額',
       dataIndex: 'amount',
       key: 'amount',
+      width: 132,
       align: 'right',
+      onCell: () => ({
+        style: {
+          whiteSpace: 'nowrap',
+          minWidth: 120,
+        },
+      }),
       render: (amount) => {
         return <Text strong>{moneyFormatter({ amount: amount || 0 })}</Text>;
       },
@@ -537,7 +624,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     {
       title: '操作',
       key: 'action',
-      width: 168,
+      width: 152,
       align: 'center',
       render: (_, record, index) => (
         <Space size={16} wrap align="center">
@@ -969,6 +1056,8 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
               columns={contractorFeesColumns}
               pagination={false}
               size="small"
+              tableLayout="fixed"
+              scroll={{ x: 1100 }}
               rowKey={(record, index) => record._id || index}
               locale={{ emptyText: '沒有判頭費記錄' }}
               summary={(pageData) => {
@@ -1038,7 +1127,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         open={contractorFeesModalVisible}
         onCancel={resetUsedFeeModal}
         footer={null}
-        width={500}
+        width={560}
       >
         <Form
           form={contractorFeesForm}
@@ -1061,17 +1150,26 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             />
           </Form.Item>
 
-          <Form.Item
-            label="日期"
-            name="date"
-            rules={[{ required: true, message: '請選擇日期' }]}
-          >
-            <DatePicker 
-              style={{ width: '100%' }} 
-              format={dateFormat}
-              placeholder="選擇日期"
-            />
-          </Form.Item>
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item
+                label="日期"
+                name="date"
+                rules={[{ required: true, message: '請選擇日期' }]}
+              >
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format={dateFormat}
+                  placeholder="選擇日期"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item label="Invoice No" name="invoiceNo">
+                <Input allowClear placeholder="選填" />
+              </Form.Item>
+            </Col>
+          </Row>
 
           {editingUsedFeeIndex !== null ? (
             <Form.Item label="EO number" name="eoNumber">
@@ -1092,6 +1190,16 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
               />
             </Form.Item>
           )}
+
+          <Form.Item label="Remark" name="remark">
+            <Input.TextArea
+              allowClear
+              placeholder="選填"
+              rows={3}
+              showCount
+              maxLength={500}
+            />
+          </Form.Item>
 
           <Form.Item
             label="金額"

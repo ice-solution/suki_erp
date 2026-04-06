@@ -193,6 +193,15 @@ const projectSchema = new mongoose.Schema({
       type: String,
       required: false,
     },
+    /** 手動填寫之發票編號（僅紀錄，不連動 Invoice 實體） */
+    invoiceNo: {
+      type: String,
+      required: false,
+    },
+    remark: {
+      type: String,
+      required: false,
+    },
     date: {
       type: Date,
       required: true,

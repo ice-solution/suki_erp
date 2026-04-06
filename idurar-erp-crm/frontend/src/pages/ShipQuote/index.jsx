@@ -45,11 +45,11 @@ export default function ShipQuote() {
       },
     },
     {
-      title: translate('suppliers'),
-      dataIndex: ['supplier', 'name'],
-      width: 150,
+      title: 'Ship Type',
+      dataIndex: 'shipType',
+      width: 120,
       ellipsis: false,
-      render: (name, record) => record.supplier?.name || '-',
+      render: (shipType) => shipType || '-',
     },
     {
       title: translate('Date'),

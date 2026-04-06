@@ -700,11 +700,19 @@ export default function ProjectForm({ current = null }) {
                                       ];
 
                                   return (
-                                    <Select
-                                      placeholder="選擇承辦商"
+                                    <AutoComplete
+                                      placeholder="搜尋或選擇承辦商"
                                       options={safeOptions}
-                                      loading={contractorsLoading}
                                       allowClear
+                                      style={{ width: '100%' }}
+                                      notFoundContent={contractorsLoading ? '載入中…' : '無匹配承辦商'}
+                                      filterOption={(inputValue, option) => {
+                                        const q = (inputValue || '').toLowerCase();
+                                        const v = (option?.value ?? '').toString().toLowerCase();
+                                        const lab =
+                                          option?.label != null ? String(option.label).toLowerCase() : '';
+                                        return v.includes(q) || lab.includes(q);
+                                      }}
                                     />
                                   );
                                 })()}

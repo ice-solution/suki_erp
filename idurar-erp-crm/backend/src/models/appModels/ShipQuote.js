@@ -159,6 +159,13 @@ const shipQuoteSchema = new mongoose.Schema({
   notes: {
     type: String,
   },
+  /** 吊船租賃 PDF「附加項目」：摘要 + 單價（可編輯；無則 PDF 用內建預設列） */
+  rentalExtraItems: [
+    {
+      description: { type: String, default: '' },
+      unitPrice: { type: Number },
+    },
+  ],
   status: {
     type: String,
     enum: ['draft', 'pending', 'sent', 'accepted', 'declined', 'cancelled', 'on hold'],

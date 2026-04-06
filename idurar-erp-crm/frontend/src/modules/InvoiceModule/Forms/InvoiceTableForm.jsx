@@ -30,6 +30,8 @@ export default function InvoiceTableForm({ subTotal = 0, current = null }) {
   return <LoadInvoiceTableForm subTotal={subTotal} current={current} />;
 }
 
+const INVOICE_NUMBER_PREFIXES = ['SMI', 'WSE', 'SP'];
+
 function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
@@ -65,8 +67,14 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const watchedClients = Form.useWatch('clients', form) || [];
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
+  const projectPercentageWatch = Form.useWatch('projectPercentage', form);
   const [quoteOptions, setQuoteOptions] = useState([]);
   const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
+
+  const invoiceNumberPrefixInitial =
+    current?.numberPrefix && INVOICE_NUMBER_PREFIXES.includes(current.numberPrefix)
+      ? current.numberPrefix
+      : 'SMI';
 
   // Payment due date = 所選日期 + Payment Terms 月數，該月最後一天
   const getPaymentDueDate = (dateVal, terms) => {
@@ -408,7 +416,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           type: type,
           shipType: shipType,
           subcontractorCount: subcontractorCount,
-          costPrice: costPrice
+          costPrice: costPrice,
+          projectPercentage:
+            current.projectPercentage != null && current.projectPercentage !== ''
+              ? current.projectPercentage
+              : 100,
+          fullPaid: current.fullPaid === true,
         });
       }, 100);
     }
@@ -432,11 +445,17 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   }, [items, form]);
 
   useEffect(() => {
+    const pct =
+      projectPercentageWatch == null || projectPercentageWatch === ''
+        ? 100
+        : Number(projectPercentageWatch);
+    const safePct = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 100;
     const discountAmount = calculate.multiply(subTotal, discount / 100);
-    const currentTotal = calculate.sub(subTotal, discountAmount);
+    const afterDiscount = calculate.sub(subTotal, discountAmount);
+    const currentTotal = calculate.multiply(afterDiscount, safePct / 100);
     setDiscountTotal(Number.parseFloat(discountAmount));
     setTotal(Number.parseFloat(currentTotal));
-  }, [subTotal, discount]);
+  }, [subTotal, discount, projectPercentageWatch]);
 
   // 處理項目選擇
   const handleItemSelect = (value, option) => {
@@ -669,7 +688,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Form.Item
             label="Invoice Type"
             name="numberPrefix"
-            initialValue={current?.numberPrefix || 'SMI'}
+            initialValue={invoiceNumberPrefixInitial}
             rules={[
               {
                 required: true,
@@ -678,23 +697,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           >
             <Select
               placeholder="選擇 Invoice Type"
-              options={
-                current
-                  ? [
-                      { value: 'SML', label: 'SML' },
-                      { value: 'QU', label: 'QU' },
-                      { value: 'XX', label: 'XX' },
-                      { value: 'INV', label: 'INV' },
-                      { value: 'SMI', label: 'SMI' },
-                      { value: 'WSE', label: 'WSE' },
-                      { value: 'SP', label: 'SP' },
-                    ]
-                  : [
-                      { value: 'SMI', label: 'SMI' },
-                      { value: 'WSE', label: 'WSE' },
-                      { value: 'SP', label: 'SP' },
-                    ]
-              }
+              options={[
+                { value: 'SMI', label: 'SMI' },
+                { value: 'WSE', label: 'WSE' },
+                { value: 'SP', label: 'SP' },
+              ]}
             />
           </Form.Item>
         </Col>
@@ -865,25 +872,9 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={12}>
+        <Col className="gutter-row" span={18}>
           <Form.Item label={translate('Project Address')} name="address">
             <Input />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            label={translate('project_percentage')}
-            name="projectPercentage"
-            tooltip={translate('project_percentage_hint')}
-          >
-            <InputNumber
-              min={0}
-              max={100}
-              precision={2}
-              style={{ width: '100%' }}
-              placeholder="0–100"
-              addonAfter="%"
-            />
           </Form.Item>
         </Col>
       </Row>
@@ -946,6 +937,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col className="gutter-row" span={6}>
           <Form.Item label={translate('paid_date')} name="paidDate">
             <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('paid_date')} />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={6}>
+          <Form.Item label="Full paid" name="fullPaid" valuePropName="checked" initialValue={false}>
+            <Switch checkedChildren="Y" unCheckedChildren="N" />
           </Form.Item>
         </Col>
       </Row>
@@ -1063,6 +1059,37 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           </Col>
           <Col className="gutter-row" span={5}>
             <MoneyInputFormItem readOnly value={subTotal} />
+          </Col>
+        </Row>
+        <Row gutter={[12, -5]}>
+          <Col className="gutter-row" span={4} offset={15}>
+            <p
+              style={{
+                paddingLeft: '12px',
+                paddingTop: '5px',
+                margin: 0,
+                textAlign: 'right',
+              }}
+            >
+              {translate('project_percentage')} :
+            </p>
+          </Col>
+          <Col className="gutter-row" span={5}>
+            <Form.Item
+              name="projectPercentage"
+              tooltip={translate('project_percentage_hint')}
+              initialValue={100}
+              style={{ marginBottom: 0 }}
+            >
+              <InputNumber
+                min={0}
+                max={100}
+                precision={2}
+                style={{ width: '100%' }}
+                placeholder="0–100"
+                addonAfter="%"
+              />
+            </Form.Item>
           </Col>
         </Row>
         <Row gutter={[12, -5]}>

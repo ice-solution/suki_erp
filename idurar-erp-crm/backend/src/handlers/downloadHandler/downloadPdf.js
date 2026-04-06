@@ -1,5 +1,15 @@
 const custom = require('@/controllers/pdfController');
 const mongoose = require('mongoose');
+const { tryGenerateQuotePdfBufferWithPuppeteer } = require('@/new_pdf/quote/quotePuppeteerDispatch');
+const {
+  tryGenerateSupplierQuotePdfBufferWithPuppeteer,
+} = require('@/new_pdf/supplier_quote/supplierQuotePuppeteerDispatch');
+const {
+  tryGenerateShipQuotePdfBufferWithPuppeteer,
+} = require('@/new_pdf/ship_quote/shipQuotePuppeteerDispatch');
+const {
+  tryGenerateInvoicePdfBufferWithPuppeteer,
+} = require('@/new_pdf/invoice/invoicePuppeteerDispatch');
 
 module.exports = downloadPdf = async (req, res, { directory, id }) => {
   try {
@@ -27,20 +37,88 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
     
     if (mongoose.models[modelName]) {
       const Model = mongoose.model(modelName);
-      const result = await Model.findOne({
-        _id: id,
-      }).exec();
+
+      let result;
+      if (modelName === 'Quote') {
+        result = await Model.findOne({
+          _id: id,
+          removed: false,
+        })
+          .populate('createdBy', 'name surname email')
+          .populate('updatedBy', 'name surname email')
+          .exec();
+      } else if (modelName === 'SupplierQuote') {
+        result = await Model.findOne({
+          _id: id,
+        })
+          .populate('createdBy', 'name surname email')
+          .populate('updatedBy', 'name surname email')
+          .exec();
+      } else if (modelName === 'ShipQuote') {
+        result = await Model.findOne({
+          _id: id,
+        })
+          .populate('createdBy', 'name surname email')
+          .populate('updatedBy', 'name surname email')
+          .exec();
+      } else if (modelName === 'Invoice') {
+        result = await Model.findOne({
+          _id: id,
+        })
+          .populate('createdBy', 'name surname email')
+          .populate('updatedBy', 'name surname email')
+          .exec();
+      } else {
+        result = await Model.findOne({
+          _id: id,
+        }).exec();
+      }
 
       // Throw error if no result
       if (!result) {
         throw { name: 'ValidationError' };
       }
 
-      // Continue process if result is returned
-
       const fileId = modelName.toLowerCase() + '-' + result._id + '.pdf';
       const folderPath = modelName.toLowerCase();
       const targetLocation = `src/public/download/${folderPath}/${fileId}`;
+
+      if (modelName === 'Quote') {
+        const puppeteerBuffer = await tryGenerateQuotePdfBufferWithPuppeteer(result);
+        if (puppeteerBuffer) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          return res.send(puppeteerBuffer);
+        }
+      }
+
+      if (modelName === 'SupplierQuote') {
+        const puppeteerBuffer = await tryGenerateSupplierQuotePdfBufferWithPuppeteer(result);
+        if (puppeteerBuffer) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          return res.send(puppeteerBuffer);
+        }
+      }
+
+      if (modelName === 'ShipQuote') {
+        const puppeteerBuffer = await tryGenerateShipQuotePdfBufferWithPuppeteer(result);
+        if (puppeteerBuffer) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          return res.send(puppeteerBuffer);
+        }
+      }
+
+      if (modelName === 'Invoice') {
+        const puppeteerBuffer = await tryGenerateInvoicePdfBufferWithPuppeteer(result);
+        if (puppeteerBuffer) {
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          return res.send(puppeteerBuffer);
+        }
+      }
+
       await custom.generatePdf(
         modelName,
         { filename: folderPath, format: 'A4', targetLocation },

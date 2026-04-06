@@ -162,6 +162,47 @@ const summary = async (req, res) => {
     }
   });
 
+  // 本期間內：已付款（paymentStatus=paid）或部份付款（unpaid 且 credit>0）之實收合計（優先 credit，否則已付清用 total）
+  const paidThisMonthMatch = {
+    removed: false,
+    date: {
+      $gte: startDate.toDate(),
+      $lte: endDate.toDate(),
+    },
+    $or: [{ paymentStatus: 'paid' }, { paymentStatus: 'unpaid', credit: { $gt: 0 } }],
+  };
+
+  const paidThisMonthResult = await Model.aggregate([
+    {
+      $match: paidThisMonthMatch,
+    },
+    {
+      $group: {
+        _id: null,
+        total_paid_this_month: {
+          $sum: {
+            $cond: [
+              {
+                $gt: [
+                  { $convert: { input: '$credit', to: 'double', onError: 0, onNull: 0 } },
+                  0,
+                ],
+              },
+              { $convert: { input: '$credit', to: 'double', onError: 0, onNull: 0 } },
+              {
+                $cond: [
+                  { $eq: ['$paymentStatus', 'paid'] },
+                  { $convert: { input: '$total', to: 'double', onError: 0, onNull: 0 } },
+                  0,
+                ],
+              },
+            ],
+          },
+        },
+      },
+    },
+  ]);
+
   const unpaid = await Model.aggregate([
     {
       $match: {
@@ -197,6 +238,8 @@ const summary = async (req, res) => {
   const finalResult = {
     total: totalInvoices?.total,
     total_undue: unpaid.length > 0 ? unpaid[0].total_amount : 0,
+    total_paid_this_month:
+      paidThisMonthResult.length > 0 ? paidThisMonthResult[0].total_paid_this_month : 0,
     type,
     performance: result,
   };

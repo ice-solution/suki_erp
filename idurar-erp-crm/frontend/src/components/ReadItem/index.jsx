@@ -32,12 +32,13 @@ export default function ReadItem({ config }) {
       const propsKey = props.dataIndex;
       const propsTitle = props.title;
       const isDate = props.isDate || false;
+      const safeRecord = currentResult ?? {};
       let value;
       if (typeof props.formatter === 'function') {
-        value = props.formatter(currentResult);
+        value = props.formatter(safeRecord);
       } else {
-        value = valueByString(currentResult, propsKey);
-        value = isDate ? dayjs(value).format(dateFormat) : value;
+        value = valueByString(safeRecord, propsKey);
+        value = isDate ? (value != null && value !== '' ? dayjs(value).format(dateFormat) : '—') : value;
       }
       list.push({ propsKey, label: propsTitle, value: value });
     });

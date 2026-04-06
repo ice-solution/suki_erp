@@ -56,12 +56,19 @@ html
       }
       
       .logo {
-        width: 96px;
-        height: 96px;
-        margin-right: 15px;
+        width: 100px;
+        height: 100px;
+        margin-right: 14px;
+        object-fit: contain;
+      }
+      
+      .company-name-section {
+        flex: 1;
+        min-width: 0;
       }
       
       .company-name {
+        font-family: "Times New Roman", Times, serif;
         font-size: 18px;
         font-weight: bold;
         color: #222;
@@ -69,14 +76,18 @@ html
       }
       
       .company-name-english {
-        font-size: 14px;
-        font-weight: normal;
-        color: #666;
+        font-family: "Times New Roman", Times, serif;
+        font-size: 15px;
+        font-weight: bold;
+        color: #222;
+        white-space: nowrap;
+        letter-spacing: 0;
       }
       
       .company-ownership {
+        font-family: "Times New Roman", Times, serif;
         font-size: 10px;
-        color: #666;
+        color: #222;
         margin-top: 5px;
       }
       
@@ -213,7 +224,7 @@ body
           .company-ownership (Wholly Owned By Super Pioneer Ltd.)
 .certification-section
   .certification-logos
-    img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:120px;height:auto;display:block;margin-bottom:4px;margin-left:auto;')
+    img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:96px;height:auto;display:block;margin-bottom:4px;margin-left:auto;')
     | ISO 9001: 2008
     br
     | Certificate No: Q368

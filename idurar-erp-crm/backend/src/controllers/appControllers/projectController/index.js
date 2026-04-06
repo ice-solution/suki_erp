@@ -21,6 +21,7 @@ const deleteAttendance = require('./deleteAttendance');
 const recalculateWorkDays = require('./recalculateWorkDays');
 const getProjectReport = require('./getProjectReport');
 const getContractorReport = require('./getContractorReport');
+const getContractorEmployeeReport = require('./getContractorEmployeeReport');
 const exportXeroEo = require('./exportXeroEo');
 const peekNextUsedContractorFeeEo = require('./peekNextUsedContractorFeeEo');
 
@@ -48,6 +49,7 @@ module.exports = {
   recalculateWorkDays,
   getProjectReport,
   getContractorReport,
+  getContractorEmployeeReport,
   exportXeroEo,
   peekNextUsedContractorFeeEo,
 };

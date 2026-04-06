@@ -20,39 +20,65 @@ const paginatedList = async (req, res) => {
     fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
   }
 
-  //  Query the database for a list of all results
-  // 默認按 year 降序，然後按 number 升序排序
-  let sortObj = {};
+  const matchQuery = {
+    removed: false,
+    [filter]: equal,
+    ...fields,
+  };
+
+  // 默認排序：numberPrefix 先 SML 再 QU，其次 year 降序、number 升序（與列表期望一致）
+  let result;
+  let count;
+
   if (!sortBy) {
-    // 如果沒有指定排序，使用默認排序：先按 year 降序，再按 number 升序
-    sortObj = { year: -1, number: 1 };
+    const orderedIds = await Model.aggregate([
+      { $match: matchQuery },
+      {
+        $addFields: {
+          _prefixRank: {
+            $switch: {
+              branches: [
+                { case: { $eq: ['$numberPrefix', 'SML'] }, then: 0 },
+                { case: { $eq: ['$numberPrefix', 'QU'] }, then: 1 },
+              ],
+              default: 2,
+            },
+          },
+        },
+      },
+      { $sort: { _prefixRank: 1, year: -1, number: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+      { $project: { _id: 1 } },
+    ]);
+
+    const ids = orderedIds.map((d) => d._id);
+    if (ids.length === 0) {
+      result = [];
+    } else {
+      const docs = await Model.find({ _id: { $in: ids } })
+        .populate('createdBy', 'name surname email')
+        .populate('updatedBy', 'name surname email')
+        .exec();
+      const orderMap = new Map(ids.map((id, i) => [id.toString(), i]));
+      result = [...docs].sort(
+        (a, b) => orderMap.get(a._id.toString()) - orderMap.get(b._id.toString())
+      );
+    }
+
+    count = await Model.countDocuments(matchQuery);
   } else {
-    sortObj = { [sortBy]: sortValue || 1 };
+    const sortObj = { [sortBy]: sortValue || 1 };
+    result = await Model.find(matchQuery)
+      .skip(skip)
+      .limit(limit)
+      .sort(sortObj)
+      .populate('createdBy', 'name surname email')
+      .populate('updatedBy', 'name surname email')
+      .exec();
+    count = await Model.countDocuments(matchQuery);
   }
-  
-  const resultsPromise = Model.find({
-    removed: false,
 
-    [filter]: equal,
-    ...fields,
-  })
-    .skip(skip)
-    .limit(limit)
-    .sort(sortObj)
-    .populate('createdBy', 'name')
-    .exec();
-
-  // Counting the total documents
-  const countPromise = Model.countDocuments({
-    removed: false,
-
-    [filter]: equal,
-    ...fields,
-  });
-
-  // Resolving both promises
-  const [result, count] = await Promise.all([resultsPromise, countPromise]);
-  // Calculating total pages
   const pages = Math.ceil(count / limit);
 
   // Getting Pagination Object

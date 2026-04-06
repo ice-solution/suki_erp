@@ -11,6 +11,7 @@ const paginatedList = require('./paginatedList');
 const read = require('./read');
 const linkProject = require('./linkProject');
 const search = require('./search');
+const getQuoteInvoiceOperationalReport = require('./getQuoteInvoiceOperationalReport');
 
 methods.list = paginatedList;
 methods.read = read;
@@ -23,5 +24,6 @@ methods.convert = convertQuoteToInvoice;
 methods.convertToSupplierQuote = convertQuoteToSupplierQuote;
 methods.summary = summary;
 methods.linkProject = linkProject;
+methods.getQuoteInvoiceOperationalReport = getQuoteInvoiceOperationalReport;
 
 module.exports = methods;

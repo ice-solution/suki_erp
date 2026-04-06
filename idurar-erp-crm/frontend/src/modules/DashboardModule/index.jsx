@@ -38,12 +38,6 @@ export default function DashboardModule() {
 
   const { result: quoteResult, isLoading: quoteLoading, onFetch: fetchQuotesStats } = useOnFetch();
 
-  const {
-    result: paymentResult,
-    isLoading: paymentLoading,
-    onFetch: fetchPayemntsStats,
-  } = useOnFetch();
-
   const { result: clientResult, isLoading: clientLoading } = useFetch(() =>
     request.summary({ entity: 'client' })
   );
@@ -54,7 +48,6 @@ export default function DashboardModule() {
     if (currency) {
       fetchInvoicesStats(getStatsData({ entity: 'invoice', currency }));
       fetchQuotesStats(getStatsData({ entity: 'quote', currency }));
-      fetchPayemntsStats(getStatsData({ entity: 'payment', currency }));
     }
   }, [money_format_settings.default_currency_code]);
 
@@ -149,8 +142,8 @@ export default function DashboardModule() {
           <SummaryCard
             title={translate('paid')}
             prefix={translate('This month')}
-            isLoading={paymentLoading}
-            data={paymentResult?.total}
+            isLoading={invoiceLoading}
+            data={invoiceResult?.total_paid_this_month}
           />
           <SummaryCard
             title={translate('Unpaid')}

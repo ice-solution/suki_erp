@@ -15,7 +15,6 @@ import useLanguage from '@/locale/useLanguage';
 import { erp } from '@/redux/erp/actions';
 import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
-import { generate as uniqueId } from 'shortid';
 import { useNavigate } from 'react-router-dom';
 import { request } from '@/request';
 
@@ -125,8 +124,9 @@ export default function DataTable({ config, extra = [] }) {
     };
   }, []);
 
-  // Project list：支援真正的文字搜尋（後端 project/search）
-  const [searchKeyword, setSearchKeyword] = useState('');
+  // Project list：文字搜尋僅在按 Enter 或點搜尋鈕時送後端（避免輸入一字就切換資料來源）
+  const [searchDraft, setSearchDraft] = useState('');
+  const [activeSearchQuery, setActiveSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
 
@@ -134,9 +134,9 @@ export default function DataTable({ config, extra = [] }) {
     return searchConfig?.searchFields || 'name';
   }, [searchConfig]);
 
-  const handleSearch = async (keyword) => {
+  const runSearch = async (keyword) => {
     const q = (keyword || '').trim();
-    setSearchKeyword(keyword);
+    setActiveSearchQuery(q);
 
     if (!q) {
       setSearching(false);
@@ -171,29 +171,33 @@ export default function DataTable({ config, extra = [] }) {
         extra={[
           searchConfig ? (
             <Input.Search
-              key={`${uniqueId()}`}
+              key="project-list-search"
               allowClear
               placeholder={translate('Search')}
               style={{ minWidth: 240 }}
-              value={searchKeyword}
+              value={searchDraft}
               loading={searching}
               onChange={(e) => {
                 const v = e.target.value;
-                setSearchKeyword(v);
+                setSearchDraft(v);
                 if (!v.trim()) {
+                  setActiveSearchQuery('');
                   setSearchResults([]);
                   dispatcher();
                 }
               }}
-              onSearch={(value) => handleSearch(value)}
+              onSearch={(value) => {
+                setSearchDraft(value ?? '');
+                runSearch(value);
+              }}
               enterButton
             />
           ) : null,
-          <Button onClick={handelDataTableLoad} key={`${uniqueId()}`} icon={<RedoOutlined />}>
+          <Button onClick={handelDataTableLoad} key="project-list-refresh" icon={<RedoOutlined />}>
             {translate('Refresh')}
           </Button>,
 
-          !disableAdd && <AddNewItem config={config} key={`${uniqueId()}`} />,
+          !disableAdd && <AddNewItem config={config} key="project-list-add" />,
         ]}
         style={{
           padding: '20px 0px',
@@ -203,10 +207,18 @@ export default function DataTable({ config, extra = [] }) {
       <Table
         columns={dataTableColumns}
         rowKey={(item) => item._id}
-        dataSource={Array.isArray(searchResults) && searchKeyword.trim() ? searchResults : Array.isArray(dataSource) ? dataSource : []}
-        pagination={searchKeyword.trim() ? false : pagination || {}}
+        dataSource={
+          activeSearchQuery
+            ? Array.isArray(searchResults)
+              ? searchResults
+              : []
+            : Array.isArray(dataSource)
+              ? dataSource
+              : []
+        }
+        pagination={activeSearchQuery ? false : pagination || {}}
         loading={listIsLoading}
-        onChange={searchKeyword.trim() ? undefined : handelDataTableLoad}
+        onChange={activeSearchQuery ? undefined : handelDataTableLoad}
         scroll={{ x: true }}
       />
     </>

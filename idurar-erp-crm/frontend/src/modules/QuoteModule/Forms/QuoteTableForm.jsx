@@ -33,7 +33,7 @@ export default function QuoteTableForm({ subTotal = 0, current = null }) {
 function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
-  const { moneyFormatter } = useMoney();
+  const { moneyFormatter, currency_symbol, currency_position, cent_precision } = useMoney();
   const { last_quote_number } = useSelector(selectFinanceSettings);
   const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
   const navigate = useNavigate();
@@ -41,7 +41,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [subTotal, setSubTotal] = useState(0);
   const [total, setTotal] = useState(0);
   const [discount, setDiscount] = useState(0);
-  const [discountTotal, setDiscountTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [selectedType, setSelectedType] = useState('服務');
   
@@ -111,7 +110,21 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   };
   
   const handleDiscountChange = (value) => {
-    setDiscount(value || 0);
+    const v = value == null || value === '' ? 0 : Number(value);
+    setDiscount(v);
+  };
+
+  /** 手動輸入折扣金額：回推折扣%（高精度），以便小計變動時仍可按比例重算 */
+  const handleDiscountAmountChange = (value) => {
+    const raw = value == null || value === '' ? 0 : Number(value);
+    const cap = subTotal > 0 ? Math.min(Math.max(0, raw), subTotal) : Math.max(0, raw);
+    const pct = subTotal > 0 ? (cap / subTotal) * 100 : 0;
+    const pctRounded = Number(pct.toFixed(6));
+    setDiscount(pctRounded);
+    form.setFieldsValue({
+      discount: pctRounded,
+      discountTotal: Number(cap.toFixed(cent_precision ?? 2)),
+    });
   };
 
   // 檢查 Quote Number 是否對應現有項目
@@ -351,15 +364,11 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
       
-      // 計算subTotal（允許負數影響總額）
+      // 計算 subTotal（負數應扣減）
       let calculatedSubTotal = 0;
       if (currentItems && currentItems.length > 0) {
         currentItems.forEach((item) => {
-          // 如果價格是負數，不計入 subtotal
-          if (item && item.price < 0) {
-            return; // 跳過負數價格項目
-          }
-          if (item && item.quantity && item.price) {
+          if (item && item.quantity != null && item.price != null) {
             let itemTotal = calculate.multiply(item.quantity, item.price);
             calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
           }
@@ -406,16 +415,12 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當items改變時（允許負數影響總額）
+  // 計算 subTotal（負數應扣減）
   useEffect(() => {
     let newSubTotal = 0;
     if (items && items.length > 0) {
       items.forEach((item) => {
-        // 如果價格是負數，不計入 subtotal
-        if (item && item.price < 0) {
-          return; // 跳過負數價格項目
-        }
-        if (item && item.quantity && item.price) {
+        if (item && item.quantity != null && item.price != null) {
           let itemTotal = calculate.multiply(item.quantity, item.price);
           newSubTotal = calculate.add(newSubTotal, itemTotal);
         }
@@ -427,12 +432,14 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     form.setFieldsValue({ items: items });
   }, [items, form]);
 
+  // 依小計與折扣% 更新折扣金額與總計（手改金額時會先改 discount%，再由此同步金額）
   useEffect(() => {
-    const discountAmount = calculate.multiply(subTotal, discount / 100);
-    const currentTotal = calculate.sub(subTotal, discountAmount);
-    setDiscountTotal(Number.parseFloat(discountAmount));
-    setTotal(Number.parseFloat(currentTotal));
-  }, [subTotal, discount]);
+    const discountAmount = calculate.multiply(subTotal, (discount || 0) / 100);
+    const rounded = Number.parseFloat(Number(discountAmount).toFixed(cent_precision ?? 2));
+    form.setFieldValue('discountTotal', rounded);
+    const currentTotal = calculate.sub(subTotal, rounded);
+    setTotal(Number.parseFloat(Number(currentTotal).toFixed(cent_precision ?? 2)));
+  }, [subTotal, discount, form, cent_precision]);
 
   // 處理項目選擇
   const handleItemSelect = (value, option) => {
@@ -1025,7 +1032,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               <InputNumber
                 min={0}
                 max={100}
-                precision={0}
+                precision={4}
                 style={{ width: '100%' }}
                 onChange={handleDiscountChange}
                 placeholder="0"
@@ -1049,7 +1056,22 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             </p>
           </Col>
           <Col className="gutter-row" span={5}>
-            <MoneyInputFormItem readOnly value={discountTotal} />
+            <Form.Item
+              name="discountTotal"
+              rules={[{ required: false }]}
+              style={{ marginBottom: 0 }}
+            >
+              <InputNumber
+                min={0}
+                max={subTotal > 0 ? subTotal : undefined}
+                precision={cent_precision ?? 2}
+                style={{ width: '100%' }}
+                controls={false}
+                onChange={handleDiscountAmountChange}
+                addonBefore={currency_position === 'before' ? currency_symbol : undefined}
+                addonAfter={currency_position === 'after' ? currency_symbol : undefined}
+              />
+            </Form.Item>
           </Col>
         </Row>
         <Row gutter={[12, -5]}>

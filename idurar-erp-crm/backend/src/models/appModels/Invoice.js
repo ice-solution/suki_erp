@@ -10,8 +10,8 @@ const invoiceSchema = new mongoose.Schema({
   // Quote結構的字段 - 保持完全一致
   numberPrefix: {
     type: String,
-    enum: ['SML', 'QU', 'XX', 'INV', 'SMI', 'WSE', 'SP'], // Invoice type 選項
-    default: 'INV',
+    enum: ['SMI', 'WSE', 'SP'],
+    default: 'SMI',
     required: true,
   },
   number: {
@@ -179,6 +179,11 @@ const invoiceSchema = new mongoose.Schema({
   credit: {
     type: Number,
     default: 0,
+  },
+  /** 是否全額付清（手動標記） */
+  fullPaid: {
+    type: Boolean,
+    default: false,
   },
   // 付款記錄
   payment: [{

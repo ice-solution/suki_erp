@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card, DatePicker, Button, message, Space, Table } from 'antd';
 import { DownloadOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -25,6 +26,31 @@ export default function XeroExport() {
   const [csvContent, setCsvContent] = useState('');
   const [csvFilename, setCsvFilename] = useState('');
 
+  const resolveInvoiceTotal = (inv) => {
+    if (inv.total != null && !Number.isNaN(Number(inv.total))) {
+      return Number(inv.total);
+    }
+    const items = inv.items || [];
+    return items.reduce((sum, item) => {
+      const line =
+        item.total != null
+          ? Number(item.total)
+          : (item.price != null && item.quantity != null
+              ? Number(item.price) * Number(item.quantity)
+              : 0);
+      return sum + (Number.isFinite(line) ? line : 0);
+    }, 0);
+  };
+
+  /** 工程／專案地址：優先關聯 Project，否則用發票上的 address */
+  const resolveProjectAddress = (inv) => {
+    const fromProject = inv.project && typeof inv.project === 'object' ? inv.project.address : '';
+    if (fromProject != null && String(fromProject).trim() !== '') {
+      return String(fromProject).trim();
+    }
+    return inv.address != null ? String(inv.address).trim() : '';
+  };
+
   const buildPreviewAndCsv = (invoices, dateFrom, dateTo) => {
     const branchByInvoiceType = { SMI: 'Supermax', WSE: 'Wing Shun', SP: 'supermax' };
 
@@ -36,58 +62,55 @@ export default function XeroExport() {
       const client = inv.client || (inv.clients && inv.clients[0]);
       const contactName = client?.name || '';
       const accountCode = getAccountCodeByServiceType(inv.type) || '';
-      const invoiceNumber = `${inv.numberPrefix || 'INV'}-${inv.number}`;
+      const invoiceNumber = `${inv.numberPrefix || 'SMI'}-${inv.number}`;
       const invoiceDate = inv.date ? dayjs(inv.date).format('YYYY-MM-DD') : '';
       const dueDate = inv.paymentDueDate ? dayjs(inv.paymentDueDate).format('YYYY-MM-DD') : '';
 
       const trackingOption1 = branchByInvoiceType[inv.numberPrefix] || '';
-      const items = inv.items || [];
+      const description = resolveProjectAddress(inv);
+      const quantity = 1;
+      const unitAmount = resolveInvoiceTotal(inv);
 
-      for (const item of items) {
-        const description = item.description != null ? item.description : (item.itemName || '');
-        const quantity = item.quantity != null ? item.quantity : 0;
-        const unitAmount = item.price != null ? item.price : 0;
+      rows.push(
+        [
+          escapeCsvCell(contactName),
+          '', // EmailAddress
+          '', '', '', '', '', '', '', '', // PO address
+          escapeCsvCell(invoiceNumber),
+          '', // Reference
+          escapeCsvCell(invoiceDate),
+          escapeCsvCell(dueDate),
+          '', // Total
+          '', // InventoryItemCode
+          escapeCsvCell(description),
+          escapeCsvCell(quantity),
+          escapeCsvCell(unitAmount),
+          '', // Discount
+          escapeCsvCell(accountCode),
+          'Tax Exempt (0%)', // TaxType
+          '', // TaxAmount
+          'branch', // TrackingName1
+          escapeCsvCell(trackingOption1), // TrackingOption1
+          '', '', // TrackingName2, TrackingOption2
+          'HKD', // Currency
+          '', // BrandingTheme
+        ].join(',')
+      );
 
-        rows.push(
-          [
-            escapeCsvCell(contactName),
-            '', // EmailAddress
-            '', '', '', '', '', '', '', '', // PO address
-            escapeCsvCell(invoiceNumber),
-            '', // Reference
-            escapeCsvCell(invoiceDate),
-            escapeCsvCell(dueDate),
-            '', // Total
-            '', // InventoryItemCode
-            escapeCsvCell(description),
-            escapeCsvCell(quantity),
-            escapeCsvCell(unitAmount),
-            '', // Discount
-            escapeCsvCell(accountCode),
-            'Tax Exempt (0%)', // TaxType
-            '', // TaxAmount
-            'branch', // TrackingName1
-            escapeCsvCell(trackingOption1), // TrackingOption1
-            '', '', // TrackingName2, TrackingOption2
-            'HKD', // Currency
-            '', // BrandingTheme
-          ].join(',')
-        );
-
-        outPreviewRows.push({
-          key: `row-${rowIndex}`,
-          contactName,
-          invoiceNumber,
-          invoiceDate,
-          dueDate,
-          accountCode,
-          description,
-          quantity,
-          unitAmount,
-          taxType: 'Tax Exempt (0%)',
-        });
-        rowIndex += 1;
-      }
+      outPreviewRows.push({
+        key: inv._id ? String(inv._id) : `row-${rowIndex}`,
+        invoiceId: inv._id,
+        contactName,
+        invoiceNumber,
+        invoiceDate,
+        dueDate,
+        accountCode,
+        description,
+        quantity,
+        unitAmount,
+        taxType: 'Tax Exempt (0%)',
+      });
+      rowIndex += 1;
     }
 
     const csv = rows.join('\n');
@@ -124,11 +147,7 @@ export default function XeroExport() {
       setCsvFilename(filename);
       setPreviewRows(outPreviewRows);
 
-      if (outPreviewRows.length === 0) {
-        message.info('已找到發票，但沒有可匯出的項目明細');
-      } else {
-        message.success(`已列出 ${outPreviewRows.length} 條明細（待你下載 CSV）`);
-      }
+      message.success(`已列出 ${outPreviewRows.length} 張發票（待你下載 CSV）`);
     } catch (err) {
       message.error(err?.message || '滙出失敗');
     } finally {
@@ -160,7 +179,20 @@ export default function XeroExport() {
 
   const columns = [
     { title: 'ContactName', dataIndex: 'contactName', key: 'contactName', width: 140 },
-    { title: 'InvoiceNumber', dataIndex: 'invoiceNumber', key: 'invoiceNumber', width: 150 },
+    {
+      title: 'InvoiceNumber',
+      dataIndex: 'invoiceNumber',
+      key: 'invoiceNumber',
+      width: 150,
+      render: (text, record) =>
+        record.invoiceId ? (
+          <Link to={`/invoice/read/${record.invoiceId}`} onClick={(e) => e.stopPropagation()}>
+            {text}
+          </Link>
+        ) : (
+          text
+        ),
+    },
     { title: 'InvoiceDate', dataIndex: 'invoiceDate', key: 'invoiceDate', width: 110 },
     { title: 'DueDate', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
     { title: 'AccountCode', dataIndex: 'accountCode', key: 'accountCode', width: 110 },
@@ -171,7 +203,7 @@ export default function XeroExport() {
 
   return (
     <div style={{ padding: 24 }}>
-      <Card title="Xero 發票滙出" style={{ maxWidth: 560 }}>
+      <Card title="Xero 發票滙出" style={{ maxWidth: 1100 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div>
             <label style={{ display: 'block', marginBottom: 8 }}>選擇日期範圍（依發票日期）</label>
@@ -204,7 +236,8 @@ export default function XeroExport() {
           )}
         </div>
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          滙出內容：InvoiceNumber、InvoiceDate、DueDate、ContactName、AccountCode、TaxType=0，以及每張發票的項目（Description、Quantity、UnitAmount）。
+          每張發票一列：Description 為專案／工程地址（優先 Project.address，否則發票 address）；Quantity=1；UnitAmount
+          為該張發票總額。
         </p>
 
         {previewRows.length > 0 && (

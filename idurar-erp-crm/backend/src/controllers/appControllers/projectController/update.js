@@ -104,6 +104,12 @@ const update = async (req, res) => {
         date: f && f.date ? new Date(f.date) : new Date(),
         eoNumber:
           f && f.eoNumber !== undefined && f.eoNumber !== null ? String(f.eoNumber).trim() : '',
+        invoiceNo:
+          f && f.invoiceNo !== undefined && f.invoiceNo !== null
+            ? String(f.invoiceNo).trim()
+            : '',
+        remark:
+          f && f.remark !== undefined && f.remark !== null ? String(f.remark).trim() : '',
         amount: f && f.amount !== undefined && f.amount !== null ? f.amount : 0,
       }));
       const needIndices = [];

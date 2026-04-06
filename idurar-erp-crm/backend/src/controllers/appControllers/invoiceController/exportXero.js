@@ -34,6 +34,7 @@ const exportXero = async (req, res) => {
     })
       .populate('client', 'name email accountCode')
       .populate('clients', 'name email accountCode')
+      .populate('project', 'name address')
       .sort({ date: 1, number: 1 })
       .lean()
       .exec();

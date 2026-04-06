@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select, Table } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -28,6 +28,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
+import { DEFAULT_SHIP_RENTAL_EXTRA_ITEMS } from '@/modules/ShipQuoteModule/Forms/ShipQuoteTableForm';
 
 // 表格欄位順序：項目, Description, 數量, 單價, 總計
 const Item = ({ item, currentErp }) => {
@@ -470,6 +471,42 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
           <p>{currentErp.address || '-'}</p>
         </Col>
       </Row>
+
+      {currentErp.shipType === '租賃' && (
+        <>
+          <Divider orientation="left">租賃附加項目（PDF「附加項目」）</Divider>
+          <Table
+            size="small"
+            pagination={false}
+            rowKey={(_, i) => `rental-extra-${i}`}
+            style={{ marginBottom: 16 }}
+            columns={[
+              { title: '摘要', dataIndex: 'description', ellipsis: false, render: (t) => t || '-' },
+              {
+                title: '單價 HKD',
+                dataIndex: 'unitPrice',
+                width: 160,
+                align: 'right',
+                render: (v, row) =>
+                  v != null && v !== '' && !Number.isNaN(Number(v))
+                    ? moneyFormatter({ amount: Number(v), currency_code: currentErp.currency })
+                    : '-',
+              },
+            ]}
+            dataSource={
+              currentErp.rentalExtraItems && currentErp.rentalExtraItems.length > 0
+                ? currentErp.rentalExtraItems
+                : DEFAULT_SHIP_RENTAL_EXTRA_ITEMS
+            }
+          />
+          {(!currentErp.rentalExtraItems || currentErp.rentalExtraItems.length === 0) && (
+            <p style={{ color: '#888', fontSize: 12, marginTop: -8, marginBottom: 16 }}>
+              （尚未儲存自訂列時，PDF 使用與系統預設相同之附加項目表）
+            </p>
+          )}
+        </>
+      )}
+
       <Divider />
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={5}>
