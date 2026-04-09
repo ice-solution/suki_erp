@@ -120,16 +120,17 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
               tr
                 th.col-no
                 th.col-content 工程內容
-                th.col-qty 數量 / Job
+                th.col-qty 數量 / 單位
                 th.col-unit 單價 HKD$
                 th.col-amount 金額 HKD$
             tbody
               each item, idx in chunk
+                - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
                   td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
                   td.col-content #{item.itemName || ''}#{item.description ? ' ' + item.description : ''}
-                  td.col-qty #{item.quantity != null ? item.quantity : ''} / Job
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / Job' : ''}
+                  td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
+                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
                   td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
               if chunk.length === 0
                 tr

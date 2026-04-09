@@ -15,10 +15,12 @@ const QUOTE_PDF_FOOTER_LINES = {
 function buildStandardQuoteFooterTemplate() {
   const { zh, en } = QUOTE_PDF_FOOTER_LINES;
   return `
-<div style="width:100%; box-sizing:border-box; padding:4px 12px 6px; color:#000; text-align:center; border-top:1px solid #ddd;">
-  <div style="font-size:12px; line-height:1.5; margin-bottom:2px; color:#000;">${zh}</div>
-  <div style="font-size:12px; line-height:1.5; margin-bottom:4px; color:#000;">${en}</div>
-  <div style="font-size:11px; line-height:1.5; color:#000;">第 <span class="pageNumber"></span> 頁 / 共 <span class="totalPages"></span> 頁</div>
+<div style="width:100%; box-sizing:border-box; padding:4px 12px 6px; color:#000; border-top:1px solid #ddd; position:relative;">
+  <div style="font-size:12px; line-height:1.5; margin-bottom:2px; color:#000; text-align:center;">${zh}</div>
+  <div style="font-size:12px; line-height:1.5; margin-bottom:4px; color:#000; text-align:center;">${en}</div>
+  <div style="font-size:11px; line-height:1.5; color:#000; position:absolute; right:12px; bottom:6px; text-align:right; white-space:nowrap;">
+    第 <span class="pageNumber"></span> 頁 / 共 <span class="totalPages"></span> 頁
+  </div>
 </div>
 `.trim();
 }

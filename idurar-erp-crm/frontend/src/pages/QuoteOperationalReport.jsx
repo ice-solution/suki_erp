@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Card,
   Row,
@@ -13,6 +13,7 @@ import {
   Divider,
   Tag,
   Tabs,
+  Select,
 } from 'antd';
 import { FileTextOutlined, CalendarOutlined, DownloadOutlined, PrinterOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
@@ -25,10 +26,10 @@ const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
 
 const formatQuoteNo = (r) =>
-  r && r.numberPrefix != null && r.number != null ? `${r.numberPrefix}-${r.number}/${r.year || ''}` : '—';
+  r && r.numberPrefix != null && r.number != null ? `${r.numberPrefix}-${r.number}` : '—';
 
 const formatInvoiceNo = (r) =>
-  r && r.numberPrefix != null && r.number != null ? `${r.numberPrefix}-${r.number}/${r.year || ''}` : '—';
+  r && r.numberPrefix != null && r.number != null ? `${r.numberPrefix}-${r.number}` : '—';
 
 const clientNames = (record) => {
   if (record.clients && Array.isArray(record.clients) && record.clients.length > 0) {
@@ -38,12 +39,134 @@ const clientNames = (record) => {
   return '—';
 };
 
+const poNumbersText = (record) => {
+  const list = record?.poNumbers;
+  if (Array.isArray(list) && list.length > 0) {
+    const cleaned = list
+      .map((x) => (x == null ? '' : String(x).trim()))
+      .filter(Boolean);
+    if (cleaned.length) return cleaned.join('、');
+  }
+  // 向後相容：有些單可能只有單一 poNumber
+  if (record?.poNumber != null && String(record.poNumber).trim()) return String(record.poNumber).trim();
+  return '—';
+};
+
 const QuoteOperationalReport = () => {
   const { moneyFormatter } = useMoney();
   const { dateFormat } = useDate();
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);
+  const [creatorId, setCreatorId] = useState(null);
+  const [clientId, setClientId] = useState(null);
+
+  const [adminOptions, setAdminOptions] = useState([]);
+  const [clientOptions, setClientOptions] = useState([]);
+  const [adminLoading, setAdminLoading] = useState(false);
+  const [clientLoading, setClientLoading] = useState(false);
+  const [adminSearchText, setAdminSearchText] = useState('');
+  const [clientSearchText, setClientSearchText] = useState('');
+  const adminSearchTimer = useRef(null);
+  const clientSearchTimer = useRef(null);
+
+  const adminLabel = (a) => {
+    const name = (a?.name || '').trim();
+    const email = (a?.email || '').trim();
+    if (name && email) return `${name} (${email})`;
+    return name || email || '—';
+  };
+
+  const preloadAdmins = async () => {
+    setAdminLoading(true);
+    try {
+      const res = await request.get({ entity: 'admin' });
+      const rows = (res?.result || [])
+        .slice(0, 20)
+        .map((a) => ({ value: a._id, label: adminLabel(a) }));
+      setAdminOptions(rows);
+    } catch (e) {
+      console.error(e);
+      setAdminOptions([]);
+    } finally {
+      setAdminLoading(false);
+    }
+  };
+
+  const onSearchAdmin = (text) => {
+    setAdminSearchText(text || '');
+    if (adminSearchTimer.current) clearTimeout(adminSearchTimer.current);
+    adminSearchTimer.current = setTimeout(async () => {
+      const q = String(text || '').trim();
+      if (!q) {
+        // 未輸入時：顯示預設清單
+        await preloadAdmins();
+        return;
+      }
+      setAdminLoading(true);
+      try {
+        const res = await request.get({
+          entity: 'admin/search',
+          params: { q, fields: 'name,email' },
+        });
+        const rows = (res?.result || []).map((a) => ({ value: a._id, label: adminLabel(a) }));
+        setAdminOptions(rows);
+      } catch (e) {
+        console.error(e);
+        setAdminOptions([]);
+      } finally {
+        setAdminLoading(false);
+      }
+    }, 300);
+  };
+
+  const preloadClients = async () => {
+    setClientLoading(true);
+    try {
+      const res = await request.list({ entity: 'client', options: { items: 20 } });
+      const rows = (res?.result?.items || []).map((c) => ({ value: c._id, label: c.name || '—' }));
+      setClientOptions(rows);
+    } catch (e) {
+      console.error(e);
+      setClientOptions([]);
+    } finally {
+      setClientLoading(false);
+    }
+  };
+
+  const onSearchClient = (text) => {
+    setClientSearchText(text || '');
+    if (clientSearchTimer.current) clearTimeout(clientSearchTimer.current);
+    clientSearchTimer.current = setTimeout(async () => {
+      const q = String(text || '').trim();
+      if (!q) {
+        // 未輸入時：顯示預設清單
+        await preloadClients();
+        return;
+      }
+      setClientLoading(true);
+      try {
+        const res = await request.search({
+          entity: 'client',
+          options: { q, fields: 'name' },
+        });
+        const rows = (res?.result || []).map((c) => ({ value: c._id, label: c.name || '—' }));
+        setClientOptions(rows);
+      } catch (e) {
+        console.error(e);
+        setClientOptions([]);
+      } finally {
+        setClientLoading(false);
+      }
+    }, 300);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (adminSearchTimer.current) clearTimeout(adminSearchTimer.current);
+      if (clientSearchTimer.current) clearTimeout(clientSearchTimer.current);
+    };
+  }, []);
 
   const generateReport = async () => {
     if (!dateRange || !dateRange[0] || !dateRange[1]) {
@@ -58,7 +181,12 @@ const QuoteOperationalReport = () => {
 
       const response = await request.get({
         entity: 'quote/operational-report',
-        params: { startDate, endDate },
+        params: {
+          startDate,
+          endDate,
+          ...(creatorId ? { creatorId } : {}),
+          ...(clientId ? { clientId } : {}),
+        },
       });
 
       if (response.success) {
@@ -84,10 +212,9 @@ const QuoteOperationalReport = () => {
       ),
     },
     {
-      title: 'Quote Number',
-      dataIndex: 'invoiceNumber',
-      key: 'invoiceNumber',
-      render: (v) => v || '—',
+      title: 'P.O Number',
+      key: 'poNumbers',
+      render: (_, r) => poNumbersText(r),
     },
     {
       title: '客戶',
@@ -124,7 +251,7 @@ const QuoteOperationalReport = () => {
       ),
     },
     {
-      title: 'Quote Number',
+      title: '報價編號',
       dataIndex: 'invoiceNumber',
       key: 'invoiceNumber',
       render: (v) => v || '—',
@@ -279,22 +406,84 @@ const QuoteOperationalReport = () => {
               報價／發票營運報告
             </Title>
 
-            <Row gutter={16} style={{ marginTop: '16px' }}>
-              <Col span={8}>
+            {/* 三行 layout：時間範圍 / 搜尋 / 操作 */}
+            <Row gutter={[16, 12]} style={{ marginTop: 16 }}>
+              <Col span={24}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>選擇時間範圍（Quote／Invoice 的日期）</Text>
                   <RangePicker
                     value={dateRange}
                     onChange={setDateRange}
-                    style={{ width: '100%' }}
+                    style={{ width: '100%', maxWidth: 420 }}
                     format={dateFormat}
                   />
                 </Space>
               </Col>
-              <Col span={8}>
+
+              <Col span={24}>
+                <Space direction="vertical" style={{ width: '100%' }}>
+                  <Text strong>搜尋（可選）</Text>
+                  <div style={{ width: '100%', display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <Select
+                      showSearch
+                      allowClear
+                      placeholder="制單人"
+                      filterOption={false}
+                      onSearch={onSearchAdmin}
+                      onChange={(v) => setCreatorId(v || null)}
+                      options={adminOptions}
+                      loading={adminLoading}
+                      style={{ flex: '1 1 320px', minWidth: 320 }}
+                      notFoundContent={
+                        adminLoading
+                          ? '搜尋中...'
+                          : (String(adminSearchText || '').trim() ? '無此資料' : '請輸入或直接選擇')
+                      }
+                      onDropdownVisibleChange={(open) => {
+                        if (open && !String(adminSearchText || '').trim() && adminOptions.length === 0) {
+                          preloadAdmins();
+                        }
+                      }}
+                      onClear={() => {
+                        setCreatorId(null);
+                        setAdminSearchText('');
+                        setAdminOptions([]);
+                      }}
+                    />
+                    <Select
+                      showSearch
+                      allowClear
+                      placeholder="客戶"
+                      filterOption={false}
+                      onSearch={onSearchClient}
+                      onChange={(v) => setClientId(v || null)}
+                      options={clientOptions}
+                      loading={clientLoading}
+                      style={{ flex: '1 1 320px', minWidth: 320 }}
+                      notFoundContent={
+                        clientLoading
+                          ? '搜尋中...'
+                          : (String(clientSearchText || '').trim() ? '無此資料' : '請輸入或直接選擇')
+                      }
+                      onDropdownVisibleChange={(open) => {
+                        if (open && !String(clientSearchText || '').trim() && clientOptions.length === 0) {
+                          preloadClients();
+                        }
+                      }}
+                      onClear={() => {
+                        setClientId(null);
+                        setClientSearchText('');
+                        setClientOptions([]);
+                      }}
+                    />
+                  </div>
+                </Space>
+              </Col>
+
+              <Col span={24}>
                 <Space direction="vertical" style={{ width: '100%' }}>
                   <Text strong>操作</Text>
-                  <Space>
+                  <Space wrap>
                     <Button type="primary" icon={<CalendarOutlined />} onClick={generateReport} loading={loading}>
                       生成報告
                     </Button>

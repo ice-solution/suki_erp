@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings } from '@/redux/settings/selectors';
+import { selectFinanceSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -43,6 +43,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
   const { last_quote_number } = useSelector(selectFinanceSettings);
+  const itemUnitOptions = useSelector(selectItemUnitOptions);
   const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
   const navigate = useNavigate();
 
@@ -60,6 +61,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
     itemName: '',
     description: '',
     quantity: 1,
+    unit: 'JOB',
     price: 0,
     total: 0,
     poNumber: ''
@@ -465,6 +467,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       setCurrentItem({
         ...currentItem,
         itemName: selectedItem.item_name,
+        unit: selectedItem.unit || currentItem.unit,
         price: selectedItem.price || 0,
         total: calculate.multiply(currentItem.quantity, selectedItem.price || 0)
       });
@@ -513,6 +516,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       itemName: record.itemName || '',
       description: record.description || '',
       quantity: record.quantity || 1,
+      unit: record.unit || 'JOB',
       price: record.price || 0,
       total: record.total || 0,
       poNumber: record.poNumber || ''
@@ -555,6 +559,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       itemName: '',
       description: '',
       quantity: 1,
+      unit: 'JOB',
       price: 0,
       total: 0,
       poNumber: ''
@@ -583,10 +588,23 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       width: '38%',
     },
     {
+      title: translate('P.O Number'),
+      dataIndex: 'poNumber',
+      key: 'poNumber',
+      width: '10%',
+    },
+    {
       title: '數量',
       dataIndex: 'quantity',
       key: 'quantity',
       width: '10%',
+    },
+    {
+      title: '單位',
+      dataIndex: 'unit',
+      key: 'unit',
+      width: '8%',
+      render: (unit) => unit || 'JOB',
     },
     {
       title: '單價',
@@ -601,12 +619,6 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       key: 'total',
       width: '10%',
       render: (total) => moneyFormatter({ amount: total || 0 }),
-    },
-    {
-      title: translate('P.O Number'),
-      dataIndex: 'poNumber',
-      key: 'poNumber',
-      width: '10%',
     },
     {
       title: '',
@@ -944,7 +956,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={11}>
+        <Col span={9}>
           <Input.TextArea
             placeholder="描述（Shift+Enter 換行）"
             value={currentItem.description}
@@ -982,6 +994,21 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             value={currentItem.quantity}
             onChange={(value) => updateCurrentItem('quantity', value)}
             style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={2}>
+          <Select
+            placeholder="單位"
+            value={currentItem.unit}
+            onChange={(value) => updateCurrentItem('unit', value)}
+            showSearch
+            allowClear
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={itemUnitOptions}
+            style={{ width: '100%' }}
+            notFoundContent="請到 Settings 新增單位"
           />
         </Col>
         <Col span={2}>

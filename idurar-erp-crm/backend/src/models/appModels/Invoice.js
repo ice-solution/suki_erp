@@ -89,6 +89,13 @@ const invoiceSchema = new mongoose.Schema({
     min: 0,
     max: 100,
   },
+  /**
+   * PDF「專案佔比 (%) :」左側自訂文字（例如：專案佔比 (%)）
+   * 不填則前端/PDF 會用預設字樣
+   */
+  projectPercentageLabel: {
+    type: String,
+  },
 
   // Quote轉換信息
   converted: {
@@ -115,6 +122,9 @@ const invoiceSchema = new mongoose.Schema({
       quantity: {
         type: Number,
         required: true,
+      },
+      unit: {
+        type: String,
       },
       price: {
         type: Number,
@@ -166,6 +176,34 @@ const invoiceSchema = new mongoose.Schema({
     enum: ['即時付款', '一個月', '兩個月', '三個月'],
     default: '一個月',
   },
+  /**
+   * 付款資料（可多筆；用於取代單一 paymentStatus/paymentDueDate/paymentTerms/credit/paidDate）
+   * 向後相容：舊欄位仍保留，未填 paymentEntries 時會以舊欄位視作 1 筆
+   */
+  paymentEntries: [
+    {
+      paymentStatus: {
+        type: String,
+        enum: ['unpaid', 'paid'],
+        default: 'unpaid',
+      },
+      paymentDueDate: {
+        type: Date,
+      },
+      paymentTerms: {
+        type: String,
+        enum: ['即時付款', '一個月', '兩個月', '三個月'],
+        default: '一個月',
+      },
+      credit: {
+        type: Number,
+        default: 0,
+      },
+      paidDate: {
+        type: Date,
+      },
+    },
+  ],
   isOverdue: {
     type: Boolean,
     default: false,
@@ -175,7 +213,7 @@ const invoiceSchema = new mongoose.Schema({
     default: false,
   },
   
-  // 已付金額（由 Payment 記錄累加）
+  // 已付金額（舊：由 Payment 記錄累加；新：可由 paymentEntries 加總）
   credit: {
     type: Number,
     default: 0,

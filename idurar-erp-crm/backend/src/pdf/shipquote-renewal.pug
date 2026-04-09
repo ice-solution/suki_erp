@@ -4,6 +4,8 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
     style.
+      /* 讓整頁內容更貼頂，避免上方空白過多 */
+      @page { margin: 0; }
       .sheet {
         margin: 0;
         width: 100%; 
@@ -14,7 +16,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
         width: 100%;
         max-width: 100%;
         margin: 0;
-        padding: 6px 16px 10px;
+        padding: 0 16px 10px;
         background: #fff;
         font-family: Arial, sans-serif;
         font-size: 10px;
@@ -159,7 +161,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .footer-line-2 { }
       .sml-page { display: block; page-break-inside: auto; }
       .sml-page + .sml-page { page-break-before: always; }
-      .sml-page-body { display: block; }
+      .sml-page-body { display: block; position: relative; padding-bottom: 18px; }
       .header-section { width: 100%; margin-bottom: 6px; }
       .header-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .header-table td { vertical-align: top; }
@@ -168,13 +170,14 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .header-left-inner { display: table; width: 100%; table-layout: fixed; }
       .header-logo-cell { width: 100px; padding-right: 12px; vertical-align: top; }
       .header-logo { width: 100px; height: 100px; display: block; object-fit: contain; }
-      .header-text-cell { vertical-align: top; width: auto; min-width: 0; }
-      .company-name { font-family: "Times New Roman", Times, serif; font-size: 13px; font-weight: bold; line-height: 1.3; word-wrap: break-word; letter-spacing: 0.25em; }
-      .company-name-english { font-family: "Times New Roman", Times, serif; font-size: 15px; font-weight: bold; color: #222; margin-top: 2px; white-space: nowrap; letter-spacing: 0; }
-      .company-ownership { font-family: "Times New Roman", Times, serif; font-size: 10px; color: #222; margin-top: 2px; word-wrap: break-word; }
-      .certification-section { font-size: 8px; color: #666; line-height: 1.4; }
+      .header-text-cell { vertical-align: top; width: auto; min-width: 0; padding-top: 10px; }
+      .company-name { font-family: "Times New Roman", Times, serif; font-size: 15px; font-weight: bold; line-height: 1.25; word-wrap: break-word; letter-spacing: 0.35em; }
+      .company-name-english { font-family: "Times New Roman", Times, serif; font-size: 17px; font-weight: bold; color: #222; margin-top: 2px; white-space: nowrap; letter-spacing: 0; }
+      .company-ownership { font-family: "Times New Roman", Times, serif; font-size: 11px; color: #222; margin-top: 2px; word-wrap: break-word; }
+      .certification-section { font-size: 8px; color: #666; line-height: 1.4; padding-top: 10px; }
       .certification-logos .iso-text { display: block; margin-top: 2px; }
-      .header-page { margin-top: 2px; font-size: 8px; }
+      /* 頁碼移至右下角（每頁） */
+      .page-number-bottom { position: absolute; right: 0; bottom: 0; font-size: 8px; color: #666; }
       .info-table-ship { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 6px; font-size: 10px; }
       .info-table-ship td { vertical-align: top; }
       .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
@@ -260,14 +263,13 @@ body
                       img.iso-cert-img(src=settings.public_server_file+'uploads/images/iso_img.png' alt='ISO' style='max-width:96px;height:auto;display:block;margin-bottom:4px;margin-left:auto;')
                       span.iso-text ISO 9001 : 2008
                       span.iso-text Certificate No : Q368
-                  .header-page Page #{pageIndex + 1}
+                  //- 頁碼移至右下角
           table.info-table-ship
             tr
               td.info-left
                 .info-row TO : #{clientName}
                 .info-row #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
                 if !model.shipType && model.address
-                  .info-row 工程地址：#{model.address}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
                 .info-row 日期(Date) : #{docDate}
@@ -287,17 +289,18 @@ body
               tr
                 th.col-no
                 th.col-content 工程內容
-                th.col-qty 數量 / Job
+                th.col-qty 數量 / 單位
                 th.col-unit 單價 HKD$
                 th.col-amount 金額 HKD$
             tbody
               each item, idx in chunk
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
+                - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
                   td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
                   td.col-content #{contentText}
-                  td.col-qty #{item.quantity != null ? item.quantity : ''} / Job
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / Job' : ''}
+                  td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
+                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
                   td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
               if chunk.length === 0
                 tr

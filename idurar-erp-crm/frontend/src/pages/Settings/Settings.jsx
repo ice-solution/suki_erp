@@ -19,6 +19,7 @@ import FinanceSettings from './FinanceSettings';
 import MoneyFormatSettings from './MoneyFormatSettings';
 import ProjectItemSettings from './ProjectItemSettings';
 import WarehouseSettings from './WarehouseSettings';
+import ItemUnitSettings from './ItemUnitSettings';
 import AccountSettings from './AccountSettings';
 
 import useLanguage from '@/locale/useLanguage';
@@ -75,6 +76,12 @@ export default function Settings() {
       label: '倉庫設定',
       icon: <InboxOutlined />,
       children: <WarehouseSettings />,
+    },
+    {
+      key: 'item_unit_settings',
+      label: 'Items 單位',
+      icon: <BuildOutlined />,
+      children: <ItemUnitSettings />,
     },
     {
       key: 'account_settings',

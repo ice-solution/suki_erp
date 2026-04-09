@@ -503,15 +503,25 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       title: '部份付款',
       dataIndex: 'credit',
       key: 'credit',
-      render: (credit, record) => moneyFormatter({ amount: credit != null ? credit : 0, currency_code: record.currency || 'HKD' }),
+      render: (credit, record) => {
+        // 向後相容：若 invoice 有 paymentEntries，則以加總 credit 顯示（後端亦會同步到 credit）
+        const sum =
+          record?.paymentEntries && Array.isArray(record.paymentEntries) && record.paymentEntries.length
+            ? record.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0)
+            : (credit != null ? credit : 0);
+        return moneyFormatter({ amount: sum, currency_code: record.currency || 'HKD' });
+      },
     },
     {
       title: '未付',
       key: 'unpaid',
       render: (_, record) => {
         const total = Number(record.total) || 0;
-        const credit = Number(record.credit) || 0;
-        const unpaid = total - credit;
+        const creditSum =
+          record?.paymentEntries && Array.isArray(record.paymentEntries) && record.paymentEntries.length
+            ? record.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0)
+            : (Number(record.credit) || 0);
+        const unpaid = total - creditSum;
         return moneyFormatter({ amount: unpaid, currency_code: record.currency || 'HKD' });
       },
     },
@@ -1009,7 +1019,13 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             extra={
               (() => {
                 const unpaidTotal = (currentProject.invoices || []).reduce(
-                  (sum, inv) => sum + Math.max(0, (Number(inv.total) || 0) - (Number(inv.credit) || 0)),
+                  (sum, inv) => {
+                    const creditSum =
+                      inv?.paymentEntries && Array.isArray(inv.paymentEntries) && inv.paymentEntries.length
+                        ? inv.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0)
+                        : (Number(inv.credit) || 0);
+                    return sum + Math.max(0, (Number(inv.total) || 0) - creditSum);
+                  },
                   0
                 );
                 if (unpaidTotal <= 0) return null;

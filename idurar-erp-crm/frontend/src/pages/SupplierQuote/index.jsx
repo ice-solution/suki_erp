@@ -52,18 +52,23 @@ export default function SupplierQuote() {
       },
     },
     {
-      title: translate('suppliers'),
-      dataIndex: ['supplier', 'name'],
-      width: 150,
-      ellipsis: false,
-      render: (name, record) => record.supplier?.name || '-',
-    },
-    {
       title: translate('Date'),
       dataIndex: 'date',
       width: 110,
       ellipsis: false,
       render: (date) => dayjs(date).format(dateFormat),
+    },
+    {
+      title: '制單人',
+      dataIndex: 'updatedBy',
+      width: 150,
+      ellipsis: false,
+      render: (_, record) => {
+        const u = record.updatedBy || record.createdBy;
+        if (!u) return '-';
+        const name = (u.name || '') + (u.surname ? ` ${u.surname}` : '');
+        return name.trim() || u.email || '-';
+      },
     },
     {
       title: translate('Total'),

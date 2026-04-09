@@ -18,6 +18,20 @@ const schema = Joi.object({
   paymentTerms: Joi.string().optional(),
   paymentStatus: Joi.string().optional(),
   credit: Joi.number().min(0).optional(),
+  paymentEntries: Joi.array()
+    .items(
+      Joi.object({
+        _id: Joi.alternatives().try(Joi.string(), Joi.object()).optional(),
+        paymentStatus: Joi.string().valid('unpaid', 'paid').optional(),
+        paymentDueDate: Joi.date().allow(null, '').optional(),
+        paymentTerms: Joi.string().valid('即時付款', '一個月', '兩個月', '三個月').optional(),
+        credit: Joi.number().min(0).optional(),
+        paidDate: Joi.date().allow(null, '').optional(),
+      })
+        .unknown(true) // 允許 mongoose subdocument 自動產生的欄位（如 _id）
+        .optional()
+    )
+    .optional(),
   fullPaid: Joi.boolean().optional(),
   isCompleted: Joi.boolean().optional(),
   invoiceNumber: Joi.string().allow('').optional(),

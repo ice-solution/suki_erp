@@ -16,14 +16,25 @@ const updateManySetting = async (req, res) => {
 
     const { settingKey, settingValue } = setting;
 
+    const setOnInsert = {};
+    // 為新插入的設定補上 settingCategory，避免前端依 category 讀取不到
+    if (settingKey === 'warehouse_list') {
+      setOnInsert.settingCategory = 'warehouse_settings';
+      setOnInsert.valueType = 'array';
+    }
+    if (settingKey === 'item_units') {
+      setOnInsert.settingCategory = 'app_settings';
+      setOnInsert.valueType = 'array';
+    }
+
     updateDataArray.push({
       updateOne: {
         filter: { settingKey: settingKey },
         update: {
           $set: {
             settingValue: settingValue,
-            ...(settingKey === 'warehouse_list' && { settingCategory: 'warehouse_settings' }),
           },
+          ...(Object.keys(setOnInsert).length ? { $setOnInsert: setOnInsert } : {}),
         },
         upsert: true,
       },

@@ -45,6 +45,18 @@ export default function ShipQuote() {
       },
     },
     {
+      title: '制單人',
+      dataIndex: 'updatedBy',
+      width: 150,
+      ellipsis: false,
+      render: (_, record) => {
+        const u = record.updatedBy || record.createdBy;
+        if (!u) return '-';
+        const name = (u.name || '') + (u.surname ? ` ${u.surname}` : '');
+        return name.trim() || u.email || '-';
+      },
+    },
+    {
       title: 'Ship Type',
       dataIndex: 'shipType',
       width: 120,

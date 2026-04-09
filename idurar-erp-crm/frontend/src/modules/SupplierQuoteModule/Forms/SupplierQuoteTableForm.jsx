@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings, selectWarehouseOptions } from '@/redux/settings/selectors';
+import { selectFinanceSettings, selectWarehouseOptions, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -33,6 +33,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const { moneyFormatter, amountFormatter, currency_symbol, currency_position, cent_precision, currency_code } = useMoney();
   const financeSettings = useSelector(selectFinanceSettings);
   const warehouseOptions = useSelector(selectWarehouseOptions);
+  const itemUnitOptions = useSelector(selectItemUnitOptions);
   const { last_supplier_quote_number } = financeSettings || {};
   const [lastNumber, setLastNumber] = useState(() => (last_supplier_quote_number || 0) + 1);
   const navigate = useNavigate();
@@ -51,6 +52,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     itemName: '',
     description: '',
     quantity: 1,
+    unit: 'JOB',
     price: 0,
     total: 0
   });
@@ -722,6 +724,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setCurrentItem({
         ...currentItem,
         itemName: selectedItem.item_name,
+        unit: selectedItem.unit || currentItem.unit,
         price: price,
         total: calculate.multiply(currentItem.quantity, price)
       });
@@ -771,6 +774,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       itemName: record.itemName || '',
       description: record.description || '',
       quantity: record.quantity || 1,
+      unit: record.unit || 'JOB',
       price: record.price || 0,
       total: record.total || 0
     });
@@ -840,6 +844,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       itemName: '',
       description: '',
       quantity: 1,
+      unit: 'JOB',
       price: 0,
       total: 0
     });
@@ -1098,9 +1103,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       width: '10%',
     },
     {
+      title: '單位',
+      dataIndex: 'unit',
+      key: 'unit',
+      width: '8%',
+      render: (unit) => unit || 'JOB',
+    },
+    {
       title: '',
       key: 'action',
-      width: '5%',
+      width: '7%',
       render: (_, record) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <EditOutlined 
@@ -1561,7 +1573,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={14}>
+        <Col span={12}>
           <Input.TextArea
             placeholder="描述（Shift+Enter 換行）"
             value={currentItem.description}
@@ -1581,6 +1593,21 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             value={currentItem.quantity}
             onChange={(value) => updateCurrentItem('quantity', value)}
             style={{ width: '100%' }}
+          />
+        </Col>
+        <Col span={2}>
+          <Select
+            placeholder="單位"
+            value={currentItem.unit}
+            onChange={(value) => updateCurrentItem('unit', value)}
+            showSearch
+            allowClear
+            filterOption={(input, option) =>
+              (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+            }
+            options={itemUnitOptions}
+            style={{ width: '100%' }}
+            notFoundContent="請到 Settings 新增單位"
           />
         </Col>
         <Col span={1}>

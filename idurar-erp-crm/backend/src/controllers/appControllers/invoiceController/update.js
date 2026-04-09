@@ -25,7 +25,7 @@ const update = async (req, res) => {
     removed: false,
   });
 
-  const { credit } = previousInvoice;
+  const previousCredit = Number(previousInvoice?.credit) || 0;
 
   const { items = [], discount = 0, projectPercentage: rawProjectPct } = req.body;
 
@@ -69,12 +69,28 @@ const update = async (req, res) => {
   // 注意：invoiceNumber 是用來關聯 Quote 的，如果用戶提供了就使用，否則保持原值
   // Invoice 自己的編號是從 numberPrefix + number 生成的（用於顯示）
   
+  // 多筆付款：若有 paymentEntries 則以加總 credit 作為 Invoice.credit
+  let paymentEntries = Array.isArray(req.body.paymentEntries) ? req.body.paymentEntries : null;
+  if (paymentEntries && paymentEntries.length) {
+    const paidSum = paymentEntries.reduce((s, p) => {
+      const v = p && p.credit != null && p.credit !== '' ? Number(p.credit) : 0;
+      return calculate.add(s, Math.max(0, Number.isFinite(v) ? v : 0));
+    }, 0);
+    body['paymentEntries'] = paymentEntries;
+    body['credit'] = paidSum;
+  } else if (req.body.credit != null) {
+    body['credit'] = Math.max(0, Number(req.body.credit) || 0);
+  } else {
+    body['credit'] = previousCredit;
+  }
+
   // 優先使用用戶在表單選擇的付款狀態；未提供時才依 total 與 credit 自動計算
   const validStatuses = ['unpaid', 'paid'];
   if (req.body.paymentStatus && validStatuses.includes(req.body.paymentStatus)) {
     body['paymentStatus'] = req.body.paymentStatus;
   } else {
-    body['paymentStatus'] = total === credit ? 'paid' : 'unpaid';
+    const paidSum = Number(body['credit']) || 0;
+    body['paymentStatus'] = total === 0 || paidSum >= total ? 'paid' : 'unpaid';
   }
 
   const now = new Date();

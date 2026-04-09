@@ -93,6 +93,9 @@ const quoteSchema = new mongoose.Schema({
         type: Number,
         required: true,
       },
+      unit: {
+        type: String,
+      },
       price: {
         type: Number,
         required: true,

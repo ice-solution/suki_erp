@@ -4,6 +4,8 @@ html
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
     style.
+      /* 讓整頁內容更貼頂，避免上方空白過多 */
+      @page { margin: 0; }
       .sheet {
         margin: 0;
         width: 100%; 
@@ -73,6 +75,7 @@ html
         font-weight: bold;
         color: #222;
         line-height: 1.4;
+        letter-spacing: 0.35em;
       }
       
       .company-name-english {
@@ -242,7 +245,6 @@ body
             .info-row 客戶: #{displayName}
             .info-row 客戶地址: #{client.address || ''}
             if model.address
-              .info-row 工程地址: #{model.address}
           td.info-right
             .info-row 檔案編號 : #{model.invoiceNumber || (model.numberPrefix || 'SWP') + '-' + model.number + '/' + (model.year || '')}
             .info-row 日期 : #{moment(model.date).format('DD-MM-YYYY')}

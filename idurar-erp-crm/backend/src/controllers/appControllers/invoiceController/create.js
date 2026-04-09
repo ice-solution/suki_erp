@@ -49,9 +49,29 @@ const create = async (req, res) => {
   // 注意：invoiceNumber 是用來關聯 Quote 的，如果用戶沒有提供，不自動計算
   // Invoice 自己的編號是從 numberPrefix + number 生成的（用於顯示）
 
-  let paymentStatus = total === 0 ? 'paid' : 'unpaid';
+  // 多筆付款：若有 paymentEntries 則以加總 credit 作為 Invoice.credit
+  let paymentEntries = Array.isArray(body.paymentEntries) ? body.paymentEntries : [];
+  if (!paymentEntries.length) {
+    // 舊資料相容：把舊欄位視作 1 筆
+    paymentEntries = [
+      {
+        paymentStatus: body.paymentStatus,
+        paymentDueDate: body.paymentDueDate,
+        paymentTerms: body.paymentTerms,
+        credit: body.credit,
+        paidDate: body.paidDate,
+      },
+    ];
+  }
+  const paidSum = paymentEntries.reduce((s, p) => {
+    const v = p && p.credit != null && p.credit !== '' ? Number(p.credit) : 0;
+    return calculate.add(s, Math.max(0, Number.isFinite(v) ? v : 0));
+  }, 0);
+  body['paymentEntries'] = paymentEntries;
+  body['credit'] = paidSum;
 
-  body['paymentStatus'] = paymentStatus;
+  const autoPaymentStatus = total === 0 || paidSum >= total ? 'paid' : 'unpaid';
+  body['paymentStatus'] = autoPaymentStatus;
   body['createdBy'] = req.admin._id;
 
   // Creating a new document in the collection

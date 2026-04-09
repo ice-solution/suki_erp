@@ -14,9 +14,14 @@ export default function Project() {
 
   const searchConfig = {
     entity: 'project',
-    // Quote number（目前 Project.invoiceNumber）+ Project name
+    // 可用單號/關鍵字搵 project：
+    // - Quote number（目前 Project.invoiceNumber）
+    // - Project name / address / P.O number
+    // - EO 單（usedContractorFees.eoNumber / usedContractorFees.invoiceNo）
+    // - 另外後端亦會用 S/SML/SMI 等關聯單據號反查 project
     displayLabels: ['invoiceNumber', 'name'],
-    searchFields: 'invoiceNumber,name',
+    searchFields:
+      'invoiceNumber,name,address,poNumber,usedContractorFees.eoNumber,usedContractorFees.invoiceNo',
   };
   const deleteModalLabels = ['invoiceNumber', 'name'];
   

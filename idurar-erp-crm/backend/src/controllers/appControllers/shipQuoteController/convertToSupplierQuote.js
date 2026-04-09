@@ -37,11 +37,12 @@ const convertToSupplierQuote = async (req, res) => {
       ? supplierQuoteNumberResult.settingValue
       : 1;
 
-    // 與 Quote 上單一致：不帶銀碼，items 只有 itemName, description, quantity
+    // 與 Quote 上單一致：不帶銀碼，items 只有 itemName, description, quantity, unit
     const supplierQuoteItems = shipQuote.items.map((item) => ({
       itemName: item.itemName,
       description: item.description || '',
       quantity: item.quantity,
+      unit: item.unit,
     }));
 
     const supplierQuoteData = {

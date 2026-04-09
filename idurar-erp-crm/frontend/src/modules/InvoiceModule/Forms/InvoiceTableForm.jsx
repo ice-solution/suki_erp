@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message } from 'antd';
+import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message, Space } from 'antd';
 
 import { PlusOutlined, DeleteOutlined, LinkOutlined, EditOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings } from '@/redux/settings/selectors';
+import { selectFinanceSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -37,6 +37,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
   const { last_invoice_number } = useSelector(selectFinanceSettings);
+  const itemUnitOptions = useSelector(selectItemUnitOptions);
   const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
   const navigate = useNavigate();
 
@@ -54,6 +55,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     itemName: '',
     description: '',
     quantity: 1,
+    unit: 'JOB',
     price: 0,
     total: 0
   });
@@ -105,6 +107,26 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }, 100);
     return () => clearTimeout(timer);
   }, [current]);
+
+  const buildPaymentEntriesFromLegacy = (src) => {
+    if (!src) return [];
+    return [
+      {
+        paymentStatus: src.paymentStatus || 'unpaid',
+        paymentDueDate: src.paymentDueDate ? dayjs(src.paymentDueDate) : null,
+        paymentTerms: src.paymentTerms || '一個月',
+        credit: src.credit != null ? src.credit : 0,
+        paidDate: src.paidDate ? dayjs(src.paidDate) : null,
+      },
+    ];
+  };
+
+  const toDayjsOrNull = (v) => {
+    if (!v) return null;
+    if (dayjs.isDayjs(v)) return v;
+    const d = dayjs(v);
+    return d.isValid() ? d : null;
+  };
 
   // 注意：invoiceNumber 字段是用來搜索和選擇 Quote 的，不是 Invoice 自己的編號
   // Invoice 自己的編號會從 Quote Type + Number 自動生成（在後端處理）
@@ -409,6 +431,15 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       const supplierId = current.supplier?._id || current.supplier || undefined;
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
+        const paymentEntries =
+          current.paymentEntries && Array.isArray(current.paymentEntries) && current.paymentEntries.length
+            ? current.paymentEntries.map((p) => ({
+                ...p,
+                paymentDueDate: p?.paymentDueDate ? dayjs(p.paymentDueDate) : null,
+                paidDate: p?.paidDate ? dayjs(p.paidDate) : null,
+              }))
+            : buildPaymentEntriesFromLegacy(current);
+
         form.setFieldsValue({ 
           items: currentItems,
           clients: clientIds,
@@ -417,6 +448,8 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           shipType: shipType,
           subcontractorCount: subcontractorCount,
           costPrice: costPrice,
+          paymentEntries: paymentEntries.length ? paymentEntries : undefined,
+          projectPercentageLabel: current.projectPercentageLabel || '專案佔比 (%)',
           projectPercentage:
             current.projectPercentage != null && current.projectPercentage !== ''
               ? current.projectPercentage
@@ -464,6 +497,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       setCurrentItem({
         ...currentItem,
         itemName: selectedItem.item_name,
+        unit: selectedItem.unit || currentItem.unit,
         price: selectedItem.price || 0,
         total: calculate.multiply(currentItem.quantity, selectedItem.price || 0)
       });
@@ -512,6 +546,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       itemName: record.itemName || '',
       description: record.description || '',
       quantity: record.quantity || 1,
+      unit: record.unit || 'JOB',
       price: record.price || 0,
       total: record.total || 0
     });
@@ -554,6 +589,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       itemName: '',
       description: '',
       quantity: 1,
+      unit: 'JOB',
       price: 0,
       total: 0
     });
@@ -584,7 +620,14 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
-      width: '15%',
+      width: '12%',
+    },
+    {
+      title: '單位',
+      dataIndex: 'unit',
+      key: 'unit',
+      width: '8%',
+      render: (unit) => unit || 'JOB',
     },
     {
       title: translate('Price'),
@@ -881,64 +924,115 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
       {/* Invoice特有字段 */}
       <Divider orientation="left">付款信息</Divider>
+      <Form.List
+        name="paymentEntries"
+        initialValue={[
+          { paymentStatus: 'unpaid', paymentDueDate: null, paymentTerms: '一個月', credit: 0, paidDate: null },
+        ]}
+      >
+        {(fields, { add, remove }) => (
+          <>
+            {fields.map((field, idx) => {
+              const { key, name, ...restField } = field;
+              return (
+              <Row key={key} gutter={[12, 0]} align="middle">
+                <Col className="gutter-row" span={4}>
+                  <Form.Item
+                    {...restField}
+                    label={idx === 0 ? translate('Payment Status') : ' '}
+                    name={[name, 'paymentStatus']}
+                    initialValue="unpaid"
+                  >
+                    <Select
+                      options={[
+                        { value: 'unpaid', label: translate('Unpaid') },
+                        { value: 'paid', label: translate('Paid') },
+                      ]}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col className="gutter-row" span={5}>
+                  <Form.Item
+                    {...restField}
+                    label={idx === 0 ? translate('Payment Due Date') : ' '}
+                    name={[name, 'paymentDueDate']}
+                    getValueProps={(value) => ({ value: toDayjsOrNull(value) })}
+                  >
+                    <DatePicker style={{ width: '100%' }} format={dateFormat} />
+                  </Form.Item>
+                </Col>
+                <Col className="gutter-row" span={4}>
+                  <Form.Item
+                    {...restField}
+                    label={idx === 0 ? translate('Payment Terms') : ' '}
+                    name={[name, 'paymentTerms']}
+                    initialValue="一個月"
+                  >
+                    <Select
+                      options={[
+                        { value: '即時付款', label: '即時付款' },
+                        { value: '一個月', label: '一個月' },
+                        { value: '兩個月', label: '兩個月' },
+                        { value: '三個月', label: '三個月' },
+                      ]}
+                      onChange={(value) => {
+                        const dateVal = form.getFieldValue('date');
+                        const due = getPaymentDueDate(dateVal, value);
+                        if (due) {
+                          form.setFieldValue(['paymentEntries', name, 'paymentDueDate'], due);
+                        }
+                      }}
+                    />
+                  </Form.Item>
+                </Col>
+                <Col className="gutter-row" span={5}>
+                  <Form.Item
+                    {...restField}
+                    label={idx === 0 ? '部份付款 (Partially paid)' : ' '}
+                    name={[name, 'credit']}
+                    initialValue={0}
+                  >
+                    <InputNumber
+                      min={0}
+                      precision={2}
+                      style={{ width: '100%' }}
+                      placeholder="0"
+                    />
+                  </Form.Item>
+                </Col>
+                <Col className="gutter-row" span={4}>
+                  <Form.Item
+                    {...restField}
+                    label={idx === 0 ? translate('paid_date') : ' '}
+                    name={[name, 'paidDate']}
+                    getValueProps={(value) => ({ value: toDayjsOrNull(value) })}
+                  >
+                    <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('paid_date')} />
+                  </Form.Item>
+                </Col>
+                <Col className="gutter-row" span={2}>
+                  <Space>
+                    <Button type="link" onClick={() => add({ paymentStatus: 'unpaid', paymentDueDate: null, paymentTerms: '一個月', credit: 0, paidDate: null })}>
+                      +
+                    </Button>
+                    <Button
+                      type="link"
+                      danger
+                      disabled={fields.length <= 1}
+                      onClick={() => remove(name)}
+                    >
+                      -
+                    </Button>
+                  </Space>
+                </Col>
+              </Row>
+              );
+            })}
+          </>
+        )}
+      </Form.List>
+
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            label={translate('Payment Status')}
-            name="paymentStatus"
-            initialValue="unpaid"
-          >
-            <Select
-              options={[
-                { value: 'unpaid', label: translate('Unpaid') },
-                { value: 'paid', label: translate('Paid') },
-              ]}
-            />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('Payment Due Date')} name="paymentDueDate">
-            <DatePicker style={{ width: '100%' }} format={dateFormat} />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            label={translate('Payment Terms')}
-            name="paymentTerms"
-            initialValue="一個月"
-          >
-            <Select
-              options={[
-                { value: '即時付款', label: '即時付款' },
-                { value: '一個月', label: '一個月' },
-                { value: '兩個月', label: '兩個月' },
-                { value: '三個月', label: '三個月' },
-              ]}
-              onChange={(value) => updatePaymentDueDateFromTerms(value)}
-            />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            label="部份付款 (Partially paid)"
-            name="credit"
-            initialValue={0}
-          >
-            <InputNumber
-              min={0}
-              precision={2}
-              style={{ width: '100%' }}
-              placeholder="0"
-            />
-          </Form.Item>
-        </Col>
-      </Row>
-      <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('paid_date')} name="paidDate">
-            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('paid_date')} />
-          </Form.Item>
-        </Col>
         <Col className="gutter-row" span={6}>
           <Form.Item label="Full paid" name="fullPaid" valuePropName="checked" initialValue={false}>
             <Switch checkedChildren="Y" unCheckedChildren="N" />
@@ -988,6 +1082,22 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               value={currentItem.quantity}
               onChange={(value) => updateCurrentItem('quantity', value)}
               style={{ width: '100%' }}
+            />
+          </Col>
+          <Col span={3}>
+            <label>單位</label>
+            <Select
+              placeholder="單位"
+              value={currentItem.unit}
+              onChange={(value) => updateCurrentItem('unit', value)}
+              showSearch
+              allowClear
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={itemUnitOptions}
+              style={{ width: '100%' }}
+              notFoundContent="請到 Settings 新增單位"
             />
           </Col>
           <Col span={3}>
@@ -1063,16 +1173,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>
-            <p
-              style={{
-                paddingLeft: '12px',
-                paddingTop: '5px',
-                margin: 0,
-                textAlign: 'right',
-              }}
+            <Form.Item
+              name="projectPercentageLabel"
+              initialValue="專案佔比 (%)"
+              style={{ marginBottom: 0 }}
             >
-              {translate('project_percentage')} :
-            </p>
+              <Input placeholder="例如：專案佔比 (%)" />
+            </Form.Item>
           </Col>
           <Col className="gutter-row" span={5}>
             <Form.Item

@@ -8,7 +8,7 @@ const Invoice = mongoose.model('Invoice');
  */
 const getQuoteInvoiceOperationalReport = async (req, res) => {
   try {
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, creatorId, clientId } = req.query;
 
     if (!startDate || !endDate) {
       return res.status(400).json({
@@ -28,48 +28,66 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
       { path: 'client', select: 'name' },
     ];
 
+    const populateCreators = [
+      { path: 'createdBy', select: 'name email' },
+      { path: 'updatedBy', select: 'name email' },
+    ];
+
+    const baseMatch = { removed: false, date: dateRange };
+    const andFilters = [];
+
+    if (clientId) {
+      const cid = new mongoose.Types.ObjectId(String(clientId));
+      andFilters.push({ $or: [{ clients: cid }, { client: cid }] });
+    }
+    if (creatorId) {
+      const aid = new mongoose.Types.ObjectId(String(creatorId));
+      andFilters.push({ $or: [{ createdBy: aid }, { updatedBy: aid }] });
+    }
+
     // 1) 已接受、指定日期內、從未轉過 Invoice（無 converted.invoices 且無 legacy converted.invoice）
+    const acceptedNotInvoicedAnd = [
+      ...andFilters,
+      {
+        $or: [
+          { 'converted.invoices': { $exists: false } },
+          { $expr: { $eq: [{ $size: { $ifNull: ['$converted.invoices', []] } }, 0] } },
+        ],
+      },
+      {
+        $or: [
+          { 'converted.invoice': { $exists: false } },
+          { 'converted.invoice': null },
+        ],
+      },
+    ];
     const acceptedNotInvoiced = await Quote.find({
-      removed: false,
+      ...baseMatch,
       status: 'accepted',
-      date: dateRange,
-      $and: [
-        {
-          $or: [
-            { 'converted.invoices': { $exists: false } },
-            { $expr: { $eq: [{ $size: { $ifNull: ['$converted.invoices', []] } }, 0] } },
-          ],
-        },
-        {
-          $or: [
-            { 'converted.invoice': { $exists: false } },
-            { 'converted.invoice': null },
-          ],
-        },
-      ],
+      ...(acceptedNotInvoicedAnd.length ? { $and: acceptedNotInvoicedAnd } : {}),
     })
-      .populate(populateClients)
+      .populate([...populateClients, ...populateCreators])
       .sort({ year: -1, number: -1 })
       .lean();
 
     // 2) 已接受、未完成
     const acceptedNotCompleted = await Quote.find({
-      removed: false,
+      ...baseMatch,
       status: 'accepted',
       isCompleted: false,
-      date: dateRange,
+      ...(andFilters.length ? { $and: andFilters } : {}),
     })
-      .populate(populateClients)
+      .populate([...populateClients, ...populateCreators])
       .sort({ year: -1, number: -1 })
       .lean();
 
-    const invPopulate = [...populateClients];
+    const invPopulate = [...populateClients, ...populateCreators];
 
     // 3a) 未付
     const invoicesUnpaid = await Invoice.find({
-      removed: false,
+      ...baseMatch,
       paymentStatus: 'unpaid',
-      date: dateRange,
+      ...(andFilters.length ? { $and: andFilters } : {}),
     })
       .populate(invPopulate)
       .sort({ year: -1, number: -1 })
@@ -77,11 +95,11 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
 
     // 3b) 已付款、部份付款(credit)≠0、且未勾 Full paid（與 3c 互斥）
     const invoicesPaidPartial = await Invoice.find({
-      removed: false,
+      ...baseMatch,
       paymentStatus: 'paid',
-      date: dateRange,
       credit: { $gt: 0 },
       fullPaid: { $ne: true },
+      ...(andFilters.length ? { $and: andFilters } : {}),
     })
       .populate(invPopulate)
       .sort({ year: -1, number: -1 })
@@ -89,10 +107,10 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
 
     // 3c) 已付款且 Full paid
     const invoicesPaidFullPaid = await Invoice.find({
-      removed: false,
+      ...baseMatch,
       paymentStatus: 'paid',
       fullPaid: true,
-      date: dateRange,
+      ...(andFilters.length ? { $and: andFilters } : {}),
     })
       .populate(invPopulate)
       .sort({ year: -1, number: -1 })

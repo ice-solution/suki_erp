@@ -25,6 +25,48 @@ router.get('/', catchErrors(async (req, res) => {
   });
 }));
 
+// 搜尋登入帳號（給前端 AutoComplete 使用）
+// Query: q, fields (e.g. name,email)
+router.get('/search', catchErrors(async (req, res) => {
+  const q = req.query.q;
+  const fields = req.query.fields;
+  if (q === undefined || q === null || String(q).trim() === '') {
+    return res.status(202).json({
+      success: false,
+      result: [],
+      message: 'No document found',
+    });
+  }
+  const fieldsArray = String(fields || 'name,email')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+  const escaped = String(q).trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(escaped, 'i');
+
+  const or = fieldsArray.map((f) => ({ [f]: { $regex: regex } }));
+
+  const results = await Admin.find({ removed: false, $or: or })
+    .select('email name surname role enabled created')
+    .sort({ created: -1 })
+    .limit(10)
+    .lean();
+
+  if (results.length >= 1) {
+    return res.status(200).json({
+      success: true,
+      result: results,
+      message: 'Successfully found all documents',
+    });
+  }
+  return res.status(202).json({
+    success: false,
+    result: [],
+    message: 'No document found',
+  });
+}));
+
 // 新增登入帳號（需提供密碼）
 router.post('/', catchErrors(async (req, res) => {
   const { email, name, surname, role, password } = req.body;
