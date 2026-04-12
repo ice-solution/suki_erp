@@ -45,6 +45,21 @@ function buildDocumentMatch(q) {
     { invoiceNumber: { $regex: regex } },
     { number: { $regex: regex } },
   ];
+
+  // 純英文字母（僅前綴，如 SMI、SML、S）：多數單據的 number 欄不含前綴，必須比對 numberPrefix
+  if (/^[A-Za-z]+$/.test(trimmed)) {
+    ors.push({
+      numberPrefix: { $regex: new RegExp(`^${escapeRegex(trimmed)}$`, 'i') },
+    });
+  }
+
+  // 「PREFIX-」或「PREFIX-/year」等：有前綴但尚無號碼片段時，仍可依前綴反查
+  if (parsedPrefix && !parsedNumber) {
+    ors.push({
+      numberPrefix: { $regex: new RegExp(`^${escapeRegex(parsedPrefix)}$`, 'i') },
+    });
+  }
+
   if (parsedPrefix && parsedNumber) {
     ors.push({
       numberPrefix: { $regex: new RegExp(`^${escapeRegex(parsedPrefix)}$`, 'i') },
