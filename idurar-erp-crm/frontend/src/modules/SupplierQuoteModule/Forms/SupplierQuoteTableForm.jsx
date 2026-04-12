@@ -20,9 +20,24 @@ import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
 
-export default function SupplierQuoteTableForm({ subTotal = 0, current = null }) {
-  const { last_supplier_quote_number } = useSelector(selectFinanceSettings);
+function getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) {
+  const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
+  const v = financeSettings?.[k];
+  if (v !== undefined && v !== null && v !== '') {
+    const n = Number(v);
+    return Number.isNaN(n) ? 0 : n;
+  }
+  if (String(prefix || 'S').toUpperCase() === 'S') {
+    const legacy = supplierQuoteSettings?.last_supplier_quote_number;
+    if (legacy !== undefined && legacy !== null && legacy !== '') {
+      const n = Number(legacy);
+      return Number.isNaN(n) ? 0 : n;
+    }
+  }
+  return 0;
+}
 
+export default function SupplierQuoteTableForm({ subTotal = 0, current = null }) {
   // 即使沒有設置也允許顯示表單，使用默認值
   return <LoadSupplierQuoteTableForm subTotal={subTotal} current={current} />;
 }
@@ -32,10 +47,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const { dateFormat } = useDate();
   const { moneyFormatter, amountFormatter, currency_symbol, currency_position, cent_precision, currency_code } = useMoney();
   const financeSettings = useSelector(selectFinanceSettings);
+  const supplierQuoteSettings = useSelector((state) => state.settings?.result?.supplier_quote_settings ?? {});
   const warehouseOptions = useSelector(selectWarehouseOptions);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
-  const { last_supplier_quote_number } = financeSettings || {};
-  const [lastNumber, setLastNumber] = useState(() => (last_supplier_quote_number || 0) + 1);
+  const [lastNumber, setLastNumber] = useState(1);
   const navigate = useNavigate();
 
   const [subTotal, setSubTotal] = useState(0);
@@ -91,6 +106,15 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   
   const form = Form.useFormInstance();
   const watchedClients = Form.useWatch('clients', form) || [];
+  const watchedSupplierPrefix = Form.useWatch('numberPrefix', form) || 'S';
+
+  useEffect(() => {
+    if (current) return;
+    const prefix = watchedSupplierPrefix || 'S';
+    const next = getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) + 1;
+    setLastNumber(next);
+    form.setFieldsValue({ number: String(next) });
+  }, [financeSettings, supplierQuoteSettings, watchedSupplierPrefix, current, form]);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const ShipQuoteModel = mongoose.model('ShipQuote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 
-const { increaseBySettingKey } = require('@/middlewares/settings');
+const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 
 /**
  * 將 Ship Quote 轉換為 S單（Supplier Quote）
@@ -30,9 +30,7 @@ const convertToSupplierQuote = async (req, res) => {
       });
     }
 
-    const supplierQuoteNumberResult = await increaseBySettingKey({
-      settingKey: 'last_supplier_quote_number',
-    });
+    const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix('S');
     const supplierQuoteNumber = supplierQuoteNumberResult
       ? supplierQuoteNumberResult.settingValue
       : 1;

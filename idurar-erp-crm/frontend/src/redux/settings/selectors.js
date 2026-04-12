@@ -36,6 +36,25 @@ export const selectItemUnitOptions = createSelector([selectItemUnits], (units) =
   units.map((u) => ({ label: u, value: u }))
 );
 
+const DEFAULT_WAREHOUSE_ITEM_CATEGORIES = ['原材料', '成品', '耗材', '其他'];
+
+export const selectWarehouseItemCategories = createSelector(
+  [selectAppSettings],
+  (appSettings) => {
+    const list = appSettings?.warehouse_item_categories;
+    if (!list || !Array.isArray(list) || list.length === 0) return DEFAULT_WAREHOUSE_ITEM_CATEGORIES;
+    const cleaned = list
+      .map((c) => (c == null ? '' : String(c).trim()))
+      .filter((c) => c);
+    return cleaned.length ? Array.from(new Set(cleaned)) : DEFAULT_WAREHOUSE_ITEM_CATEGORIES;
+  }
+);
+
+export const selectWarehouseItemCategoryOptions = createSelector(
+  [selectWarehouseItemCategories],
+  (categories) => categories.map((c) => ({ label: c, value: c }))
+);
+
 export const selectFinanceSettings = createSelector(
   [selectCurrentSettings],
   (settings) => settings.finance_settings

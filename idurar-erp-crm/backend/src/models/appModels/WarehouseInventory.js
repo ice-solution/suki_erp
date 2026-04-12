@@ -31,6 +31,12 @@ const warehouseInventorySchema = new mongoose.Schema({
     sparse: true, // 允許空值但確保唯一性
     trim: true,
   },
+
+  /** 貨品類別（選項由設定 warehouse_item_categories 維護） */
+  category: {
+    type: String,
+    trim: true,
+  },
   
   // 數量信息
   quantity: {
@@ -110,6 +116,7 @@ const warehouseInventorySchema = new mongoose.Schema({
 
 // 索引
 warehouseInventorySchema.index({ warehouse: 1, itemName: 1 });
+warehouseInventorySchema.index({ category: 1 });
 warehouseInventorySchema.index({ sku: 1 });
 warehouseInventorySchema.index({ supplier: 1 });
 warehouseInventorySchema.index({ project: 1 });

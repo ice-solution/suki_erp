@@ -132,6 +132,17 @@ const lang = {
   project_percentage_short: '佔比',
   project_percentage_hint: '此發票金額佔整個專案的比例（0–100）',
   paid_date: '已付款日期',
+  prepared_by: '制單人',
+  modified_by: '修改人',
+  last_invoice_number: '發票最後編號',
+  last_quote_number: '報價單最後編號',
+  last_payment_number: '付款最後編號',
+  supplier_last_number_no: 'Supplier 編號 (NO) 最後號碼',
+  supplier_last_number_po: 'Supplier 編號 (PO) 最後號碼',
+  supplier_last_number_s: 'Supplier 編號 (S) 最後號碼',
+  supplier_last_number_swp: 'Supplier 編號 (SWP) 最後號碼',
+  supplier_last_number_e: 'Supplier 編號 (E) 最後號碼',
+  supplier_last_number_y: 'Supplier 編號 (Y) 最後號碼',
 };
 
 export default lang; 

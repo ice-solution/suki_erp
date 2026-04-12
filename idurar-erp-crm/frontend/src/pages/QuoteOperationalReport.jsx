@@ -15,12 +15,13 @@ import {
   Tabs,
   Select,
 } from 'antd';
-import { FileTextOutlined, CalendarOutlined, DownloadOutlined, PrinterOutlined } from '@ant-design/icons';
+import { FileTextOutlined, CalendarOutlined, DownloadOutlined, PrinterOutlined, FileExcelOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { Link } from 'react-router-dom';
 import { ErpLayout } from '@/layout';
 import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
+import * as XLSX from 'xlsx';
 
 const { RangePicker } = DatePicker;
 const { Title, Text } = Typography;
@@ -167,6 +168,56 @@ const QuoteOperationalReport = () => {
       if (clientSearchTimer.current) clearTimeout(clientSearchTimer.current);
     };
   }, []);
+
+  const exportXlsx = () => {
+    if (!reportData) {
+      message.warning('請先生成報告');
+      return;
+    }
+
+    const formatDate = (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '');
+    const quoteRow = (r) => ({
+      報價編號: formatQuoteNo(r),
+      PO_Number: poNumbersText(r) === '—' ? '' : poNumbersText(r),
+      客戶: clientNames(r) === '—' ? '' : clientNames(r),
+      總計: Number(r?.total) || 0,
+      貨幣: r?.currency || 'HKD',
+      日期: formatDate(r?.date),
+      已完成: r?.isCompleted ? '是' : '否',
+    });
+
+    const sheet1Rows = (reportData.acceptedNotInvoiced || []).map(quoteRow);
+    const sheet2Rows = (reportData.acceptedNotCompleted || []).map(quoteRow);
+
+    const invoiceRows = [];
+    const pushInv = (categoryLabel, inv) => {
+      invoiceRows.push({
+        分類: categoryLabel,
+        發票編號: formatInvoiceNo(inv),
+        報價編號: inv?.invoiceNumber || '',
+        客戶: clientNames(inv) === '—' ? '' : clientNames(inv),
+        總計: Number(inv?.total) || 0,
+        '已付(部份付款)': Number(inv?.credit) || 0,
+        付款狀態: inv?.paymentStatus || '',
+        FullPaid: inv?.fullPaid === true ? 'Y' : '',
+        日期: formatDate(inv?.date),
+        貨幣: inv?.currency || 'HKD',
+      });
+    };
+    (reportData.invoicesUnpaid || []).forEach((inv) => pushInv('未付', inv));
+    (reportData.invoicesPaidPartial || []).forEach((inv) => pushInv('已付(部份≠0)且未FullPaid', inv));
+    (reportData.invoicesPaidFullPaid || []).forEach((inv) => pushInv('已付且FullPaid', inv));
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet1Rows), '已接受-未轉Invoice');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet2Rows), '已接受-未完成');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoiceRows), 'Invoice付款');
+
+    const filename = `報價_發票營運報告_${dayjs(reportData.startDate).format('YYYYMMDD')}-${dayjs(
+      reportData.endDate
+    ).format('YYYYMMDD')}.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
 
   const generateReport = async () => {
     if (!dateRange || !dateRange[0] || !dateRange[1]) {
@@ -489,8 +540,8 @@ const QuoteOperationalReport = () => {
                     </Button>
                     {reportData && (
                       <>
-                        <Button icon={<DownloadOutlined />} disabled>
-                          下載
+                        <Button icon={<FileExcelOutlined />} onClick={exportXlsx}>
+                          下載 XLSX
                         </Button>
                         <Button icon={<PrinterOutlined />} disabled>
                           列印

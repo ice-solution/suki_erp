@@ -9,6 +9,7 @@ const update = async (req, res) => {
       itemName,
       description,
       sku,
+      category,
       quantity,
       warehouse,
       unitPrice,
@@ -60,6 +61,10 @@ const update = async (req, res) => {
     if (itemName !== undefined) updateData.itemName = itemName;
     if (description !== undefined) updateData.description = description;
     if (sku !== undefined) updateData.sku = sku;
+    if (category !== undefined) {
+      updateData.category =
+        category != null && String(category).trim() ? String(category).trim() : null;
+    }
     if (quantity !== undefined) updateData.quantity = newQuantity;
     if (warehouse !== undefined) updateData.warehouse = warehouse;
     if (unitPrice !== undefined) updateData.unitPrice = parseFloat(unitPrice) || 0;

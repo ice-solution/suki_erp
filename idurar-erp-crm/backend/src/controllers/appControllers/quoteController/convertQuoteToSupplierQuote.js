@@ -4,7 +4,7 @@ const QuoteModel = mongoose.model('Quote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const ProjectModel = mongoose.model('Project');
 
-const { increaseBySettingKey } = require('@/middlewares/settings');
+const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 
 const convertQuoteToSupplierQuote = async (req, res) => {
   try {
@@ -65,13 +65,6 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       });
     }
 
-    // Get next supplier quote number
-    const supplierQuoteNumberResult = await increaseBySettingKey({
-      settingKey: 'last_supplier_quote_number',
-    });
-    
-    const supplierQuoteNumber = supplierQuoteNumberResult ? supplierQuoteNumberResult.settingValue : 1;
-
     // Create supplier quote data from quote
     // 注意：items 中的 poNumber 和 price 不需要傳遞到 SupplierQuote
     // SupplierQuote 的 items 只需要 itemName, description, quantity
@@ -82,18 +75,20 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       // 不包含 price 和 total，因為 SupplierQuote 不需要 item 的價錢
     }));
 
-    // 映射 Quote 的 numberPrefix 到 SupplierQuote 的有效值
-    // SupplierQuote 只接受 'S' 或 'NO'
-    let supplierQuotePrefix = 'S'; // 默認值
+    // 映射 Quote 的 numberPrefix 到 SupplierQuote 的有效值（預設 S）
+    let supplierQuotePrefix = 'S';
     if (quote.numberPrefix) {
-      // 如果 Quote 的 numberPrefix 是 'SML'，轉換為 'S'，其他情況使用默認值 'S'
       if (quote.numberPrefix === 'SML') {
         supplierQuotePrefix = 'S';
       } else {
-        // 對於其他值（如 'QU', 'XX'），使用默認值 'S'
         supplierQuotePrefix = 'S';
       }
     }
+
+    const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix(supplierQuotePrefix);
+    const supplierQuoteNumber = supplierQuoteNumberResult
+      ? supplierQuoteNumberResult.settingValue
+      : 1;
 
     const supplierQuoteData = {
       converted: false, // SupplierQuote 的 converted 是 Boolean 類型

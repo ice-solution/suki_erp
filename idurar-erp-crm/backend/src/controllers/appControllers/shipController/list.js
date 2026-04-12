@@ -26,9 +26,31 @@ const list = catchErrors(async (req, res) => {
       },
     },
     { $sort: { _nullLast: 1, expiredDate: 1 } },
-    { $project: { _nullLast: 0 } },
     { $skip: skip },
     { $limit: limit },
+    {
+      $lookup: {
+        from: 'admins',
+        let: { ub: '$updatedBy' },
+        pipeline: [
+          {
+            $match: {
+              $expr: {
+                $and: [{ $ne: ['$$ub', null] }, { $eq: ['$_id', '$$ub'] }],
+              },
+            },
+          },
+          { $project: { name: 1 } },
+        ],
+        as: '_updatedByLookup',
+      },
+    },
+    {
+      $addFields: {
+        updatedBy: { $arrayElemAt: ['$_updatedByLookup', 0] },
+      },
+    },
+    { $project: { _nullLast: 0, _updatedByLookup: 0 } },
   ];
 
   const countPipeline = [{ $match: match }, { $count: 'count' }];

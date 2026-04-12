@@ -14,7 +14,10 @@ const puppeteer = require('puppeteer');
 const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
-const { buildStandardQuoteFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const {
+  buildStandardQuoteFooterTemplate,
+  buildSuperMaxImageFooterTemplate,
+} = require('../shared/quotePdfFooterTemplate');
 
 /** 與 pdfController 內 Invoice 模板選擇一致 */
 function resolveInvoiceTemplateBasename(model) {
@@ -102,13 +105,18 @@ async function generateInvoicePdfBuffer(model) {
     });
     await page.emulateMediaType('print');
 
+    const isSmi = resolveInvoiceTemplateBasename(model) === 'smi';
+    const footerTemplate = isSmi
+      ? buildSuperMaxImageFooterTemplate(settings.public_server_file)
+      : buildStandardQuoteFooterTemplate();
+
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
       scale: 1.3,
       displayHeaderFooter: true,
       headerTemplate: '<div></div>',
-      footerTemplate: buildStandardQuoteFooterTemplate(),
+      footerTemplate,
       margin: {
         top: '12mm',
         right: '10mm',

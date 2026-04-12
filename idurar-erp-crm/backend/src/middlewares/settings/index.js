@@ -3,6 +3,7 @@ const readBySettingKey = require('./readBySettingKey');
 const listAllSettings = require('./listAllSettings');
 const updateBySettingKey = require('./updateBySettingKey');
 const increaseBySettingKey = require('./increaseBySettingKey');
+const increaseSupplierQuoteLastNumberByPrefix = require('./increaseSupplierQuoteLastNumberByPrefix');
 const loadSettings = require('./loadSettings');
 
 module.exports = {
@@ -12,4 +13,5 @@ module.exports = {
   readBySettingKey,
   updateBySettingKey,
   increaseBySettingKey,
+  increaseSupplierQuoteLastNumberByPrefix,
 };

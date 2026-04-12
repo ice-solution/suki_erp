@@ -209,12 +209,12 @@ export default function WinchList() {
       },
     });
 
-    // Description列
+    // 修改人（最後更新者）
     baseColumns.push({
-      title: translate('description') || '描述',
-      dataIndex: 'description',
-      key: 'description',
-      render: (text) => text || '-',
+      title: translate('modified_by') || '修改人',
+      dataIndex: 'updatedBy',
+      key: 'updatedBy',
+      render: (val) => (val && val.name ? val.name : '-'),
     });
 
     return baseColumns;

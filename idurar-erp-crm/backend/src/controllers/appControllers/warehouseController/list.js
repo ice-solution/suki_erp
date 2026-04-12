@@ -14,6 +14,7 @@ const list = async (req, res) => {
       itemName,
       warehouse,
       status,
+      category,
       supplier,
       project,
       sortBy = 'createdAt',
@@ -46,6 +47,11 @@ const list = async (req, res) => {
     // 狀態篩選
     if (status) {
       query.status = status;
+    }
+
+    // 類別篩選
+    if (category && String(category).trim()) {
+      query.category = String(category).trim();
     }
 
     // 供應商篩選

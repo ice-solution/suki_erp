@@ -20,6 +20,7 @@ import MoneyFormatSettings from './MoneyFormatSettings';
 import ProjectItemSettings from './ProjectItemSettings';
 import WarehouseSettings from './WarehouseSettings';
 import ItemUnitSettings from './ItemUnitSettings';
+import WarehouseItemCategorySettings from './WarehouseItemCategorySettings';
 import AccountSettings from './AccountSettings';
 
 import useLanguage from '@/locale/useLanguage';
@@ -82,6 +83,12 @@ export default function Settings() {
       label: 'Items 單位',
       icon: <BuildOutlined />,
       children: <ItemUnitSettings />,
+    },
+    {
+      key: 'warehouse_item_category_settings',
+      label: '倉存類別',
+      icon: <InboxOutlined />,
+      children: <WarehouseItemCategorySettings />,
     },
     {
       key: 'account_settings',

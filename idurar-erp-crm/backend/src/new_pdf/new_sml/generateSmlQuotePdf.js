@@ -14,7 +14,7 @@ const puppeteer = require('puppeteer');
 const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
-const { buildStandardQuoteFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 
 /** 與 pdfController 一致：SML 報價單 logo */
 function resolveLogoSettingKeyForQuote(result) {
@@ -109,7 +109,7 @@ async function generateSmlQuotePdfBuffer(model) {
       scale: 1.3,
       displayHeaderFooter: true,
       headerTemplate: '<div></div>',
-      footerTemplate: buildStandardQuoteFooterTemplate(),
+      footerTemplate: buildSuperMaxImageFooterTemplate(settings.public_server_file),
       margin: {
         top: '12mm',
         right: '10mm',

@@ -28,7 +28,7 @@ import {
 } from '@ant-design/icons';
 import { request } from '@/request';
 import { useSelector } from 'react-redux';
-import { selectWarehouseOptions } from '@/redux/settings/selectors';
+import { selectWarehouseOptions, selectWarehouseItemCategories } from '@/redux/settings/selectors';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -55,6 +55,7 @@ export default function Warehouse() {
   const [adjustForm] = Form.useForm();
   const [transferForm] = Form.useForm();
   const warehouseOptions = useSelector(selectWarehouseOptions);
+  const warehouseItemCategories = useSelector(selectWarehouseItemCategories);
 
   // 狀態選項
   const statusOptions = [
@@ -89,6 +90,9 @@ export default function Warehouse() {
       }
       if (filters.status && filters.status.length) {
         params.status = filters.status[0];
+      }
+      if (filters.category && filters.category.length) {
+        params.category = filters.category[0];
       }
       const response = await request.get({ entity: 'warehouse', params });
 
@@ -231,6 +235,14 @@ export default function Warehouse() {
       dataIndex: 'sku',
       key: 'sku',
       width: 120,
+    },
+    {
+      title: '類別',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (cat) => (cat ? cat : '-'),
+      filters: warehouseItemCategories.map((c) => ({ text: c, value: c })),
     },
     {
       title: '數量',
@@ -417,7 +429,7 @@ export default function Warehouse() {
             setFilters(tableFilters || {});
           }}
           rowKey="_id"
-          scroll={{ x: 1350 }}
+          scroll={{ x: 1470 }}
         />
       </Card>
 
@@ -456,18 +468,32 @@ export default function Warehouse() {
 
           <Row gutter={16}>
             <Col span={12}>
+              <Form.Item name="category" label="類別">
+                <Select placeholder="請選擇類別" allowClear showSearch optionFilterProp="children">
+                  {warehouseItemCategories.map((c) => (
+                    <Option key={c} value={c}>
+                      {c}
+                    </Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </Col>
+            <Col span={12}>
               <Form.Item
                 name="quantity"
                 label="數量"
                 rules={[{ required: true, message: '請輸入數量' }]}
               >
-                <InputNumber 
-                  min={0} 
-                  style={{ width: '100%' }} 
+                <InputNumber
+                  min={0}
+                  style={{ width: '100%' }}
                   placeholder="請輸入數量"
                 />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="warehouse"
@@ -475,7 +501,7 @@ export default function Warehouse() {
                 rules={[{ required: true, message: '請選擇倉庫' }]}
               >
                 <Select placeholder="請選擇倉庫">
-                  {warehouseOptions.map(option => (
+                  {warehouseOptions.map((option) => (
                     <Option key={option.value} value={option.value}>
                       {option.label}
                     </Option>
@@ -483,30 +509,30 @@ export default function Warehouse() {
                 </Select>
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="unitPrice"
                 label="單價"
               >
-                <InputNumber 
-                  min={0} 
+                <InputNumber
+                  min={0}
                   precision={2}
-                  style={{ width: '100%' }} 
+                  style={{ width: '100%' }}
                   placeholder="請輸入單價"
                   addonBefore="$"
                 />
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="status"
                 label="狀態"
               >
                 <Select placeholder="請選擇狀態">
-                  {statusOptions.map(option => (
+                  {statusOptions.map((option) => (
                     <Option key={option.value} value={option.value}>
                       {option.label}
                     </Option>
@@ -514,9 +540,6 @@ export default function Warehouse() {
                 </Select>
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="supplier"
@@ -538,12 +561,15 @@ export default function Warehouse() {
                 </Select>
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="project"
                 label="項目"
               >
-                <Select 
+                <Select
                   placeholder="請選擇項目"
                   allowClear
                   showSearch
@@ -551,7 +577,7 @@ export default function Warehouse() {
                     option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
                   }
                 >
-                  {projects.map(project => (
+                  {projects.map((project) => (
                     <Option key={project._id} value={project._id}>
                       {project.name}
                     </Option>
@@ -559,30 +585,26 @@ export default function Warehouse() {
                 </Select>
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="minStockLevel"
                 label="最低庫存警告"
               >
-                <InputNumber 
-                  min={0} 
-                  style={{ width: '100%' }} 
+                <InputNumber
+                  min={0}
+                  style={{ width: '100%' }}
                   placeholder="請輸入最低庫存數量"
                 />
               </Form.Item>
             </Col>
-            <Col span={12}>
-              <Form.Item
-                name="location"
-                label="位置"
-              >
-                <Input placeholder="請輸入具體位置" />
-              </Form.Item>
-            </Col>
           </Row>
+
+          <Form.Item
+            name="location"
+            label="位置"
+          >
+            <Input placeholder="請輸入具體位置" />
+          </Form.Item>
 
           <Form.Item
             name="description"

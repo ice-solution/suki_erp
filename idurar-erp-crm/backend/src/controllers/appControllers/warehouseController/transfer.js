@@ -110,6 +110,7 @@ const transfer = async (req, res) => {
         itemName: sourceInventory.itemName,
         description: sourceInventory.description,
         sku: sourceInventory.sku,
+        category: sourceInventory.category,
         quantity: quantity,
         warehouse: toWarehouse,
         unitPrice: sourceInventory.unitPrice,

@@ -22,7 +22,7 @@ const updateManySetting = async (req, res) => {
       setOnInsert.settingCategory = 'warehouse_settings';
       setOnInsert.valueType = 'array';
     }
-    if (settingKey === 'item_units') {
+    if (settingKey === 'item_units' || settingKey === 'warehouse_item_categories') {
       setOnInsert.settingCategory = 'app_settings';
       setOnInsert.valueType = 'array';
     }

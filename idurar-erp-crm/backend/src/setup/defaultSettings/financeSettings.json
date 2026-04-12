@@ -46,5 +46,41 @@
     "settingKey": "payment_prefix",
     "settingValue": "pym-",
     "valueType": "string"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "last_supplier_quote_number_no",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "last_supplier_quote_number_po",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "last_supplier_quote_number_s",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "last_supplier_quote_number_swp",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "last_supplier_quote_number_e",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "last_supplier_quote_number_y",
+    "settingValue": 0,
+    "valueType": "number"
   }
 ]

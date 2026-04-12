@@ -6,6 +6,96 @@ const InvoiceModel = mongoose.model('Invoice');
 const ShipQuoteModel = mongoose.model('ShipQuote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 
+function escapeRegex(s) {
+  return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * 依輸入關鍵字組出 Quote / Invoice / ShipQuote / SupplierQuote 共用查詢：
+ * - invoiceNumber、number 模糊
+ * - 「PREFIX-NUM」或「PREFIX-NUM/year」拆成 numberPrefix + number 精準
+ * - 無連字號但符合 /^[A-Za-z]+\d+$/（如 SMI54）亦拆成 prefix + number
+ */
+function buildDocumentMatch(q) {
+  const trimmed = String(q || '').trim();
+  if (!trimmed) return null;
+
+  const escaped = escapeRegex(trimmed);
+  const regex = new RegExp(escaped, 'i');
+
+  let parsedPrefix = null;
+  let parsedNumber = null;
+  const cleaned = trimmed.replace(/\s+/g, '');
+
+  if (cleaned.includes('-')) {
+    const [pfx, ...rest] = cleaned.split('-');
+    const numRaw = rest.join('-');
+    const numOnly = numRaw.split('/')[0];
+    if (pfx) parsedPrefix = pfx;
+    if (numOnly) parsedNumber = numOnly;
+  } else {
+    const m = cleaned.match(/^([A-Za-z]{1,10})(\d[\dA-Za-z]*)$/);
+    if (m) {
+      parsedPrefix = m[1];
+      parsedNumber = m[2];
+    }
+  }
+
+  const ors = [
+    { invoiceNumber: { $regex: regex } },
+    { number: { $regex: regex } },
+  ];
+  if (parsedPrefix && parsedNumber) {
+    ors.push({
+      numberPrefix: { $regex: new RegExp(`^${escapeRegex(parsedPrefix)}$`, 'i') },
+      number: { $regex: new RegExp(`^${escapeRegex(parsedNumber)}$`, 'i') },
+    });
+  }
+
+  return { removed: false, $or: ors };
+}
+
+/**
+ * 由單據反查 Project：doc.project + Project.quotations / supplierQuotations / invoices / shipQuotations 含該單據 _id
+ */
+async function collectProjectIdsFromLinkedDocuments(q) {
+  const match = buildDocumentMatch(q);
+  if (!match) return [];
+
+  const select = '_id project';
+  const [quotes, shipQuotes, invoices, supplierQuotes] = await Promise.all([
+    QuoteModel.find(match).select(select).limit(50).lean(),
+    ShipQuoteModel.find(match).select(select).limit(50).lean(),
+    InvoiceModel.find(match).select(select).limit(50).lean(),
+    SupplierQuoteModel.find(match).select(select).limit(50).lean(),
+  ]);
+
+  const allDocs = [...quotes, ...shipQuotes, ...invoices, ...supplierQuotes];
+  const ids = new Set();
+
+  for (const d of allDocs) {
+    if (d && d.project) ids.add(String(d.project));
+  }
+
+  const reverseOr = [];
+  if (quotes.length) reverseOr.push({ quotations: { $in: quotes.map((x) => x._id) } });
+  if (shipQuotes.length) reverseOr.push({ shipQuotations: { $in: shipQuotes.map((x) => x._id) } });
+  if (invoices.length) reverseOr.push({ invoices: { $in: invoices.map((x) => x._id) } });
+  if (supplierQuotes.length) {
+    reverseOr.push({ supplierQuotations: { $in: supplierQuotes.map((x) => x._id) } });
+  }
+
+  if (reverseOr.length) {
+    const fromArrays = await Model.find({ removed: false, $or: reverseOr })
+      .select('_id')
+      .limit(50)
+      .lean();
+    fromArrays.forEach((p) => ids.add(String(p._id)));
+  }
+
+  return [...ids];
+}
+
 const search = async (req, res) => {
   if (req.query.q === undefined || req.query.q === '' || req.query.q === ' ') {
     return res
@@ -18,106 +108,77 @@ const search = async (req, res) => {
       .end();
   }
 
+  const q = String(req.query.q || '').trim();
   const fieldsArray = (req.query.fields || '').split(',').filter(Boolean);
 
   const fields = { $or: [] };
-
   for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+    fields.$or.push({ [field]: { $regex: new RegExp(escapeRegex(q), 'i') } });
   }
-  
+
+  const populatePaths = [
+    { path: 'createdBy', select: 'name' },
+    { path: 'suppliers', select: 'name' },
+    {
+      path: 'quotations',
+      select: 'numberPrefix number year total status isCompleted invoiceNumber',
+    },
+    {
+      path: 'supplierQuotations',
+      select: 'numberPrefix number year total status invoiceNumber',
+    },
+    {
+      path: 'shipQuotations',
+      select: 'numberPrefix number year total status isCompleted invoiceNumber',
+    },
+    {
+      path: 'invoices',
+      select: 'invoiceNumber numberPrefix number year total status',
+    },
+  ];
+
   try {
-    // 1) 先用 Project 自身欄位搜尋（invoiceNumber/name/address/EO number 等）
-    let results = await Model.find(fields.$or.length ? fields : {})
+    // 1) Project 自身欄位（名稱、地址、專案 quote number、EO 等）
+    let fromText = await Model.find(fields.$or.length ? fields : {})
       .where({ removed: false })
       .sort({ invoiceNumber: 1 })
       .limit(10)
-      .populate('suppliers', 'name')
-      .populate({
-        path: 'quotations',
-        select: 'numberPrefix number year total status isCompleted',
-      })
-      .populate({
-        path: 'invoices',
-        select: 'invoiceNumber numberPrefix number year total status',
-      })
-      .populate({
-        path: 'shipQuotations',
-        select: 'numberPrefix number year total status isCompleted',
-      });
+      .populate(populatePaths);
 
-    // 2) 若 Project 自身欄位找不到或不足，再用關聯單據號碼反查 Project
-    if (results.length < 10) {
-      const q = String(req.query.q || '').trim();
-      const regex = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-
-      const docHits = await Promise.all([
-        QuoteModel.find({ removed: false, $or: [{ invoiceNumber: { $regex: regex } }, { number: { $regex: regex } }] })
-          .select('project')
-          .limit(10)
-          .lean(),
-        ShipQuoteModel.find({ removed: false, $or: [{ invoiceNumber: { $regex: regex } }, { number: { $regex: regex } }] })
-          .select('project')
-          .limit(10)
-          .lean(),
-        InvoiceModel.find({ removed: false, $or: [{ invoiceNumber: { $regex: regex } }, { number: { $regex: regex } }] })
-          .select('project')
-          .limit(10)
-          .lean(),
-        SupplierQuoteModel.find({ removed: false, $or: [{ invoiceNumber: { $regex: regex } }, { number: { $regex: regex } }] })
-          .select('project')
-          .limit(10)
-          .lean(),
-      ]);
-
-      const projectIds = Array.from(
-        new Set(
-          docHits
-            .flat()
-            .map((d) => d && d.project)
-            .filter(Boolean)
-            .map((id) => String(id))
-        )
-      );
-
-      if (projectIds.length) {
-        const existing = new Set(results.map((p) => String(p._id)));
-        const missingIds = projectIds.filter((id) => !existing.has(id));
-        if (missingIds.length) {
-          const more = await Model.find({ removed: false, _id: { $in: missingIds } })
-            .sort({ invoiceNumber: 1 })
-            .limit(10 - results.length)
-            .populate('suppliers', 'name')
-            .populate({
-              path: 'quotations',
-              select: 'numberPrefix number year total status isCompleted',
-            })
-            .populate({
-              path: 'invoices',
-              select: 'invoiceNumber numberPrefix number year total status',
-            })
-            .populate({
-              path: 'shipQuotations',
-              select: 'numberPrefix number year total status isCompleted',
-            });
-          results = results.concat(more);
-        }
-      }
+    // 2) 一律再查：已同步到專案的各類單據（SML/SMI/PO/S 單等）→ 反查 Project
+    const docProjectIds = await collectProjectIdsFromLinkedDocuments(q);
+    let fromDocs = [];
+    if (docProjectIds.length) {
+      fromDocs = await Model.find({ removed: false, _id: { $in: docProjectIds } })
+        .sort({ invoiceNumber: 1 })
+        .limit(10)
+        .populate(populatePaths);
     }
 
-    if (results.length >= 1) {
+    // 合併：單據命中的專案優先，其次文字欄位命中；去重
+    const seen = new Set();
+    const merged = [];
+    for (const p of [...fromDocs, ...fromText]) {
+      const id = p && p._id && String(p._id);
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      merged.push(p);
+      if (merged.length >= 10) break;
+    }
+
+    if (merged.length >= 1) {
       return res.status(200).json({
         success: true,
-        result: results,
+        result: merged,
         message: 'Successfully found all documents',
       });
-    } else {
-      return res.status(202).json({
-        success: false,
-        result: [],
-        message: 'No document found',
-      });
     }
+
+    return res.status(202).json({
+      success: false,
+      result: [],
+      message: 'No document found',
+    });
   } catch {
     return res.status(500).json({
       success: false,

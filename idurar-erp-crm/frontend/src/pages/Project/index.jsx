@@ -58,10 +58,10 @@ export default function Project() {
       render: (text) => text || '-',
     },
     {
-      title: translate('Description'),
-      dataIndex: 'description',
-      key: 'description',
-      render: (text) => text || '-',
+      title: translate('prepared_by'),
+      dataIndex: 'createdBy',
+      key: 'preparedBy',
+      render: (_, record) => record?.createdBy?.name || '-',
     },
     {
       title: translate('Cost By'),

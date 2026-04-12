@@ -6,7 +6,7 @@ const Winch = mongoose.model('Winch');
 const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 
 const custom = require('@/controllers/pdfController');
-const { increaseBySettingKey } = require('@/middlewares/settings');
+const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
 const {
   applySupplierQuoteMaterialsWarehouseSync,
@@ -290,9 +290,7 @@ const create = async (req, res) => {
     }
   }
 
-  increaseBySettingKey({
-    settingKey: 'last_supplier_quote_number',
-  });
+  increaseSupplierQuoteLastNumberByPrefix(result.numberPrefix || 'S');
 
   // Returning successfull response
   return res.status(200).json({
