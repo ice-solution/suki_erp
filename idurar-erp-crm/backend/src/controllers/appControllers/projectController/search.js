@@ -10,18 +10,31 @@ function escapeRegex(s) {
   return String(s || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+/** 「PREFIX-數字」形式（如 S-1、PO-12）：單號欄位可含子字串比對（S-1 亦會命中 S-10 等，與業務預期一致） */
+function isLikelyHyphenatedDocumentNumberQuery(q) {
+  const t = String(q || '')
+    .trim()
+    .replace(/\s+/g, '');
+  return /^[A-Za-z]{1,10}-\d/.test(t);
+}
+
 /**
  * 依輸入關鍵字組出 Quote / Invoice / ShipQuote / SupplierQuote 共用查詢：
- * - invoiceNumber、number 模糊
- * - 「PREFIX-NUM」或「PREFIX-NUM/year」拆成 numberPrefix + number 精準
- * - 無連字號但符合 /^[A-Za-z]+\d+$/（如 SMI54）亦拆成 prefix + number
+ * - 「字母-數字」單號（如 S-1）：invoiceNumber 子字串比對，並搭配 numberPrefix+number 等（與列表搜尋一致）
+ * - 其他：invoiceNumber 錨定 ^…(/|$)，並允許「單號/年份」
+ * - number：整欄精準匹配
+ * - 「PREFIX-NUM/year」拆成 numberPrefix + number；無連字號但符合 SMI54 形式亦拆開
  */
 function buildDocumentMatch(q) {
   const trimmed = String(q || '').trim();
   if (!trimmed) return null;
 
   const escaped = escapeRegex(trimmed);
-  const regex = new RegExp(escaped, 'i');
+  /** 非「字母-數字」單號：invoiceNumber 需錨定（整段或後接 /year） */
+  const invoiceNumberRegex = new RegExp(`^${escaped}(/|$)`, 'i');
+  /** number 欄為整欄精準匹配 */
+  const numberOnlyRegex = new RegExp(`^${escaped}$`, 'i');
+  const hyphenDocStyle = isLikelyHyphenatedDocumentNumberQuery(trimmed);
 
   let parsedPrefix = null;
   let parsedNumber = null;
@@ -41,10 +54,12 @@ function buildDocumentMatch(q) {
     }
   }
 
-  const ors = [
-    { invoiceNumber: { $regex: regex } },
-    { number: { $regex: regex } },
-  ];
+  const ors = [{ number: { $regex: numberOnlyRegex } }];
+  if (hyphenDocStyle) {
+    ors.unshift({ invoiceNumber: { $regex: new RegExp(escaped, 'i') } });
+  } else {
+    ors.unshift({ invoiceNumber: { $regex: invoiceNumberRegex } });
+  }
 
   // 純英文字母（僅前綴，如 SMI、SML、S）：多數單據的 number 欄不含前綴，必須比對 numberPrefix
   if (/^[A-Za-z]+$/.test(trimmed)) {
@@ -126,9 +141,28 @@ const search = async (req, res) => {
   const q = String(req.query.q || '').trim();
   const fieldsArray = (req.query.fields || '').split(',').filter(Boolean);
 
+  /**
+   * 僅 Project.invoiceNumber 用錨定／連字號單號規則。
+   * poNumber、EO、判頭 invoiceNo 需子字串比對（部分輸入、前後格式不一也能找到）。
+   */
   const fields = { $or: [] };
+  const escapedQ = escapeRegex(q);
+  const hyphenDocNo = isLikelyHyphenatedDocumentNumberQuery(q);
+
   for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(escapeRegex(q), 'i') } });
+    if (field === 'invoiceNumber') {
+      if (hyphenDocNo) {
+        fields.$or.push({
+          [field]: { $regex: new RegExp(escapedQ, 'i') },
+        });
+      } else {
+        fields.$or.push({
+          [field]: { $regex: new RegExp(`^${escapedQ}(/|$)`, 'i') },
+        });
+      }
+    } else {
+      fields.$or.push({ [field]: { $regex: new RegExp(escapedQ, 'i') } });
+    }
   }
 
   const populatePaths = [
@@ -154,11 +188,17 @@ const search = async (req, res) => {
 
   try {
     // 1) Project 自身欄位（名稱、地址、專案 quote number、EO 等）
-    let fromText = await Model.find(fields.$or.length ? fields : {})
-      .where({ removed: false })
-      .sort({ invoiceNumber: 1 })
-      .limit(10)
-      .populate(populatePaths);
+    // fields 為空時不可 find({})，否則會回傳任意前 10 筆專案
+    const SEARCH_RESULT_LIMIT = 50;
+
+    let fromText = [];
+    if (fields.$or.length) {
+      fromText = await Model.find(fields)
+        .where({ removed: false })
+        .sort({ invoiceNumber: 1 })
+        .limit(SEARCH_RESULT_LIMIT)
+        .populate(populatePaths);
+    }
 
     // 2) 一律再查：已同步到專案的各類單據（SML/SMI/PO/S 單等）→ 反查 Project
     const docProjectIds = await collectProjectIdsFromLinkedDocuments(q);
@@ -166,11 +206,11 @@ const search = async (req, res) => {
     if (docProjectIds.length) {
       fromDocs = await Model.find({ removed: false, _id: { $in: docProjectIds } })
         .sort({ invoiceNumber: 1 })
-        .limit(10)
+        .limit(SEARCH_RESULT_LIMIT)
         .populate(populatePaths);
     }
 
-    // 合併：單據命中的專案優先，其次文字欄位命中；去重
+    // 合併：單據命中的專案優先，其次文字欄位命中（含 name / address）；去重
     const seen = new Set();
     const merged = [];
     for (const p of [...fromDocs, ...fromText]) {
@@ -178,7 +218,7 @@ const search = async (req, res) => {
       if (!id || seen.has(id)) continue;
       seen.add(id);
       merged.push(p);
-      if (merged.length >= 10) break;
+      if (merged.length >= SEARCH_RESULT_LIMIT) break;
     }
 
     if (merged.length >= 1) {
