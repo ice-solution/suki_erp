@@ -203,8 +203,9 @@ html
       .prepared-by-space { display: inline-block; min-width: 120px; height: 20px; vertical-align: middle; }
       .issuer-block { display: inline-block; text-align: left; }
       .issuer-name-line { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
-      .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
-      .signature-stamp-label { font-size: 9px; margin-top: 4px; }
+      .issuer-stamp { border-bottom: none; width: 180px; height: 40px; margin-top: 4px; }
+      .signature-stamp-label { font-size: 9px; font-weight: bold; margin-top: 4px; }
+      .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
 
 body
@@ -288,33 +289,32 @@ body
                   span.summary-label 總金額：
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
             .notes-block
-              .notes-title 注：
               .notes-content
-                | 1) 此報價有效期為90天
                 if model.notes
                   br
                   | #{model.notes}
             .signature-section
               .prepared-by-row
-                span.prepared-by-label 制單人：
-                if model.createdBy && model.createdBy.name
-                  span #{model.createdBy.name}
-                else
-                  span.prepared-by-space
+                //- 刪除「制單人」文字，但保留相同高度/空間避免簽署區上移
+                span.prepared-by-space
               table.signature-table
                 tr
                   td.sig-left
                     .issuer-block
-                      .issuer-name-line 核實者
-                      .issuer-name-line 同意及確定
+                      //- 保留空間，避免右欄位往左/往上擠
+                      .issuer-name-line &nbsp;
+                      .issuer-name-line &nbsp;
                       .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
+                      .signature-stamp-label &nbsp;
                   td.sig-right
                     .issuer-block
-                      .issuer-name-line 發出者
-                      .issuer-name-line 超越工程公司
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
+                      .issuer-name-line 裝箱方式:
+                      .issuer-name-line
+                        | 簽收人:
+                        span.fill-line
+                      .issuer-name-line
+                        | 日期
+                        span.fill-line
             .end-marker End
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')

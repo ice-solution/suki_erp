@@ -5,6 +5,10 @@ const Model = mongoose.model('Invoice');
 const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
+const {
+  syncInvoiceNumberAcrossDocuments,
+  syncProjectInvoiceNumberIfMatched,
+} = require('@/helpers/syncInvoiceNumberAcrossDocuments');
 const schema = require('./schemaValidate');
 
 const update = async (req, res) => {
@@ -86,6 +90,11 @@ const update = async (req, res) => {
 
   // 優先使用用戶在表單選擇的付款狀態；未提供時才依 total 與 credit 自動計算
   const validStatuses = ['unpaid', 'paid'];
+  // Full paid 一定視作已付款（避免 fullPaid=true 但 paymentStatus=unpaid 的不一致）
+  if (req.body.fullPaid === true || req.body.fullPaid === 'true') {
+    body['fullPaid'] = true;
+    body['paymentStatus'] = 'paid';
+  } else
   if (req.body.paymentStatus && validStatuses.includes(req.body.paymentStatus)) {
     body['paymentStatus'] = req.body.paymentStatus;
   } else {
@@ -98,16 +107,52 @@ const update = async (req, res) => {
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
 
+  // Quote Number（invoiceNumber）變更：先同步 Quote / S單 / 吊船 / 其他 Invoice 與專案抬頭，再寫入本筆（與 Project 更新時邏輯一致）
+  const oldQuoteNo =
+    previousInvoice && previousInvoice.invoiceNumber != null
+      ? String(previousInvoice.invoiceNumber).trim()
+      : '';
+  const newQuoteNo =
+    body.invoiceNumber !== undefined && body.invoiceNumber !== null
+      ? String(body.invoiceNumber).trim()
+      : oldQuoteNo;
+
+  let invoiceNumberSync = null;
+  if (oldQuoteNo && newQuoteNo && oldQuoteNo !== newQuoteNo) {
+    try {
+      const syncedCounts = await syncInvoiceNumberAcrossDocuments(oldQuoteNo, newQuoteNo);
+      let projectSynced = false;
+      if (previousInvoice.project) {
+        projectSynced = await syncProjectInvoiceNumberIfMatched(
+          previousInvoice.project,
+          oldQuoteNo,
+          newQuoteNo
+        );
+      }
+      invoiceNumberSync = { syncedCounts, projectSynced };
+    } catch (syncErr) {
+      console.error('Invoice Quote Number sync failed:', syncErr);
+      return res.status(500).json({
+        success: false,
+        result: null,
+        message: 'Quote Number 同步失敗：' + (syncErr.message || String(syncErr)),
+      });
+    }
+  }
+
+  if (body.invoiceNumber !== undefined) {
+    body.invoiceNumber = newQuoteNo;
+  }
+
   const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {
     new: true, // return the new result instead of the old one
   }).exec();
-
-  // Returning successfull response
 
   return res.status(200).json({
     success: true,
     result,
     message: 'we update this document ',
+    ...(invoiceNumberSync ? { invoiceNumberSync } : {}),
   });
 };
 

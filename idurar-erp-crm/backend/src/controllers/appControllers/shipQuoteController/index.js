@@ -1,6 +1,9 @@
 const createCRUDController = require('@/controllers/middlewaresControllers/createCRUDController');
 const methods = createCRUDController('ShipQuote');
 
+const remove = require('./remove');
+methods.delete = remove;
+
 const create = require('./create');
 const update = require('./update');
 const paginatedList = require('./paginatedList');

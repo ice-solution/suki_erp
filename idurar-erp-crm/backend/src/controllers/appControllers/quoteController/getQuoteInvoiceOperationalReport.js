@@ -81,6 +81,26 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
       .sort({ year: -1, number: -1 })
       .lean();
 
+    // 2a) 已發送（sent）
+    const sentQuotes = await Quote.find({
+      ...baseMatch,
+      status: 'sent',
+      ...(andFilters.length ? { $and: andFilters } : {}),
+    })
+      .populate([...populateClients, ...populateCreators])
+      .sort({ year: -1, number: -1 })
+      .lean();
+
+    // 2b) 待處理（pending）
+    const pendingQuotes = await Quote.find({
+      ...baseMatch,
+      status: 'pending',
+      ...(andFilters.length ? { $and: andFilters } : {}),
+    })
+      .populate([...populateClients, ...populateCreators])
+      .sort({ year: -1, number: -1 })
+      .lean();
+
     const invPopulate = [...populateClients, ...populateCreators];
 
     // 3a) 未付
@@ -105,10 +125,9 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
       .sort({ year: -1, number: -1 })
       .lean();
 
-    // 3c) 已付款且 Full paid
+    // 3c) 已勾 Full paid（以 fullPaid 為準；避免 fullPaid=true 但 paymentStatus 未同步時漏掉）
     const invoicesPaidFullPaid = await Invoice.find({
       ...baseMatch,
-      paymentStatus: 'paid',
       fullPaid: true,
       ...(andFilters.length ? { $and: andFilters } : {}),
     })
@@ -124,12 +143,16 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
         summary: {
           acceptedNotInvoiced: acceptedNotInvoiced.length,
           acceptedNotCompleted: acceptedNotCompleted.length,
+          sentQuotes: sentQuotes.length,
+          pendingQuotes: pendingQuotes.length,
           invoicesUnpaid: invoicesUnpaid.length,
           invoicesPaidPartial: invoicesPaidPartial.length,
           invoicesPaidFullPaid: invoicesPaidFullPaid.length,
         },
         acceptedNotInvoiced,
         acceptedNotCompleted,
+        sentQuotes,
+        pendingQuotes,
         invoicesUnpaid,
         invoicesPaidPartial,
         invoicesPaidFullPaid,

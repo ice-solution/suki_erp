@@ -1,6 +1,9 @@
 const createCRUDController = require('@/controllers/middlewaresControllers/createCRUDController');
 const methods = createCRUDController('Quote');
 
+const remove = require('./remove');
+methods.delete = remove;
+
 const sendMail = require('./sendMail');
 const create = require('./create');
 const summary = require('./summary');

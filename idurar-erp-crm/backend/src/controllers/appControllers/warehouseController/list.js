@@ -17,8 +17,8 @@ const list = async (req, res) => {
       category,
       supplier,
       project,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
+      sortBy = 'warehouse',
+      sortOrder = 'asc'
     } = req.query;
 
     // 建立查詢條件
@@ -64,9 +64,14 @@ const list = async (req, res) => {
       query.project = project;
     }
 
-    // 排序
+    // 排序：預設倉庫 A→D，再依 SKU；自訂 sortBy 時仍建議帶 sku 作第二排序鍵
     const sort = {};
-    sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    if (sortBy === 'warehouse') {
+      sort.warehouse = sortOrder === 'desc' ? -1 : 1;
+      sort.sku = 1;
+    } else {
+      sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
+    }
 
     // 分頁
     const skip = (parseInt(page) - 1) * parseInt(limit);

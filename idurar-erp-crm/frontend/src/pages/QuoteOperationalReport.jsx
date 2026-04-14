@@ -188,6 +188,8 @@ const QuoteOperationalReport = () => {
 
     const sheet1Rows = (reportData.acceptedNotInvoiced || []).map(quoteRow);
     const sheet2Rows = (reportData.acceptedNotCompleted || []).map(quoteRow);
+    const sheet3Rows = (reportData.sentQuotes || []).map(quoteRow);
+    const sheet4Rows = (reportData.pendingQuotes || []).map(quoteRow);
 
     const invoiceRows = [];
     const pushInv = (categoryLabel, inv) => {
@@ -211,6 +213,8 @@ const QuoteOperationalReport = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet1Rows), '已接受-未轉Invoice');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet2Rows), '已接受-未完成');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet3Rows), '已發送Quote');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(sheet4Rows), '待處理Quote');
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invoiceRows), 'Invoice付款');
 
     const filename = `報價_發票營運報告_${dayjs(reportData.startDate).format('YYYYMMDD')}-${dayjs(
@@ -397,6 +401,54 @@ const QuoteOperationalReport = () => {
     },
     {
       key: 'tab3',
+      label: '已發送 Quote',
+      children: (
+        <>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={8}>
+              <Statistic
+                title="筆數"
+                value={reportData?.summary?.sentQuotes ?? 0}
+                prefix={<FileTextOutlined />}
+              />
+            </Col>
+          </Row>
+          <Table
+            dataSource={reportData?.sentQuotes || []}
+            columns={quoteColumns}
+            rowKey="_id"
+            pagination={{ pageSize: 10 }}
+            size="small"
+          />
+        </>
+      ),
+    },
+    {
+      key: 'tab4',
+      label: '待處理 Quote',
+      children: (
+        <>
+          <Row gutter={16} style={{ marginBottom: 16 }}>
+            <Col span={8}>
+              <Statistic
+                title="筆數"
+                value={reportData?.summary?.pendingQuotes ?? 0}
+                prefix={<FileTextOutlined />}
+              />
+            </Col>
+          </Row>
+          <Table
+            dataSource={reportData?.pendingQuotes || []}
+            columns={quoteColumns}
+            rowKey="_id"
+            pagination={{ pageSize: 10 }}
+            size="small"
+          />
+        </>
+      ),
+    },
+    {
+      key: 'tab5',
       label: 'Invoice 付款',
       children: (
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -569,6 +621,12 @@ const QuoteOperationalReport = () => {
                   </Col>
                   <Col xs={12} md={4}>
                     <Statistic title="Tab2 筆數" value={reportData.summary.acceptedNotCompleted} />
+                  </Col>
+                  <Col xs={12} md={4}>
+                    <Statistic title="已發送" value={reportData.summary.sentQuotes} />
+                  </Col>
+                  <Col xs={12} md={4}>
+                    <Statistic title="待處理" value={reportData.summary.pendingQuotes} />
                   </Col>
                   <Col xs={12} md={4}>
                     <Statistic title="未付" value={reportData.summary.invoicesUnpaid} />
