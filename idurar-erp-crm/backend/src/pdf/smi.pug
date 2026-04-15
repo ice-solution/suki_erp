@@ -248,7 +248,9 @@ body
                 if !model.shipType && model.address
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期(Date) : #{docDate}
+                .info-row 日期 : #{docDate}
+                .info-row INVOICE: 
+                  span(style='display:inline-block; min-width:140px') &nbsp;
             if model.shipType
               tr
                 td.info-left
@@ -301,14 +303,14 @@ body
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
             .notes-block
               .notes-content
-                | 制單人：#{model.createdBy && model.createdBy.name ? model.createdBy.name : ''}
                 if model.notes
-                  br
                   | #{model.notes}
             .signature-section
               .prepared-by-row
-                span.prepared-by-label
-                if model.createdBy && model.createdBy.name
+                span.prepared-by-label 制單人：
+                if model.updatedBy && model.updatedBy.name
+                  span #{model.updatedBy.name}
+                else if model.createdBy && model.createdBy.name
                   span #{model.createdBy.name}
                 else
                   span.prepared-by-space

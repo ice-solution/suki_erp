@@ -162,7 +162,9 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
             .signature-section
               .prepared-by-row
                 span.prepared-by-label 制單人：
-                if model.createdBy && model.createdBy.name
+                if model.updatedBy && model.updatedBy.name
+                  span #{model.updatedBy.name}
+                else if model.createdBy && model.createdBy.name
                   span #{model.createdBy.name}
                 else
                   span.prepared-by-space

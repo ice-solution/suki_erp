@@ -114,7 +114,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 .info-row #{model.address || clientAddress || ''}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期(Date) : #{docDate}
+                .info-row 日期 : #{docDate}
             tr
               td.info-left
                 .info-row 送貨地址: #{deliveryAddress || '-'}
@@ -219,7 +219,9 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
             .signature-section
               .prepared-by-row
                 span.prepared-by-label 制單人：
-                if model.createdBy && model.createdBy.name
+                if model.updatedBy && model.updatedBy.name
+                  span #{model.updatedBy.name}
+                else if model.createdBy && model.createdBy.name
                   span #{model.createdBy.name}
                 else
                   span.prepared-by-space

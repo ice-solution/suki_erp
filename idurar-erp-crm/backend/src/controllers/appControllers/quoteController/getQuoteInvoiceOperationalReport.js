@@ -45,7 +45,7 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
       andFilters.push({ $or: [{ createdBy: aid }, { updatedBy: aid }] });
     }
 
-    // 1) 已接受、指定日期內、從未轉過 Invoice（無 converted.invoices 且無 legacy converted.invoice）
+    // 1) 已接受、已完成、指定日期內、從未轉過 Invoice（無 converted.invoices 且無 legacy converted.invoice）
     const acceptedNotInvoicedAnd = [
       ...andFilters,
       {
@@ -64,6 +64,7 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
     const acceptedNotInvoiced = await Quote.find({
       ...baseMatch,
       status: 'accepted',
+      isCompleted: true,
       ...(acceptedNotInvoicedAnd.length ? { $and: acceptedNotInvoicedAnd } : {}),
     })
       .populate([...populateClients, ...populateCreators])

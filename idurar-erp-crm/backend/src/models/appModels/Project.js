@@ -206,6 +206,11 @@ const projectSchema = new mongoose.Schema({
       type: Date,
       required: true,
     },
+    // 到期日（用於 Xero EO 匯出 DueDate）
+    dueDate: {
+      type: Date,
+      required: false,
+    },
     amount: {
       type: Number,
       required: true,

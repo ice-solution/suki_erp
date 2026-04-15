@@ -40,7 +40,7 @@ export default function XeroEOExport() {
 
         const invoiceNumber = fee.eoNumber;
         const invoiceDate = fee.date ? dayjs(fee.date).format('YYYY-MM-DD') : '';
-        const dueDate = invoiceDate;
+        const dueDate = fee.dueDate ? dayjs(fee.dueDate).format('YYYY-MM-DD') : invoiceDate;
         // ContactName = 承辦商；Description = 專案名稱／工程地址（與 Xero 欄位語意一致）
         const contactName = fee.contractorName || '';
         const description = projectDescription;

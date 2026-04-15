@@ -93,7 +93,7 @@ export default function DataTable({ config, extra = [] }) {
       title: '',
       key: 'action',
       fixed: 'right',
-      width: 120,
+      width: 200,
       render: (_, record) => (
         <Space size="small">
           <Button type="link" size="small" icon={<EyeOutlined />} onClick={() => handleRead(record)}>
@@ -101,6 +101,9 @@ export default function DataTable({ config, extra = [] }) {
           </Button>
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {translate('edit')}
+          </Button>
+          <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
+            {translate('delete')}
           </Button>
         </Space>
       ),

@@ -141,6 +141,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     contractorFeesForm.setFieldsValue({
       projectName: record.projectName || '',
       date: record.date ? dayjs(record.date) : null,
+      dueDate: record.dueDate ? dayjs(record.dueDate) : null,
       invoiceNo: record.invoiceNo || '',
       eoNumber: record.eoNumber || '',
       remark: record.remark || '',
@@ -184,6 +185,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       const newUsedContractorFee = {
         projectName: values.projectName,
         date: values.date ? dayjs(values.date).toDate() : new Date(),
+        dueDate: values.dueDate ? dayjs(values.dueDate).toDate() : null,
         eoNumber: values.eoNumber || '',
         invoiceNo: values.invoiceNo != null ? String(values.invoiceNo).trim() : '',
         remark: values.remark != null ? String(values.remark).trim() : '',
@@ -601,6 +603,16 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       title: '日期',
       dataIndex: 'date',
       key: 'date',
+      width: 108,
+      render: (date) => {
+        if (!date) return '-';
+        return dayjs(date).format(dateFormat);
+      },
+    },
+    {
+      title: 'Due date',
+      dataIndex: 'dueDate',
+      key: 'dueDate',
       width: 108,
       render: (date) => {
         if (!date) return '-';
@@ -1181,11 +1193,19 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
               </Form.Item>
             </Col>
             <Col span={12}>
-              <Form.Item label="Invoice No" name="invoiceNo">
-                <Input allowClear placeholder="選填" />
+              <Form.Item label="Due date" name="dueDate">
+                <DatePicker
+                  style={{ width: '100%' }}
+                  format={dateFormat}
+                  placeholder="選填"
+                />
               </Form.Item>
             </Col>
           </Row>
+
+          <Form.Item label="Invoice No" name="invoiceNo">
+            <Input allowClear placeholder="選填" />
+          </Form.Item>
 
           {editingUsedFeeIndex !== null ? (
             <Form.Item label="EO number" name="eoNumber">

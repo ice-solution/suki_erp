@@ -178,9 +178,10 @@ html(class=isPuppeteer ? 'puppeteer-sml-quote' : '')
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
-      .quotation-table .col-content { width: 44%; word-wrap: break-word; text-align: left; }
-      .quotation-table .col-qty { width: 16%; text-align: right; white-space: nowrap; }
-      .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
+      .quotation-table .col-content { width: 32%; word-wrap: break-word; text-align: left; }
+      .quotation-table .col-po { width: 14%; word-wrap: break-word; text-align: left; white-space: nowrap; }
+      .quotation-table .col-qty { width: 15%; text-align: right; white-space: nowrap; }
+      .quotation-table .col-unit { width: 15%; text-align: right; white-space: nowrap; }
       .quotation-table th.col-qty,
       .quotation-table th.col-unit { text-align: right; }
       .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
@@ -246,7 +247,9 @@ body
                 if !model.shipType && model.address
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期(Date) : #{docDate}
+                .info-row 日期 : #{docDate}
+                .info-row INVOICE: 
+                  span(style='display:inline-block; min-width:140px') &nbsp;
             if model.shipType
               tr
                 td.info-left
@@ -263,22 +266,25 @@ body
               tr
                 th.col-no
                 th.col-content 工程內容
+                th.col-po P.O No.
                 th.col-qty 數量 / 單位
                 th.col-unit 單價 HKD$
                 th.col-amount 金額 HKD$
             tbody
               each item, idx in chunk
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
+                - const poNumberText = item.poNumber || item.poNo || item.po || ''
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
                   td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
                   td.col-content #{contentText}
+                  td.col-po #{poNumberText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
                   td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
                   td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
               if chunk.length === 0
                 tr
-                  td(colspan='5' style='text-align:center') 無項目
+                  td(colspan='6' style='text-align:center') 無項目
           if pageIndex === itemChunks.length - 1
             .summary-wrap
               .summary-block
@@ -303,7 +309,9 @@ body
             .signature-section
               .prepared-by-row
                 span.prepared-by-label 制單人：
-                if model.createdBy && model.createdBy.name
+                if model.updatedBy && model.updatedBy.name
+                  span #{model.updatedBy.name}
+                else if model.createdBy && model.createdBy.name
                   span #{model.createdBy.name}
                 else
                   span.prepared-by-space

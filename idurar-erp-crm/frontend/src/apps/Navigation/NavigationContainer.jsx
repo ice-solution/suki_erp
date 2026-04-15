@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Button, Drawer, Layout, Menu } from 'antd';
 
@@ -9,6 +9,9 @@ import logoIcon from '@/style/images/supermax-logo.svg';
 import logoText from '@/style/images/supermax-logo.svg';
 
 import useResponsive from '@/hooks/useResponsive';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin } from '@/redux/auth/selectors';
+import { hasPermission } from '@/utils/pagePermissions';
 
 import {
   SettingOutlined,
@@ -50,6 +53,9 @@ function Sidebar({ collapsible, isMobile = false }) {
 
   const translate = useLanguage();
   const navigate = useNavigate();
+  const currentAdmin = useSelector(selectCurrentAdmin) || {};
+  const perms = currentAdmin.permissions;
+  const role = currentAdmin.role;
 
   const items = [
     {
@@ -166,6 +172,30 @@ function Sidebar({ collapsible, isMobile = false }) {
     },
   ];
 
+  const filteredItems = useMemo(() => {
+    const allowKey = (key) => hasPermission({ perms, key, role });
+    const walk = (arr) =>
+      (arr || [])
+        .map((it) => {
+          if (!it) return null;
+          const key = it.key;
+          // 沒 key 的 divider 直接保留
+          if (!key) return it;
+
+          // container menu：只要 children 有任何可見就保留
+          if (Array.isArray(it.children) && it.children.length) {
+            const kids = walk(it.children).filter(Boolean);
+            if (kids.length === 0) return null;
+            return { ...it, children: kids };
+          }
+
+          // leaf menu：以 key 作為 permission key
+          return allowKey(key) ? it : null;
+        })
+        .filter(Boolean);
+    return walk(items);
+  }, [perms, role, items]);
+
   useEffect(() => {
     if (location)
       if (currentPath !== location.pathname) {
@@ -238,7 +268,7 @@ function Sidebar({ collapsible, isMobile = false }) {
         
       </div>
       <Menu
-        items={items}
+        items={filteredItems}
         mode="inline"
         theme={'light'}
         selectedKeys={[currentPath]}

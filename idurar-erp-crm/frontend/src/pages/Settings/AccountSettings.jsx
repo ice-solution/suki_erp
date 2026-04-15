@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Card,
   Table,
@@ -14,6 +14,9 @@ import {
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined, KeyOutlined } from '@ant-design/icons';
 import request from '@/request/request';
+import { useSelector } from 'react-redux';
+import { selectCurrentAdmin } from '@/redux/auth/selectors';
+import { PAGE_PERMISSION_OPTIONS } from '@/utils/pagePermissions';
 
 const ROLE_OPTIONS = [
   { value: 'owner', label: 'Owner' },
@@ -22,6 +25,8 @@ const ROLE_OPTIONS = [
 ];
 
 export default function AccountSettings() {
+  const currentAdmin = useSelector(selectCurrentAdmin) || {};
+  const canManageAccounts = currentAdmin?.role === 'admin' || currentAdmin?.role === 'owner';
   const [form] = Form.useForm();
   const [passwordForm] = Form.useForm();
   const [list, setList] = useState([]);
@@ -55,6 +60,7 @@ export default function AccountSettings() {
         surname: record.surname || '',
         role: record.role,
         enabled: record.enabled !== false,
+        permissions: Array.isArray(record.permissions) ? record.permissions : [],
       });
       setEditingId(record._id);
     } else {
@@ -81,6 +87,7 @@ export default function AccountSettings() {
           surname: values.surname || '',
           role: values.role,
           enabled: values.enabled,
+          ...(canManageAccounts ? { permissions: values.permissions || [] } : {}),
         });
         if (res?.success) {
           message.success('已更新');
@@ -94,6 +101,7 @@ export default function AccountSettings() {
           surname: values.surname || '',
           role: values.role || 'user',
           password: values.password,
+          ...(canManageAccounts ? { permissions: values.permissions || [] } : {}),
         });
         if (res?.success) {
           message.success('帳號已建立');
@@ -156,29 +164,31 @@ export default function AccountSettings() {
       key: 'action',
       width: 180,
       render: (_, record) => (
-        <Space size="small">
-          <Button type="text" icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
-            編輯
-          </Button>
-          <Button
-            type="text"
-            icon={<KeyOutlined />}
-            size="small"
-            onClick={() => openPasswordModal(record)}
-          >
-            重設密碼
-          </Button>
-          <Popconfirm
-            title="確定要刪除此帳號嗎？刪除後該用戶將無法登入。"
-            onConfirm={() => handleDelete(record._id)}
-            okText="確定"
-            cancelText="取消"
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small">
-              刪除
+        canManageAccounts ? (
+          <Space size="small">
+            <Button type="text" icon={<EditOutlined />} size="small" onClick={() => openModal(record)}>
+              編輯
             </Button>
-          </Popconfirm>
-        </Space>
+            <Button
+              type="text"
+              icon={<KeyOutlined />}
+              size="small"
+              onClick={() => openPasswordModal(record)}
+            >
+              重設密碼
+            </Button>
+            <Popconfirm
+              title="確定要刪除此帳號嗎？刪除後該用戶將無法登入。"
+              onConfirm={() => handleDelete(record._id)}
+              okText="確定"
+              cancelText="取消"
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small">
+                刪除
+              </Button>
+            </Popconfirm>
+          </Space>
+        ) : null
       ),
     },
   ];
@@ -187,9 +197,11 @@ export default function AccountSettings() {
     <Card
       title="登入帳號"
       extra={
-        <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
-          新增帳號
-        </Button>
+        canManageAccounts ? (
+          <Button type="primary" icon={<PlusOutlined />} onClick={() => openModal()}>
+            新增帳號
+          </Button>
+        ) : null
       }
     >
       <p style={{ marginBottom: 16, color: '#666' }}>
@@ -234,6 +246,16 @@ export default function AccountSettings() {
           <Form.Item label="角色" name="role" initialValue="user">
             <Select options={ROLE_OPTIONS} />
           </Form.Item>
+          {canManageAccounts && (
+            <Form.Item label="頁面權限" name="permissions">
+              <Select
+                mode="multiple"
+                allowClear
+                placeholder="選擇可開啟的頁面"
+                options={PAGE_PERMISSION_OPTIONS}
+              />
+            </Form.Item>
+          )}
           {editingId ? (
             <Form.Item label="啟用" name="enabled" valuePropName="checked">
               <Switch />

@@ -102,6 +102,7 @@ const update = async (req, res) => {
       fees = fees.map((f) => ({
         projectName: f && f.projectName !== undefined ? String(f.projectName) : '',
         date: f && f.date ? new Date(f.date) : new Date(),
+        dueDate: f && f.dueDate ? new Date(f.dueDate) : null,
         eoNumber:
           f && f.eoNumber !== undefined && f.eoNumber !== null ? String(f.eoNumber).trim() : '',
         invoiceNo:

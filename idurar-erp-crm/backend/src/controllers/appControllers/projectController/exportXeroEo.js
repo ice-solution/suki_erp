@@ -81,6 +81,7 @@ const exportXeroEo = async (req, res) => {
         .map((fee) => ({
           eoNumber: fee.eoNumber,
           date: fee.date,
+          dueDate: fee.dueDate,
           amount: fee.amount,
           contractorName: fee.projectName || '',
           accountCode: accountCodeByName.get(fee.projectName) || '',
