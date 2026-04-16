@@ -218,7 +218,8 @@ body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
-    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number
+    - const invoiceType = model.numberPrefix || 'S'
+    - const docNumber = invoiceType + '-' + (model.number || '')
     - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
     - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
     - const deliveryAddress = model.address || clientAddress || ''
@@ -247,7 +248,7 @@ body
                 .info-row #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
                 if !model.shipType && model.address
               td.info-right
-                .info-row 報價編號 : #{docNumber}
+                .info-row INVOICE NO: #{docNumber}
                 .info-row 日期 : #{docDate}
             if model.shipType
               tr

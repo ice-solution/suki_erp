@@ -48,6 +48,8 @@ app.use(
       const allowedOrigins = [
         'https://sukierp.ice-solution.hk',
         'https://sukierp-api.ice-solution.hk',
+        'https://supermax-engineering.com',
+        'https://api.supermax-engineering.com',
         'http://localhost:3000',
         'http://localhost:3001',
         'http://localhost:8888',
