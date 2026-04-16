@@ -170,6 +170,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
       .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 2px; }
+      .info-row-indent { margin-left: 20px; }
       .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
       .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
       .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
@@ -240,7 +241,7 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
+                .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
                 if !model.shipType && model.address
               td.info-right
                 .info-row 報價編號 : #{docNumber}
