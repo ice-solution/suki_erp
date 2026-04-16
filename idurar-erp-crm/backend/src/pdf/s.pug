@@ -197,6 +197,7 @@ html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
       .issuer-stamp { border-bottom: none; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; font-weight: bold; margin-top: 4px; }
       .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
+      .sig-label { display: inline-block; width: 54px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
     if isPuppeteer
       style.
@@ -231,6 +232,10 @@ body
               td.info-right
                 .info-row 報價編號 : #{docNumber}
                 .info-row 日期 : #{docDate}
+                .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
+                .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
+                .info-row INVOICE: 
+                  span(style='display:inline-block; min-width:75px') &nbsp;
             if model.shipType
               tr
                 td.info-left
@@ -283,10 +288,10 @@ body
                     .issuer-block
                       .issuer-name-line 裝箱方式:
                       .issuer-name-line
-                        | 簽收人:
+                        span.sig-label 簽收人:
                         span.fill-line
                       .issuer-name-line
-                        | 日期
+                        span.sig-label 日期
                         span.fill-line
             .end-marker End
         .footer-section
