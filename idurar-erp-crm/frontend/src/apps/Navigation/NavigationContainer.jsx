@@ -99,17 +99,10 @@ function Sidebar({ collapsible, isMobile = false }) {
       icon: <FileSyncOutlined />,
       label: <Link to={'/shipquote'}>{translate('ship_quote')}</Link>,
     },
-    // Supplier Quote (container) -> Supplier Quote S單（leaf）
     {
-      key: 'supplierquote-group',
+      key: 'supplierquote',
       icon: <FileSyncOutlined />,
-      label: 'Supplier Quote',
-      children: [
-        {
-          key: 'supplierquote',
-          label: <Link to={'/supplierquote'}>Supplier Quote S單</Link>,
-        },
-      ],
+      label: <Link to={'/supplierquote'}>{translate('supplier_quote')}</Link>,
     },
     {
       key: 'ship',
