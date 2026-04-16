@@ -72,7 +72,6 @@ export default function AppRouter() {
     if (p.startsWith('/contractor')) return 'contractor-list';
     if (p.startsWith('/ship')) return 'ship';
     if (p.startsWith('/winch')) return 'winch';
-    if (p.startsWith('/accounting')) return 'accounting';
     if (p.startsWith('/settings')) return 'settings';
     return null;
   };

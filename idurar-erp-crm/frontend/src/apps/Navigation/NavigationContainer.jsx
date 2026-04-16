@@ -57,6 +57,7 @@ function Sidebar({ collapsible, isMobile = false }) {
   const perms = currentAdmin.permissions;
   const role = currentAdmin.role;
 
+  // 左邊 Menu 次序（按需求）
   const items = [
     {
       key: 'dashboard',
@@ -74,68 +75,6 @@ function Sidebar({ collapsible, isMobile = false }) {
       label: <Link to={'/supplier'}>{translate('suppliers')}</Link>,
     },
     {
-      key: 'invoice',
-      icon: <ContainerOutlined />,
-      label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
-    },
-    {
-      key: 'xero-export',
-      icon: <FileOutlined />,
-      label: 'xero 滙出',
-      children: [
-        { key: 'xero-invoice', label: <Link to="/invoice/xero-export">發票滙出</Link> },
-        { key: 'xero-po', label: <Link to="/supplierquote/xero-po-export">PO單滙出</Link> },
-        { key: 'xero-eo', label: <Link to="/project/xero-eo-export">EO單滙出</Link> },
-      ],
-    },
-    {
-      key: 'quote',
-      icon: <FileSyncOutlined />,
-      label: <Link to={'/quote'}>{translate('quote')}</Link>,
-    },
-    {
-      key: 'supplierquote',
-      icon: <FileSyncOutlined />,
-      label: <Link to={'/supplierquote'}>{translate('supplier_quote')}</Link>,
-    },
-    {
-      key: 'shipquote',
-      icon: <FileSyncOutlined />,
-      label: <Link to={'/shipquote'}>{translate('ship_quote')}</Link>,
-    },
-    {
-      key: 'warehouse',
-      icon: <DatabaseOutlined />,
-      label: <Link to={'/warehouse'}>{translate('warehouse_management')}</Link>,
-    },
-    {
-      key: 'project',
-      icon: <ProjectOutlined />,
-      label: translate('project_management'),
-      children: [
-        {
-          key: 'project-list',
-          label: <Link to={'/project'}>{translate('project_management')}</Link>,
-        },
-        {
-          key: 'project-report',
-          label: <Link to={'/project/report'}>{translate('project_report')}</Link>,
-        },
-        {
-          key: 'project-contractor-report',
-          label: <Link to={'/project/contractor-report'}>承辦商報告</Link>,
-        },
-        {
-          key: 'project-contractor-employee-report',
-          label: <Link to={'/project/contractor-employee-report'}>承辦商員工報告</Link>,
-        },
-        {
-          key: 'quote-operational-report',
-          label: <Link to={'/quote/operational-report'}>報價／發票營運報告</Link>,
-        },
-      ],
-    },
-    {
       key: 'contractor',
       icon: <BuildOutlined />,
       label: translate('contractor_management'),
@@ -151,6 +90,28 @@ function Sidebar({ collapsible, isMobile = false }) {
       ],
     },
     {
+      key: 'quote',
+      icon: <FileSyncOutlined />,
+      label: <Link to={'/quote'}>{translate('quote')}</Link>,
+    },
+    {
+      key: 'shipquote',
+      icon: <FileSyncOutlined />,
+      label: <Link to={'/shipquote'}>{translate('ship_quote')}</Link>,
+    },
+    // Supplier Quote (container) -> Supplier Quote S單（leaf）
+    {
+      key: 'supplierquote-group',
+      icon: <FileSyncOutlined />,
+      label: 'Supplier Quote',
+      children: [
+        {
+          key: 'supplierquote',
+          label: <Link to={'/supplierquote'}>Supplier Quote S單</Link>,
+        },
+      ],
+    },
+    {
       key: 'ship',
       icon: <RocketOutlined />,
       label: <Link to={'/ship'}>{translate('ship_management')}</Link>,
@@ -161,9 +122,38 @@ function Sidebar({ collapsible, isMobile = false }) {
       label: <Link to={'/winch'}>{translate('winch_management')}</Link>,
     },
     {
-      key: 'accounting',
-      icon: <CalculatorOutlined />,
-      label: <Link to={'/accounting'}>{translate('member_invoice_stats')}</Link>,
+      key: 'invoice',
+      icon: <ContainerOutlined />,
+      label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
+    },
+    {
+      key: 'project-list',
+      icon: <ProjectOutlined />,
+      label: <Link to={'/project'}>{translate('project_management')}</Link>,
+    },
+    {
+      key: 'xero-export',
+      icon: <FileOutlined />,
+      label: 'Xero 匯出',
+      children: [
+        { key: 'xero-invoice', label: <Link to="/invoice/xero-export">發票滙出</Link> },
+        { key: 'xero-po', label: <Link to="/supplierquote/xero-po-export">PO單滙出</Link> },
+        { key: 'xero-eo', label: <Link to="/project/xero-eo-export">EO單滙出</Link> },
+      ],
+    },
+    {
+      key: 'reports',
+      icon: <FileOutlined />,
+      label: '報告',
+      children: [
+        { key: 'project-report', label: <Link to={'/project/report'}>{translate('project_report')}</Link> },
+        { key: 'project-contractor-report', label: <Link to={'/project/contractor-report'}>承辦商報告</Link> },
+        {
+          key: 'project-contractor-employee-report',
+          label: <Link to={'/project/contractor-employee-report'}>承辦商員工報告</Link>,
+        },
+        { key: 'quote-operational-report', label: <Link to={'/quote/operational-report'}>報價／發票營運報告</Link> },
+      ],
     },
     {
       key: 'settings',

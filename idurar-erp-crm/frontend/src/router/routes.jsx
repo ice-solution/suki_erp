@@ -63,11 +63,6 @@ const ContractorList = lazy(() => import('@/pages/ContractorList.jsx'));
 const ContractorEmployeeList = lazy(() => import('@/pages/ContractorEmployeeList.jsx'));
 const ShipList = lazy(() => import('@/pages/ShipList.jsx'));
 const WinchList = lazy(() => import('@/pages/WinchList.jsx'));
-const ChartOfAccounts = lazy(() => import('@/pages/ChartOfAccounts.jsx'));
-const JournalEntries = lazy(() => import('@/pages/JournalEntries.jsx'));
-const FinancialReports = lazy(() => import('@/pages/FinancialReports.jsx'));
-const AccountingPeriods = lazy(() => import('@/pages/AccountingPeriods.jsx'));
-const Accounting = lazy(() => import('@/pages/Accounting.jsx'));
 const XeroExport = lazy(() => import('@/pages/XeroExport.jsx'));
 const XeroPOExport = lazy(() => import('@/pages/XeroPOExport.jsx'));
 const XeroEOExport = lazy(() => import('@/pages/XeroEOExport.jsx'));
@@ -282,26 +277,6 @@ let routes = {
     {
       path: '/winch',
       element: <WinchList />,
-    },
-    {
-      path: '/accounting',
-      element: <Accounting />,
-    },
-    {
-      path: '/accounting/chart-of-accounts',
-      element: <ChartOfAccounts />,
-    },
-    {
-      path: '/accounting/journal-entries',
-      element: <JournalEntries />,
-    },
-    {
-      path: '/accounting/reports',
-      element: <FinancialReports />,
-    },
-    {
-      path: '/accounting/periods',
-      element: <AccountingPeriods />,
     },
 
     {
