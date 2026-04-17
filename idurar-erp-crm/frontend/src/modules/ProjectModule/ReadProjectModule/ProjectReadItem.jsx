@@ -1170,9 +1170,12 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             <Select
               placeholder="選擇工程名"
               showSearch
-              filterOption={(input, option) =>
-                option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
+              filterOption={(input, option) => {
+                const q = String(input || '').toLowerCase();
+                const label = option?.label != null ? String(option.label) : '';
+                const value = option?.value != null ? String(option.value) : '';
+                return label.toLowerCase().includes(q) || value.toLowerCase().includes(q);
+              }}
               options={projectNameOptions}
               notFoundContent={projectNameOptions.length === 0 ? '請先在財務信息中添加判頭費工程名' : '無匹配的工程名'}
             />
