@@ -125,6 +125,11 @@ function Sidebar({ collapsible, isMobile = false }) {
       label: <Link to={'/project'}>{translate('project_management')}</Link>,
     },
     {
+      key: 'warehouse',
+      icon: <DatabaseOutlined />,
+      label: <Link to={'/warehouse'}>{translate('warehouse_management')}</Link>,
+    },
+    {
       key: 'xero-export',
       icon: <FileOutlined />,
       label: 'Xero 匯出',
