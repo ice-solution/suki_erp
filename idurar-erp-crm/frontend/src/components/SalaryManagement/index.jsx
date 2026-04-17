@@ -506,9 +506,11 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
               placeholder="選擇員工"
               loading={employeesLoading}
               showSearch
-              filterOption={(input, option) =>
-                option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
+              filterOption={(input, option) => {
+                const q = String(input || '').toLowerCase();
+                const text = option?.children != null ? String(option.children) : '';
+                return text.toLowerCase().includes(q);
+              }}
             >
               {contractorEmployees
                 .filter((employee) => {
@@ -662,9 +664,11 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
               placeholder="選擇員工"
               loading={employeesLoading}
               showSearch
-              filterOption={(input, option) =>
-                option?.children?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
+              filterOption={(input, option) => {
+                const q = String(input || '').toLowerCase();
+                const text = option?.children != null ? String(option.children) : '';
+                return text.toLowerCase().includes(q);
+              }}
             >
               {contractorEmployees
                 .filter((employee) => {
