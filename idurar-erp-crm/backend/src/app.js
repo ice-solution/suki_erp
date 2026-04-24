@@ -38,6 +38,8 @@ require('./models/appModels/WarehouseTransaction');
 
 // create our Express app
 const app = express();
+// 下載 PDF 之類動態內容不需要 ETag，避免任何協商快取干擾
+app.set('etag', false);
 
 app.use(
   cors({

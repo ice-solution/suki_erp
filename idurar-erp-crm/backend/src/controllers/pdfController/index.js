@@ -175,3 +175,96 @@ exports.generatePdf = async (
     throw new Error(error);
   }
 };
+
+/**
+ * 產生 PDF buffer（避免走磁碟檔案，降低 CDN/瀏覽器對固定 URL 的干擾）
+ */
+exports.generatePdfBuffer = async (
+  modelName,
+  info = { format: 'A5' },
+  result
+) => {
+  const settings = await loadSettings();
+  const selectedLang = settings['idurar_app_language'];
+  const translate = useLanguage({ selectedLang });
+
+  const {
+    currency_symbol,
+    currency_position,
+    decimal_sep,
+    thousand_sep,
+    cent_precision,
+    zero_format,
+  } = settings;
+
+  const { moneyFormatter } = useMoney({
+    settings: {
+      currency_symbol,
+      currency_position,
+      decimal_sep,
+      thousand_sep,
+      cent_precision,
+      zero_format,
+    },
+  });
+  const { dateFormat } = useDate({ settings });
+
+  settings.public_server_file = process.env.PUBLIC_SERVER_FILE;
+
+  const logoKey = resolveLogoSettingKey(modelName, result);
+  if (logoKey && settings[logoKey]) {
+    settings.company_logo = settings[logoKey];
+  }
+
+  let templateName = modelName.toLowerCase();
+  if ((modelName.toLowerCase() === 'quote' || modelName === 'Quote') && result.numberPrefix) {
+    templateName = result.numberPrefix === 'SML' ? 'sml' : 'quote';
+  }
+  if ((modelName.toLowerCase() === 'invoice' || modelName === 'Invoice') && result.numberPrefix) {
+    if (result.numberPrefix === 'SMI') templateName = 'smi';
+    else if (result.numberPrefix === 'WSE') templateName = 'wse';
+    else templateName = 'invoice';
+  }
+  if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
+    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 'y' };
+    templateName = prefixMap[result.numberPrefix] || 's';
+  }
+  if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {
+    templateName = result.shipType === '租賃' ? 'shipquote-rental' : 'shipquote-renewal';
+  }
+
+  const fileNameLower = `${String(templateName || '').toLowerCase()}.pug`;
+  const candidates = [
+    path.join(__dirname, '../../pdf', fileNameLower),
+    path.join(process.cwd(), 'src', 'pdf', fileNameLower),
+    path.join(process.cwd(), 'backend', 'src', 'pdf', fileNameLower),
+  ];
+  let templatePath = candidates.find((p) => fs.existsSync(p));
+  if (!templatePath) {
+    templatePath = candidates[0];
+    throw new Error(`Template file not found: ${templatePath}. Tried: ${candidates.join(', ')}`);
+  }
+
+  const htmlContent = pug.renderFile(templatePath, {
+    model: result,
+    settings,
+    translate,
+    dateFormat,
+    moneyFormatter,
+    moment: moment,
+    isPuppeteer: false,
+  });
+
+  return await new Promise((resolve, reject) => {
+    pdf
+      .create(htmlContent, {
+        format: info.format,
+        orientation: 'portrait',
+        border: '10mm',
+      })
+      .toBuffer((error, buffer) => {
+        if (error) return reject(error);
+        resolve(buffer);
+      });
+  });
+};

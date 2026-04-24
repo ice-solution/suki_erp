@@ -140,22 +140,11 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
         }
       }
 
-      await custom.generatePdf(
-        modelName,
-        { filename: folderPath, format: 'A4', targetLocation },
-        result,
-        async () => {
-          return res.download(targetLocation, (error) => {
-            if (error)
-              return res.status(500).json({
-                success: false,
-                result: null,
-                message: "Couldn't find file",
-                error: error.message,
-              });
-          });
-        }
-      );
+      // fallback：用 html-pdf 直接產生 buffer，避免讀寫磁碟而被誤判「舊檔」
+      const buffer = await custom.generatePdfBuffer(modelName, { format: 'A4' }, result);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+      return res.send(buffer);
     } else {
       return res.status(404).json({
         success: false,
