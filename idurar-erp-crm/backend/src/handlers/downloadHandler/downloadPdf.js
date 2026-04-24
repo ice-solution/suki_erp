@@ -13,11 +13,21 @@ const {
 
 /** 動態 PDF：固定 URL 會被 CDN／瀏覽器快取，導致內容更新後仍下載舊檔 */
 function setDynamicPdfCacheHeaders(res) {
-  res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader(
+    'Cache-Control',
+    'private, no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0, s-maxage=0'
+  );
   res.setHeader('Pragma', 'no-cache');
   res.setHeader('Expires', '0');
   // Cloudflare：指示邊緣不要快取此回應（與 Cache-Control 並用較穩）
   res.setHeader('CDN-Cache-Control', 'no-store');
+  // 其他 CDN/反向代理常用
+  res.setHeader('Surrogate-Control', 'no-store');
+  res.setHeader('X-Accel-Expires', '0');
+  // 盡量避免協商快取
+  try {
+    res.removeHeader('ETag');
+  } catch (_) {}
 }
 
 module.exports = downloadPdf = async (req, res, { directory, id }) => {

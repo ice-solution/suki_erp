@@ -103,7 +103,8 @@ export default function DataTable({ config, extra = [] }) {
   };
 
   const handleDownload = (record) => {
-    window.open(`${DOWNLOAD_BASE_URL}${entity}/${entity}-${record._id}.pdf`, '_blank');
+    const v = encodeURIComponent(String(record?.modified_at || record?.updated || Date.now()));
+    window.open(`${DOWNLOAD_BASE_URL}${entity}/${entity}-${record._id}.pdf?v=${v}`, '_blank');
   };
 
   const handleDelete = (record) => {
