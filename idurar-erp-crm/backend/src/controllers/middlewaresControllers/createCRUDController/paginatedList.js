@@ -5,14 +5,29 @@ const paginatedList = async (Model, req, res) => {
 
   const { sortBy = 'enabled', sortValue = -1, filter, equal } = req.query;
 
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+  const fieldsArray = req.query.fields
+    ? String(req.query.fields)
+        .split(',')
+        .map((f) => String(f || '').trim())
+        .filter(Boolean)
+    : [];
+  const q = String(req.query.q || '').trim();
 
   let fields;
 
   fields = fieldsArray.length === 0 ? {} : { $or: [] };
 
-  for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+  // 空搜尋字串時不要套用 regex（避免 /undefined/i 或回傳意外結果）
+  if (q && fieldsArray.length) {
+    // escape regex：達成「%abc%」(contains) 且避免特殊字元影響
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(escaped, 'i');
+    for (const field of fieldsArray) {
+      fields.$or.push({ [field]: { $regex: regex } });
+    }
+  } else if (fieldsArray.length) {
+    // fieldsArray 有值但 q 空：不加任何 $or 條件
+    fields = {};
   }
 
   //  Query the database for a list of all results

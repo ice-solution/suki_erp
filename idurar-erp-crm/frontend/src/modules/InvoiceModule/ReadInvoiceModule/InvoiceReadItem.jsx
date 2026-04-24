@@ -23,6 +23,7 @@ import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { multilineStyle } from '@/utils/renderMultilineText';
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -32,7 +33,7 @@ const Item = ({ item, currentErp }) => {
         <p style={{ marginBottom: 5 }}>
           <strong>{item.itemName}</strong>
         </p>
-        <p>{item.description}</p>
+        <p style={multilineStyle}>{item.description}</p>
       </Col>
       <Col className="gutter-row" span={4}>
         <p

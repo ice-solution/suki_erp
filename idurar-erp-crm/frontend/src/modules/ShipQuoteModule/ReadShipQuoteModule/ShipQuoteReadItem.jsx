@@ -26,6 +26,7 @@ import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
+import { multilineStyle, renderMultilineText } from '@/utils/renderMultilineText';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
 import { DEFAULT_SHIP_RENTAL_EXTRA_ITEMS } from '@/modules/ShipQuoteModule/Forms/ShipQuoteTableForm';
@@ -39,7 +40,7 @@ const Item = ({ item, currentErp }) => {
         <p style={{ marginBottom: 0 }}>{item.itemName || '-'}</p>
       </Col>
       <Col className="gutter-row" span={8}>
-        <p style={{ marginBottom: 0 }}>{item.description || '-'}</p>
+        <p style={{ marginBottom: 0, ...multilineStyle }}>{item.description || '-'}</p>
       </Col>
       <Col className="gutter-row" span={3}>
         <p style={{ textAlign: 'right', marginBottom: 0 }}>{item.quantity ?? '-'}</p>
@@ -196,7 +197,27 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
   };
 
   // Ship Quote 轉 S單（整單轉換，無需選 P.O，可重覆上單）
-  const handleConvertShipQuoteToS = () => {
+  const handleConvertShipQuoteToS = async () => {
+    // 與 Quote 上單一致：須先在 Project Management 建立對應 SML 編號
+    const quoteNumber =
+      currentErp.numberPrefix && currentErp.number
+        ? `${currentErp.numberPrefix}-${currentErp.number}`
+        : currentErp.invoiceNumber;
+    if (!quoteNumber) {
+      message.warning('無法取得 Quote 編號');
+      return;
+    }
+    try {
+      const checkResult = await request.checkProject({ invoiceNumber: quoteNumber });
+      if (!checkResult?.success || !checkResult?.result) {
+        message.error('請先在 Project Management 建立此 Quote Number 的項目，方可上單');
+        return;
+      }
+    } catch {
+      message.error('請先在 Project Management 建立此 Quote Number 的項目，方可上單');
+      return;
+    }
+
     Modal.confirm({
       title: '確認轉換到 S單',
       content: (
@@ -456,7 +477,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
-        <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
+        <Descriptions.Item label="Quote Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
@@ -481,7 +502,12 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
             rowKey={(_, i) => `rental-extra-${i}`}
             style={{ marginBottom: 16 }}
             columns={[
-              { title: '摘要', dataIndex: 'description', ellipsis: false, render: (t) => t || '-' },
+              {
+                title: '摘要',
+                dataIndex: 'description',
+                ellipsis: false,
+                render: (t) => (t ? renderMultilineText(t) : '-'),
+              },
               {
                 title: '單價 HKD',
                 dataIndex: 'unitPrice',

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useState, cloneElement, isValidElement } from 'react';
 
 import {
   EyeOutlined,
@@ -39,7 +39,7 @@ function AddNewItem({ config }) {
   );
 }
 export default function DataTable({ config, extra = [] }) {
-  let { entity, dataTableColumns, DATATABLE_TITLE, fields, searchConfig } = config;
+  let { entity, dataTableColumns, DATATABLE_TITLE, fields, searchConfig, listSummary } = config;
   const { crudContextAction } = useCrudContext();
   const { panel, collapsedBox, modal, readBox, editBox, advancedBox } = crudContextAction;
   const translate = useLanguage();
@@ -132,6 +132,7 @@ export default function DataTable({ config, extra = [] }) {
   const { pagination, items: dataSource } = listResult;
 
   const dispatch = useDispatch();
+  const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
 
   const handelDataTableLoad = useCallback((pagination) => {
     const options = { page: pagination.current || 1, items: pagination.pageSize || 10 };
@@ -170,7 +171,14 @@ export default function DataTable({ config, extra = [] }) {
             placeholder={translate('search')}
             allowClear
           />,
-          <Button onClick={handelDataTableLoad} key={`${uniqueId()}`} icon={<RedoOutlined />}>
+          <Button
+            onClick={() => {
+              handelDataTableLoad(pagination);
+              if (listSummary) setSummaryRefreshKey((k) => k + 1);
+            }}
+            key={`${uniqueId()}`}
+            icon={<RedoOutlined />}
+          >
             {translate('Refresh')}
           </Button>,
 
@@ -180,6 +188,10 @@ export default function DataTable({ config, extra = [] }) {
           padding: '20px 0px',
         }}
       ></PageHeader>
+
+      {listSummary && isValidElement(listSummary)
+        ? cloneElement(listSummary, { refreshKey: summaryRefreshKey })
+        : null}
 
       <Table
         columns={dataTableColumns}

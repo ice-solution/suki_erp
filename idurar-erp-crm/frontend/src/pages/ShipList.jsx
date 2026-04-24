@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Modal, Table, Tag } from 'antd';
 import CrudModule from '@/modules/CrudModule/CrudModule';
+import AssetStatusSummary from '@/components/AssetStatusSummary';
 import { fields } from './ShipList/config';
 import ShipForm from './ShipList/ShipForm';
 import { request } from '@/request';
@@ -237,6 +238,7 @@ export default function ShipList() {
     dataTableColumns, // 使用自定義列
     searchConfig,
     deleteModalLabels,
+    listSummary: <AssetStatusSummary entity={entity} />,
   };
   return (
     <>

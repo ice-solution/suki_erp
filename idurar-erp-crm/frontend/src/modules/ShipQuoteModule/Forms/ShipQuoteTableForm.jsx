@@ -17,6 +17,7 @@ import useLanguage from '@/locale/useLanguage';
 import calculate from '@/utils/calculate';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
+import { renderMultilineText } from '@/utils/renderMultilineText';
 
 /** 吊船租賃 PDF「附加項目」預設列（與 shipquote-rental.pug 後備一致） */
 export const DEFAULT_SHIP_RENTAL_EXTRA_ITEMS = [
@@ -119,7 +120,21 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   };
   
   const handleDiscountChange = (value) => {
-    setDiscount(value || 0);
+    const v = value == null || value === '' ? 0 : Number(value);
+    setDiscount(v);
+  };
+
+  /** 手動輸入折扣金額：回推折扣%（高精度），以便小計變動時仍可按比例重算 */
+  const handleDiscountAmountChange = (value) => {
+    const raw = value == null || value === '' ? 0 : Number(value);
+    const cap = subTotal > 0 ? Math.min(Math.max(0, raw), subTotal) : Math.max(0, raw);
+    const pct = subTotal > 0 ? (cap / subTotal) * 100 : 0;
+    const pctRounded = Number(pct.toFixed(6));
+    setDiscount(pctRounded);
+    form.setFieldsValue({
+      discount: pctRounded,
+      discountTotal: Number(cap.toFixed(2)),
+    });
   };
 
   // 檢查 Quote Number 是否對應現有項目
@@ -458,6 +473,11 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
     const currentTotal = calculate.sub(subTotal, discountAmount);
     setDiscountTotal(Number.parseFloat(discountAmount));
     setTotal(Number.parseFloat(currentTotal));
+    // 同步表單欄位，確保讀取/提交一致；手動改 discountTotal 會先回推 discount% 再由此同步回來
+    form.setFieldsValue({
+      discountTotal: Number.parseFloat(Number(discountAmount).toFixed(2)),
+      total: Number.parseFloat(Number(currentTotal).toFixed(2)),
+    });
   }, [subTotal, discount]);
 
   // 處理項目選擇
@@ -586,6 +606,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       dataIndex: 'description',
       key: 'description',
       width: '38%',
+      render: (text) => renderMultilineText(text),
     },
     {
       title: translate('P.O Number'),
@@ -1137,7 +1158,16 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             </p>
           </Col>
           <Col className="gutter-row" span={5}>
-            <MoneyInputFormItem readOnly value={discountTotal} />
+            <Form.Item name="discountTotal" rules={[{ required: false }]} style={{ marginBottom: 0 }}>
+              <InputNumber
+                min={0}
+                max={subTotal > 0 ? subTotal : undefined}
+                precision={2}
+                style={{ width: '100%' }}
+                controls={false}
+                onChange={handleDiscountAmountChange}
+              />
+            </Form.Item>
           </Col>
         </Row>
         <Row gutter={[12, -5]}>

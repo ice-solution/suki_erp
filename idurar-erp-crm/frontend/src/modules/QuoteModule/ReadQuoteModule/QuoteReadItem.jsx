@@ -26,6 +26,7 @@ import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
+import { multilineStyle } from '@/utils/renderMultilineText';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
 
@@ -37,7 +38,7 @@ const Item = ({ item, currentErp }) => {
         <p style={{ marginBottom: 5 }}>
           <strong>{item.itemName}</strong>
         </p>
-        <p>{item.description}</p>
+        <p style={multilineStyle}>{item.description}</p>
       </Col>
       <Col className="gutter-row" span={4}>
         <p
@@ -609,7 +610,17 @@ export default function QuoteReadItem({ config, selectedItem }) {
               >
                 <span style={{ marginRight: 8 }}><strong>{item.itemName}</strong></span>
                 {item.description ? (
-                  <span style={{ display: 'block', color: '#666', fontSize: 12, marginTop: 2 }}>{item.description}</span>
+                  <span
+                    style={{
+                      display: 'block',
+                      color: '#666',
+                      fontSize: 12,
+                      marginTop: 2,
+                      ...multilineStyle,
+                    }}
+                  >
+                    {item.description}
+                  </span>
                 ) : null}
                 <span style={{ color: '#888', fontSize: 12, display: 'block', marginTop: 2 }}>
                   {item.quantity} × {moneyFormatter({ amount: item.price, currency_code: currentErp.currency })} = {moneyFormatter({ amount: item.total, currency_code: currentErp.currency })}

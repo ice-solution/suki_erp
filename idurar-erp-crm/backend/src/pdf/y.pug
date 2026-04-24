@@ -187,6 +187,10 @@ html
       .table-invoice td.service, .table-invoice td.desc {
         vertical-align: top;
       }
+      .table-invoice td.desc {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
       .table-invoice td.unit, .table-invoice td.qty, .table-invoice td.total {
         
       }
@@ -241,10 +245,10 @@ body
           div 
             .col.col-7
               p.strong #{translate('Date')} :
-              p #{moment(model.date).format(dateFormat)}
+              p #{moment.utc(model.date).format(dateFormat)}
             .col.col-9
               p.strong #{translate('Expired Date')} :
-              p #{moment(model.expiredDate).format(dateFormat)}
+              p #{moment.utc(model.expiredDate).format(dateFormat)}
             .col.col-8 
               p.strong #{translate('Number')} :
               p # #{model.numberPrefix || 'Y'}-#{model.number}/#{model.year || ""}
@@ -262,7 +266,7 @@ body
           each item in itemsOnly
             tr
               td.service #{item.itemName || ''}
-              td #{item.description || ''}
+              td.desc #{item.description || ''}
               td.qty #{item.quantity != null ? item.quantity : ''}
           tr
             td(colspan='2') #{translate('SUB TOTAL')}

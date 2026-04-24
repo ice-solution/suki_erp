@@ -19,6 +19,7 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import { renderMultilineText } from '@/utils/renderMultilineText';
 
 function getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) {
   const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
@@ -1119,6 +1120,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       dataIndex: 'description',
       key: 'description',
       width: '70%',
+      render: (text) => renderMultilineText(text),
     },
     {
       title: translate('Quantity'),
@@ -1504,8 +1506,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         </Col>
       </Row>
 
-      <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={8}>
+      <Row gutter={[12, 0]} align="top">
+        <Col className="gutter-row" span={12}>
           <Form.Item label="簽收單聯絡人" name="contactPerson">
             <ContactPersonAutoComplete
               clientIds={watchedClients}
@@ -1514,14 +1516,28 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={8}>
-          <Form.Item label="簽收單收貨人" name="receiver">
-            <Input placeholder="簽收單收貨人" />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={8}>
+        <Col className="gutter-row" span={12}>
           <Form.Item label="簽收單顯示名稱" name="receiptDisplayName">
             <Input placeholder="簽收單 PDF 上顯示的收件人名稱（留空則使用客戶名稱）" />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
+          <Form.Item label="簽收單收貨人地址" name="receiver">
+            <Input.TextArea
+              placeholder="顯示於 S 單 PDF「TO」下方之收貨地址（可多行）"
+              rows={3}
+              autoSize={{ minRows: 2, maxRows: 10 }}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
+          <Form.Item label="裝箱方式" name="packingMethod">
+            <Input placeholder="顯示於 S 單 PDF 簽收區「裝箱方式」（選填）" />
           </Form.Item>
         </Col>
       </Row>

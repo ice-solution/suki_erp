@@ -10,12 +10,27 @@ const search = async (Model, req, res) => {
   //     })
   //     .end();
   // }
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['name'];
+  const fieldsArray = req.query.fields
+    ? String(req.query.fields)
+        .split(',')
+        .map((f) => String(f || '').trim())
+        .filter(Boolean)
+    : ['name'];
+  const q = String(req.query.q || '').trim();
+  if (!q) {
+    return res.status(202).json({
+      success: false,
+      result: [],
+      message: 'No document found by this request',
+    });
+  }
 
   const fields = { $or: [] };
 
+  const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(escaped, 'i');
   for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+    fields.$or.push({ [field]: { $regex: regex } });
   }
   // console.log(fields)
 

@@ -12,11 +12,16 @@ const ContractorEmployeeList = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [form] = Form.useForm();
+  const [tablePagination, setTablePagination] = useState({ current: 1, pageSize: 20 });
 
   useEffect(() => {
     fetchData();
     fetchContractors();
   }, []);
+
+  useEffect(() => {
+    setTablePagination((p) => ({ ...p, current: 1 }));
+  }, [searchName, searchAccountCode]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -130,6 +135,14 @@ const ContractorEmployeeList = () => {
     return true;
   });
 
+  useEffect(() => {
+    setTablePagination((prev) => {
+      const maxPage = Math.max(1, Math.ceil(filteredData.length / prev.pageSize));
+      if (prev.current > maxPage) return { ...prev, current: maxPage };
+      return prev;
+    });
+  }, [filteredData.length, tablePagination.pageSize]);
+
   const columns = [
     { title: '員工姓名', dataIndex: 'name', key: 'name' },
     { 
@@ -204,7 +217,23 @@ const ContractorEmployeeList = () => {
         dataSource={filteredData}
         rowKey="_id"
         loading={loading}
-        pagination={{ pageSize: 20 }}
+        pagination={{
+          current: tablePagination.current,
+          pageSize: tablePagination.pageSize,
+          total: filteredData.length,
+          showSizeChanger: true,
+          pageSizeOptions: ['10', '20', '50', '100'],
+          showTotal: (total, range) => `第 ${range[0]}-${range[1]} 筆，共 ${total} 筆`,
+          onChange: (page, pageSize) => {
+            setTablePagination((prev) => ({
+              current: page,
+              pageSize: pageSize ?? prev.pageSize,
+            }));
+          },
+          onShowSizeChange: (_current, size) => {
+            setTablePagination({ current: 1, pageSize: size });
+          },
+        }}
       />
       <Modal
         title={editingItem ? '編輯員工' : '新增員工'}

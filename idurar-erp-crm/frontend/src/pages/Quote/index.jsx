@@ -14,7 +14,8 @@ export default function Quote() {
   const searchConfig = {
     entity: 'quote',
     displayLabels: ['address', 'invoiceNumber'],
-    searchFields: 'address,invoiceNumber,contactPerson',
+    // 需要支援 %abc%：例如 SML-12345 可用 12345 / 1234 搜到
+    searchFields: 'address,invoiceNumber,number,numberPrefix,contactPerson',
   };
   const deleteModalLabels = ['number', 'client.name'];
   const dataTableColumns = [

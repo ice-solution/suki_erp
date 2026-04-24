@@ -19,6 +19,7 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import { renderMultilineText } from '@/utils/renderMultilineText';
 
 export default function InvoiceTableForm({ subTotal = 0, current = null }) {
   const { last_invoice_number } = useSelector(selectFinanceSettings);
@@ -615,6 +616,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       dataIndex: 'description',
       key: 'description',
       width: '45%',
+      render: (text) => renderMultilineText(text),
     },
     {
       title: translate('Quantity'),

@@ -27,6 +27,7 @@ import { useMoney, useDate } from '@/settings';
 import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
+import { multilineStyle } from '@/utils/renderMultilineText';
 
 const Item = ({ item, currentErp }) => {
   return (
@@ -35,7 +36,7 @@ const Item = ({ item, currentErp }) => {
         <p style={{ marginBottom: 5 }}>
           <strong>{item.itemName}</strong>
         </p>
-        <p>{item.description}</p>
+        <p style={multilineStyle}>{item.description}</p>
       </Col>
       <Col className="gutter-row" span={9}>
         <p
@@ -353,8 +354,11 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label="Quote Number">{currentErp.invoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label="對方Invoice Number">{currentErp.counterpartyInvoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label="簽收單聯絡人">{currentErp.contactPerson || '-'}</Descriptions.Item>
-        <Descriptions.Item label="簽收單收貨人">{currentErp.receiver || '-'}</Descriptions.Item>
+        <Descriptions.Item label="簽收單收貨人地址">
+          <span style={{ whiteSpace: 'pre-wrap' }}>{currentErp.receiver || '-'}</span>
+        </Descriptions.Item>
         <Descriptions.Item label="簽收單顯示名稱">{currentErp.receiptDisplayName || '-'}</Descriptions.Item>
+        <Descriptions.Item label="裝箱方式">{currentErp.packingMethod || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice != null && currentErp.costPrice !== '' ? moneyFormatter({ amount: currentErp.costPrice }) : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>

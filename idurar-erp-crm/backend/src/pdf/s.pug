@@ -171,6 +171,7 @@ html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
       .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 2px; }
       .info-row-indent { margin-left: 20px; }
+      .info-row-receiver-address { margin-left: 20px; white-space: pre-wrap; word-break: break-word; }
       .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
       .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
       .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
@@ -180,7 +181,7 @@ html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
-      .quotation-table .col-content { width: 78%; word-wrap: break-word; text-align: left; }
+      .quotation-table .col-content { width: 78%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
       .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
       .quotation-table td.num { text-align: right; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
@@ -198,6 +199,8 @@ html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
       .issuer-stamp { border-bottom: none; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; font-weight: bold; margin-top: 4px; }
       .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
+      .fill-line-packing { display: inline-block; border-bottom: 1px solid #222; min-width: 160px; margin-left: 6px; transform: translateY(-2px); }
+      .packing-value { display: inline-block; margin-left: 6px; max-width: 220px; white-space: normal; word-break: break-word; vertical-align: bottom; font-size: 9px; }
       .sig-label { display: inline-block; width: 54px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
     if isPuppeteer
@@ -207,17 +210,69 @@ html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
 body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
-    - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
+    - const clientAddress = (client.address || '')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number
-    - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
-    - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
-    - const deliveryAddress = model.address || clientAddress || ''
+    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const consigneeLine = (model.receiptDisplayName || model.contactPerson || '').trim() || '-'
+    - const deliveryAddress = (model.address || '').trim() || clientAddress || ''
     - const itemsOnly = model.items || []
-    - const ITEMS_PER_PAGE = 8
-    - const itemChunks = []
-    - for (let i = 0; i < itemsOnly.length; i += ITEMS_PER_PAGE) { itemChunks.push(itemsOnly.slice(i, i + ITEMS_PER_PAGE)) }
-    - if (itemChunks.length === 0) itemChunks.push([])
+    -
+      // 行數估算分頁（取代固定 8 筆）：與 tbody 內 contentText 邏輯一致；保守係數避免 overlay
+      const S_PDF_CHARS_PER_LINE = 26
+      const S_PDF_SAFETY_FACTOR = 1.25
+      const S_PDF_MAX_LINES_PER_PAGE = 30
+      function buildSItemContentText(item) {
+        const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
+        const desc = item.description ? ' ' + item.description : ''
+        return (name + desc).trim() || '-'
+      }
+      function estimateItemContentLines(item) {
+        const text = buildSItemContentText(item)
+        let lines = 0
+        const parts = String(text).split(/\r\n|\n|\r/)
+        for (let pi = 0; pi < parts.length; pi++) {
+          const seg = parts[pi]
+          lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
+        }
+        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
+      }
+      const itemChunks = []
+      let curChunk = []
+      let curLines = 0
+      const chunkMeta = []
+      for (let ii = 0; ii < itemsOnly.length; ii++) {
+        const it = itemsOnly[ii]
+        const L = estimateItemContentLines(it)
+        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
+          itemChunks.push(curChunk)
+          chunkMeta.push({ items: curChunk.length, lineSum: curLines })
+          curChunk = []
+          curLines = 0
+        }
+        curChunk.push(it)
+        curLines += L
+      }
+      if (curChunk.length > 0) {
+        itemChunks.push(curChunk)
+        chunkMeta.push({ items: curChunk.length, lineSum: curLines })
+      }
+      if (itemChunks.length === 0) itemChunks.push([])
+      const paginationDebugSummary = JSON.stringify({
+        note: 'Puppeteer page.pdf({ format: A4, scale: 1.3 }) — 實際折行與 CHARS_PER_LINE 有關，可調 S_PDF_CHARS_PER_LINE / S_PDF_MAX_LINES_PER_PAGE',
+        S_PDF_CHARS_PER_LINE,
+        S_PDF_SAFETY_FACTOR,
+        S_PDF_MAX_LINES_PER_PAGE,
+        itemCount: itemsOnly.length,
+        chunkCount: itemChunks.length,
+        chunkMeta,
+        perItem: itemsOnly.map((it, i) => ({
+          n: i + 1,
+          estLines: estimateItemContentLines(it),
+          preview: buildSItemContentText(it).slice(0, 120),
+        })),
+      }, null, 2)
     - const currency = model.currency || 'HKD'
+    - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
       .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
@@ -228,8 +283,8 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
-                if !model.shipType && model.address
+                if model.receiver && String(model.receiver).trim()
+                  .info-row.info-row-receiver-address #{model.receiver}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
                 .info-row 日期 : #{docDate}
@@ -244,8 +299,7 @@ body
                   .info-row 收貨人: #{consigneeLine || '-'}
                 td.info-right
           .doc-title 簽收單
-          if model.contactPerson
-            .project-contact-line 聯絡人：#{model.contactPerson}
+          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
           if model.address
             .project-address-line 工程地址：#{model.address || ''}
           table.quotation-table
@@ -259,12 +313,13 @@ body
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
-                  td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
+                  td.col-no #{serialBase + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
               if chunk.length === 0
                 tr
                   td(colspan='3' style='text-align:center') 無項目
+          - serialBase += chunk.length
           if pageIndex === itemChunks.length - 1
             .notes-block
               .notes-title
@@ -287,7 +342,12 @@ body
                       .signature-stamp-label &nbsp;
                   td.sig-right
                     .issuer-block
-                      .issuer-name-line 裝箱方式:
+                      .issuer-name-line
+                        span.sig-label 裝箱方式:
+                        if model.packingMethod
+                          span.packing-value #{model.packingMethod}
+                        else
+                          span.fill-line-packing
                       .issuer-name-line
                         span.sig-label 簽收人:
                         span.fill-line
@@ -297,3 +357,9 @@ body
             .end-marker End
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    if typeof paginationDebug !== 'undefined' && paginationDebug
+      .sml-page.sml-page-pagination-debug
+        .sml-page-body
+          p(style='font-size:10px;font-weight:bold;margin:0 0 6px') S 單分頁估算（S_PDF_PAGINATION_DEBUG=1）
+          pre(style='font-size:8px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;border:1px solid #ccc;background:#fafafa;text-align:left') #{paginationDebugSummary}

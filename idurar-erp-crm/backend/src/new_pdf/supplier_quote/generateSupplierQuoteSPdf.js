@@ -83,6 +83,8 @@ async function generateSupplierQuoteSPdfBuffer(model) {
     moneyFormatter,
     moment,
     isPuppeteer: true,
+    /** 設 `S_PDF_PAGINATION_DEBUG=1` 時，s.pug 會在最後多一頁輸出分頁估算 JSON 供檢查 */
+    paginationDebug: process.env.S_PDF_PAGINATION_DEBUG === '1',
   });
 
   const launchOpts = {

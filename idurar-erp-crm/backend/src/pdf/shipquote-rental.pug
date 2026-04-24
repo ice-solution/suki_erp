@@ -32,7 +32,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
-      .quotation-table .col-content { width: 44%; word-wrap: break-word; text-align: left; }
+      .quotation-table .col-content { width: 44%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
       .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
       .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
       .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
@@ -43,11 +43,12 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .summary-label { font-weight: bold; display: inline-block; min-width: 90px; text-align: right; padding-right: 8px; }
       .summary-value { display: inline-block; min-width: 100px; text-align: right; }
       .summary-row.subtotal .summary-value { text-decoration: underline; }
-      .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; text-decoration-style: double; }
+      .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
       .extra-section { margin-top: 12px; }
-      /* 避免「附加項目」標題單獨留在上一頁、表格被推到下一頁 */
+      /* 附加項目整段獨立一頁（與主報價表格分開） */
+      .rental-page-after-items { page-break-before: always; break-before: page; }
       .extra-section-block { page-break-inside: avoid; break-inside: avoid; }
       .extra-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; page-break-inside: auto; }
       .extra-table caption.extra-section-caption {
@@ -62,6 +63,10 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .extra-table th, .extra-table td { border: none; padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; }
       .extra-table th { background: transparent; font-weight: bold; }
       .extra-table .col-desc { width: auto; }
+      .extra-table tbody td:first-child {
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
       .extra-table .col-price { text-align: right; width: 120px; }
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
       .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
@@ -82,25 +87,96 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
     if isPuppeteer
       style.
+        /* Puppeteer：頁尾改由 page.pdf 的 footerTemplate 繪製，避免出現雙 footer */
         html.puppeteer-ship-quote-rental .footer-section { display: none !important; }
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
-    - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
-    - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
-    - const deliveryAddress = model.address || clientAddress || ''
+    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
     - const itemsOnly = model.items || []
-    - const ITEMS_PER_PAGE = 8
-    - const itemChunks = []
-    - for (let i = 0; i < itemsOnly.length; i += ITEMS_PER_PAGE) { itemChunks.push(itemsOnly.slice(i, i + ITEMS_PER_PAGE)) }
-    - if (itemChunks.length === 0) itemChunks.push([])
+    -
+      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
+      const S_PDF_CHARS_PER_LINE = 24
+      const S_PDF_SAFETY_FACTOR = 1.25
+      const S_PDF_MAX_LINES_PER_PAGE = 30
+      function buildItemContentText(item) {
+        const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
+        const desc = item.description ? ' ' + item.description : ''
+        return (name + desc).trim() || '-'
+      }
+      function estimateItemContentLines(item) {
+        const text = buildItemContentText(item)
+        let lines = 0
+        const parts = String(text).split(/\r\n|\n|\r/)
+        for (let pi = 0; pi < parts.length; pi++) {
+          const seg = parts[pi]
+          lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
+        }
+        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
+      }
+      const itemChunks = []
+      let curChunk = []
+      let curLines = 0
+      for (let ii = 0; ii < itemsOnly.length; ii++) {
+        const it = itemsOnly[ii]
+        const L = estimateItemContentLines(it)
+        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
+          itemChunks.push(curChunk)
+          curChunk = []
+          curLines = 0
+        }
+        curChunk.push(it)
+        curLines += L
+      }
+      if (curChunk.length > 0) itemChunks.push(curChunk)
+      if (itemChunks.length === 0) itemChunks.push([])
+      // 附加項目分頁：避免文字太多把簽署截斷
+      const defaultRentalExtras = [
+        { description: '續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}', unitPrice: null },
+        { description: '額外電源線(200米以外部份)', unitPrice: null },
+        { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: null },
+        { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: null },
+        { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: null },
+        { description: '三角足場續租(每14日)', unitPrice: null },
+      ]
+      const rentalRowsAll = (model.rentalExtraItems && model.rentalExtraItems.length) ? model.rentalExtraItems : defaultRentalExtras
+      const EXTRA_CHARS_PER_LINE = 40
+      const EXTRA_SAFETY_FACTOR = 1.2
+      const EXTRA_MAX_LINES_PER_PAGE = 28
+      function estimateExtraRowLines(row) {
+        const text = (row && row.description) ? String(row.description) : ''
+        let lines = 0
+        const parts = String(text).split(/\r\n|\n|\r/)
+        for (let pi = 0; pi < parts.length; pi++) {
+          const seg = parts[pi]
+          lines += Math.max(1, Math.ceil(seg.length / EXTRA_CHARS_PER_LINE))
+        }
+        // +1：表格 padding / row 間距緩衝
+        return Math.ceil(lines * EXTRA_SAFETY_FACTOR) + 1
+      }
+      const extraChunks = []
+      let curExtra = []
+      let curExtraLines = 0
+      for (let ei = 0; ei < rentalRowsAll.length; ei++) {
+        const row = rentalRowsAll[ei]
+        const L = estimateExtraRowLines(row)
+        if (curExtra.length > 0 && curExtraLines + L > EXTRA_MAX_LINES_PER_PAGE) {
+          extraChunks.push(curExtra)
+          curExtra = []
+          curExtraLines = 0
+        }
+        curExtra.push(row)
+        curExtraLines += L
+      }
+      if (curExtra.length > 0) extraChunks.push(curExtra)
+      if (extraChunks.length === 0) extraChunks.push([])
     - const subTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
+    - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
       .rental-page(class=pageIndex === itemChunks.length - 1 ? 'rental-page-last' : '')
@@ -111,20 +187,11 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row #{model.address || clientAddress || ''}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
                 .info-row 日期 : #{docDate}
-            tr
-              td.info-left
-                .info-row 送貨地址: #{deliveryAddress || '-'}
-                .info-row 收貨人: #{consigneeLine || '-'}
-              td.info-right
           .doc-title 導向吊船租賃報價
-          if model.contactPerson
-            .project-contact-line 聯絡人：#{model.contactPerson}
-          if model.address
-            .project-address-line 工程地址：#{model.address || ''}
+          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
           table.quotation-table
             thead
               tr
@@ -138,7 +205,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
-                  td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
+                  td.col-no #{serialBase + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
                   td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
@@ -146,6 +213,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
               if chunk.length === 0
                 tr
                   td(colspan='5' style='text-align:center') 無項目
+          - serialBase += chunk.length
           if pageIndex === itemChunks.length - 1
             .summary-wrap
               .summary-block
@@ -163,82 +231,103 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
             .notes-block
               .notes-content
-                | 1) 此報價有效期為90天
                 if model.notes
-                  br
                   | #{model.notes}
-            .extra-section
-              .extra-section-block
-                -
-                  const defaultRentalExtras = [
-                    { description: '續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}', unitPrice: null },
-                    { description: '額外電源線(200米以外部份)', unitPrice: null },
-                    { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: null },
-                    { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: null },
-                    { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: null },
-                    { description: '三角足場續租(每14日)', unitPrice: null },
-                  ];
-                  const rentalRows = (model.rentalExtraItems && model.rentalExtraItems.length)
-                    ? model.rentalExtraItems
-                    : defaultRentalExtras;
-                table.extra-table
-                  caption.extra-section-caption 附加項目
-                  thead
-                    tr
-                      th.col-desc 摘要
-                      th.col-price 單價 HKD $
-                  tbody
-                    each row in rentalRows
-                      - const desc = (row && row.description) ? row.description : ''
-                      - const up = row && row.unitPrice
-                      tr
-                        td #{desc}
-                        td.col-price.num
-                          if up != null && up !== '' && !isNaN(Number(up))
-                            | #{moneyFormatter({ amount: Number(up), currency_code: currency })}
-                          else
-                            | -
-            .terms-section
-              h4 租賃說明
-              ol
-                li 租用價格包括吊船交機及來回運輸費用(不包括離島地區)。
-                li 由確定收到租金起計, 90天後送貨。
-                li 價格第二及三項為消耗品, 恕不提供租用服務。
-                li 租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。
-                li 預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。
-                li 租用期間如因壞機而影響地盤工作, 本公司可恕不負責。
-                li 地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。
-                li 在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。
-                li 租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。
-                li 所有地盤使用人員及第三者保險由租用者負責。
-                li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
-              h4 付款方法
-              p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
-              h4 報價有效期
-              p #{model.expiredDate ? moment(model.expiredDate).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
-            .signature-section
-              .prepared-by-row
-                span.prepared-by-label 制單人：
-                if model.updatedBy && model.updatedBy.name
-                  span #{model.updatedBy.name}
-                else if model.createdBy && model.createdBy.name
-                  span #{model.createdBy.name}
-                else
-                  span.prepared-by-space
-              table.signature-table
-                tr
-                  td.sig-left
-                    .issuer-block
-                      .issuer-name-line 核實者
-                      .issuer-name-line 同意及確定
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
-                  td.sig-right
-                    .issuer-block
-                      .issuer-name-line 發出者
-                      .issuer-name-line 超越工程公司
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
-            .end-marker End
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    //- 附加項目：按長度分頁（每頁同樣頁首；Puppeteer 模式下 footer-section 會被隱藏）
+    each extraChunk, extraPageIndex in extraChunks
+      .rental-page.rental-page-after-items
+        .rental-page-body
+          .supermax-header-banner
+            img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+          table.info-table-ship
+            tr
+              td.info-left
+                .info-row TO : #{clientName}
+              td.info-right
+                .info-row 報價編號 : #{docNumber}
+                .info-row 日期 : #{docDate}
+          .doc-title 導向吊船租賃報價
+          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+          .extra-section
+            .extra-section-block
+              table.extra-table
+                caption.extra-section-caption 附加項目
+                thead
+                  tr
+                    th.col-desc 摘要
+                    th.col-price 單價 HKD $
+                tbody
+                  each row in extraChunk
+                    - const desc = (row && row.description) ? row.description : ''
+                    - const up = row && row.unitPrice
+                    tr
+                      td #{desc}
+                      td.col-price.num
+                        if up != null && up !== '' && !isNaN(Number(up))
+                          | #{moneyFormatter({ amount: Number(up), currency_code: currency })}
+                        else
+                          | -
+          .footer-section
+            img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    //- 租賃說明 + 簽署：固定獨立最後一頁，避免被附加項目擠到截斷
+    .rental-page
+      .rental-page-body
+        .supermax-header-banner
+          img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+        table.info-table-ship
+          tr
+            td.info-left
+              .info-row TO : #{clientName}
+            td.info-right
+              .info-row 報價編號 : #{docNumber}
+              .info-row 日期 : #{docDate}
+        .doc-title 導向吊船租賃報價
+        .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+        .terms-section
+          h4 租賃說明
+          ol
+            li 租用價格包括吊船交機及來回運輸費用(不包括離島地區)。
+            li 由確定收到租金起計, 90天後送貨。
+            li 價格第二及三項為消耗品, 恕不提供租用服務。
+            li 租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。
+            li 預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。
+            li 租用期間如因壞機而影響地盤工作, 本公司可恕不負責。
+            li 地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。
+            li 在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。
+            li 租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。
+            li 所有地盤使用人員及第三者保險由租用者負責。
+            li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
+          h4 付款方法
+          p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
+          h4 報價有效期
+          p #{model.expiredDate ? moment.utc(model.expiredDate).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
+        .signature-section
+          .prepared-by-row
+            span.prepared-by-label 制單人：
+            if model.updatedBy && model.updatedBy.name
+              span #{model.updatedBy.name}
+            else if model.createdBy && model.createdBy.name
+              span #{model.createdBy.name}
+            else
+              span.prepared-by-space
+          table.signature-table
+            tr
+              td.sig-left
+                .issuer-block
+                  .issuer-name-line 核實者
+                  .issuer-name-line 同意及確定
+                  .issuer-stamp
+                  .signature-stamp-label 公司簽署及蓋章
+              td.sig-right
+                .issuer-block
+                  .issuer-name-line 發出者
+                  .issuer-name-line 超越工程公司
+                  .issuer-stamp
+                  .signature-stamp-label 公司簽署及蓋章
+        .end-marker End
+      .footer-section
+        img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')

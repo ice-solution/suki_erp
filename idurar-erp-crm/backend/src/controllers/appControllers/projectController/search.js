@@ -139,7 +139,10 @@ const search = async (req, res) => {
   }
 
   const q = String(req.query.q || '').trim();
-  const fieldsArray = (req.query.fields || '').split(',').filter(Boolean);
+  const fieldsArray = String(req.query.fields || '')
+    .split(',')
+    .map((f) => String(f || '').trim())
+    .filter(Boolean);
 
   /**
    * 僅 Project.invoiceNumber 用錨定／連字號單號規則。
@@ -151,15 +154,8 @@ const search = async (req, res) => {
 
   for (const field of fieldsArray) {
     if (field === 'invoiceNumber') {
-      if (hyphenDocNo) {
-        fields.$or.push({
-          [field]: { $regex: new RegExp(escapedQ, 'i') },
-        });
-      } else {
-        fields.$or.push({
-          [field]: { $regex: new RegExp(`^${escapedQ}(/|$)`, 'i') },
-        });
-      }
+      // 需求：像 %abc% 一樣可用子字串搜尋（SML-12345 可用 1234 找到）
+      fields.$or.push({ [field]: { $regex: new RegExp(escapedQ, 'i') } });
     } else {
       fields.$or.push({ [field]: { $regex: new RegExp(escapedQ, 'i') } });
     }

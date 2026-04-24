@@ -67,6 +67,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   contactPerson: {
     type: String,
   },
+  /** 簽收單收貨人地址（多行），S 單 PDF「TO」下方顯示 */
   receiver: {
     type: String,
   },
@@ -74,6 +75,10 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: String,
   },
   receiptDisplayName: {
+    type: String,
+  },
+  /** S 單簽收區「裝箱方式」，對應 PDF s.pug */
+  packingMethod: {
     type: String,
   },
   warehouse: {

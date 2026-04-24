@@ -11,6 +11,15 @@ const {
   tryGenerateInvoicePdfBufferWithPuppeteer,
 } = require('@/new_pdf/invoice/invoicePuppeteerDispatch');
 
+/** 動態 PDF：固定 URL 會被 CDN／瀏覽器快取，導致內容更新後仍下載舊檔 */
+function setDynamicPdfCacheHeaders(res) {
+  res.setHeader('Cache-Control', 'private, no-store, no-cache, must-revalidate, max-age=0');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  // Cloudflare：指示邊緣不要快取此回應（與 Cache-Control 並用較穩）
+  res.setHeader('CDN-Cache-Control', 'no-store');
+}
+
 module.exports = downloadPdf = async (req, res, { directory, id }) => {
   try {
     // 處理特殊模型名稱映射
@@ -78,6 +87,8 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
       if (!result) {
         throw { name: 'ValidationError' };
       }
+
+      setDynamicPdfCacheHeaders(res);
 
       const fileId = modelName.toLowerCase() + '-' + result._id + '.pdf';
       const folderPath = modelName.toLowerCase();

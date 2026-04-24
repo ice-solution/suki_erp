@@ -33,7 +33,7 @@ html
       .items-table th, .items-table td { padding: 6px 8px; vertical-align: top; }
       .items-table th { font-weight: bold; text-align: center; }
       .items-table .col-no { width: 6%; text-align: center; }
-      .items-table .col-content { width: 74%; text-align: left; word-wrap: break-word; }
+      .items-table .col-content { width: 74%; text-align: left; word-wrap: break-word; word-break: break-word; white-space: pre-wrap; }
       .items-table .col-qty { width: 20%; text-align: right; white-space: nowrap; }
 
       .ack-section { margin-top: 24px; }
@@ -55,7 +55,7 @@ html
     - const deliveryAddress = model.receiptDisplayName || ''
     - const consignee = model.receiver || ''
     - const poNumber = model.poNumber || ''
-    - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
     - const invoiceNo = (model.numberPrefix || 'NO') + '-' + (model.number || '')
     - const quoteNo = model.invoiceNumber || ''
     - const itemsOnly = model.items || []

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Modal, Table, Tag } from 'antd';
 import CrudModule from '@/modules/CrudModule/CrudModule';
+import AssetStatusSummary from '@/components/AssetStatusSummary';
 import { fields } from './WinchList/config';
 import WinchForm from './WinchList/WinchForm';
 import { request } from '@/request';
@@ -237,6 +238,7 @@ export default function WinchList() {
     dataTableColumns, // 使用自定義列
     searchConfig,
     deleteModalLabels,
+    listSummary: <AssetStatusSummary entity={entity} />,
   };
   return (
     <>

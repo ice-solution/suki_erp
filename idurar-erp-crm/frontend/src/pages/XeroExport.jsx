@@ -18,6 +18,24 @@ function escapeCsvCell(val) {
   return s;
 }
 
+function resolveXeroDueDate(inv) {
+  // 新：paymentEntries 可多筆，Xero DueDate 取最後一個（以日期最大者為準）
+  const entries = Array.isArray(inv?.paymentEntries) ? inv.paymentEntries : [];
+  const dates = entries
+    .map((e) => e?.paymentDueDate)
+    .filter(Boolean)
+    .map((d) => dayjs(d))
+    .filter((d) => d.isValid());
+
+  if (dates.length) {
+    const last = dates.sort((a, b) => a.valueOf() - b.valueOf())[dates.length - 1];
+    return last.format('YYYY-MM-DD');
+  }
+
+  // 舊欄位相容
+  return inv?.paymentDueDate ? dayjs(inv.paymentDueDate).format('YYYY-MM-DD') : '';
+}
+
 export default function XeroExport() {
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -64,7 +82,7 @@ export default function XeroExport() {
       const accountCode = getAccountCodeByServiceType(inv.type) || '';
       const invoiceNumber = `${inv.numberPrefix || 'SMI'}-${inv.number}`;
       const invoiceDate = inv.date ? dayjs(inv.date).format('YYYY-MM-DD') : '';
-      const dueDate = inv.paymentDueDate ? dayjs(inv.paymentDueDate).format('YYYY-MM-DD') : '';
+      const dueDate = resolveXeroDueDate(inv);
 
       const trackingOption1 = branchByInvoiceType[inv.numberPrefix] || '';
       const description = resolveProjectAddress(inv);

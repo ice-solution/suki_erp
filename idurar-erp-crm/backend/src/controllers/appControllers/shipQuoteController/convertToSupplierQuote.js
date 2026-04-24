@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const ShipQuoteModel = mongoose.model('ShipQuote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
+const ProjectModel = mongoose.model('Project');
 
 const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 
@@ -28,6 +29,22 @@ const convertToSupplierQuote = async (req, res) => {
         result: null,
         message: 'Ship Quote 沒有項目，無法轉換',
       });
+    }
+
+    // 與 Quote 上單一致：須先在 Project Management 建立對應 Quote Number（如 SML-xxx）
+    const quoteNumber =
+      shipQuote.numberPrefix && shipQuote.number
+        ? `${shipQuote.numberPrefix}-${shipQuote.number}`
+        : shipQuote.invoiceNumber;
+    if (quoteNumber) {
+      const project = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
+      if (!project) {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: '請先在 Project Management 建立此 Quote Number 的項目，方可上單',
+        });
+      }
     }
 
     const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix('S');

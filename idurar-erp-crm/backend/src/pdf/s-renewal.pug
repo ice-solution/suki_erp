@@ -161,6 +161,8 @@ html
       .sml-page { display: block; page-break-inside: auto; }
       .sml-page + .sml-page { page-break-before: always; }
       .sml-page-body { display: block; position: relative; padding-bottom: 18px; }
+      /* PDF 內第二頁開始不會繼承 body padding-top，需補回避免貼頂 */
+      .sml-page + .sml-page .sml-page-body { padding-top: 20px; }
       .supermax-header-banner { width: 100%; margin-bottom: 6px; }
       .supermax-header-banner img { width: 100%; height: auto; display: block; }
       /* 頁碼移至右下角（每頁） */
@@ -171,6 +173,7 @@ html
       .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 2px; }
       .info-row-indent { margin-left: 20px; }
+      .info-row-receiver-address { margin-left: 20px; white-space: pre-wrap; word-break: break-word; }
       .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
       .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
       .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
@@ -180,7 +183,7 @@ html
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
-      .quotation-table .col-content { width: 44%; word-wrap: break-word; text-align: left; }
+      .quotation-table .col-content { width: 44%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
       .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
       .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
       .quotation-table .col-amount { width: 16%; text-align: right; white-space: nowrap; }
@@ -191,7 +194,7 @@ html
       .summary-label { font-weight: bold; display: inline-block; min-width: 90px; text-align: right; padding-right: 8px; }
       .summary-value { display: inline-block; min-width: 100px; text-align: right; }
       .summary-row.subtotal .summary-value { text-decoration: underline; }
-      .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; text-decoration-style: double; }
+      .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
       .signature-section { margin-top: 12px; }
@@ -207,6 +210,8 @@ html
       .issuer-stamp { border-bottom: none; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; font-weight: bold; margin-top: 4px; }
       .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
+      .fill-line-packing { display: inline-block; border-bottom: 1px solid #222; min-width: 160px; margin-left: 6px; transform: translateY(-2px); }
+      .packing-value { display: inline-block; margin-left: 6px; max-width: 220px; white-space: normal; word-break: break-word; vertical-align: bottom; font-size: 9px; }
       .sig-label { display: inline-block; width: 54px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
 
@@ -215,19 +220,52 @@ body
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'SML') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment(model.date).format('DD/MM/YYYY') : ''
-    - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
+    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const consigneeLine = (model.receiptDisplayName || model.contactPerson || '').trim() || '-'
     - const deliveryAddress = model.address || clientAddress || ''
     - const itemsOnly = model.items || []
-    - const ITEMS_PER_PAGE = 8
-    - const itemChunks = []
-    - for (let i = 0; i < itemsOnly.length; i += ITEMS_PER_PAGE) { itemChunks.push(itemsOnly.slice(i, i + ITEMS_PER_PAGE)) }
-    - if (itemChunks.length === 0) itemChunks.push([])
+    -
+      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
+      const S_PDF_CHARS_PER_LINE = 24
+      const S_PDF_SAFETY_FACTOR = 1.25
+      const S_PDF_MAX_LINES_PER_PAGE = 30
+      function buildItemContentText(item) {
+        const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
+        const desc = item.description ? ' ' + item.description : ''
+        return (name + desc).trim() || '-'
+      }
+      function estimateItemContentLines(item) {
+        const text = buildItemContentText(item)
+        let lines = 0
+        const parts = String(text).split(/\r\n|\n|\r/)
+        for (let pi = 0; pi < parts.length; pi++) {
+          const seg = parts[pi]
+          lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
+        }
+        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
+      }
+      const itemChunks = []
+      let curChunk = []
+      let curLines = 0
+      for (let ii = 0; ii < itemsOnly.length; ii++) {
+        const it = itemsOnly[ii]
+        const L = estimateItemContentLines(it)
+        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
+          itemChunks.push(curChunk)
+          curChunk = []
+          curLines = 0
+        }
+        curChunk.push(it)
+        curLines += L
+      }
+      if (curChunk.length > 0) itemChunks.push(curChunk)
+      if (itemChunks.length === 0) itemChunks.push([])
     - const subTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
+    - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
       .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
@@ -238,8 +276,8 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
-                if !model.shipType && model.address
+                if model.receiver && String(model.receiver).trim()
+                  .info-row.info-row-receiver-address #{model.receiver}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
                 .info-row 日期 : #{docDate}
@@ -254,8 +292,7 @@ body
                   .info-row 收貨人: #{consigneeLine || '-'}
                 td.info-right
           .doc-title 導向吊船租賃報價
-          if model.contactPerson
-            .project-contact-line 聯絡人：#{model.contactPerson}
+          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
           if model.address
             .project-address-line 工程地址：#{model.address || ''}
           table.quotation-table
@@ -271,7 +308,7 @@ body
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
-                  td.col-no #{pageIndex * ITEMS_PER_PAGE + idx + 1}
+                  td.col-no #{serialBase + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
                   td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
@@ -279,6 +316,7 @@ body
               if chunk.length === 0
                 tr
                   td(colspan='5' style='text-align:center') 無項目
+          - serialBase += chunk.length
           if pageIndex === itemChunks.length - 1
             .summary-wrap
               .summary-block
@@ -314,7 +352,12 @@ body
                       .signature-stamp-label &nbsp;
                   td.sig-right
                     .issuer-block
-                      .issuer-name-line 裝箱方式:
+                      .issuer-name-line
+                        span.sig-label 裝箱方式:
+                        if model.packingMethod
+                          span.packing-value #{model.packingMethod}
+                        else
+                          span.fill-line-packing
                       .issuer-name-line
                         span.sig-label 簽收人:
                         span.fill-line
