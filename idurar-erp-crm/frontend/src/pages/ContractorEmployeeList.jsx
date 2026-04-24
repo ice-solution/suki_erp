@@ -3,6 +3,29 @@ import { Table, Button, Popconfirm, message, Modal, Form, Input, Select, Space, 
 import axios from 'axios';
 import dayjs from 'dayjs';
 
+function alphaNumGroupKey(raw) {
+  const s = raw == null ? '' : String(raw).trim();
+  // 例：CC01、CH10、FRX20… => prefix=CC/CH/FRX, num=1/10/20
+  const m = /^([A-Za-z]+)(\d+)$/.exec(s);
+  if (!m) return null;
+  return { prefix: m[1].toUpperCase(), num: Number(m[2]), width: m[2].length, raw: s };
+}
+
+function compareAlphaNumGroup(a, b) {
+  const ka = alphaNumGroupKey(a);
+  const kb = alphaNumGroupKey(b);
+  if (ka && kb) {
+    const p = ka.prefix.localeCompare(kb.prefix, 'en', { sensitivity: 'base' });
+    if (p) return p;
+    if (ka.num !== kb.num) return ka.num - kb.num;
+    // 同一數字但 01 vs 001：短的先
+    if (ka.width !== kb.width) return ka.width - kb.width;
+    return ka.raw.localeCompare(kb.raw, 'en', { sensitivity: 'base', numeric: true });
+  }
+  // 其他情況：用 numeric locale compare（A-z 然後數字）
+  return String(a ?? '').trim().localeCompare(String(b ?? '').trim(), 'en', { sensitivity: 'base', numeric: true });
+}
+
 const ContractorEmployeeList = () => {
   const [data, setData] = useState([]);
   const [contractors, setContractors] = useState([]);
@@ -135,6 +158,8 @@ const ContractorEmployeeList = () => {
     return true;
   });
 
+  const sortedData = [...filteredData].sort((a, b) => compareAlphaNumGroup(a?.name, b?.name));
+
   useEffect(() => {
     setTablePagination((prev) => {
       const maxPage = Math.max(1, Math.ceil(filteredData.length / prev.pageSize));
@@ -144,7 +169,13 @@ const ContractorEmployeeList = () => {
   }, [filteredData.length, tablePagination.pageSize]);
 
   const columns = [
-    { title: '員工姓名', dataIndex: 'name', key: 'name' },
+    {
+      title: '員工姓名',
+      dataIndex: 'name',
+      key: 'name',
+      sorter: (a, b) => compareAlphaNumGroup(a?.name, b?.name),
+      defaultSortOrder: 'ascend',
+    },
     { 
       title: '承辦商', 
       dataIndex: 'contractor', 
@@ -214,7 +245,7 @@ const ContractorEmployeeList = () => {
       </Space>
       <Table
         columns={columns}
-        dataSource={filteredData}
+        dataSource={sortedData}
         rowKey="_id"
         loading={loading}
         pagination={{
