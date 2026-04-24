@@ -159,8 +159,11 @@ export default function InvoiceReadItem({ config, selectedItem }) {
           <Button
             key={`${uniqueId()}`}
             onClick={() => {
+              const v = encodeURIComponent(
+                String(currentErp?.modified_at || currentErp?.updated || Date.now())
+              );
               window.open(
-                `${DOWNLOAD_BASE_URL}${entity}/${entity}-${currentErp._id}.pdf`,
+                `${DOWNLOAD_BASE_URL}${entity}/${entity}-${currentErp._id}.pdf?v=${v}`,
                 '_blank'
               );
             }}
