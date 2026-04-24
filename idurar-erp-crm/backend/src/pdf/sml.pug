@@ -228,7 +228,7 @@ body
       // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
       const S_PDF_CHARS_PER_LINE = 18
       const S_PDF_SAFETY_FACTOR = 1.25
-      const S_PDF_MAX_LINES_PER_PAGE = 20
+      const S_PDF_MAX_LINES_PER_PAGE = 30
       function buildItemContentText(item) {
         const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
         const desc = item.description ? ' ' + item.description : ''
