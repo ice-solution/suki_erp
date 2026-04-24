@@ -223,7 +223,7 @@ body
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
     - const invoiceType = model.numberPrefix || 'S'
     - const docNumber = invoiceType + '-' + (model.number || '')
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
     - const deliveryAddress = model.address || clientAddress || ''
     - const itemsOnly = model.items || []

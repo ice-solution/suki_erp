@@ -55,7 +55,7 @@ html
     - const deliveryAddress = model.receiptDisplayName || ''
     - const consignee = model.receiver || ''
     - const poNumber = model.poNumber || ''
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const invoiceNo = (model.numberPrefix || 'NO') + '-' + (model.number || '')
     - const quoteNo = model.invoiceNumber || ''
     - const itemsOnly = model.items || []

@@ -74,7 +74,7 @@ html
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
     - const deliveryAddress = model.address || clientAddress || ''
     - const itemsOnly = model.items || []
@@ -231,7 +231,7 @@ html
               h4 付款方法
               p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
               h4 報價有效期
-              p #{model.expiredDate ? moment.utc(model.expiredDate).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
+              p #{model.expiredDate ? moment(model.expiredDate).utcOffset(480).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
             .signature-section
               .prepared-by-row
                 span.prepared-by-label 制單人：

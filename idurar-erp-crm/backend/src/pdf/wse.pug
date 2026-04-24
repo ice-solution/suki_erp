@@ -77,7 +77,7 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
     - const invoiceNo = (model.numberPrefix || 'WSE') + '-' + (model.number || '')
     - const smlNo = model.invoiceNumber || ''
     - const poNo = model.poNumber || ''
-    - const docDate = model.date ? moment.utc(model.date).format('DD-MM-YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD-MM-YYYY') : ''
     - const itemsOnly = model.items || []
     -
       // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay

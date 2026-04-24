@@ -214,7 +214,7 @@ body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'SML') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const itemsOnly = model.items || []
     -
       // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay

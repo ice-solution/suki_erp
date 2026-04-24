@@ -212,7 +212,7 @@ body
     - const clientName = client.name || ''
     - const clientAddress = (client.address || '')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const consigneeLine = (model.receiptDisplayName || model.contactPerson || '').trim() || '-'
     - const deliveryAddress = (model.address || '').trim() || clientAddress || ''
     - const itemsOnly = model.items || []
@@ -308,7 +308,7 @@ body
                 th.col-no
                 th.col-content 工程內容
                 th.col-qty 數量 / 單位
-            tbody
+            tbo
               each item, idx in chunk
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'

@@ -290,10 +290,10 @@ html
             div 
               .col.col-7
                 p.strong #{translate('Date')} :
-                p #{moment.utc(model.date).format(dateFormat)}
+                p #{moment(model.date).utcOffset(480).format(dateFormat)}
               .col.col-9
                 p.strong #{translate('Expired Date')} :
-                p #{moment.utc(model.expiredDate).format(dateFormat)}
+                p #{moment(model.expiredDate).utcOffset(480).format(dateFormat)}
               .col.col-8 
                 p.strong #{translate('Number')} :
                 p # #{model.number}/#{model.year || ""}

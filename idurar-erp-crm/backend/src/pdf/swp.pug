@@ -179,7 +179,7 @@ body
           if model.address
         td.info-right
           .info-row 檔案編號 : #{model.invoiceNumber || (model.numberPrefix || 'SWP') + '-' + model.number + '/' + (model.year || '')}
-          .info-row 日期 : #{moment.utc(model.date).format('DD-MM-YYYY')}
+          .info-row 日期 : #{moment(model.date).utcOffset(480).format('DD-MM-YYYY')}
 
   .table-container
     table.items-table

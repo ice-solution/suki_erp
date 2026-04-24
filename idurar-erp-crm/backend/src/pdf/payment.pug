@@ -289,7 +289,7 @@ html
             div 
               .col.col-8
                 p.strong #{translate('Date')} :
-                p #{moment.utc(model.date).format(dateFormat)}
+                p #{moment(model.date).utcOffset(480).format(dateFormat)}
               .col.col-9 
                 p.strong #{translate('Reciept Number')}:
                 p # #{model.number}/#{model.year || ""}

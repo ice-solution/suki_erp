@@ -220,7 +220,7 @@ body
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'SML') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const consigneeLine = (model.receiptDisplayName || model.contactPerson || '').trim() || '-'
     - const deliveryAddress = model.address || clientAddress || ''
     - const itemsOnly = model.items || []

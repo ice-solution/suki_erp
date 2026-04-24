@@ -295,7 +295,7 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
             div 
               .col.col-7
                 p.strong #{translate('Date')} :
-                p #{moment.utc(model.date).format(dateFormat)}
+                p #{moment(model.date).utcOffset(480).format(dateFormat)}
                 p.strong P.O No. :
                 p #{model.poNumber || model.poNo || model.po || ''}
                 p INVOICE: #[span(style='display:inline-block; min-width:140px') &nbsp;]

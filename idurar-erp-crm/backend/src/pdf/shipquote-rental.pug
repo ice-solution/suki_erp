@@ -93,7 +93,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
-    - const docDate = model.date ? moment.utc(model.date).format('DD/MM/YYYY') : ''
+    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const itemsOnly = model.items || []
     -
       // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
@@ -304,7 +304,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
           h4 付款方法
           p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
           h4 報價有效期
-          p #{model.expiredDate ? moment.utc(model.expiredDate).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
+          p #{model.expiredDate ? moment(model.expiredDate).utcOffset(480).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
         .signature-section
           .prepared-by-row
             span.prepared-by-label 制單人：
