@@ -15,7 +15,8 @@ const paginatedList = async (req, res) => {
     .skip(skip)
     .limit(limit)
     .sort({ year: -1, number: 1 })
-    .populate('createdBy', 'name');
+    .populate('createdBy', 'name surname email')
+    .populate('supplier', 'name');
 
   // Counting the total documents
   const countPromise = Model.countDocuments({ removed: false });

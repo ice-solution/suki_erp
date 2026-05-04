@@ -5,6 +5,7 @@ const Model = mongoose.model('Quote');
 const custom = require('@/controllers/pdfController');
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
+const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
 
 const create = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
@@ -31,6 +32,15 @@ const create = async (req, res) => {
   body['total'] = total;
   body['items'] = items;
   body['createdBy'] = req.admin._id;
+
+  const dupCheck = await assertQuoteNumberUnique(Model, body);
+  if (!dupCheck.ok) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: dupCheck.message,
+    });
+  }
 
   // Creating a new document in the collection
   const result = await new Model(body).save();

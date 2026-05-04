@@ -23,6 +23,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
       .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 2px; }
+      .info-row-indent { margin-left: 20px; }
       .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
       .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
       .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
@@ -37,6 +38,9 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
       .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
       .quotation-table td.num { text-align: right; }
+      /* 單筆工程內容極長時允許列跨頁，避免整頁被「不穿頁」撐爆 */
+      .quotation-table tbody tr { page-break-inside: auto; break-inside: auto; }
+      .quotation-table tbody td { page-break-inside: auto; break-inside: auto; vertical-align: top; }
       .summary-wrap { margin-top: 8px; display: flex; justify-content: flex-end; }
       .summary-block { text-align: right; font-size: 10px; }
       .summary-row { margin-bottom: 4px; }
@@ -46,6 +50,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
+      .notes-content { white-space: pre-wrap; word-wrap: break-word; }
       .extra-section { margin-top: 12px; }
       /* 附加項目整段獨立一頁（與主報價表格分開） */
       .rental-page-after-items { page-break-before: always; break-before: page; }
@@ -72,6 +77,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
       .terms-section ol { margin: 0; padding-left: 18px; }
       .terms-section li { margin-bottom: 4px; }
+      .rental-description-content { margin: 4px 0 10px; white-space: pre-wrap; word-break: break-word; }
       .signature-section { margin-top: 12px; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .signature-table td { vertical-align: top; font-size: 10px; }
@@ -92,28 +98,40 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
+    - const clientAddressPdf = (client.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
+    - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
+    - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const itemsOnly = model.items || []
     -
-      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
-      const S_PDF_CHARS_PER_LINE = 24
-      const S_PDF_SAFETY_FACTOR = 1.25
-      const S_PDF_MAX_LINES_PER_PAGE = 30
+      // 吊船租賃 PDF：僅估算 tbody「工程內容」欄；過緊會提早分頁；可用 SHIPQUOTE_PDF_BODY_LINE_CAP 覆寫 tbody 行數上限
+      const capFromEnv = typeof shipPdfBodyLineCap === 'number' && shipPdfBodyLineCap > 0 ? shipPdfBodyLineCap : null
+      const S_PDF_MAX_LINES_PER_PAGE = 26
+      const S_PDF_CHARS_PER_LINE = 34
+      const S_PDF_SAFETY_FACTOR = 1
+      const S_PDF_ROW_PAD = 0
+      const S_PDF_SHIP_PAGE_HEADER_COST = 2
+      const S_PDF_ITEM_BODY_LINE_CAP = capFromEnv != null ? capFromEnv : Math.max(20, S_PDF_MAX_LINES_PER_PAGE - S_PDF_SHIP_PAGE_HEADER_COST)
       function buildItemContentText(item) {
         const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
         const desc = item.description ? ' ' + item.description : ''
         return (name + desc).trim() || '-'
       }
       function estimateItemContentLines(item) {
-        const text = buildItemContentText(item)
+        let text = String(buildItemContentText(item)).replace(/^\s+/, '').replace(/\s+$/, '')
+        if (!text || text === '-') return 1 + S_PDF_ROW_PAD
         let lines = 0
-        const parts = String(text).split(/\r\n|\n|\r/)
+        const parts = text.split(/\r\n|\n|\r/)
         for (let pi = 0; pi < parts.length; pi++) {
           const seg = parts[pi]
+          if (seg.length === 0) {
+            lines += 1
+            continue
+          }
           lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
         }
-        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
+        return Math.max(1, Math.ceil(lines * S_PDF_SAFETY_FACTOR)) + S_PDF_ROW_PAD
       }
       const itemChunks = []
       let curChunk = []
@@ -121,7 +139,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       for (let ii = 0; ii < itemsOnly.length; ii++) {
         const it = itemsOnly[ii]
         const L = estimateItemContentLines(it)
-        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
+        if (curChunk.length > 0 && curLines + L > S_PDF_ITEM_BODY_LINE_CAP) {
           itemChunks.push(curChunk)
           curChunk = []
           curLines = 0
@@ -133,7 +151,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       if (itemChunks.length === 0) itemChunks.push([])
       // 附加項目分頁：避免文字太多把簽署截斷
       const defaultRentalExtras = [
-        { description: '續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}', unitPrice: null },
+        { description: '續租-導向吊船 (GSWP-P1)', unitPrice: null },
         { description: '額外電源線(200米以外部份)', unitPrice: null },
         { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: null },
         { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: null },
@@ -179,7 +197,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
     - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
-      .rental-page(class=pageIndex === itemChunks.length - 1 ? 'rental-page-last' : '')
+      .rental-page
         .rental-page-body
           .supermax-header-banner
             img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
@@ -187,11 +205,13 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
             tr
               td.info-left
                 .info-row TO : #{clientName}
+                .info-row.info-row-indent #{clientAddressPdf || '-'}
+                .info-row 聯絡人：#{contactPersonPdf || '-'}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期 : #{docDate}
+                .info-row 報價日期 : #{docDate}
           .doc-title 導向吊船租賃報價
-          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+          .project-address-line 工程地址：#{projectAddressPdf || '-'}
           table.quotation-table
             thead
               tr
@@ -214,25 +234,45 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 tr
                   td(colspan='5' style='text-align:center') 無項目
           - serialBase += chunk.length
-          if pageIndex === itemChunks.length - 1
-            .summary-wrap
-              .summary-block
-                .summary-row.subtotal
-                  span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                .summary-row
-                  span.summary-label 折扣%：
-                  span.summary-value #{discount}%
-                .summary-row
-                  span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
-                .summary-row.grand
-                  span.summary-label 總金額：
-                  span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
-            .notes-block
-              .notes-content
-                if model.notes
-                  | #{model.notes}
+        unless isPuppeteer
+          .footer-section
+            img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    //- 合計／備註獨立一頁（item 頁僅表格，避免與頁首搶高度導致下一頁錯位或僅剩 End）
+    .rental-page.rental-page-after-items
+      .rental-page-body
+        .supermax-header-banner
+          img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+        table.info-table-ship
+          tr
+            td.info-left
+              .info-row TO : #{clientName}
+              .info-row.info-row-indent #{clientAddressPdf || '-'}
+              .info-row 聯絡人：#{contactPersonPdf || '-'}
+            td.info-right
+              .info-row 報價編號 : #{docNumber}
+              .info-row 報價日期 : #{docDate}
+        .doc-title 導向吊船租賃報價
+        .project-address-line 工程地址：#{projectAddressPdf || '-'}
+        .summary-wrap
+          .summary-block
+            .summary-row.subtotal
+              span.summary-label 合共港幣：
+              span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+            .summary-row
+              span.summary-label 折扣%：
+              span.summary-value #{formatDiscountPct(discount)}%
+            .summary-row
+              span.summary-label 折扣金額：
+              span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+            .summary-row.grand
+              span.summary-label 總金額：
+              span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
+        .notes-block
+          .notes-content
+            if model.notes
+              | #{model.notes}
+      unless isPuppeteer
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
 
@@ -246,11 +286,13 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
             tr
               td.info-left
                 .info-row TO : #{clientName}
+                .info-row.info-row-indent #{clientAddressPdf || '-'}
+                .info-row 聯絡人：#{contactPersonPdf || '-'}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期 : #{docDate}
+                .info-row 報價日期 : #{docDate}
           .doc-title 導向吊船租賃報價
-          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+          .project-address-line 工程地址：#{projectAddressPdf || '-'}
           .extra-section
             .extra-section-block
               table.extra-table
@@ -270,8 +312,9 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                           | #{moneyFormatter({ amount: Number(up), currency_code: currency })}
                         else
                           | -
-          .footer-section
-            img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+          unless isPuppeteer
+            .footer-section
+              img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
 
     //- 租賃說明 + 簽署：固定獨立最後一頁，避免被附加項目擠到截斷
     .rental-page
@@ -282,29 +325,39 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
           tr
             td.info-left
               .info-row TO : #{clientName}
+              .info-row.info-row-indent #{clientAddressPdf || '-'}
+              .info-row 聯絡人：#{contactPersonPdf || '-'}
             td.info-right
               .info-row 報價編號 : #{docNumber}
-              .info-row 日期 : #{docDate}
+              .info-row 報價日期 : #{docDate}
         .doc-title 導向吊船租賃報價
-        .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+        .project-address-line 工程地址：#{projectAddressPdf || '-'}
         .terms-section
           h4 租賃說明
-          ol
-            li 租用價格包括吊船交機及來回運輸費用(不包括離島地區)。
-            li 由確定收到租金起計, 90天後送貨。
-            li 價格第二及三項為消耗品, 恕不提供租用服務。
-            li 租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。
-            li 預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。
-            li 租用期間如因壞機而影響地盤工作, 本公司可恕不負責。
-            li 地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。
-            li 在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。
-            li 租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。
-            li 所有地盤使用人員及第三者保險由租用者負責。
-            li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
+          - const rentalDescCustom = model.rentalDescription && String(model.rentalDescription).trim()
+          if rentalDescCustom
+            .rental-description-content #{rentalDescCustom}
+          else
+            ol
+              li 租用價格包括吊船交機及來回運輸費用(不包括離島地區)。
+              li 由確定收到租金起計, 90天後送貨。
+              li 價格第二及三項為消耗品, 恕不提供租用服務。
+              li 租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。
+              li 預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。
+              li 租用期間如因壞機而影響地盤工作, 本公司可恕不負責。
+              li 地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。
+              li 在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。
+              li 租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。
+              li 所有地盤使用人員及第三者保險由租用者負責。
+              li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
+          - const defaultPdfPayment = '租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。'
+          - const pdfPaymentText = (model.pdfPaymentMethod != null && String(model.pdfPaymentMethod).trim()) ? String(model.pdfPaymentMethod).trim() : defaultPdfPayment
+          - const defaultPdfValidity = model.expiredDate ? moment(model.expiredDate).utcOffset(480).format('DD-MM-YYYY') + ' 或 90天' : '90天'
+          - const pdfValidityText = (model.pdfQuoteValidity != null && String(model.pdfQuoteValidity).trim()) ? String(model.pdfQuoteValidity).trim() : defaultPdfValidity
           h4 付款方法
-          p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
+          p(style='white-space: pre-wrap; word-break: break-word;') #{pdfPaymentText}
           h4 報價有效期
-          p #{model.expiredDate ? moment(model.expiredDate).utcOffset(480).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
+          p(style='white-space: pre-wrap; word-break: break-word;') #{pdfValidityText}
         .signature-section
           .prepared-by-row
             span.prepared-by-label 制單人：
@@ -329,5 +382,6 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   .issuer-stamp
                   .signature-stamp-label 公司簽署及蓋章
         .end-marker End
-      .footer-section
-        img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+      unless isPuppeteer
+        .footer-section
+          img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')

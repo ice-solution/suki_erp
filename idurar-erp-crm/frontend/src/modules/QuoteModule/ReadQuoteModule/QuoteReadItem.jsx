@@ -2,14 +2,13 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select, Checkbox } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select, Checkbox, Space } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
   FilePdfOutlined,
   CloseCircleOutlined,
   RetweetOutlined,
-  MailOutlined,
   ArrowUpOutlined,
 } from '@ant-design/icons';
 
@@ -23,7 +22,6 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 
 import { DOWNLOAD_BASE_URL, API_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
-import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
 import { multilineStyle } from '@/utils/renderMultilineText';
@@ -73,6 +71,30 @@ const Item = ({ item, currentErp }) => {
   );
 };
 
+/** 合併報價單 header（poNumbers / poNumber）與各行項目 poNumber，去重且保留順序 */
+function collectQuotePoNumbers(erp) {
+  const out = [];
+  const push = (v) => {
+    const s = v == null ? '' : String(v).trim();
+    if (s && !out.includes(s)) out.push(s);
+  };
+  if (Array.isArray(erp?.poNumbers)) {
+    erp.poNumbers.forEach(push);
+  }
+  if (erp?.poNumber != null && String(erp.poNumber).trim()) {
+    const raw = String(erp.poNumber).trim();
+    if (raw.includes(',')) {
+      raw.split(',').forEach((x) => push(x));
+    } else {
+      push(raw);
+    }
+  }
+  if (erp?.items?.length) {
+    erp.items.forEach((item) => push(item?.poNumber));
+  }
+  return out;
+}
+
 export default function QuoteReadItem({ config, selectedItem }) {
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
@@ -82,8 +104,6 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const fromProject = location.state?.fromProject;
 
   const { moneyFormatter } = useMoney();
-  const { send, isLoading: mailInProgress } = useMail({ entity });
-
   const { result: currentResult } = useSelector(selectCurrentItem);
 
   const resetErp = {
@@ -113,6 +133,12 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
   const [convertToInvoiceModalVisible, setConvertToInvoiceModalVisible] = useState(false);
   const [selectedItemIndices, setSelectedItemIndices] = useState([]);
+
+  const displayNumber = currentErp?.numberPrefix && currentErp?.number
+    ? `${currentErp.numberPrefix}-${currentErp.number}`
+    : (currentErp?.number != null ? String(currentErp.number) : '-');
+
+  const quotePoLines = collectQuotePoNumbers(currentErp);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -274,102 +300,102 @@ export default function QuoteReadItem({ config, selectedItem }) {
             navigate(`/${entity.toLowerCase()}`);
           }
         }}
-        title={`${ENTITY_NAME} # ${currentErp.number}/${currentErp.year || ''}`}
+        title={`報價單 # ${displayNumber}`}
         ghost={false}
         tags={[
           <Tag key="status" color={currentErp.status === 'draft' ? 'blue' : 'green'}>
             {currentErp.status && translate(currentErp.status)}
           </Tag>,
         ]}
-        extra={[
-          <Button
-            key={`${uniqueId()}`}
-            onClick={() => {
-              if (fromProject) {
-                navigate(-1);
-              } else {
-                navigate(`/${entity.toLowerCase()}`);
-              }
-            }}
-            icon={<CloseCircleOutlined />}
-          >
-            {translate('Close')}
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            onClick={() => {
-              const v = encodeURIComponent(
-                String(currentErp?.modified_at || currentErp?.updated || Date.now())
-              );
-              window.open(
-                `${DOWNLOAD_BASE_URL}${entity}/${entity}-${currentErp._id}.pdf?v=${v}`,
-                '_blank'
-              );
-            }}
-            icon={<FilePdfOutlined />}
-          >
-            {translate('Download PDF')}
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            loading={mailInProgress}
-            onClick={() => {
-              send(currentErp._id);
-            }}
-            icon={<MailOutlined />}
-          >
-            {translate('Send by Email')}
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            onClick={handleConvertToSupplierQuote}
-            loading={convertToSupplierQuoteLoading}
-            icon={<ArrowUpOutlined />}
-            style={{ 
-              display: entity === 'quote' ? 'inline-block' : 'none',
-              backgroundColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
-              borderColor: currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
-              color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
-            }}
-            disabled={currentErp.converted && currentErp.converted.supplierQuote}
-          >
-            {currentErp.converted && currentErp.converted.supplierQuote 
-              ? '已上單' 
-              : '上單'
-            }
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            onClick={handleConvertToInvoice}
-            loading={convertLoading}
-            icon={<RetweetOutlined />}
+        extra={
+          <div
             style={{
-              display: entity === 'quote' ? 'inline-block' : 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: 8,
             }}
           >
-            {currentErp.converted?.invoices?.length > 0
-              ? `轉換成 Invoice (已轉 ${currentErp.converted.invoices.length} 個)`
-              : translate('Convert to Invoice')}
-          </Button>,
-
-          <Button
-            key={`${uniqueId()}`}
-            onClick={() => {
-              dispatch(
-                erp.currentAction({
-                  actionType: 'update',
-                  data: currentErp,
-                })
-              );
-              // 修改這裡：使用table form的編輯URL
-              navigate(`/${entity.toLowerCase()}/table/update/${currentErp._id}`);
-            }}
-            type="primary"
-            icon={<EditOutlined />}
-          >
-            {translate('Edit')}
-          </Button>,
-        ]}
+            <Space wrap size="small">
+              <Button
+                key="quote-close"
+                onClick={() => {
+                  if (fromProject) {
+                    navigate(-1);
+                  } else {
+                    navigate(`/${entity.toLowerCase()}`);
+                  }
+                }}
+                icon={<CloseCircleOutlined />}
+              >
+                {translate('Close')}
+              </Button>
+              <Button
+                key="quote-pdf"
+                onClick={() => {
+                  const v = encodeURIComponent(
+                    String(currentErp?.modified_at || currentErp?.updated || Date.now())
+                  );
+                  window.open(
+                    `${DOWNLOAD_BASE_URL}${entity}/${entity}-${currentErp._id}.pdf?v=${v}`,
+                    '_blank'
+                  );
+                }}
+                icon={<FilePdfOutlined />}
+              >
+                {translate('Download PDF')}
+              </Button>
+            </Space>
+            <Space wrap size="small">
+              <Button
+                key="quote-upload-s"
+                onClick={handleConvertToSupplierQuote}
+                loading={convertToSupplierQuoteLoading}
+                icon={<ArrowUpOutlined />}
+                style={{
+                  display: entity === 'quote' ? 'inline-flex' : 'none',
+                  backgroundColor:
+                    currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+                  borderColor:
+                    currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
+                  color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
+                }}
+                disabled={currentErp.converted && currentErp.converted.supplierQuote}
+              >
+                {currentErp.converted && currentErp.converted.supplierQuote ? '已上單' : '上單'}
+              </Button>
+              <Button
+                key="quote-convert-inv"
+                onClick={handleConvertToInvoice}
+                loading={convertLoading}
+                icon={<RetweetOutlined />}
+                style={{
+                  display: entity === 'quote' ? 'inline-flex' : 'none',
+                }}
+              >
+                {currentErp.converted?.invoices?.length > 0
+                  ? `轉換成 Invoice (已轉 ${currentErp.converted.invoices.length} 個)`
+                  : translate('Convert to Invoice')}
+              </Button>
+              <Button
+                key="quote-edit"
+                onClick={() => {
+                  dispatch(
+                    erp.currentAction({
+                      actionType: 'update',
+                      data: currentErp,
+                    })
+                  );
+                  navigate(`/${entity.toLowerCase()}/table/update/${currentErp._id}`);
+                }}
+                type="primary"
+                icon={<EditOutlined />}
+              >
+                {translate('Edit')}
+              </Button>
+            </Space>
+          </div>
+        }
         style={{
           padding: '20px 0px',
         }}
@@ -429,13 +455,26 @@ export default function QuoteReadItem({ config, selectedItem }) {
       <Descriptions title={translate('Quote Details')}>
         <Descriptions.Item label="Quote Type">{currentErp.numberPrefix}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
-        <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
+        <Descriptions.Item label="日期">{currentErp.date ? dayjs(currentErp.date).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
-        <Descriptions.Item label="Invoice Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson}</Descriptions.Item>
+        <Descriptions.Item label={translate('P.O Number')} span={3}>
+          {quotePoLines.length > 0 ? (
+            <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{quotePoLines.join('\n')}</span>
+          ) : (
+            '-'
+          )}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
+        <Descriptions.Item label="制單人">
+          {currentErp.createdBy
+            ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
+                currentErp.createdBy.email ||
+                '-')
+            : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>

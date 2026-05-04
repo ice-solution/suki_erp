@@ -272,8 +272,8 @@ body
             td(colspan='2') #{translate('SUB TOTAL')}
             td.total #{moneyFormatter({amount:model.subTotal || 0})}
           tr
-            td(colspan='2') #{translate('DISCOUNT')} #{model.discount || 0} %
-            td.total #{moneyFormatter({amount:model.discountTotal || 0})}
+            td(colspan='2') #{translate('DISCOUNT')} #{formatDiscountPct(model.discount || 0)} %
+            td.total #{formatDiscountMoneyForPdf(model.discountTotal || 0, settings)}
           tr
             td.grand.total(colspan='2')  #{translate('TOTAL')} 
             td.grand.total #{moneyFormatter({amount:model.total || 0})}

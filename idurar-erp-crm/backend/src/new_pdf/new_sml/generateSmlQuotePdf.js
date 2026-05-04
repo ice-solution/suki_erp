@@ -14,6 +14,7 @@ const puppeteer = require('puppeteer');
 const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
+const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 
 /** 與 pdfController 一致：SML 報價單 logo */
@@ -82,6 +83,8 @@ async function generateSmlQuotePdfBuffer(model) {
     translate,
     dateFormat,
     moneyFormatter,
+    formatDiscountPct,
+    formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
   });

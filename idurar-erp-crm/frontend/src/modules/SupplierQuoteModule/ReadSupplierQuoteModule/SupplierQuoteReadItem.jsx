@@ -9,7 +9,6 @@ import {
   FilePdfOutlined,
   CloseCircleOutlined,
   RetweetOutlined,
-  MailOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
 
@@ -22,9 +21,17 @@ import { generate as uniqueId } from 'shortid';
 import { selectCurrentItem } from '@/redux/erp/selectors';
 import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
-import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
+import { DOWNLOAD_BASE_URL, BASE_URL, FILE_BASE_URL } from '@/config/serverApiConfig';
+
+/** S 單上傳檔（DN / Invoice）公開 URL：正式環境用 BASE_URL 或 FILE_BASE_URL，勿寫死 localhost */
+function supplierQuoteUploadedFileHref(file) {
+  const name = file?.fileName || (file?.path && String(file.path).split('/').pop());
+  if (!name) return '#';
+  const base = (FILE_BASE_URL && String(FILE_BASE_URL).trim()) || BASE_URL;
+  const root = String(base).endsWith('/') ? String(base) : `${String(base)}/`;
+  return `${root}uploads/supplierquote/${name}`;
+}
 import { useMoney, useDate } from '@/settings';
-import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
 import { multilineStyle } from '@/utils/renderMultilineText';
@@ -78,8 +85,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const fromProject = location.state?.fromProject;
 
   const { moneyFormatter } = useMoney();
-  const { send, isLoading: mailInProgress } = useMail({ entity });
-
   const { result: currentResult } = useSelector(selectCurrentItem);
   const warehouseOptions = useSelector(selectWarehouseOptions);
 
@@ -98,6 +103,10 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const [itemslist, setItemsList] = useState([]);
   const [currentErp, setCurrentErp] = useState(selectedItem ?? resetErp);
   const [client, setClient] = useState({});
+
+  const displayNumber = currentErp?.numberPrefix && currentErp?.number
+    ? `${currentErp.numberPrefix}-${currentErp.number}`
+    : (currentErp?.number != null ? String(currentErp.number) : '-');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -215,7 +224,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             navigate(`/${entity.toLowerCase()}`);
           }
         }}
-        title={`${entity === 'supplierquote' ? (currentErp.numberPrefix || 'S') + '單' : ENTITY_NAME} # ${currentErp.number}/${currentErp.year || ''}`}
+        title={`S單 # ${displayNumber}`}
         ghost={false}
         tags={[
           <Tag key="status" color={currentErp.status === 'draft' ? 'blue' : 'green'}>
@@ -250,16 +259,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             icon={<FilePdfOutlined />}
           >
             {translate('Download PDF')}
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            loading={mailInProgress}
-            onClick={() => {
-              send(currentErp._id);
-            }}
-            icon={<MailOutlined />}
-          >
-            {translate('Send by Email')}
           </Button>,
           <Button
             key={`${uniqueId()}`}
@@ -349,13 +348,19 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
       <Descriptions title={translate('Supplier Quote Details')}>
         <Descriptions.Item label="Supplier Type">{currentErp.numberPrefix && currentErp.numberPrefix !== 'XX' ? currentErp.numberPrefix : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
-        <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
+        <Descriptions.Item label="出貨日期">{currentErp.date ? dayjs(currentErp.date).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="安裝日期">
+          {currentErp.installationDate ? dayjs(currentErp.installationDate).format('YYYY-MM-DD') : '-'}
+        </Descriptions.Item>
+        <Descriptions.Item label="拆卸日期">
+          {currentErp.dismantlingDate ? dayjs(currentErp.dismantlingDate).format('YYYY-MM-DD') : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
         )}
         <Descriptions.Item label="Quote Number">{currentErp.invoiceNumber || '-'}</Descriptions.Item>
-        <Descriptions.Item label="對方Invoice Number">{currentErp.counterpartyInvoiceNumber || '-'}</Descriptions.Item>
+        <Descriptions.Item label="供應商 Invoice Number">{currentErp.counterpartyInvoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label="簽收單聯絡人">{currentErp.contactPerson || '-'}</Descriptions.Item>
         <Descriptions.Item label="簽收單收貨人地址">
           <span style={{ whiteSpace: 'pre-wrap' }}>{currentErp.receiver || '-'}</span>
@@ -380,6 +385,13 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
           </Descriptions.Item>
         )}
+        <Descriptions.Item label="制單人">
+          {currentErp.createdBy
+            ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
+                currentErp.createdBy.email ||
+                '-')
+            : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>
@@ -406,7 +418,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
               {currentErp.dmFiles.map((file, index) => (
                 <div key={index} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Tag style={{ marginBottom: 0 }}>
-                    <a href={`http://localhost:8888/uploads/supplierquote/${file.fileName || file.path?.split('/').pop()}`} target="_blank" rel="noopener noreferrer">
+                    <a href={supplierQuoteUploadedFileHref(file)} target="_blank" rel="noopener noreferrer">
                       {decodeFileName(file.name)}
                     </a>
                   </Tag>
@@ -431,7 +443,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
               {currentErp.invoiceFiles.map((file, index) => (
                 <div key={index} style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Tag style={{ marginBottom: 0 }}>
-                    <a href={`http://localhost:8888/uploads/supplierquote/${file.fileName || file.path?.split('/').pop()}`} target="_blank" rel="noopener noreferrer">
+                    <a href={supplierQuoteUploadedFileHref(file)} target="_blank" rel="noopener noreferrer">
                       {decodeFileName(file.name)} ({file.fileType?.toUpperCase()})
                     </a>
                   </Tag>

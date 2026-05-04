@@ -31,6 +31,13 @@ export default function Project() {
       dataIndex: 'invoices',
       key: 'quoteNumber',
       render: (_, record) => {
+        // 列表以 Project.invoiceNumber（關聯單號）為準，與專案詳情一致；避免仍顯示尚未同步的舊單據號碼
+        const projectQuoteNo =
+          record?.invoiceNumber != null && String(record.invoiceNumber).trim() !== ''
+            ? String(record.invoiceNumber).trim()
+            : '';
+        if (projectQuoteNo) return projectQuoteNo;
+
         const acceptedShip = (record?.shipQuotations || []).find((q) => q?.isCompleted === true);
         if (acceptedShip) {
           if (acceptedShip.invoiceNumber) return acceptedShip.invoiceNumber;
@@ -47,8 +54,7 @@ export default function Project() {
           }
         }
 
-        // Project.invoiceNumber 在此頁面實際上也存的是 Quote Number
-        return record?.invoiceNumber || '-';
+        return '-';
       },
     },
     {

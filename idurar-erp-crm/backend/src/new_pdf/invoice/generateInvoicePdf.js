@@ -14,6 +14,7 @@ const puppeteer = require('puppeteer');
 const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
+const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const {
   buildStandardQuoteFooterTemplate,
   buildSuperMaxImageFooterTemplate,
@@ -84,6 +85,8 @@ async function generateInvoicePdfBuffer(model) {
     translate,
     dateFormat,
     moneyFormatter,
+    formatDiscountPct,
+    formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
   });

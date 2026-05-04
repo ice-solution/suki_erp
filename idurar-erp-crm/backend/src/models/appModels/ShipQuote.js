@@ -16,6 +16,12 @@ const shipQuoteSchema = new mongoose.Schema({
       type: mongoose.Schema.ObjectId,
       ref: 'Invoice',
     },
+    invoices: [
+      {
+        type: mongoose.Schema.ObjectId,
+        ref: 'Invoice',
+      },
+    ],
     supplierQuote: {
       type: mongoose.Schema.ObjectId,
       ref: 'SupplierQuote',
@@ -169,6 +175,21 @@ const shipQuoteSchema = new mongoose.Schema({
       unitPrice: { type: Number },
     },
   ],
+  /** 吊船租賃 PDF「租賃說明」正文（多行；空則 PDF 用內建條款列表） */
+  rentalDescription: {
+    type: String,
+    default: '',
+  },
+  /** 租賃 PDF「付款方法」段落（空字串或未存則 PDF 用內建預設句） */
+  pdfPaymentMethod: {
+    type: String,
+    default: '',
+  },
+  /** 租賃 PDF「報價有效期」段落（空則依 expiredDate + 內建邏輯；有值則整段以自訂為準） */
+  pdfQuoteValidity: {
+    type: String,
+    default: '',
+  },
   status: {
     type: String,
     enum: ['draft', 'pending', 'sent', 'accepted', 'declined', 'cancelled', 'on hold'],

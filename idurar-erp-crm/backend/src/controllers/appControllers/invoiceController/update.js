@@ -120,7 +120,9 @@ const update = async (req, res) => {
   let invoiceNumberSync = null;
   if (oldQuoteNo && newQuoteNo && oldQuoteNo !== newQuoteNo) {
     try {
-      const syncedCounts = await syncInvoiceNumberAcrossDocuments(oldQuoteNo, newQuoteNo);
+      const syncedCounts = await syncInvoiceNumberAcrossDocuments(oldQuoteNo, newQuoteNo, {
+        excludeInvoiceId: req.params.id,
+      });
       let projectSynced = false;
       if (previousInvoice.project) {
         projectSynced = await syncProjectInvoiceNumberIfMatched(

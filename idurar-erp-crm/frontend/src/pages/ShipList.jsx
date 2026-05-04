@@ -49,19 +49,28 @@ export default function ShipList() {
   };
   const deleteModalLabels = ['registrationNumber'];
 
-  // 存儲 supplierNumber -> { id, address, invoiceNumber } 的映射
+  // 存儲 supplierNumber -> { id, address, invoiceNumber, installationDate, dismantlingDate } 的映射
   const [supplierQuoteMap, setSupplierQuoteMap] = useState({});
 
-  // 根據 supplierNumber 查找 SupplierQuote 的 _id、address、invoiceNumber（Quote Number）
+  const isSupplierQuoteCacheComplete = (c) =>
+    c &&
+    typeof c === 'object' &&
+    Object.prototype.hasOwnProperty.call(c, 'installationDate') &&
+    Object.prototype.hasOwnProperty.call(c, 'dismantlingDate');
+
+  // 根據 supplierNumber 查找 SupplierQuote（含裝拆日期）
   const findSupplierQuoteInfo = async (supplierNumber) => {
     if (!supplierNumber) return null;
     const cached = supplierQuoteMap[supplierNumber];
-    if (cached) return typeof cached === 'object' ? cached : { id: cached, address: null, invoiceNumber: null };
+    if (isSupplierQuoteCacheComplete(cached)) return cached;
 
     try {
       const response = await request.search({
         entity: 'supplierquote',
-        options: { q: supplierNumber, fields: 'numberPrefix,number,address,invoiceNumber' }
+        options: {
+          q: supplierNumber,
+          fields: 'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate',
+        },
       });
 
       if (response.success && response.result && response.result.length > 0) {
@@ -75,6 +84,8 @@ export default function ShipList() {
             id: matchedQuote._id,
             address: matchedQuote.address || null,
             invoiceNumber: matchedQuote.invoiceNumber || null,
+            installationDate: matchedQuote.installationDate || null,
+            dismantlingDate: matchedQuote.dismantlingDate || null,
           };
           setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
           return info;
@@ -136,7 +147,8 @@ export default function ShipList() {
           return '-';
         }
         const info = supplierQuoteMap[supplierNumber];
-        const quoteId = typeof info === 'object' ? info?.id : info;
+        const quoteId =
+          info && typeof info === 'object' ? info.id : typeof info === 'string' ? info : null;
         if (quoteId) {
           return (
             <Link
@@ -166,8 +178,9 @@ export default function ShipList() {
           return '-';
         }
         const info = supplierQuoteMap[supplierNumber];
-        const invoiceNumber = typeof info === 'object' ? info?.invoiceNumber : null;
-        if (invoiceNumber) return invoiceNumber;
+        if (isSupplierQuoteCacheComplete(info)) {
+          return info.invoiceNumber || '-';
+        }
         findSupplierQuoteInfo(supplierNumber);
         return '-';
       },
@@ -183,8 +196,43 @@ export default function ShipList() {
           return '-';
         }
         const info = supplierQuoteMap[supplierNumber];
-        const address = typeof info === 'object' ? info?.address : null;
-        if (address) return address;
+        if (isSupplierQuoteCacheComplete(info)) {
+          return info.address || '-';
+        }
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
+      },
+    });
+
+    // 裝拆日期（來自目前綁定之 S 單）
+    baseColumns.push({
+      title: '安裝日期',
+      dataIndex: 'supplierNumber',
+      key: 'installationDate',
+      width: 120,
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') return '-';
+        const info = supplierQuoteMap[supplierNumber];
+        if (isSupplierQuoteCacheComplete(info)) {
+          const d = info.installationDate;
+          return d ? dayjs(d).format(dateFormat) : '-';
+        }
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
+      },
+    });
+    baseColumns.push({
+      title: '拆卸日期',
+      dataIndex: 'supplierNumber',
+      key: 'dismantlingDate',
+      width: 120,
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') return '-';
+        const info = supplierQuoteMap[supplierNumber];
+        if (isSupplierQuoteCacheComplete(info)) {
+          const d = info.dismantlingDate;
+          return d ? dayjs(d).format(dateFormat) : '-';
+        }
         findSupplierQuoteInfo(supplierNumber);
         return '-';
       },

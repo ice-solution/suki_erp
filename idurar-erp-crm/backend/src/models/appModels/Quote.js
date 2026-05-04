@@ -52,6 +52,8 @@ const quoteSchema = new mongoose.Schema({
   poNumber: {
     type: String,
   },
+  /** 表單多個 P.O（與 items[].poNumber 並存；read / 報表用） */
+  poNumbers: [{ type: String }],
   contactPerson: {
     type: String,
   },

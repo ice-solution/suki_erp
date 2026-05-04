@@ -30,6 +30,44 @@ function setDynamicPdfCacheHeaders(res) {
   } catch (_) {}
 }
 
+function sanitizeFilenamePart(input) {
+  if (input == null) return '';
+  return String(input)
+    .trim()
+    // Windows/macOS 常見非法字元
+    .replace(/[\\/:*?"<>|]/g, '-')
+    // 連續空白壓縮
+    .replace(/\s+/g, ' ')
+    // 避免空字串
+    .trim();
+}
+
+/**
+ * 下載檔名：以 type-number 命名（不影響既有 URL）
+ * 例：Quote => SML-0499962.pdf；Invoice => SMI-123.pdf
+ */
+function buildDownloadFilename(modelName, result) {
+  const name = String(modelName || '').toLowerCase();
+  const prefix = sanitizeFilenamePart(result?.numberPrefix || '');
+  const number = sanitizeFilenamePart(result?.number || '');
+
+  // 主要單據類型：優先用 numberPrefix-number
+  if (prefix && number) {
+    return `${prefix}-${number}.pdf`;
+  }
+
+  // 向後相容：部分資料可能用 invoiceNumber 作為顯示單號
+  const invoiceNumber = sanitizeFilenamePart(result?.invoiceNumber || '');
+  if (invoiceNumber) {
+    return `${invoiceNumber}.pdf`;
+  }
+
+  // 後備：至少給一個穩定檔名
+  const id = sanitizeFilenamePart(result?._id || '');
+  if (id) return `${name || 'document'}-${id}.pdf`;
+  return `${name || 'document'}.pdf`;
+}
+
 module.exports = downloadPdf = async (req, res, { directory, id }) => {
   try {
     // 處理特殊模型名稱映射
@@ -101,6 +139,7 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
       setDynamicPdfCacheHeaders(res);
 
       const fileId = modelName.toLowerCase() + '-' + result._id + '.pdf';
+      const downloadFilename = buildDownloadFilename(modelName, result);
       const folderPath = modelName.toLowerCase();
       const targetLocation = `src/public/download/${folderPath}/${fileId}`;
 
@@ -108,7 +147,7 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
         const puppeteerBuffer = await tryGenerateQuotePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
           res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
           return res.send(puppeteerBuffer);
         }
       }
@@ -117,7 +156,7 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
         const puppeteerBuffer = await tryGenerateSupplierQuotePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
           res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
           return res.send(puppeteerBuffer);
         }
       }
@@ -126,7 +165,7 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
         const puppeteerBuffer = await tryGenerateShipQuotePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
           res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
           return res.send(puppeteerBuffer);
         }
       }
@@ -135,7 +174,7 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
         const puppeteerBuffer = await tryGenerateInvoicePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
           res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
           return res.send(puppeteerBuffer);
         }
       }
@@ -143,7 +182,7 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
       // fallback：用 html-pdf 直接產生 buffer，避免讀寫磁碟而被誤判「舊檔」
       const buffer = await custom.generatePdfBuffer(modelName, { format: 'A4' }, result);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${fileId}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
       return res.send(buffer);
     } else {
       return res.status(404).json({

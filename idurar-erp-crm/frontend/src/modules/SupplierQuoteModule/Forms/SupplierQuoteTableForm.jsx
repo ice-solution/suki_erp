@@ -591,7 +591,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           ? Number(currentTotal)
           : Number.parseFloat((subVal - (subVal * (discount / 100))).toFixed(2));
         const supplierId = current.supplier?._id || current.supplier || undefined;
-        form.setFieldsValue({ 
+        const dateVal = current.date ? dayjs(current.date) : undefined;
+        const expiredVal = current.expiredDate ? dayjs(current.expiredDate) : undefined;
+        form.setFieldsValue({
           items: currentItems,
           materials: currentMaterials,
           clients: clientIds,
@@ -601,6 +603,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           ship: currentShip ? (currentShip._id || currentShip) : null,
           winch: currentWinch ? (currentWinch._id || currentWinch) : null,
           renewalQuoteNumber: current?.renewalQuoteNumber,
+          date: dateVal,
+          openDate: dateVal,
+          expiredDate: expiredVal,
+          installationDate: current.installationDate ? dayjs(current.installationDate) : undefined,
+          dismantlingDate: current.dismantlingDate ? dayjs(current.dismantlingDate) : undefined,
           subTotal: subVal,
           total: totalVal,
         });
@@ -1394,7 +1401,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                   style={{ width: '100%' }}
                   format={dateFormat}
                   onChange={(value) => {
-                    // 確保「上單日期」與「開單日期」顯示相同
+                    // 確保「上單日期」與「出貨日期」一致
                     form.setFieldsValue({ openDate: value });
                   }}
                 />
@@ -1403,7 +1410,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <Col className="gutter-row" span={6}>
               <Form.Item
                 name="openDate"
-                label="開單日期"
+                label="出貨日期"
                 rules={[{ required: false }]}
                 initialValue={current?.date ? dayjs(current.date) : undefined}
               >
@@ -1411,7 +1418,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                   style={{ width: '100%' }}
                   format={dateFormat}
                   onChange={(value) => {
-                    // 允許使用者直接改「開單日期」，同步更新到「上單日期」
+                    // 直接改「出貨日期」，同步更新「上單日期」
                     form.setFieldsValue({ date: value, openDate: value });
                   }}
                 />
@@ -1441,7 +1448,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <Col className="gutter-row" span={12}>
               <Form.Item
                 name="date"
-                label={translate('Date')}
+                label="出貨日期"
                 rules={[
                   {
                     required: true,
@@ -1468,6 +1475,19 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             </Col>
           </>
         )}
+      </Row>
+
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={12}>
+          <Form.Item name="installationDate" label="安裝日期" rules={[{ required: false }]}>
+            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="安裝日期（選填）" />
+          </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={12}>
+          <Form.Item name="dismantlingDate" label="拆卸日期" rules={[{ required: false }]}>
+            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="拆卸日期（選填）" />
+          </Form.Item>
+        </Col>
       </Row>
       
       <Row gutter={[12, 0]}>
@@ -1500,8 +1520,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label="對方Invoice Number" name="counterpartyInvoiceNumber">
-            <Input placeholder="對方Invoice Number（選填）" />
+          <Form.Item label="供應商 Invoice Number" name="counterpartyInvoiceNumber">
+            <Input placeholder="供應商 Invoice Number（選填）" />
           </Form.Item>
         </Col>
       </Row>

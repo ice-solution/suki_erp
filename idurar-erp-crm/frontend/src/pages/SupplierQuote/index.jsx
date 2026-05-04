@@ -53,22 +53,43 @@ export default function SupplierQuote() {
       },
     },
     {
-      title: translate('Date'),
+      title: translate('suppliers'),
+      dataIndex: 'supplier',
+      width: 160,
+      ellipsis: true,
+      render: (_, record) => record.supplier?.name || '-',
+    },
+    {
+      title: '出貨日期',
       dataIndex: 'date',
       width: 110,
       ellipsis: false,
-      render: (date) => dayjs(date).format(dateFormat),
+      render: (date) => (date ? dayjs(date).format(dateFormat) : '-'),
+    },
+    {
+      title: '安裝日期',
+      dataIndex: 'installationDate',
+      width: 110,
+      ellipsis: false,
+      render: (d) => (d ? dayjs(d).format(dateFormat) : '-'),
+    },
+    {
+      title: '拆卸日期',
+      dataIndex: 'dismantlingDate',
+      width: 110,
+      ellipsis: false,
+      render: (d) => (d ? dayjs(d).format(dateFormat) : '-'),
     },
     {
       title: '制單人',
-      dataIndex: 'updatedBy',
+      dataIndex: 'createdBy',
       width: 150,
       ellipsis: false,
       render: (_, record) => {
-        const u = record.updatedBy || record.createdBy;
-        if (!u) return '-';
-        const name = (u.name || '') + (u.surname ? ` ${u.surname}` : '');
-        return name.trim() || u.email || '-';
+        const u = record.createdBy;
+        if (!u || typeof u !== 'object') return '-';
+        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
+        return name || u.email || '-';
       },
     },
     {

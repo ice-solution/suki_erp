@@ -12,6 +12,7 @@ const read = async (req, res) => {
     .populate('updatedBy', 'name surname email')
     .populate('ship', 'registrationNumber status supplierNumber')
     .populate('winch', 'serialNumber status supplierNumber')
+    .populate('supplier', 'name')
     .exec();
   // If no results found, return document not found
   if (!result) {

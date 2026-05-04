@@ -24,7 +24,9 @@ const schema = Joi.object({
         _id: Joi.alternatives().try(Joi.string(), Joi.object()).optional(),
         paymentStatus: Joi.string().valid('unpaid', 'paid').optional(),
         paymentDueDate: Joi.date().allow(null, '').optional(),
-        paymentTerms: Joi.string().valid('即時付款', '一個月', '兩個月', '三個月').optional(),
+        paymentTerms: Joi.string()
+          .valid('30日', '60日', '90日', '自訂', '即時付款', '一個月', '兩個月', '三個月')
+          .optional(),
         credit: Joi.number().min(0).optional(),
         paidDate: Joi.date().allow(null, '').optional(),
       })

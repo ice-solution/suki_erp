@@ -5,6 +5,7 @@ const Model = mongoose.model('Quote');
 const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
+const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
 
 const update = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
@@ -46,6 +47,23 @@ const update = async (req, res) => {
   body.modified_at = now;
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+
+  const existingTypeDoc = await Model.findOne({ _id: req.params.id, removed: false })
+    .select('type')
+    .lean();
+  const bodyForDup = {
+    ...body,
+    type: body.type != null && body.type !== '' ? body.type : existingTypeDoc?.type,
+  };
+  const dupCheck = await assertQuoteNumberUnique(Model, bodyForDup, req.params.id);
+  if (!dupCheck.ok) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: dupCheck.message,
+    });
+  }
+
   // Find document by id and updates with the required fields
 
   const result = await Model.findOneAndUpdate({ _id: req.params.id, removed: false }, body, {

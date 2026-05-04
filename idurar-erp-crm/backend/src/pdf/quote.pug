@@ -75,14 +75,16 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const displayName = client.name || ''
-    - const docNumber = (model.numberPrefix || 'QU') + model.number
+    //- 檔案編號：numberPrefix（報價單類型前綴）+ number，不使用 invoiceNumber 關聯單號
+    - var pdfNum = model.number != null ? String(model.number).trim() : ''
+    - const docNumber = (model.numberPrefix || 'QU') + pdfNum
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD-MM-YYYY') : ''
     - const itemsOnly = model.items || []
     -
       // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
       const S_PDF_CHARS_PER_LINE = 24
       const S_PDF_SAFETY_FACTOR = 1.25
-      const S_PDF_MAX_LINES_PER_PAGE = 20
+      const S_PDF_MAX_LINES_PER_PAGE = 30
       function buildItemContentText(item) {
         const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
         const desc = item.description ? ' ' + item.description : ''
@@ -178,10 +180,10 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
                 .summary-row
                   span.summary-label 折扣%：
-                  span.summary-value #{discount}%
+                  span.summary-value #{formatDiscountPct(discount)}%
                 .summary-row
                   span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
+                  span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row.grand
                   span.summary-label 總金額：
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}

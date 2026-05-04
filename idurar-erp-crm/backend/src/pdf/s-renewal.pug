@@ -283,8 +283,7 @@ body
                 .info-row 日期 : #{docDate}
                 .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
                 .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
-                .info-row INVOICE: 
-                  span(style='display:inline-block; min-width:75px') &nbsp;
+                .info-row 供應商 Invoice No.: #{model.counterpartyInvoiceNumber || ''}
             if model.shipType
               tr
                 td.info-left
@@ -325,10 +324,10 @@ body
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
                 .summary-row
                   span.summary-label 折扣%：
-                  span.summary-value #{discount}%
+                  span.summary-value #{formatDiscountPct(discount)}%
                 .summary-row
                   span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
+                  span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row.grand
                   span.summary-label 總金額：
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}

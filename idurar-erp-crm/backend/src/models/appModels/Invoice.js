@@ -101,11 +101,15 @@ const invoiceSchema = new mongoose.Schema({
   converted: {
     from: {
       type: String,
-      enum: ['quote', 'offer'],
+      enum: ['quote', 'offer', 'shipQuote'],
     },
     quote: {
       type: mongoose.Schema.ObjectId,
       ref: 'Quote',
+    },
+    shipQuote: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'ShipQuote',
     },
   },
 
@@ -171,10 +175,11 @@ const invoiceSchema = new mongoose.Schema({
     // 已付款日期（手動填寫）
     type: Date,
   },
-  paymentTerms: { // 付款條款
+  paymentTerms: {
+    // 一／二／三個月：僅相容舊 DB，新單請用 30／60／90 日
     type: String,
-    enum: ['即時付款', '一個月', '兩個月', '三個月'],
-    default: '一個月',
+    enum: ['30日', '60日', '90日', '自訂', '即時付款', '一個月', '兩個月', '三個月'],
+    default: '30日',
   },
   /**
    * 付款資料（可多筆；用於取代單一 paymentStatus/paymentDueDate/paymentTerms/credit/paidDate）
@@ -192,8 +197,8 @@ const invoiceSchema = new mongoose.Schema({
       },
       paymentTerms: {
         type: String,
-        enum: ['即時付款', '一個月', '兩個月', '三個月'],
-        default: '一個月',
+        enum: ['30日', '60日', '90日', '自訂', '即時付款', '一個月', '兩個月', '三個月'],
+        default: '30日',
       },
       credit: {
         type: Number,

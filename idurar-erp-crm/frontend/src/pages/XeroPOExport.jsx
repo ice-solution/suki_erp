@@ -41,7 +41,8 @@ export default function XeroPOExport() {
 
       const materials = po.materials || [];
       for (const row of materials) {
-        const description = row.itemName || '';
+        // Xero PO：Description 使用「供應商 invoice number」
+        const description = po.counterpartyInvoiceNumber || '';
         const quantity = row.quantity != null ? row.quantity : 0;
         const unitAmount = row.unitPrice != null ? row.unitPrice : (row.price != null ? row.price : 0);
 

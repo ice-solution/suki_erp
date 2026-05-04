@@ -172,6 +172,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
       .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 2px; }
+      .info-row-indent { margin-left: 20px; }
       .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
       .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
       .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
@@ -186,6 +187,8 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
       .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
       .quotation-table td.num { text-align: right; }
+      .quotation-table tbody tr { page-break-inside: auto; break-inside: auto; }
+      .quotation-table tbody td { page-break-inside: auto; break-inside: auto; vertical-align: top; }
       .summary-wrap { margin-top: 8px; display: flex; justify-content: flex-end; }
       .summary-block { text-align: right; font-size: 10px; }
       .summary-row { margin-bottom: 4px; }
@@ -195,6 +198,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
+      .notes-content { white-space: pre-wrap; word-wrap: break-word; }
       .signature-section { margin-top: 12px; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .signature-table td { vertical-align: top; font-size: 10px; }
@@ -210,31 +214,47 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-renewal' : '')
       .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
       .sig-label { display: inline-block; width: 54px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
-body
+    if isPuppeteer
+      style.
+        /* Puppeteer：頁尾由 page.pdf footerTemplate 繪製，勿再輸出內嵌 footer（避免雙重頁尾） */
+        html.puppeteer-ship-quote-renewal .footer-section { display: none !important; }
+  body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
+    - const clientAddressPdf = (client.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
+    - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
+    - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'SML') + '-' + model.number + '/' + (model.year || '')
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const itemsOnly = model.items || []
     -
-      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
-      const S_PDF_CHARS_PER_LINE = 24
-      const S_PDF_SAFETY_FACTOR = 1.25
-      const S_PDF_MAX_LINES_PER_PAGE = 30
+      // 吊船續租 PDF：tbody 估算須預扣頁首／表頭；可用環境變數 SHIPQUOTE_PDF_BODY_LINE_CAP 覆寫 tbody 行數上限
+      const capFromEnv = typeof shipPdfBodyLineCap === 'number' && shipPdfBodyLineCap > 0 ? shipPdfBodyLineCap : null
+      const S_PDF_MAX_LINES_PER_PAGE = 26
+      const S_PDF_CHARS_PER_LINE = 34
+      const S_PDF_SAFETY_FACTOR = 1
+      const S_PDF_ROW_PAD = 0
+      const S_PDF_SHIP_PAGE_HEADER_COST = 2
+      const S_PDF_ITEM_BODY_LINE_CAP = capFromEnv != null ? capFromEnv : Math.max(20, S_PDF_MAX_LINES_PER_PAGE - S_PDF_SHIP_PAGE_HEADER_COST)
       function buildItemContentText(item) {
         const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
         const desc = item.description ? ' ' + item.description : ''
         return (name + desc).trim() || '-'
       }
       function estimateItemContentLines(item) {
-        const text = buildItemContentText(item)
+        let text = String(buildItemContentText(item)).replace(/^\s+/, '').replace(/\s+$/, '')
+        if (!text || text === '-') return 1 + S_PDF_ROW_PAD
         let lines = 0
-        const parts = String(text).split(/\r\n|\n|\r/)
+        const parts = text.split(/\r\n|\n|\r/)
         for (let pi = 0; pi < parts.length; pi++) {
           const seg = parts[pi]
+          if (seg.length === 0) {
+            lines += 1
+            continue
+          }
           lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
         }
-        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
+        return Math.max(1, Math.ceil(lines * S_PDF_SAFETY_FACTOR)) + S_PDF_ROW_PAD
       }
       const itemChunks = []
       let curChunk = []
@@ -242,7 +262,7 @@ body
       for (let ii = 0; ii < itemsOnly.length; ii++) {
         const it = itemsOnly[ii]
         const L = estimateItemContentLines(it)
-        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
+        if (curChunk.length > 0 && curLines + L > S_PDF_ITEM_BODY_LINE_CAP) {
           itemChunks.push(curChunk)
           curChunk = []
           curLines = 0
@@ -260,7 +280,7 @@ body
     - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
-      .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
+      .sml-page
         .sml-page-body
           .supermax-header-banner
             img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
@@ -268,11 +288,13 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
+                .info-row.info-row-indent #{clientAddressPdf || '-'}
+                .info-row 聯絡人：#{contactPersonPdf || '-'}
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期 : #{docDate}
+                .info-row 報價日期 : #{docDate}
           .doc-title 導向吊船續租報價
-          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+          .project-address-line 工程地址：#{projectAddressPdf || '-'}
           table.quotation-table
             thead
               tr
@@ -295,47 +317,65 @@ body
                 tr
                   td(colspan='5' style='text-align:center') 無項目
           - serialBase += chunk.length
-          if pageIndex === itemChunks.length - 1
-            .summary-wrap
-              .summary-block
-                .summary-row.subtotal
-                  span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                .summary-row
-                  span.summary-label 折扣%：
-                  span.summary-value #{discount}%
-                .summary-row
-                  span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
-                .summary-row.grand
-                  span.summary-label 總金額：
-                  span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
-            .notes-block
-              .notes-content
-                if model.notes
-                  | #{model.notes}
-            .signature-section
-              .prepared-by-row
-                //- 刪除「制單人」文字，但保留相同高度/空間避免簽署區上移
-                span.prepared-by-space
-              table.signature-table
-                tr
-                  td.sig-left
-                    .issuer-block
-                      //- 保留空間，避免右欄位往左/往上擠
-                      .issuer-name-line &nbsp;
-                      .issuer-name-line &nbsp;
-                      .issuer-stamp
-                      .signature-stamp-label &nbsp;
-                  td.sig-right
-                    .issuer-block
-                      .issuer-name-line 裝箱方式:
-                      .issuer-name-line
-                        span.sig-label 簽收人:
-                        span.fill-line
-                      .issuer-name-line
-                        span.sig-label 日期
-                        span.fill-line
-            .end-marker End
+        unless isPuppeteer
+          .footer-section
+            img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    //- 合計／簽署獨立一頁（避免與最後一頁 item 疊加穿出或 End 單獨落一頁）
+    .sml-page.sml-page-last
+      .sml-page-body
+        .supermax-header-banner
+          img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+        table.info-table-ship
+          tr
+            td.info-left
+              .info-row TO : #{clientName}
+              .info-row.info-row-indent #{clientAddressPdf || '-'}
+              .info-row 聯絡人：#{contactPersonPdf || '-'}
+            td.info-right
+              .info-row 報價編號 : #{docNumber}
+              .info-row 報價日期 : #{docDate}
+        .doc-title 導向吊船續租報價
+        .project-address-line 工程地址：#{projectAddressPdf || '-'}
+        .summary-wrap
+          .summary-block
+            .summary-row.subtotal
+              span.summary-label 合共港幣：
+              span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+            .summary-row
+              span.summary-label 折扣%：
+              span.summary-value #{formatDiscountPct(discount)}%
+            .summary-row
+              span.summary-label 折扣金額：
+              span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+            .summary-row.grand
+              span.summary-label 總金額：
+              span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
+        .notes-block
+          .notes-content
+            if model.notes
+              | #{model.notes}
+        .signature-section
+          .prepared-by-row
+            span.prepared-by-space
+          table.signature-table
+            tr
+              td.sig-left
+                .issuer-block
+                  .issuer-name-line &nbsp;
+                  .issuer-name-line &nbsp;
+                  .issuer-stamp
+                  .signature-stamp-label &nbsp;
+              td.sig-right
+                .issuer-block
+                  .issuer-name-line 裝箱方式:
+                  .issuer-name-line
+                    span.sig-label 簽收人:
+                    span.fill-line
+                  .issuer-name-line
+                    span.sig-label 日期
+                    span.fill-line
+        .end-marker End
+      unless isPuppeteer
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')

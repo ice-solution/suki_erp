@@ -326,10 +326,10 @@ body
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
                 .summary-row
                   span.summary-label 折扣%：
-                  span.summary-value #{discount}%
+                  span.summary-value #{formatDiscountPct(discount)}%
                 .summary-row
                   span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
+                  span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row
                   span.summary-label #{projectPercentageLabel}：
                   span.summary-value #{projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage + '%' : '—'}

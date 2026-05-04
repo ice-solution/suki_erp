@@ -219,7 +219,9 @@ body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
     - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
-    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number
+    //- 報價編號：numberPrefix（報價單類型前綴）+ number，不使用 invoiceNumber 關聯單號
+    - var pdfNum = model.number != null ? String(model.number).trim() : ''
+    - const docNumber = (model.numberPrefix || 'S') + '-' + pdfNum
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
     - const deliveryAddress = model.address || clientAddress || ''
@@ -321,10 +323,10 @@ body
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
                 .summary-row
                   span.summary-label 折扣%：
-                  span.summary-value #{discount}%
+                  span.summary-value #{formatDiscountPct(discount)}%
                 .summary-row
                   span.summary-label 折扣金額：
-                  span.summary-value #{moneyFormatter({ amount: discountTotal, currency_code: currency })}
+                  span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row.grand
                   span.summary-label 總金額：
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}

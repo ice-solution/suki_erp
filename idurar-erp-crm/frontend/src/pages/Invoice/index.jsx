@@ -66,14 +66,14 @@ export default function Invoice() {
     },
     {
       title: '制單人',
-      dataIndex: 'updatedBy',
+      dataIndex: 'createdBy',
       width: 150,
       ellipsis: false,
       render: (_, record) => {
-        const u = record.updatedBy || record.createdBy;
-        if (!u) return '-';
-        const name = (u.name || '') + (u.surname ? ` ${u.surname}` : '');
-        return name.trim() || u.email || '-';
+        const u = record.createdBy;
+        if (!u || typeof u !== 'object') return '-';
+        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
+        return name || u.email || '-';
       },
     },
     {

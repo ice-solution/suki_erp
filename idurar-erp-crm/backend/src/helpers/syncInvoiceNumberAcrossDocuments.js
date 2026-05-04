@@ -4,8 +4,12 @@ const mongoose = require('mongoose');
  * 當「Quote Number / 關聯單號」字串變更時，與 project 更新邏輯一致：
  * 同步更新 Quote、SupplierQuote、ShipQuote、Invoice 上對應的 invoiceNumber。
  * 須在更新當前 Invoice 主檔之前呼叫，以便 updateMany 仍以舊字串命中。
+ *
+ * @param {object} [options]
+ * @param {string} [options.excludeInvoiceId] — 若由 invoiceController/update 呼叫，請傳目前發票 _id，
+ *   避免 updateMany 先改寫本筆發票後，專案同步失敗時出現「第一次 500、第二次卻成功」的半套狀態。
  */
-async function syncInvoiceNumberAcrossDocuments(oldInvoiceNumber, newInvoiceNumber) {
+async function syncInvoiceNumberAcrossDocuments(oldInvoiceNumber, newInvoiceNumber, options = {}) {
   const old = oldInvoiceNumber != null ? String(oldInvoiceNumber).trim() : '';
   const neu = newInvoiceNumber != null ? String(newInvoiceNumber).trim() : '';
   if (!old || !neu || old === neu) {
@@ -16,6 +20,9 @@ async function syncInvoiceNumberAcrossDocuments(oldInvoiceNumber, newInvoiceNumb
       invoices: 0,
     };
   }
+
+  const excludeInvoiceId =
+    options && options.excludeInvoiceId != null ? String(options.excludeInvoiceId).trim() : '';
 
   const Quote = mongoose.model('Quote');
   const SupplierQuote = mongoose.model('SupplierQuote');
@@ -45,11 +52,18 @@ async function syncInvoiceNumberAcrossDocuments(oldInvoiceNumber, newInvoiceNumb
 
   const payload = { invoiceNumber: neu, updated: new Date() };
 
+  let invoiceQuery = oldFindQuery;
+  if (excludeInvoiceId && mongoose.Types.ObjectId.isValid(excludeInvoiceId)) {
+    invoiceQuery = {
+      $and: [oldFindQuery, { _id: { $ne: new mongoose.Types.ObjectId(excludeInvoiceId) } }],
+    };
+  }
+
   const [q, sq, sh, inv] = await Promise.all([
     Quote.updateMany(oldFindQuery, payload),
     SupplierQuote.updateMany(oldFindQuery, payload),
     ShipQuote.updateMany(oldFindQuery, payload),
-    Invoice.updateMany(oldFindQuery, payload),
+    Invoice.updateMany(invoiceQuery, payload),
   ]);
 
   return {

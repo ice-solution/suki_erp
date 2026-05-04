@@ -33,10 +33,27 @@ export default function InvoiceTableForm({ subTotal = 0, current = null }) {
 
 const INVOICE_NUMBER_PREFIXES = ['SMI', 'WSE', 'SP'];
 
+/** 發票付款條款（已廢除「一／二／三個月」，舊資料載入時會對應為 30／60／90 日） */
+const PAYMENT_TERMS_SELECT_OPTIONS = [
+  { value: '30日', label: '30日' },
+  { value: '60日', label: '60日' },
+  { value: '90日', label: '90日' },
+  { value: '自訂', label: '自訂' },
+  { value: '即時付款', label: '即時付款' },
+];
+
+function normalizeLegacyInvoicePaymentTerms(terms) {
+  const t = terms == null || terms === '' ? '30日' : String(terms);
+  if (t === '一個月') return '30日';
+  if (t === '兩個月') return '60日';
+  if (t === '三個月') return '90日';
+  return t;
+}
+
 function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
-  const { moneyFormatter } = useMoney();
+  const { moneyFormatter, currency_symbol, currency_position, cent_precision } = useMoney();
   const { last_invoice_number } = useSelector(selectFinanceSettings);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
   const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
@@ -45,7 +62,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [subTotal, setSubTotal] = useState(0);
   const [total, setTotal] = useState(0);
   const [discount, setDiscount] = useState(0);
-  const [discountTotal, setDiscountTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [selectedType, setSelectedType] = useState('服務');
   
@@ -79,31 +95,45 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       ? current.numberPrefix
       : 'SMI';
 
-  // Payment due date = 所選日期 + Payment Terms 月數，該月最後一天
+  // 發票日 + 付款條款 → 到期日（自訂：不計算，由用戶手選）
   const getPaymentDueDate = (dateVal, terms) => {
-    if (!dateVal) return null;
+    if (!dateVal || terms === '自訂') return null;
     const d = dayjs.isDayjs(dateVal) ? dateVal : dayjs(dateVal);
-    const monthsToAdd = { '即時付款': 0, '一個月': 1, '兩個月': 2, '三個月': 3 }[terms || '一個月'];
-    return d.add(monthsToAdd, 'month').endOf('month');
+    if (!d.isValid()) return null;
+    if (terms === '30日') return d.add(30, 'day');
+    if (terms === '60日') return d.add(60, 'day');
+    if (terms === '90日') return d.add(90, 'day');
+    if (terms === '即時付款') return d.endOf('month');
+    return null;
   };
-  const updatePaymentDueDateFromTerms = (termsValue) => {
+
+  const syncPaymentDueDatesFromDateAndTerms = () => {
     const dateVal = form.getFieldValue('date');
-    const due = getPaymentDueDate(dateVal, termsValue);
-    if (due) form.setFieldValue('paymentDueDate', due);
+    const entries = form.getFieldValue('paymentEntries') || [];
+    entries.forEach((_, idx) => {
+      const terms = form.getFieldValue(['paymentEntries', idx, 'paymentTerms']);
+      if (terms === '自訂') return;
+      const due = getPaymentDueDate(dateVal, terms);
+      if (due) {
+        form.setFieldValue(['paymentEntries', idx, 'paymentDueDate'], due);
+      }
+    });
   };
+
   const onDateChange = () => {
-    const terms = form.getFieldValue('paymentTerms');
-    updatePaymentDueDateFromTerms(terms);
+    syncPaymentDueDatesFromDateAndTerms();
   };
-  // 新增發票時依預設 date + paymentTerms 自動帶出 Payment due date
+
+  // 新增發票時依預設 date + 第一筆 paymentTerms 自動帶出 Payment due date
   useEffect(() => {
     if (current) return;
     const timer = setTimeout(() => {
       const d = form.getFieldValue('date');
-      const t = form.getFieldValue('paymentTerms') || '一個月';
-      if (d && t) {
+      const pe = form.getFieldValue('paymentEntries');
+      const t = pe?.[0]?.paymentTerms || '30日';
+      if (d && t && t !== '自訂') {
         const due = getPaymentDueDate(d, t);
-        if (due) form.setFieldValue('paymentDueDate', due);
+        if (due) form.setFieldValue(['paymentEntries', 0, 'paymentDueDate'], due);
       }
     }, 100);
     return () => clearTimeout(timer);
@@ -115,7 +145,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       {
         paymentStatus: src.paymentStatus || 'unpaid',
         paymentDueDate: src.paymentDueDate ? dayjs(src.paymentDueDate) : null,
-        paymentTerms: src.paymentTerms || '一個月',
+        paymentTerms: normalizeLegacyInvoicePaymentTerms(src.paymentTerms || '30日'),
         credit: src.credit != null ? src.credit : 0,
         paidDate: src.paidDate ? dayjs(src.paidDate) : null,
       },
@@ -172,7 +202,22 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   };
   
   const handleDiscountChange = (value) => {
-    setDiscount(value || 0);
+    const v = value == null || value === '' ? 0 : Number(value);
+    setDiscount(v);
+    form.setFieldValue('discount', v);
+  };
+
+  /** 手動輸入折扣金額：回推折扣%（與報價單 QuoteTableForm 一致） */
+  const handleDiscountAmountChange = (value) => {
+    const raw = value == null || value === '' ? 0 : Number(value);
+    const cap = subTotal > 0 ? Math.min(Math.max(0, raw), subTotal) : Math.max(0, raw);
+    const pct = subTotal > 0 ? (cap / subTotal) * 100 : 0;
+    const pctRounded = Number(pct.toFixed(6));
+    setDiscount(pctRounded);
+    form.setFieldsValue({
+      discount: pctRounded,
+      discountTotal: Number(cap.toFixed(cent_precision ?? 2)),
+    });
   };
 
   // 檢查 Quote Number 是否對應現有項目
@@ -379,10 +424,10 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         costPrice 
       } = current;
       
-      setDiscount(discount);
       setCurrentYear(year);
       setLastNumber(number);
       setSelectedType(type);
+      setDiscount(discount != null && discount !== '' ? Number(discount) : 0);
       
       // 按 itemName 中的數字排序
       const sortedItems = [...currentItems].sort((a, b) => {
@@ -438,6 +483,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 ...p,
                 paymentDueDate: p?.paymentDueDate ? dayjs(p.paymentDueDate) : null,
                 paidDate: p?.paidDate ? dayjs(p.paidDate) : null,
+                paymentTerms: normalizeLegacyInvoicePaymentTerms(p?.paymentTerms || '30日'),
               }))
             : buildPaymentEntriesFromLegacy(current);
 
@@ -456,6 +502,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               ? current.projectPercentage
               : 100,
           fullPaid: current.fullPaid === true,
+          discount: discount != null && discount !== '' ? discount : 0,
+          discountTotal:
+            current.discountTotal != null && current.discountTotal !== ''
+              ? Number(Number(current.discountTotal).toFixed(cent_precision ?? 2))
+              : undefined,
         });
       }, 100);
     }
@@ -478,18 +529,23 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     form.setFieldsValue({ items: items });
   }, [items, form]);
 
+  // 依小計、折扣%、專案佔比更新折扣金額與總計（手改金額會先回推 %，再由此同步金額）
   useEffect(() => {
     const pct =
       projectPercentageWatch == null || projectPercentageWatch === ''
         ? 100
         : Number(projectPercentageWatch);
     const safePct = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 100;
-    const discountAmount = calculate.multiply(subTotal, discount / 100);
-    const afterDiscount = calculate.sub(subTotal, discountAmount);
+    const safeDiscount = Number.isFinite(Number(discount))
+      ? Math.min(100, Math.max(0, Number(discount)))
+      : 0;
+    const discountAmount = calculate.multiply(subTotal, safeDiscount / 100);
+    const rounded = Number.parseFloat(Number(discountAmount).toFixed(cent_precision ?? 2));
+    form.setFieldValue('discountTotal', rounded);
+    const afterDiscount = calculate.sub(subTotal, rounded);
     const currentTotal = calculate.multiply(afterDiscount, safePct / 100);
-    setDiscountTotal(Number.parseFloat(discountAmount));
-    setTotal(Number.parseFloat(currentTotal));
-  }, [subTotal, discount, projectPercentageWatch]);
+    setTotal(Number.parseFloat(Number(currentTotal).toFixed(cent_precision ?? 2)));
+  }, [subTotal, discount, projectPercentageWatch, form, cent_precision]);
 
   // 處理項目選擇
   const handleItemSelect = (value, option) => {
@@ -929,7 +985,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       <Form.List
         name="paymentEntries"
         initialValue={[
-          { paymentStatus: 'unpaid', paymentDueDate: null, paymentTerms: '一個月', credit: 0, paidDate: null },
+          { paymentStatus: 'unpaid', paymentDueDate: null, paymentTerms: '30日', credit: 0, paidDate: null },
         ]}
       >
         {(fields, { add, remove }) => (
@@ -960,7 +1016,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                     name={[name, 'paymentDueDate']}
                     getValueProps={(value) => ({ value: toDayjsOrNull(value) })}
                   >
-                    <DatePicker style={{ width: '100%' }} format={dateFormat} />
+                    <DatePicker style={{ width: '100%' }} format={dateFormat} allowClear />
                   </Form.Item>
                 </Col>
                 <Col className="gutter-row" span={4}>
@@ -968,16 +1024,15 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                     {...restField}
                     label={idx === 0 ? translate('Payment Terms') : ' '}
                     name={[name, 'paymentTerms']}
-                    initialValue="一個月"
+                    initialValue="30日"
                   >
                     <Select
-                      options={[
-                        { value: '即時付款', label: '即時付款' },
-                        { value: '一個月', label: '一個月' },
-                        { value: '兩個月', label: '兩個月' },
-                        { value: '三個月', label: '三個月' },
-                      ]}
+                      options={PAYMENT_TERMS_SELECT_OPTIONS}
                       onChange={(value) => {
+                        if (value === '自訂') {
+                          form.setFieldValue(['paymentEntries', name, 'paymentDueDate'], null);
+                          return;
+                        }
                         const dateVal = form.getFieldValue('date');
                         const due = getPaymentDueDate(dateVal, value);
                         if (due) {
@@ -1014,7 +1069,19 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 </Col>
                 <Col className="gutter-row" span={2}>
                   <Space>
-                    <Button type="link" onClick={() => add({ paymentStatus: 'unpaid', paymentDueDate: null, paymentTerms: '一個月', credit: 0, paidDate: null })}>
+                    <Button
+                      type="link"
+                      onClick={() => {
+                        add({
+                          paymentStatus: 'unpaid',
+                          paymentDueDate: null,
+                          paymentTerms: '30日',
+                          credit: 0,
+                          paidDate: null,
+                        });
+                        setTimeout(() => syncPaymentDueDatesFromDateAndTerms(), 0);
+                      }}
+                    >
                       +
                     </Button>
                     <Button
@@ -1217,6 +1284,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Col className="gutter-row" span={5}>
             <Form.Item
               name="discount"
+              initialValue={0}
               rules={[
                 {
                   required: false,
@@ -1226,12 +1294,10 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               <InputNumber
                 min={0}
                 max={100}
-                precision={0}
+                precision={4}
                 style={{ width: '100%' }}
-                onChange={handleDiscountChange}
                 placeholder="0"
-                formatter={(value) => `${value}`}
-                parser={(value) => value.replace('%', '')}
+                onChange={handleDiscountChange}
               />
             </Form.Item>
           </Col>
@@ -1250,7 +1316,22 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             </p>
           </Col>
           <Col className="gutter-row" span={5}>
-            <MoneyInputFormItem readOnly value={discountTotal} />
+            <Form.Item
+              name="discountTotal"
+              rules={[{ required: false }]}
+              style={{ marginBottom: 0 }}
+            >
+              <InputNumber
+                min={0}
+                max={subTotal > 0 ? subTotal : undefined}
+                precision={cent_precision ?? 2}
+                style={{ width: '100%' }}
+                controls={false}
+                onChange={handleDiscountAmountChange}
+                addonBefore={currency_position === 'before' ? currency_symbol : undefined}
+                addonAfter={currency_position === 'after' ? currency_symbol : undefined}
+              />
+            </Form.Item>
           </Col>
         </Row>
         <Row gutter={[12, -5]}>

@@ -13,11 +13,12 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
 
-  // Invoice Number (Type + Number) - 用於關聯其他文件
+  // Quote Number / 關聯單號：用來連結 Quote / S單 / 吊船 / Invoice，允許多個專案共用同一字串。
+  // 報價單不可重複應以「單據類別 type + numberPrefix + number」在各自 Collection 檢查，而非此欄位唯一。
+  // 若資料庫仍有舊索引 invoiceNumber_1，請執行：db.projects.dropIndex("invoiceNumber_1")
   invoiceNumber: {
     type: String,
     required: true,
-    unique: true,
   },
 
   // 備存 P.O Number (注意：此字段不是唯一字段，允許多個項目使用相同的 P.O Number)

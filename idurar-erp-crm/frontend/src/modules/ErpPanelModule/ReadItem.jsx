@@ -9,7 +9,6 @@ import {
   FilePdfOutlined,
   CloseCircleOutlined,
   RetweetOutlined,
-  MailOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -22,7 +21,6 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
-import useMail from '@/hooks/useMail';
 import { useNavigate } from 'react-router-dom';
 import { multilineStyle } from '@/utils/renderMultilineText';
 
@@ -76,8 +74,6 @@ export default function ReadItem({ config, selectedItem }) {
   const navigate = useNavigate();
 
   const { moneyFormatter } = useMoney();
-  const { send, isLoading: mailInProgress } = useMail({ entity });
-
   const { result: currentResult } = useSelector(selectCurrentItem);
 
   const resetErp = {
@@ -165,16 +161,6 @@ export default function ReadItem({ config, selectedItem }) {
             icon={<FilePdfOutlined />}
           >
             {translate('Download PDF')}
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            loading={mailInProgress}
-            onClick={() => {
-              send(currentErp._id);
-            }}
-            icon={<MailOutlined />}
-          >
-            {translate('Send by Email')}
           </Button>,
           <Button
             key={`${uniqueId()}`}

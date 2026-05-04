@@ -21,13 +21,32 @@ import { renderMultilineText } from '@/utils/renderMultilineText';
 
 /** 吊船租賃 PDF「附加項目」預設列（與 shipquote-rental.pug 後備一致） */
 export const DEFAULT_SHIP_RENTAL_EXTRA_ITEMS = [
-  { description: '續租-導向吊船 (GSWP-P1) {超7日不足1個月亦按1個月續租}', unitPrice: undefined },
+  { description: '續租-導向吊船 (GSWP-P1)', unitPrice: undefined },
   { description: '額外電源線(200米以外部份)', unitPrice: undefined },
   { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: undefined },
   { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: undefined },
   { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: undefined },
   { description: '三角足場續租(每14日)', unitPrice: undefined },
 ];
+
+/** 租賃說明預設內容（與 shipquote-rental.pug 內建條款一致；可於表單自由修改） */
+export const DEFAULT_SHIP_RENTAL_DESCRIPTION = [
+  '租用價格包括吊船交機及來回運輸費用(不包括離島地區)。',
+  '由確定收到租金起計, 90天後送貨。',
+  '價格第二及三項為消耗品, 恕不提供租用服務。',
+  '租用期間本公司會提供免費自然損耗的維修及使用方法支援(不包括人為損壞)。',
+  '預約維修由收到租用者通知24小時內安排修理, 維修工作時間為星期一到六9:00-17:00, 法定假日順延一天。',
+  '租用期間如因壞機而影響地盤工作, 本公司可恕不負責。',
+  '地盤吊船負荷測試及檢驗證明書(FORM3)需要由租方負責(本公司會提供協助完成)。',
+  '在吊船上工作人員須持有吊船工作人員證書或已接受相關訓練。',
+  '租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。',
+  '所有地盤使用人員及第三者保險由租用者負責。',
+  '租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。',
+].join('\n');
+
+/** 租賃 PDF「付款方法」預設句（與 shipquote-rental.pug 後備一致） */
+export const DEFAULT_SHIP_PDF_PAYMENT_METHOD =
+  '租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。';
 
 export default function ShipQuoteTableForm({ subTotal = 0, current = null }) {
   const { last_quote_number } = useSelector(selectFinanceSettings);
@@ -343,6 +362,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
         subcontractorCount,
         costPrice,
         rentalExtraItems: currentRentalExtras,
+        rentalDescription: savedRentalDescription,
+        pdfPaymentMethod: savedPdfPaymentMethod,
+        pdfQuoteValidity: savedPdfQuoteValidity,
       } = current;
       
       setDiscount(discount);
@@ -409,6 +431,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       const supplierId = current.supplier?._id || current.supplier || undefined;
 
       let rentalExtraFormValue;
+      let rentalDescriptionValue;
+      let pdfPaymentMethodValue;
+      let pdfQuoteValidityValue;
       if (shipType === '租賃') {
         if (currentRentalExtras && currentRentalExtras.length > 0) {
           rentalExtraFormValue = currentRentalExtras.map((r) => ({
@@ -418,8 +443,26 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
         } else {
           rentalExtraFormValue = [...DEFAULT_SHIP_RENTAL_EXTRA_ITEMS];
         }
+        rentalDescriptionValue =
+          savedRentalDescription !== undefined && savedRentalDescription !== null
+            ? String(savedRentalDescription)
+            : DEFAULT_SHIP_RENTAL_DESCRIPTION;
+        if (savedPdfPaymentMethod != null && String(savedPdfPaymentMethod).trim() === '') {
+          pdfPaymentMethodValue = '';
+        } else if (savedPdfPaymentMethod != null && String(savedPdfPaymentMethod).trim() !== '') {
+          pdfPaymentMethodValue = String(savedPdfPaymentMethod).trim();
+        } else {
+          pdfPaymentMethodValue = DEFAULT_SHIP_PDF_PAYMENT_METHOD;
+        }
+        pdfQuoteValidityValue =
+          savedPdfQuoteValidity != null && String(savedPdfQuoteValidity).trim() !== ''
+            ? String(savedPdfQuoteValidity).trim()
+            : undefined;
       } else {
         rentalExtraFormValue = [];
+        rentalDescriptionValue = undefined;
+        pdfPaymentMethodValue = undefined;
+        pdfQuoteValidityValue = undefined;
       }
 
       // 使用setTimeout確保在下一個事件循環中設置表單值
@@ -434,6 +477,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           costPrice: costPrice,
           poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined,
           rentalExtraItems: rentalExtraFormValue,
+          rentalDescription: rentalDescriptionValue,
+          pdfPaymentMethod: pdfPaymentMethodValue,
+          pdfQuoteValidity: pdfQuoteValidityValue,
         });
       }, 100);
     }
@@ -446,8 +492,21 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       if (!ex || !ex.length) {
         form.setFieldsValue({ rentalExtraItems: [...DEFAULT_SHIP_RENTAL_EXTRA_ITEMS] });
       }
+      const rd = form.getFieldValue('rentalDescription');
+      if (rd === undefined || rd === null) {
+        form.setFieldsValue({ rentalDescription: DEFAULT_SHIP_RENTAL_DESCRIPTION });
+      }
+      const pm = form.getFieldValue('pdfPaymentMethod');
+      if (pm === undefined || pm === null) {
+        form.setFieldsValue({ pdfPaymentMethod: DEFAULT_SHIP_PDF_PAYMENT_METHOD });
+      }
     } else {
-      form.setFieldsValue({ rentalExtraItems: [] });
+      form.setFieldsValue({
+        rentalExtraItems: [],
+        rentalDescription: undefined,
+        pdfPaymentMethod: '',
+        pdfQuoteValidity: '',
+      });
     }
   }, [shipTypeWatched, form]);
 
@@ -791,7 +850,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
         <Col className="gutter-row" span={6}>
           <Form.Item
             name="date"
-            label={translate('Date')}
+            label="報價日期"
             rules={[
               {
                 required: true,
@@ -803,7 +862,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             <DatePicker style={{ width: '100%' }} format={dateFormat} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
+        <Col className="gutter-row" span={12}>
           <Form.Item
             name="expiredDate"
             label={translate('Expire Date')}
@@ -812,9 +871,17 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder={translate('Expire Date') + '（選填）'} />
           </Form.Item>
         </Col>
-        <Col className="gutter-row" span={6}>
+      </Row>
+
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
           <Form.Item label={translate('Note')} name="notes">
-            <Input />
+            <Input.TextArea
+              rows={2}
+              placeholder={translate('Note')}
+              autoSize={{ minRows: 2, maxRows: 8 }}
+              style={{ width: '100%' }}
+            />
           </Form.Item>
         </Col>
       </Row>
@@ -953,6 +1020,41 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
               </>
             )}
           </Form.List>
+          <Divider orientation="left">租賃說明（PDF「租賃說明」區）</Divider>
+          <Form.Item
+            name="rentalDescription"
+            label="租賃說明"
+            extra="可自訂條款內容（支援換行）。若留空，PDF 會顯示與系統預設相同之條款列表。"
+          >
+            <Input.TextArea
+              rows={8}
+              placeholder="請輸入租賃說明"
+              autoSize={{ minRows: 6, maxRows: 28 }}
+            />
+          </Form.Item>
+          <Divider orientation="left">付款方法、報價有效期（PDF）</Divider>
+          <Form.Item
+            name="pdfPaymentMethod"
+            label="付款方法"
+            extra="會印在租賃報價 PDF。若整段留空，PDF 使用系統預設付款說明。"
+          >
+            <Input.TextArea
+              rows={3}
+              placeholder={DEFAULT_SHIP_PDF_PAYMENT_METHOD}
+              autoSize={{ minRows: 2, maxRows: 12 }}
+            />
+          </Form.Item>
+          <Form.Item
+            name="pdfQuoteValidity"
+            label="報價有效期"
+            extra="會印在租賃報價 PDF。留空時依「報價失效日期」顯示（有日期則 DD-MM-YYYY 或 90天；無則 90天）。有填寫則整段以自訂文字為準。"
+          >
+            <Input.TextArea
+              rows={2}
+              placeholder="例：90天、或自訂整段說明"
+              autoSize={{ minRows: 2, maxRows: 8 }}
+            />
+          </Form.Item>
         </>
       )}
 

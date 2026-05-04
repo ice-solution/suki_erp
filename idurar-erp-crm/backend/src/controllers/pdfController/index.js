@@ -7,6 +7,8 @@ const { listAllSettings, loadSettings } = require('@/middlewares/settings');
 const { getData } = require('@/middlewares/serverData');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
+const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
+const { getShipQuotePdfPugLocals } = require('@/new_pdf/ship_quote/generateShipQuotePdf');
 
 // 注意：在不同 OS/部署環境下，pdf 模板檔名大小寫敏感度不同。
 // 為避免「只有小寫 pug 檔」時找不到模板，這裡不再以固定清單限制可用模板，
@@ -157,8 +159,11 @@ exports.generatePdf = async (
       translate,
       dateFormat,
       moneyFormatter,
+      formatDiscountPct,
+      formatDiscountMoneyForPdf,
       moment: moment,
       isPuppeteer: false,
+      ...getShipQuotePdfPugLocals(),
     });
 
     pdf
@@ -251,8 +256,11 @@ exports.generatePdfBuffer = async (
     translate,
     dateFormat,
     moneyFormatter,
+    formatDiscountPct,
+    formatDiscountMoneyForPdf,
     moment: moment,
     isPuppeteer: false,
+    ...getShipQuotePdfPugLocals(),
   });
 
   return await new Promise((resolve, reject) => {

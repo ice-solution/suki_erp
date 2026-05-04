@@ -50,6 +50,16 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: Date,
     required: false,
   },
+  /** 安裝日期（選填） */
+  installationDate: {
+    type: Date,
+    required: false,
+  },
+  /** 拆卸日期（選填） */
+  dismantlingDate: {
+    type: Date,
+    required: false,
+  },
   isCompleted: {
     type: Boolean,
     default: false,

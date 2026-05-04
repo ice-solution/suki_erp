@@ -82,7 +82,8 @@ const search = async (req, res) => {
       .limit(50)
       .populate('createdBy', 'name')
       .populate('clients', 'name')
-      .populate('client', 'name');
+      .populate('client', 'name')
+      .populate('supplier', 'name');
 
     if (results.length >= 1) {
       return res.status(200).json({

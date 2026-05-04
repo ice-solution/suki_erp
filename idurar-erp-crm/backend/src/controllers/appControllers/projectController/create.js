@@ -23,17 +23,7 @@ const create = async (req, res) => {
     // 預設專案名稱
     const projectName = name || invoiceNumber;
 
-    // 檢查是否已存在相同 Invoice Number 的項目
-    const existingProject = await Project.findOne({ invoiceNumber, removed: false });
-    if (existingProject) {
-      return res.status(400).json({
-        success: false,
-        result: null,
-        message: 'Project with this Invoice Number already exists',
-      });
-    }
-
-    // 根據 Invoice Number 查找相關的文件
+    // 根據 Invoice Number（關聯單號）查找相關的文件
     // 支持兩種查找方式：1) invoiceNumber 字段直接匹配 2) numberPrefix-number 組合匹配
     // 解析 invoiceNumber (例如 "SML-48133" -> prefix: "SML", number: "48133")
     let numberPrefix = null;

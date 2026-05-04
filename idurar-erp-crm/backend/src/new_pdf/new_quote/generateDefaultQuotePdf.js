@@ -13,6 +13,7 @@ const puppeteer = require('puppeteer');
 const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
+const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { buildStandardQuoteFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 
 function resolveQuoteTemplatePath() {
@@ -70,6 +71,8 @@ async function generateDefaultQuotePdfBuffer(model) {
     translate,
     dateFormat,
     moneyFormatter,
+    formatDiscountPct,
+    formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
   });

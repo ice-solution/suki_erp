@@ -14,6 +14,7 @@ const puppeteer = require('puppeteer');
 const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
+const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 
 /** 與 pdfController.resolveLogoSettingKey('shipquote', …) 一致 */
@@ -44,6 +45,16 @@ function resolveShipQuoteTemplatePath(model) {
     throw new Error(`${fileNameLower} not found. Tried: ${candidates.join(', ')}`);
   }
   return found;
+}
+
+/** 正整數時覆寫 pug 內 tbody 行數上限（預設由模板內公式推算） */
+function getShipQuotePdfPugLocals() {
+  const raw = process.env.SHIPQUOTE_PDF_BODY_LINE_CAP;
+  if (raw == null || String(raw).trim() === '') {
+    return { shipPdfBodyLineCap: null };
+  }
+  const n = parseInt(String(raw).trim(), 10);
+  return { shipPdfBodyLineCap: Number.isFinite(n) && n > 0 ? n : null };
 }
 
 /**
@@ -90,8 +101,11 @@ async function generateShipQuotePdfBuffer(model) {
     translate,
     dateFormat,
     moneyFormatter,
+    formatDiscountPct,
+    formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
+    ...getShipQuotePdfPugLocals(),
   });
 
   const launchOpts = {
@@ -133,4 +147,5 @@ async function generateShipQuotePdfBuffer(model) {
 
 module.exports = {
   generateShipQuotePdfBuffer,
+  getShipQuotePdfPugLocals,
 };

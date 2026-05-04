@@ -8,7 +8,6 @@ import {
   EditOutlined,
   FilePdfOutlined,
   CloseCircleOutlined,
-  MailOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -21,9 +20,18 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import { useMoney, useDate } from '@/settings';
-import useMail from '@/hooks/useMail';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { multilineStyle } from '@/utils/renderMultilineText';
+
+/** 舊條款「一／二／三個月」改以 30／60／90 日顯示（與編輯表單一致） */
+function displayInvoicePaymentTerms(terms) {
+  if (terms == null || terms === '') return '-';
+  const t = String(terms);
+  if (t === '一個月') return '30日';
+  if (t === '兩個月') return '60日';
+  if (t === '三個月') return '90日';
+  return t;
+}
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -77,8 +85,6 @@ export default function InvoiceReadItem({ config, selectedItem }) {
   const fromProject = location.state?.fromProject;
 
   const { moneyFormatter } = useMoney();
-  const { send, isLoading: mailInProgress } = useMail({ entity });
-
   const { result: currentResult } = useSelector(selectCurrentItem);
 
   const resetErp = {
@@ -96,6 +102,12 @@ export default function InvoiceReadItem({ config, selectedItem }) {
   const [itemslist, setItemsList] = useState([]);
   const [currentErp, setCurrentErp] = useState(selectedItem ?? resetErp);
   const [client, setClient] = useState({});
+
+  const displayNumber = currentErp?.numberPrefix && currentErp?.number
+    ? `${currentErp.numberPrefix}-${currentErp.number}`
+    : ((currentErp?.numberPrefix || 'SMI') && currentErp?.number != null
+      ? `${currentErp.numberPrefix || 'SMI'}-${currentErp.number}`
+      : '-');
 
   useEffect(() => {
     const controller = new AbortController();
@@ -132,7 +144,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
             navigate(`/${entity.toLowerCase()}`);
           }
         }}
-        title={`${ENTITY_NAME} # ${currentErp.numberPrefix || 'SMI'}-${currentErp.number}/${currentErp.year || ''}`}
+        title={`發票 # ${displayNumber}`}
         ghost={false}
         tags={[
           <Tag key="status" color={currentErp.status === 'paid' ? 'green' : 'blue'}>
@@ -170,16 +182,6 @@ export default function InvoiceReadItem({ config, selectedItem }) {
             icon={<FilePdfOutlined />}
           >
             {translate('Download PDF')}
-          </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            loading={mailInProgress}
-            onClick={() => {
-              send(currentErp._id);
-            }}
-            icon={<MailOutlined />}
-          >
-            {translate('Send by Email')}
           </Button>,
           <Button
             key={`${uniqueId()}`}
@@ -260,7 +262,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
       <Descriptions title={translate('Invoice Details')}>
         <Descriptions.Item label="Invoice Type">{currentErp.numberPrefix}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
-        <Descriptions.Item label={translate('Year')}>{currentErp.year}</Descriptions.Item>
+        <Descriptions.Item label="日期">{currentErp.date ? dayjs(currentErp.date).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
@@ -279,9 +281,18 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('paid_date')}>
           {currentErp.paidDate ? dayjs(currentErp.paidDate).format('YYYY-MM-DD') : '-'}
         </Descriptions.Item>
-        <Descriptions.Item label={translate('Payment Terms')}>{currentErp.paymentTerms || '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('Payment Terms')}>
+          {displayInvoicePaymentTerms(currentErp.paymentTerms)}
+        </Descriptions.Item>
         <Descriptions.Item label="部份付款 (Partially paid)">{currentErp.credit != null ? moneyFormatter({ amount: currentErp.credit, currency_code: currentErp.currency }) : '-'}</Descriptions.Item>
         <Descriptions.Item label="Full paid">{currentErp.fullPaid === true ? translate('Yes') : translate('No')}</Descriptions.Item>
+        <Descriptions.Item label="制單人">
+          {currentErp.createdBy
+            ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
+                currentErp.createdBy.email ||
+                '-')
+            : '-'}
+        </Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>
