@@ -5,6 +5,7 @@ const InvoiceModel = mongoose.model('Invoice');
 
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
+const resolveInvoicePoNumberForConversion = require('@/helpers/resolveInvoicePoNumberForConversion');
 
 /**
  * 將 ShipQuote 轉換為 Invoice（吊船 quote -> invoice）
@@ -85,6 +86,7 @@ const convertShipQuoteToInvoice = async (req, res) => {
         shipQuote.numberPrefix && shipQuote.number
           ? `${shipQuote.numberPrefix}-${shipQuote.number}`
           : shipQuote.invoiceNumber,
+      poNumber: resolveInvoicePoNumberForConversion(shipQuote, selectedItems),
       contactPerson: shipQuote.contactPerson,
       address: shipQuote.address,
       clients: shipQuote.clients,
