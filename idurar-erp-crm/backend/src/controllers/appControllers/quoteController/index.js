@@ -14,11 +14,13 @@ const paginatedList = require('./paginatedList');
 const read = require('./read');
 const linkProject = require('./linkProject');
 const search = require('./search');
+const neighbors = require('./neighbors');
 const getQuoteInvoiceOperationalReport = require('./getQuoteInvoiceOperationalReport');
 
 methods.list = paginatedList;
 methods.read = read;
 methods.search = search;
+methods.neighbors = neighbors;
 
 methods.mail = sendMail;
 methods.create = create;

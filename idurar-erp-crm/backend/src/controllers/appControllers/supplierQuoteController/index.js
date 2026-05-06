@@ -13,6 +13,7 @@ const linkProject = require('./linkProject');
 const mail = require('./sendMail');
 const deleteFile = require('./deleteFile');
 const exportXeroPo = require('./exportXeroPo');
+const neighbors = require('./neighbors');
 
 module.exports = {
   create,
@@ -30,4 +31,5 @@ module.exports = {
   mail,
   deleteFile,
   exportXeroPo,
+  neighbors,
 };

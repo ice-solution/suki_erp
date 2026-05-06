@@ -11,6 +11,7 @@ const read = require('./read');
 const linkProject = require('./linkProject');
 const search = require('./search');
 const exportXero = require('./exportXero');
+const neighbors = require('./neighbors');
 
 methods.mail = sendMail;
 methods.exportXero = exportXero;
@@ -22,5 +23,6 @@ methods.list = paginatedList;
 methods.read = read;
 methods.linkProject = linkProject;
 methods.search = search;
+methods.neighbors = neighbors;
 
 module.exports = methods;

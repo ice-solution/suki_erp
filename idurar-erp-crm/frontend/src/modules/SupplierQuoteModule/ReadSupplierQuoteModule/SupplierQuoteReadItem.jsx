@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Input, Space } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -18,7 +18,7 @@ import { erp } from '@/redux/erp/actions';
 
 import { generate as uniqueId } from 'shortid';
 
-import { selectCurrentItem } from '@/redux/erp/selectors';
+import { selectCurrentItem, selectListItems } from '@/redux/erp/selectors';
 import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
 import { DOWNLOAD_BASE_URL, BASE_URL, FILE_BASE_URL } from '@/config/serverApiConfig';
@@ -86,6 +86,8 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
 
   const { moneyFormatter } = useMoney();
   const { result: currentResult } = useSelector(selectCurrentItem);
+  const { result: listResult } = useSelector(selectListItems);
+  const { result: searchResult } = useSelector((state) => state.erp?.search || {});
   const warehouseOptions = useSelector(selectWarehouseOptions);
 
   const resetErp = {
@@ -103,6 +105,68 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const [itemslist, setItemsList] = useState([]);
   const [currentErp, setCurrentErp] = useState(selectedItem ?? resetErp);
   const [client, setClient] = useState({});
+
+  let storedCtx = null;
+  try {
+    storedCtx = JSON.parse(sessionStorage.getItem(`nav_ctx_${String(entity || '').toLowerCase()}`) || 'null');
+  } catch (e) {
+    storedCtx = null;
+  }
+  const params = new URLSearchParams(location.search || '');
+  const navQ = (params.get('q') != null ? String(params.get('q')) : (storedCtx?.q || '')).trim();
+  const navIsSearchMode = !!(navQ || storedCtx?.isSearchMode);
+  const navIdsFromRedux = (navIsSearchMode ? (Array.isArray(searchResult) ? searchResult : []) : (Array.isArray(listResult?.items) ? listResult.items : []))
+    .map((x) => x?._id)
+    .filter(Boolean)
+    .map((x) => String(x));
+  const navIds = navIdsFromRedux.length ? navIdsFromRedux : (Array.isArray(storedCtx?.ids) ? storedCtx.ids : []);
+  const navIndex = navIds.findIndex((id) => String(id) === String(currentErp?._id));
+  const [neighborPrevId, setNeighborPrevId] = useState(null);
+  const [neighborNextId, setNeighborNextId] = useState(null);
+  const prevId = neighborPrevId != null ? neighborPrevId : (navIndex > 0 ? navIds[navIndex - 1] : null);
+  const nextId =
+    neighborNextId != null ? neighborNextId : (navIndex >= 0 && navIndex < navIds.length - 1 ? navIds[navIndex + 1] : null);
+
+  useEffect(() => {
+    // 直接貼 read URL 進來時，補撈 list/search 結果以計算上一頁/下一頁
+    if (!currentErp?._id) return;
+    if (navIdsFromRedux.length > 0) return;
+    if (Array.isArray(storedCtx?.ids) && storedCtx.ids.length > 0) return;
+    if (navQ) {
+      dispatch(
+        erp.search({
+          entity,
+          options: {
+            q: navQ,
+            fields: 'address,number,numberPrefix,invoiceNumber,poNumber,counterpartyInvoiceNumber',
+          },
+        })
+      );
+      return;
+    }
+    dispatch(erp.list({ entity, options: { page: 1, items: 500 } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentErp?._id, navQ]);
+
+  useEffect(() => {
+    // 後端鄰近項目 endpoint：資料再多都快，refresh 後仍可用
+    if (!currentErp?._id) return;
+    (async () => {
+      try {
+        const data = await request.get({
+          entity: `${entity}/neighbors/${currentErp._id}`,
+          params: navQ ? { q: navQ } : {},
+        });
+        const prev = data?.result?.prevId ?? null;
+        const next = data?.result?.nextId ?? null;
+        setNeighborPrevId(prev);
+        setNeighborNextId(next);
+      } catch (e) {
+        // ignore: fallback to navIds/sessionStorage
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentErp?._id, navQ]);
 
   const displayNumber = currentErp?.numberPrefix && currentErp?.number
     ? `${currentErp.numberPrefix}-${currentErp.number}`
@@ -216,6 +280,54 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
 
   return (
     <>
+      <div
+        className="read-prevnext-search-bar"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          marginBottom: 8,
+        }}
+      >
+        <div style={{ minWidth: 120 }}>
+          <Button
+            disabled={!prevId}
+            onClick={() => {
+              if (!prevId) return;
+              navigate(`/${entity.toLowerCase()}/read/${prevId}`, {
+                state: { isSearchMode: navIsSearchMode, q: navQ },
+              });
+            }}
+          >
+            上一頁
+          </Button>
+        </div>
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
+          <Input.Search
+            allowClear
+            placeholder="搜尋並返回列表"
+            defaultValue={navQ}
+            style={{ width: 360, maxWidth: '100%' }}
+            onSearch={(value) => {
+              const q = value != null ? String(value).trim() : '';
+              navigate(`/${entity.toLowerCase()}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+            }}
+          />
+        </div>
+        <div style={{ minWidth: 120, display: 'flex', justifyContent: 'flex-end' }}>
+          <Button
+            disabled={!nextId}
+            onClick={() => {
+              if (!nextId) return;
+              navigate(`/${entity.toLowerCase()}/read/${nextId}`, {
+                state: { isSearchMode: navIsSearchMode, q: navQ },
+              });
+            }}
+          >
+            下一頁
+          </Button>
+        </div>
+      </div>
       <PageHeader
         onBack={() => {
           if (fromProject) {
@@ -245,21 +357,25 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           >
             {translate('Close')}
           </Button>,
-          <Button
-            key={`${uniqueId()}`}
-            onClick={() => {
-              const v = encodeURIComponent(
-                String(currentErp?.modified_at || currentErp?.updated || Date.now())
-              );
-              window.open(
-                `${DOWNLOAD_BASE_URL}${entity}/${entity}-${currentErp._id}.pdf?v=${v}`,
-                '_blank'
-              );
-            }}
-            icon={<FilePdfOutlined />}
-          >
-            {translate('Download PDF')}
-          </Button>,
+          ...(currentErp?.numberPrefix === 'PO'
+            ? []
+            : [
+              <Button
+                key={`${uniqueId()}`}
+                onClick={() => {
+                  const v = encodeURIComponent(
+                    String(currentErp?.modified_at || currentErp?.updated || Date.now())
+                  );
+                  window.open(
+                    `${DOWNLOAD_BASE_URL}${entity}/${entity}-${currentErp._id}.pdf?v=${v}`,
+                    '_blank'
+                  );
+                }}
+                icon={<FilePdfOutlined />}
+              >
+                {translate('Download PDF')}
+              </Button>,
+            ]),
           <Button
             key={`${uniqueId()}`}
             onClick={() => {

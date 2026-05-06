@@ -12,10 +12,12 @@ const search = require('./search');
 const linkProject = require('./linkProject');
 const convertToSupplierQuote = require('./convertToSupplierQuote');
 const convertShipQuoteToInvoice = require('./convertShipQuoteToInvoice');
+const neighbors = require('./neighbors');
 
 methods.list = paginatedList;
 methods.read = read;
 methods.search = search;
+methods.neighbors = neighbors;
 
 methods.create = create;
 methods.update = update;

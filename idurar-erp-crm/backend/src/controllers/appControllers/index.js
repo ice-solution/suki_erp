@@ -8,12 +8,15 @@ const pattern = './src/controllers/appControllers/*/**/';
 const controllerDirectories = globSync(pattern).map((filePath) => {
   return path.basename(filePath);
 });
+const filteredControllerDirectories = controllerDirectories.filter(
+  (name) => name && !String(name).startsWith('_')
+);
 
 const appControllers = () => {
   const controllers = {};
   const hasCustomControllers = [];
 
-  controllerDirectories.forEach((controllerName) => {
+  filteredControllerDirectories.forEach((controllerName) => {
     try {
       const customController = require('@/controllers/appControllers/' + controllerName);
 

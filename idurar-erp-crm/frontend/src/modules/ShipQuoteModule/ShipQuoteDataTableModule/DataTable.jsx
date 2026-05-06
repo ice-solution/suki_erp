@@ -20,7 +20,7 @@ import { erp } from '@/redux/erp/actions';
 import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
 import { generate as uniqueId } from 'shortid';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 
@@ -90,18 +90,42 @@ export default function DataTable({ config, extra = [] }) {
   ];
 
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
+
+  const persistNavContext = () => {
+    try {
+      const ids = (Array.isArray(dataSource) ? dataSource : [])
+        .map((x) => x?._id)
+        .filter(Boolean)
+        .map((x) => String(x));
+      const payload = {
+        entity: String(entity || '').toLowerCase(),
+        isSearchMode: !!isSearchMode,
+        q: searchValue != null ? String(searchValue) : '',
+        ids,
+        savedAt: Date.now(),
+      };
+      sessionStorage.setItem(`nav_ctx_${String(entity || '').toLowerCase()}`, JSON.stringify(payload));
+    } catch (e) {
+      // ignore
+    }
+  };
 
   const handleRead = (record) => {
     dispatch(erp.currentItem({ data: record }));
-    navigate(`/${entity}/read/${record._id}`);
+    persistNavContext();
+    const q = searchValue != null ? String(searchValue).trim() : '';
+    navigate(`/${entity}/read/${record._id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
   };
   
   // 修改這裡：使用table form的編輯URL
   const handleEdit = (record) => {
     const data = { ...record };
     dispatch(erp.currentAction({ actionType: 'update', data }));
-    navigate(`/${entity}/table/update/${record._id}`);
+    persistNavContext();
+    const q = searchValue != null ? String(searchValue).trim() : '';
+    navigate(`/${entity}/table/update/${record._id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
   };
   
   const handleDownload = (record) => {
@@ -163,6 +187,24 @@ export default function DataTable({ config, extra = [] }) {
     return () => {
       controller.abort();
     };
+  }, []);
+
+  // 持續保存目前列表/搜尋結果的 _id 清單，讓 Read page refresh 後仍可 prev/next
+  useEffect(() => {
+    if (!Array.isArray(dataSource) || dataSource.length === 0) return;
+    persistNavContext();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entity, isSearchMode, searchValue, dataSource]);
+
+  // 支援從 Read page 帶回的 search keyword：/shipquote?q=xxx
+  useEffect(() => {
+    const params = new URLSearchParams(location.search || '');
+    const q = params.get('q');
+    if (q && q.trim()) {
+      setSearchValue(q);
+      handleSearchSubmit(q);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSearchInput = (e) => {

@@ -23,6 +23,11 @@ const routerApp = (entity, controller) => {
   router.route(`/${entity}/filter`).get(catchErrors(controller['filter']));
   router.route(`/${entity}/summary`).get(catchErrors(controller['summary']));
 
+  // Read page prev/next neighbors (must be before param routes)
+  if (controller['neighbors']) {
+    router.route(`/${entity}/neighbors/:id`).get(catchErrors(controller['neighbors']));
+  }
+
   if (entity === 'invoice' || entity === 'quote' || entity === 'payment') {
     router.route(`/${entity}/mail`).post(catchErrors(controller['mail']));
   }
