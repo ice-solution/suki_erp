@@ -1559,6 +1559,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={24}>
+          <Form.Item label="備註" name="notes">
+            <Input.TextArea
+              placeholder="簽收單備註（選填）"
+              rows={3}
+              autoSize={{ minRows: 2, maxRows: 10 }}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
           <Form.Item label="裝箱方式" name="packingMethod">
             <Input placeholder="顯示於 S 單 PDF 簽收區「裝箱方式」（選填）" />
           </Form.Item>

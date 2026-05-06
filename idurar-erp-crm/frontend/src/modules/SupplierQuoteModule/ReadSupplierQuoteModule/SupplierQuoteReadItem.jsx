@@ -366,6 +366,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label="簽收單收貨人地址">
           <span style={{ whiteSpace: 'pre-wrap' }}>{currentErp.receiver || '-'}</span>
         </Descriptions.Item>
+        <Descriptions.Item label="備註">{currentErp.notes || '-'}</Descriptions.Item>
         <Descriptions.Item label="簽收單顯示名稱">{currentErp.receiptDisplayName || '-'}</Descriptions.Item>
         <Descriptions.Item label="裝箱方式">{currentErp.packingMethod || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>

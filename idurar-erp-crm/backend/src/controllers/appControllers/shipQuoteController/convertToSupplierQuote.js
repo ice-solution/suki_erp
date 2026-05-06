@@ -90,7 +90,6 @@ const convertToSupplierQuote = async (req, res) => {
       credit: 0,
       currency: shipQuote.currency || 'NA',
       discount: shipQuote.discount ?? 0,
-      notes: shipQuote.notes,
       status: 'draft',
       createdBy: req.admin._id,
     };
