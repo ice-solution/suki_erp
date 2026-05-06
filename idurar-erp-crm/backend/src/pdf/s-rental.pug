@@ -225,8 +225,9 @@ html
                 li 租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。
               h4 付款方法
               p 租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。
-              h4 報價有效期
-              p #{model.expiredDate ? moment(model.expiredDate).utcOffset(480).format('DD-MM-YYYY') + ' 或 90天' : '90天'}
+              if model.expiredDate
+                h4 報價有效期
+                p #{moment(model.expiredDate).utcOffset(480).format('DD-MM-YYYY')}
             .signature-section
               .prepared-by-row
                 span.prepared-by-label 制單人：
