@@ -348,7 +348,8 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
       <Descriptions title={translate('Supplier Quote Details')}>
         <Descriptions.Item label="Supplier Type">{currentErp.numberPrefix && currentErp.numberPrefix !== 'XX' ? currentErp.numberPrefix : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
-        <Descriptions.Item label="出貨日期">{currentErp.date ? dayjs(currentErp.date).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="上單日期">{currentErp.date ? dayjs(currentErp.date).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="出貨日期">{currentErp.openDate ? dayjs(currentErp.openDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
         <Descriptions.Item label="安裝日期">
           {currentErp.installationDate ? dayjs(currentErp.installationDate).format('YYYY-MM-DD') : '-'}
         </Descriptions.Item>

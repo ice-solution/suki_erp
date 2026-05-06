@@ -592,6 +592,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           : Number.parseFloat((subVal - (subVal * (discount / 100))).toFixed(2));
         const supplierId = current.supplier?._id || current.supplier || undefined;
         const dateVal = current.date ? dayjs(current.date) : undefined;
+        const openDateVal = current.openDate ? dayjs(current.openDate) : undefined;
         const expiredVal = current.expiredDate ? dayjs(current.expiredDate) : undefined;
         form.setFieldsValue({
           items: currentItems,
@@ -604,7 +605,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           winch: currentWinch ? (currentWinch._id || currentWinch) : null,
           renewalQuoteNumber: current?.renewalQuoteNumber,
           date: dateVal,
-          openDate: dateVal,
+          openDate: openDateVal,
           expiredDate: expiredVal,
           installationDate: current.installationDate ? dayjs(current.installationDate) : undefined,
           dismantlingDate: current.dismantlingDate ? dayjs(current.dismantlingDate) : undefined,
@@ -1400,10 +1401,6 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 <DatePicker
                   style={{ width: '100%' }}
                   format={dateFormat}
-                  onChange={(value) => {
-                    // 確保「上單日期」與「出貨日期」一致
-                    form.setFieldsValue({ openDate: value });
-                  }}
                 />
               </Form.Item>
             </Col>
@@ -1412,15 +1409,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 name="openDate"
                 label="出貨日期"
                 rules={[{ required: false }]}
-                initialValue={current?.date ? dayjs(current.date) : undefined}
+                initialValue={current?.openDate ? dayjs(current.openDate) : undefined}
               >
                 <DatePicker
                   style={{ width: '100%' }}
                   format={dateFormat}
-                  onChange={(value) => {
-                    // 直接改「出貨日期」，同步更新「上單日期」
-                    form.setFieldsValue({ date: value, openDate: value });
-                  }}
                 />
               </Form.Item>
             </Col>
@@ -1445,22 +1438,32 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           </>
         ) : (
           <>
-            <Col className="gutter-row" span={12}>
+            <Col className="gutter-row" span={8}>
               <Form.Item
                 name="date"
-                label="出貨日期"
+                label="上單日期"
                 rules={[
                   {
                     required: true,
                     type: 'object',
                   },
                 ]}
-                initialValue={dayjs()}
+                initialValue={current?.date ? dayjs(current.date) : dayjs()}
               >
                 <DatePicker style={{ width: '100%' }} format={dateFormat} />
               </Form.Item>
             </Col>
-            <Col className="gutter-row" span={12}>
+            <Col className="gutter-row" span={8}>
+              <Form.Item
+                name="openDate"
+                label="出貨日期"
+                rules={[{ required: false }]}
+                initialValue={current?.openDate ? dayjs(current.openDate) : undefined}
+              >
+                <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="出貨日期（選填）" />
+              </Form.Item>
+            </Col>
+            <Col className="gutter-row" span={8}>
               <Form.Item
                 name="expiredDate"
                 label={translate('Expire Date')}

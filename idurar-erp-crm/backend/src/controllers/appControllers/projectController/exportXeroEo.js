@@ -80,6 +80,7 @@ const exportXeroEo = async (req, res) => {
         })
         .map((fee) => ({
           eoNumber: fee.eoNumber,
+          invoiceNo: fee.invoiceNo != null ? String(fee.invoiceNo).trim() : '',
           date: fee.date,
           dueDate: fee.dueDate,
           amount: fee.amount,

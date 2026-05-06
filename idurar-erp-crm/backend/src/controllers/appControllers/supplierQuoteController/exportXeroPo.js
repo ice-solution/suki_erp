@@ -34,7 +34,8 @@ const exportXeroPo = async (req, res) => {
       date: { $gte: from, $lte: to },
     })
       .populate('supplier', 'name email accountCode')
-      .sort({ date: 1, number: 1 })
+      // 先按供應商發票號（Invoice Number）再按 PO 編號，方便前端／報表分組
+      .sort({ counterpartyInvoiceNumber: 1, date: 1, number: 1 })
       .lean()
       .exec();
 

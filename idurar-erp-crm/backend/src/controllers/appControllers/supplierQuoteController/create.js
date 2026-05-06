@@ -78,6 +78,13 @@ const create = async (req, res) => {
 
   let body = req.body;
 
+  // 允許「出貨日期」獨立保存（openDate）；空字串視為未填
+  if (body.openDate === '') body.openDate = null;
+  if (body.openDate) {
+    const d = new Date(body.openDate);
+    if (!isNaN(d.getTime())) body.openDate = d;
+  }
+
   // 若前端有送 subTotal / total（手動編輯），則採用並據此計算 discountTotal
   const bodySubTotal = req.body.subTotal !== undefined && req.body.subTotal !== null && req.body.subTotal !== ''
     ? Number(req.body.subTotal)

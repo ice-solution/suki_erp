@@ -60,7 +60,7 @@ export default function SupplierQuote() {
       render: (_, record) => record.supplier?.name || '-',
     },
     {
-      title: '出貨日期',
+      title: '上單日期',
       dataIndex: 'date',
       width: 110,
       ellipsis: false,

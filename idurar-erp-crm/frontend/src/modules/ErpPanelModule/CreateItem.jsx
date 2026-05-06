@@ -144,6 +144,32 @@ export default function CreateItem({ config, CreateForm }) {
           dataToSubmit.paidDate = null;
         }
       }
+
+      if ((entity || '').toLowerCase() === 'supplierquote') {
+        if (dataToSubmit.date) {
+          dataToSubmit.date = dayjs(dataToSubmit.date).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        }
+        if (dataToSubmit.expiredDate) {
+          dataToSubmit.expiredDate = dayjs(dataToSubmit.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else {
+          dataToSubmit.expiredDate = null;
+        }
+        if (dataToSubmit.openDate) {
+          dataToSubmit.openDate = dayjs(dataToSubmit.openDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else {
+          dataToSubmit.openDate = null;
+        }
+        if (dataToSubmit.installationDate) {
+          dataToSubmit.installationDate = dayjs(dataToSubmit.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else {
+          dataToSubmit.installationDate = null;
+        }
+        if (dataToSubmit.dismantlingDate) {
+          dataToSubmit.dismantlingDate = dayjs(dataToSubmit.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else {
+          dataToSubmit.dismantlingDate = null;
+        }
+      }
       
       // Check if this is a supplierquote with actual file objects (not just empty arrays)
       const hasActualFiles = (dataToSubmit.dmFiles && dataToSubmit.dmFiles.length > 0 && 

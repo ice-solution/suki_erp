@@ -46,6 +46,11 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
+  /** 出貨日期（選填；與上單日期 date 分開） */
+  openDate: {
+    type: Date,
+    required: false,
+  },
   expiredDate: {
     type: Date,
     required: false,

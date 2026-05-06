@@ -101,6 +101,8 @@ const erpReducer = (state = INITIAL_STATE, action) => {
           ...state[keyState],
           isLoading: false,
           isSuccess: false,
+          // 搜尋無結果時 API 常回 success:false，避免仍顯示上一次搜尋結果
+          ...(keyState === 'search' ? { result: [] } : {}),
         },
       };
     case actionTypes.REQUEST_SUCCESS:

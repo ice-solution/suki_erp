@@ -17,6 +17,32 @@ function escapeCsvCell(val) {
   return s;
 }
 
+/** 與表單一致：材料「減數」不列入 Xero 行（負總價／負數量／負單價） */
+function isNegativeMaterialRow(row) {
+  if (!row || typeof row !== 'object') return true;
+  const q = row.quantity != null ? Number(row.quantity) : NaN;
+  const unit = row.unitPrice != null ? Number(row.unitPrice) : null;
+  const totalPrice = row.price != null ? Number(row.price) : null;
+  let lineTotal = totalPrice;
+  if (lineTotal == null || Number.isNaN(lineTotal)) {
+    if (unit != null && !Number.isNaN(unit) && !Number.isNaN(q)) {
+      lineTotal = unit * q;
+    } else {
+      lineTotal = NaN;
+    }
+  }
+  if (!Number.isNaN(q) && q < 0) return true;
+  if (unit != null && !Number.isNaN(unit) && unit < 0) return true;
+  if (!Number.isNaN(lineTotal) && lineTotal < 0) return true;
+  return false;
+}
+
+function invoiceNumberSortKey(po) {
+  const supplierInv = po.counterpartyInvoiceNumber != null ? String(po.counterpartyInvoiceNumber).trim() : '';
+  if (supplierInv) return supplierInv;
+  return `${po.numberPrefix || 'PO'}-${po.number || ''}`;
+}
+
 export default function XeroPOExport() {
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -30,10 +56,24 @@ export default function XeroPOExport() {
     const outPreviewRows = [];
     let rowIndex = 0;
 
-    for (const po of list) {
+    const sortedList = [...(list || [])].sort((a, b) => {
+      const ka = invoiceNumberSortKey(a);
+      const kb = invoiceNumberSortKey(b);
+      const c = ka.localeCompare(kb, undefined, { numeric: true, sensitivity: 'base' });
+      if (c !== 0) return c;
+      const pa = `${a.numberPrefix || 'PO'}-${a.number || ''}`;
+      const pb = `${b.numberPrefix || 'PO'}-${b.number || ''}`;
+      return pa.localeCompare(pb, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    for (const po of sortedList) {
       const contactName = po.supplier?.name || '';
       const accountCode = po.supplier?.accountCode || '';
-      const invoiceNumber = `${po.numberPrefix || 'PO'}-${po.number}`;
+      const poDisplayNumber = `${po.numberPrefix || 'PO'}-${po.number}`;
+      const supplierInvoice =
+        po.counterpartyInvoiceNumber != null ? String(po.counterpartyInvoiceNumber).trim() : '';
+      /** Xero InvoiceNumber：優先供應商發票號（同一號碼多張 PO 會排在一起）；無則回退 PO 編號 */
+      const invoiceNumberForExport = supplierInvoice || poDisplayNumber;
       const invoiceDate = po.date ? dayjs(po.date).format('YYYY-MM-DD') : '';
       const dueDate = po.expiredDate
         ? dayjs(po.expiredDate).format('YYYY-MM-DD')
@@ -41,17 +81,22 @@ export default function XeroPOExport() {
 
       const materials = po.materials || [];
       for (const row of materials) {
-        // Xero PO：Description 使用「供應商 invoice number」
-        const description = po.counterpartyInvoiceNumber || '';
+        if (isNegativeMaterialRow(row)) continue;
+
+        const description =
+          [row.warehouse && row.warehouse !== '其他' ? `[${row.warehouse}]` : '', row.itemName || '']
+            .filter(Boolean)
+            .join(' ')
+            .trim() || '-';
         const quantity = row.quantity != null ? row.quantity : 0;
-        const unitAmount = row.unitPrice != null ? row.unitPrice : (row.price != null ? row.price : 0);
+        const unitAmount = row.unitPrice != null ? row.unitPrice : row.price != null ? row.price : 0;
 
         rows.push(
           [
             escapeCsvCell(contactName),
             '', // EmailAddress
             '', '', '', '', '', '', '', '', // PO address
-            escapeCsvCell(invoiceNumber),
+            escapeCsvCell(invoiceNumberForExport),
             escapeCsvCell(invoiceDate),
             escapeCsvCell(dueDate),
             '', // Total
@@ -70,7 +115,8 @@ export default function XeroPOExport() {
         outPreviewRows.push({
           key: `row-${rowIndex}`,
           contactName,
-          invoiceNumber,
+          poNumber: poDisplayNumber,
+          invoiceNumber: invoiceNumberForExport,
           invoiceDate,
           dueDate,
           accountCode,
@@ -153,6 +199,7 @@ export default function XeroPOExport() {
 
   const columns = [
     { title: 'ContactName', dataIndex: 'contactName', key: 'contactName', width: 140 },
+    { title: 'PO', dataIndex: 'poNumber', key: 'poNumber', width: 120 },
     { title: 'InvoiceNumber', dataIndex: 'invoiceNumber', key: 'invoiceNumber', width: 150 },
     { title: 'InvoiceDate', dataIndex: 'invoiceDate', key: 'invoiceDate', width: 110 },
     { title: 'DueDate', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
@@ -164,7 +211,7 @@ export default function XeroPOExport() {
 
   return (
     <div style={{ padding: 24 }}>
-      <Card title="Xero PO單滙出" style={{ maxWidth: 560 }}>
+      <Card title="Xero PO單滙出" style={{ maxWidth: 1100 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div>
             <label style={{ display: 'block', marginBottom: 8 }}>選擇日期範圍（依 S單日期，僅 PO 單且 Completed = 是）</label>
@@ -197,7 +244,7 @@ export default function XeroPOExport() {
           )}
         </div>
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          僅滙出 S單中 Supplier type = PO 且<strong> Completed（已完成）= 是</strong>的紀錄。欄位：InvoiceNumber、InvoiceDate、DueDate、ContactName（供應商）、AccountCode、TaxType、每張 PO 的「材料及費用管理」列（Description、Quantity、UnitAmount）、Currency = HKD。
+          僅滙出 S單中 Supplier type = PO 且<strong> Completed（已完成）= 是</strong>的紀錄。以<strong>PO</strong>為單位輸出材料列；整份列表依<strong>Invoice Number</strong>排序（優先「供應商 Invoice Number」，無則用 PO 編號）。CSV 欄位 InvoiceNumber 同上；材料<strong>減數</strong>（負數量／負單價／負總價）不輸出；Description 為品名（含倉庫前綴）。
         </p>
 
         {previewRows.length > 0 && (

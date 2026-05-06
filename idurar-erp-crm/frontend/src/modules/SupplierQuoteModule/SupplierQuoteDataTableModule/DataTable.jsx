@@ -168,7 +168,10 @@ export default function DataTable({ config, extra = [] }) {
   const handleSearchSubmit = (value) => {
     if (value && value.trim()) {
       setIsSearchMode(true);
-      const options = { q: value.trim(), fields: 'address,number,numberPrefix,invoiceNumber' };
+      const options = {
+        q: value.trim(),
+        fields: 'address,number,numberPrefix,invoiceNumber,poNumber,counterpartyInvoiceNumber',
+      };
       dispatch(erp.search({ entity, options }));
     } else {
       setIsSearchMode(false);

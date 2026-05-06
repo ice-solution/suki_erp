@@ -43,13 +43,26 @@ const search = async (req, res) => {
 
     // 標準字段搜索（若傳入 fields）
     // 只對 String 欄位使用 regex；Number 欄位僅在可 parse 時做等值；Date 欄位若無法 parse 則跳過
+    // 注意：SupplierQuote.number 為 String（可含前導零），不可用 parseInt 等值否則「0175」無法匹配「01759」
     for (const field of fieldsArray) {
       if (!field || ['poNumber', 'address'].includes(field)) continue;
 
       const schemaPath = Model.schema.path(field);
       const instance = schemaPath && schemaPath.instance ? schemaPath.instance : null;
 
-      if (field === 'number' || instance === 'Number') {
+      if (field === 'number') {
+        if (instance === 'String') {
+          fields.$or.push({ number: { $regex: regex } });
+        } else if (instance === 'Number') {
+          const numberValue = parseInt(searchTerm, 10);
+          if (!Number.isNaN(numberValue)) {
+            fields.$or.push({ number: numberValue });
+          }
+        }
+        continue;
+      }
+
+      if (instance === 'Number') {
         const numberValue = parseInt(searchTerm, 10);
         if (!Number.isNaN(numberValue)) {
           fields.$or.push({ [field]: numberValue });
@@ -66,25 +79,53 @@ const search = async (req, res) => {
       // 若未來需要支援日期搜尋，再在此加上對應解析（例如 dd/mm/yyyy）
     }
 
+    const numberPath = Model.schema.path('number');
+    const numberIsString = numberPath && numberPath.instance === 'String';
+
     // 特殊處理：搜索完整的 SupplierQuote 號碼 (numberPrefix-number)
     // 如果搜索詞包含 "-"，嘗試分離 numberPrefix 和 number
     if (searchTerm.includes('-')) {
-      const [prefixPart, numberPart] = searchTerm.split('-');
-      const numberValue = parseInt(numberPart, 10);
-
-      if (prefixPart && !Number.isNaN(numberValue)) {
-        fields.$or.push({
-          $and: [{ numberPrefix: { $regex: substringRegex(prefixPart) } }, { number: numberValue }],
-        });
+      const dashIdx = searchTerm.indexOf('-');
+      const prefixPart = searchTerm.slice(0, dashIdx);
+      const numberPart = searchTerm.slice(dashIdx + 1);
+      if (prefixPart && numberPart) {
+        if (numberIsString) {
+          fields.$or.push({
+            $and: [
+              { numberPrefix: { $regex: substringRegex(prefixPart) } },
+              { number: { $regex: substringRegex(numberPart) } },
+            ],
+          });
+        } else {
+          const numberValue = parseInt(numberPart, 10);
+          if (!Number.isNaN(numberValue)) {
+            fields.$or.push({
+              $and: [
+                { numberPrefix: { $regex: substringRegex(prefixPart) } },
+                { number: numberValue },
+              ],
+            });
+          }
+        }
       }
     } else {
       // 任意位置包含搜尋詞（例如 1032 可匹配 PO1032、S-1032 等）
       fields.$or.push({ numberPrefix: { $regex: regex } });
 
-      const numberValue = parseInt(searchTerm, 10);
-      if (!Number.isNaN(numberValue)) {
-        fields.$or.push({ number: numberValue });
+      if (numberIsString) {
+        fields.$or.push({ number: { $regex: regex } });
+      } else {
+        const numberValue = parseInt(searchTerm, 10);
+        if (!Number.isNaN(numberValue)) {
+          fields.$or.push({ number: numberValue });
+        }
       }
+    }
+
+    // 客戶／對方單號等亦可能帶 PO- 字樣
+    const cpPath = Model.schema.path('counterpartyInvoiceNumber');
+    if (cpPath && cpPath.instance === 'String') {
+      fields.$or.push({ counterpartyInvoiceNumber: { $regex: regex } });
     }
 
     let results = await Model.find(fields)
