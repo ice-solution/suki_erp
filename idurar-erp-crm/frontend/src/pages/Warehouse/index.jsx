@@ -11,12 +11,12 @@ import {
   Card,
   Row,
   Col,
-  Statistic,
   Tag,
   message,
   Popconfirm,
   Tooltip
 } from 'antd';
+import dayjs from 'dayjs';
 import {
   PlusOutlined,
   EditOutlined,
@@ -49,6 +49,10 @@ export default function Warehouse() {
   const [adjustModalVisible, setAdjustModalVisible] = useState(false);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
+  const [transactionList, setTransactionList] = useState([]);
+  const [transactionLoading, setTransactionLoading] = useState(false);
+  const [recordModalVisible, setRecordModalVisible] = useState(false);
+  const [recordItem, setRecordItem] = useState(null);
   const [suppliers, setSuppliers] = useState([]);
   const [projects, setProjects] = useState([]);
   const [form] = Form.useForm();
@@ -56,6 +60,29 @@ export default function Warehouse() {
   const [transferForm] = Form.useForm();
   const warehouseOptions = useSelector(selectWarehouseOptions);
   const warehouseItemCategories = useSelector(selectWarehouseItemCategories);
+
+  const fetchTransactions = async (inventoryId) => {
+    if (!inventoryId) {
+      setTransactionList([]);
+      return;
+    }
+    setTransactionLoading(true);
+    try {
+      // 注意：warehouse API 走獨立 router（RESTful），read endpoint 是 GET /warehouse/:id（不是 /warehouse/read/:id）
+      const res = await request.get({ entity: `warehouse/${inventoryId}` });
+      setTransactionList(res?.result?.transactions || []);
+    } catch (e) {
+      setTransactionList([]);
+    } finally {
+      setTransactionLoading(false);
+    }
+  };
+
+  const openRecordModal = async (record) => {
+    setRecordItem(record || null);
+    setRecordModalVisible(true);
+    await fetchTransactions(record?._id);
+  };
 
   // 狀態選項
   const statusOptions = [
@@ -225,16 +252,25 @@ export default function Warehouse() {
 
   const columns = [
     {
+      title: '貨品編號',
+      dataIndex: 'sku',
+      key: 'sku',
+      width: 120,
+      render: (sku, record) => (
+        <Button
+          type="link"
+          style={{ padding: 0, height: 'auto' }}
+          onClick={() => openRecordModal(record)}
+        >
+          {sku || '-'}
+        </Button>
+      ),
+    },
+    {
       title: '貨品名稱',
       dataIndex: 'itemName',
       key: 'itemName',
       width: 150,
-    },
-    {
-      title: 'SKU',
-      dataIndex: 'sku',
-      key: 'sku',
-      width: 120,
     },
     {
       title: '類別',
@@ -357,34 +393,6 @@ export default function Warehouse() {
   return (
     <div style={{ padding: 24 }}>
       <Card>
-        <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-          <Col span={6}>
-            <Statistic 
-              title="總存貨項目" 
-              value={pagination.total} 
-            />
-          </Col>
-          <Col span={6}>
-            <Statistic 
-              title={`${warehouseOptions.find((o) => o.value === 'A')?.label || 'A / -'}項目`} 
-              value={inventoryList.filter(item => item.warehouse === 'A').length} 
-            />
-          </Col>
-          <Col span={6}>
-            <Statistic 
-              title={`${warehouseOptions.find((o) => o.value === 'B')?.label || 'B / -'}項目`} 
-              value={inventoryList.filter(item => item.warehouse === 'B').length} 
-            />
-          </Col>
-          <Col span={6}>
-            <Statistic 
-              title="低庫存警告" 
-              value={inventoryList.filter(item => item.quantity <= item.minStockLevel).length}
-              valueStyle={{ color: '#cf1322' }}
-            />
-          </Col>
-        </Row>
-
         <div style={{ marginBottom: 16, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
           <Button
             type="primary"
@@ -453,15 +461,15 @@ export default function Warehouse() {
                 label="貨品名稱"
                 rules={[{ required: true, message: '請輸入貨品名稱' }]}
               >
-                <Input placeholder="請輸入貨品名稱" />
+                <Input placeholder="請輸入貨品名稱" disabled={!!editingItem} />
               </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
                 name="sku"
-                label="SKU"
+                label="貨品編號"
               >
-                <Input placeholder="請輸入SKU" />
+                <Input placeholder="請輸入貨品編號" disabled={!!editingItem} />
               </Form.Item>
             </Col>
           </Row>
@@ -486,6 +494,7 @@ export default function Warehouse() {
               >
                 <InputNumber
                   min={0}
+                  disabled={!!editingItem}
                   style={{ width: '100%' }}
                   placeholder="請輸入數量"
                 />
@@ -500,7 +509,7 @@ export default function Warehouse() {
                 label="倉庫"
                 rules={[{ required: true, message: '請選擇倉庫' }]}
               >
-                <Select placeholder="請選擇倉庫">
+                <Select placeholder="請選擇倉庫" disabled={!!editingItem}>
                   {warehouseOptions.map((option) => (
                     <Option key={option.value} value={option.value}>
                       {option.label}
@@ -579,10 +588,24 @@ export default function Warehouse() {
                 >
                   {projects.map((project) => (
                     <Option key={project._id} value={project._id}>
-                      {project.name}
+                      {project.invoiceNumber ? String(project.invoiceNumber) : project.name}
                     </Option>
                   ))}
                 </Select>
+              </Form.Item>
+              <Form.Item shouldUpdate={(prev, cur) => prev.project !== cur.project} noStyle>
+                {({ getFieldValue }) => {
+                  const pid = getFieldValue('project');
+                  if (!pid) return null;
+                  const p = projects.find((x) => String(x._id) === String(pid));
+                  const qn = p?.invoiceNumber || p?.quoteNumber || '';
+                  if (!qn) return null;
+                  return (
+                    <div style={{ marginTop: -8, color: '#666', fontSize: 12 }}>
+                      Quote Number：{qn}
+                    </div>
+                  );
+                }}
               </Form.Item>
             </Col>
             <Col span={12}>
@@ -633,6 +656,78 @@ export default function Warehouse() {
         </Form>
       </Modal>
 
+      {/* 調整/轉移記錄（按貨品編號點擊開啟） */}
+      <Modal
+        title={`調整/轉移記錄${recordItem?.sku ? `（${recordItem.sku}）` : ''}`}
+        open={recordModalVisible}
+        onCancel={() => {
+          setRecordModalVisible(false);
+          setRecordItem(null);
+        }}
+        footer={null}
+        width={900}
+      >
+        <Table
+          size="small"
+          loading={transactionLoading}
+          dataSource={Array.isArray(transactionList) ? transactionList : []}
+          rowKey={(r) => r._id}
+          pagination={{ pageSize: 10 }}
+          columns={[
+            {
+              title: '日期',
+              dataIndex: 'transactionDate',
+              key: 'transactionDate',
+              width: 160,
+              render: (v) => (v ? dayjs(v).format('YYYY-MM-DD HH:mm') : '-'),
+            },
+            {
+              title: '類型',
+              dataIndex: 'transactionTypeDisplay',
+              key: 'transactionTypeDisplay',
+              width: 90,
+              render: (_, r) => r.transactionTypeDisplay || r.transactionType || '-',
+            },
+            {
+              title: '變動',
+              dataIndex: 'quantityChange',
+              key: 'quantityChange',
+              width: 80,
+              render: (v) => (v != null ? v : '-'),
+            },
+            {
+              title: '前→後',
+              key: 'beforeAfter',
+              width: 110,
+              render: (_, r) =>
+                `${r.quantityBefore != null ? r.quantityBefore : '-'} → ${r.quantityAfter != null ? r.quantityAfter : '-'}`,
+            },
+            {
+              title: '原因',
+              dataIndex: 'reason',
+              key: 'reason',
+              width: 160,
+              ellipsis: true,
+              render: (v) => v || '-',
+            },
+            {
+              title: '備註',
+              dataIndex: 'notes',
+              key: 'notes',
+              ellipsis: true,
+              render: (v) => v || '-',
+            },
+            {
+              title: '操作人',
+              dataIndex: ['createdBy', 'name'],
+              key: 'createdBy',
+              width: 110,
+              render: (_, r) => r.createdBy?.name || '-',
+            },
+          ]}
+        />
+      </Modal>
+
       {/* 庫存調整模態框 */}
       <Modal
         title="庫存調整"
@@ -665,6 +760,7 @@ export default function Warehouse() {
           <Form.Item
             name="reason"
             label="調整原因"
+            rules={[{ required: true, message: '請輸入調整原因' }]}
           >
             <Input placeholder="請輸入調整原因" />
           </Form.Item>
@@ -672,6 +768,7 @@ export default function Warehouse() {
           <Form.Item
             name="notes"
             label="備註"
+            rules={[{ required: true, message: '請輸入備註' }]}
           >
             <TextArea rows={3} placeholder="請輸入備註" />
           </Form.Item>

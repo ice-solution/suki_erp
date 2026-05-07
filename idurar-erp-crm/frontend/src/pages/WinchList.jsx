@@ -272,10 +272,10 @@ export default function WinchList() {
   const dataTableColumns = getBaseColumns();
 
   const Labels = {
-    PANEL_TITLE: translate('winch') || '爬攬器管理',
-    DATATABLE_TITLE: translate('winch_list') || '爬攬器列表',
-    ADD_NEW_ENTITY: translate('add_new_winch') || '添加新爬攬器',
-    ENTITY_NAME: translate('winch') || '爬攬器',
+    PANEL_TITLE: translate('winch') || '爬纜器管理',
+    DATATABLE_TITLE: translate('winch_list') || '爬纜器列表',
+    ADD_NEW_ENTITY: translate('add_new_winch') || '添加新爬纜器',
+    ENTITY_NAME: translate('winch') || '爬纜器',
   };
   const configPage = {
     entity,

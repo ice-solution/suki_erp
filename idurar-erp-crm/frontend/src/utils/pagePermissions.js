@@ -18,7 +18,7 @@ export const PAGE_PERMISSION_DEFS = [
   { key: 'contractor-list', zh: '承辦商', en: 'Contractors' },
   { key: 'contractor-employee', zh: '承辦商員工', en: 'Contractor Employees' },
   { key: 'ship', zh: '船', en: 'Ship' },
-  { key: 'winch', zh: '爬攬器', en: 'Winch' },
+  { key: 'winch', zh: '爬纜器', en: 'Winch' },
   { key: 'settings', zh: '設定', en: 'Settings' },
 ];
 

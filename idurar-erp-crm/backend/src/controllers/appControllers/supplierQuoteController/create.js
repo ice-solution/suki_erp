@@ -244,7 +244,7 @@ const create = async (req, res) => {
     });
   }
 
-  // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
+  // 如果有船隻或爬纜器，更新它們的status、supplierNumber和expiredDate
   const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
   const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
   const quoteNumber = result.invoiceNumber || '';
@@ -282,7 +282,7 @@ const create = async (req, res) => {
       updated: new Date()
     });
 
-    // 記錄：這次 S單綁定到爬攬器
+    // 記錄：這次 S單綁定到爬纜器
     try {
       await SupplierQuoteAssetBinding.create({
         assetType: 'winch',

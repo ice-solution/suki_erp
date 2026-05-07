@@ -11,7 +11,7 @@ const STATUS_ROWS = [
 ];
 
 /**
- * 爬攬器／船隻列表頂部：依 status 彙總全庫筆數（listAll，不受表格分頁／搜尋影響）
+ * 爬纜器／船隻列表頂部：依 status 彙總全庫筆數（listAll，不受表格分頁／搜尋影響）
  * @param {string} entity - 'winch' | 'ship'
  * @param {number} refreshKey - 變更時重新拉取（例如使用者按「重新整理」）
  */

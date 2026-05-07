@@ -430,13 +430,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  // 獲取狀態為「正常」的爬攬器列表
+  // 獲取狀態為「正常」的爬纜器列表
   const fetchWinches = async () => {
     try {
       setWinchesLoading(true);
       const response = await request.listAll({ entity: 'winch' });
       if (response.success && Array.isArray(response.result)) {
-        // 只過濾 status = 'normal' 的爬攬器
+        // 只過濾 status = 'normal' 的爬纜器
         const normalWinches = response.result.filter(winch => winch.status === 'normal');
         const winchOptions = normalWinches.map(winch => ({
           value: winch._id,
@@ -446,7 +446,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         setWinches(winchOptions);
       }
     } catch (error) {
-      console.error('獲取爬攬器列表失敗:', error);
+      console.error('獲取爬纜器列表失敗:', error);
       setWinches([]);
     } finally {
       setWinchesLoading(false);
@@ -616,7 +616,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   }, [current, form, clients]);
 
-  // 處理船隻和爬攬器數據，確保在ships和winches加載完成後設置
+  // 處理船隻和爬纜器數據，確保在ships和winches加載完成後設置
   useEffect(() => {
     if (current && current._id) {
       // 只在current確實存在且有_id時才處理（表示這是一個已存在的記錄）
@@ -637,7 +637,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         setSelectedShip(null);
         setSelectedShipName(null);
       }
-      // 處理爬攬器數據 - 以序列號顯示
+      // 處理爬纜器數據 - 以序列號顯示
       if (currentWinch) {
         const winchId = typeof currentWinch === 'object' ? currentWinch._id : currentWinch;
         const winchSerial = typeof currentWinch === 'object' ? currentWinch.serialNumber : null;
@@ -1795,7 +1795,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         locale={{ emptyText: '未添加材料' }}
       />
 
-      <Divider orientation="left">船隻爬攬器管理</Divider>
+      <Divider orientation="left">船隻爬纜器管理</Divider>
 
       {/* Ships and Winches Selection */}
       <Row gutter={[12, 12]} style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
@@ -1820,9 +1820,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           />
         </Col>
         <Col span={12}>
-          <h4>選擇爬攬器</h4>
+          <h4>選擇爬纜器</h4>
           <Select
-            placeholder="選擇爬攬器（只顯示狀態為「正常」的）"
+            placeholder="選擇爬纜器（只顯示狀態為「正常」的）"
             value={selectedWinch}
             onChange={(value, option) => {
               setSelectedWinch(value);
@@ -1853,7 +1853,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             }] : []),
             ...(selectedWinch ? [{
               key: 'winch',
-              type: '爬攬器',
+              type: '爬纜器',
               name: selectedWinchName || winches.find(w => w.value === selectedWinch)?.label || selectedWinch,
               id: selectedWinch
             }] : [])
@@ -1885,7 +1885,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                       setSelectedShip(null);
                       setSelectedShipName(null);
                       form.setFieldsValue({ ship: null });
-                    } else if (record.type === '爬攬器') {
+                    } else if (record.type === '爬纜器') {
                       setSelectedWinch(null);
                       setSelectedWinchName(null);
                       form.setFieldsValue({ winch: null });
@@ -1899,7 +1899,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           ]}
           pagination={false}
           size="small"
-          locale={{ emptyText: '未選擇船隻或爬攬器' }}
+          locale={{ emptyText: '未選擇船隻或爬纜器' }}
         />
       )}
 

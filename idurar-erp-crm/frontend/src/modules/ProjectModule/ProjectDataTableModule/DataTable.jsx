@@ -222,7 +222,8 @@ export default function DataTable({ config, extra = [] }) {
         pagination={activeSearchQuery ? false : pagination || {}}
         loading={listIsLoading}
         onChange={activeSearchQuery ? undefined : handelDataTableLoad}
-        scroll={{ x: true }}
+        tableLayout="fixed"
+        scroll={{ x: 1800 }}
       />
     </>
   );

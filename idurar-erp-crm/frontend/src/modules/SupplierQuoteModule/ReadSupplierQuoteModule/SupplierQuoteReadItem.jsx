@@ -499,7 +499,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           </Descriptions.Item>
         )}
         {currentErp.winch && (
-          <Descriptions.Item label="爬攬器">
+          <Descriptions.Item label="爬纜器">
             <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
           </Descriptions.Item>
         )}

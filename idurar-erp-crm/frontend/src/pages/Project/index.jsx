@@ -61,14 +61,8 @@ export default function Project() {
       title: translate('Project Name'),
       dataIndex: 'name',
       key: 'name',
-      render: (text) => text || '-',
-    },
-    {
-      title: translate('address'),
-      dataIndex: 'address',
-      key: 'address',
-      ellipsis: true,
-      width: 200,
+      width: 450,
+      ellipsis: false,
       render: (text) => text || '-',
     },
     {

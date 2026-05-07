@@ -4,7 +4,7 @@ const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 const SupplierQuote = mongoose.model('SupplierQuote');
 
 // GET /winch/bindings?winchId=...
-// 回傳該爬攬器歷史綁定過的 S單編號（supplierQuoteNumber）與 Quote Number（quoteNumber）
+// 回傳該爬纜器歷史綁定過的 S單編號（supplierQuoteNumber）與 Quote Number（quoteNumber）
 const bindings = async (req, res) => {
   try {
     const { winchId } = req.query;

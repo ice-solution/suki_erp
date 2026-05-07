@@ -4,7 +4,7 @@ const Model = mongoose.model('Winch');
 const SupplierQuote = mongoose.model('SupplierQuote');
 const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 
-// 當爬攬器狀態改為回倉/待回廠時，清掉 expiredDate / supplierNumber，避免顯示已無關的到期日
+// 當爬纜器狀態改為回倉/待回廠時，清掉 expiredDate / supplierNumber，避免顯示已無關的到期日
 const updateWinch = async (req, res) => {
   req.body.removed = false;
   const now = new Date();
@@ -28,7 +28,7 @@ const updateWinch = async (req, res) => {
       });
     }
 
-    // 先抓出所有仍綁定到此爬攬器的 S單，做「歷史記錄」並解除關聯
+    // 先抓出所有仍綁定到此爬纜器的 S單，做「歷史記錄」並解除關聯
     const supplierQuotes = await SupplierQuote.find({
       removed: false,
       winch: winchId,
@@ -83,7 +83,7 @@ const updateWinch = async (req, res) => {
         { $set: { returnDate: parsedReturnDate } }
       );
 
-      // 解除關聯：把此爬攬器從所有 S單的 winch 欄位清掉
+      // 解除關聯：把此爬纜器從所有 S單的 winch 欄位清掉
       const updatePayload = {
         winch: null,
         modified_at: now,

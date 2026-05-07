@@ -323,7 +323,7 @@ const update = async (req, res) => {
     });
   }
 
-  // 如果有船隻或爬攬器，更新它們的status、supplierNumber和expiredDate
+  // 如果有船隻或爬纜器，更新它們的status、supplierNumber和expiredDate
   const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
   const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
   const quoteNumber = result.invoiceNumber || '';
@@ -365,7 +365,7 @@ const update = async (req, res) => {
     }
   }
 
-  // 處理爬攬器：如果之前有winch但現在沒有，將之前的winch狀態改為回倉
+  // 處理爬纜器：如果之前有winch但現在沒有，將之前的winch狀態改為回倉
   if (oldWinchId) {
     // winch 被移除（現在沒有）或換了新的 winch
     if (!newWinchId || oldWinchId !== newWinchId) {
@@ -403,7 +403,7 @@ const update = async (req, res) => {
     }
   }
 
-  // 更新新的爬攬器
+  // 更新新的爬纜器
   if (newWinchId) {
     await Winch.findByIdAndUpdate(newWinchId, {
       status: 'in_use',
