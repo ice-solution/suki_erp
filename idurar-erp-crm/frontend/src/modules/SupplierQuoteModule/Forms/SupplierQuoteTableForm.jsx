@@ -83,6 +83,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const [editingMaterialKey, setEditingMaterialKey] = useState(null);
   const [currentMaterial, setCurrentMaterial] = useState({
     warehouse: '',
+    warehouseInventory: undefined,
     itemName: '',
     quantity: 1,
     unitPrice: 0, // 單價
@@ -538,7 +539,22 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         ...item, 
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
-      setMaterials(currentMaterials.map((material, index) => ({ ...material, key: index })));
+      setMaterials(
+        currentMaterials.map((material, index) => {
+          const wid = material.warehouseInventory;
+          const warehouseInventoryStr =
+            wid != null && wid !== ''
+              ? typeof wid === 'object' && wid._id
+                ? String(wid._id)
+                : String(wid)
+              : undefined;
+          return {
+            ...material,
+            key: material.key || material._id || index,
+            warehouseInventory: warehouseInventoryStr,
+          };
+        })
+      );
       
       // 計算subTotal或使用現有的subTotal（計算 materials 和 items）
       let calculatedSubTotal = 0;
@@ -890,54 +906,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     form.setFieldsValue({ items: updatedItems });
   };
 
-  // 處理材料選擇
-  const handleMaterialSelect = async (value, option) => {
-    const selectedMaterial = warehouseItems.find(item => item.itemName === value);
-    if (selectedMaterial) {
-      let price = selectedMaterial.unitPrice || 0;
-      
-      // 確保從存倉獲取最新的價格（即使已經在 warehouseItems 中）
-      try {
-        // 使用 request.get 來搜索 warehouse，支持 search 參數
-        const entity = `warehouse?search=${encodeURIComponent(value)}&limit=50`;
-        const warehouseResponse = await request.get({ entity });
-        
-        // warehouse API 返回格式: { success: true, result: [...], pagination: {...} }
-        const warehouseItemsFromAPI = warehouseResponse?.result || [];
-        
-        if (warehouseItemsFromAPI.length > 0) {
-          // 查找完全匹配的 itemName（不區分大小寫）
-          const matchingWarehouseItem = warehouseItemsFromAPI.find(
-            item => item.itemName && item.itemName.trim().toLowerCase() === value.trim().toLowerCase()
-          );
-          
-          if (matchingWarehouseItem && matchingWarehouseItem.unitPrice && matchingWarehouseItem.unitPrice > 0) {
-            // 使用存倉的價格
-            price = matchingWarehouseItem.unitPrice;
-            console.log(`✅ 從存倉獲取材料價格: ${value} = $${price}`);
-          } else {
-            console.log(`ℹ️ 存倉中找到 "${value}" 但沒有有效價格，使用已加載的價格`);
-          }
-        } else {
-          console.log(`ℹ️ 存倉中未找到 "${value}"，使用已加載的價格`);
-        }
-      } catch (error) {
-        console.warn('⚠️ 獲取存倉價格失敗，使用已加載的價格:', error);
-        // 如果獲取存倉價格失敗，繼續使用已加載的價格
-      }
-      
-      // 計算總價（quantity * unitPrice）
-      const quantity = currentMaterial.quantity || 1;
-      const totalPrice = calculate.multiply(quantity, price);
-      
-      setCurrentMaterial({
-        ...currentMaterial,
-        itemName: selectedMaterial.itemName,
-        warehouse: selectedMaterial.warehouse,
-        unitPrice: price, // 存儲單價
-        price: Number.parseFloat(totalPrice.toFixed(2)) // 計算並存儲總價
-      });
-    }
+  // 處理材料選擇（僅「供應商管理」「其他」：從預設選項帶入名稱）
+  const handleOtherMaterialSelect = (value) => {
+    setCurrentMaterial((prev) => ({
+      ...prev,
+      itemName: value,
+    }));
   };
 
   // 「其他」類別下的可選名稱（供輸入/選擇，加工費與會計計算有關）
@@ -947,9 +921,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     { value: '雜項', label: '雜項' },
   ];
 
-  // 搜索倉庫項目
+  // 搜索倉庫項目（僅「供應商管理」「其他」用 AutoComplete 選項）
   const handleMaterialSearch = (searchText) => {
-    // 「供應商管理」「其他」：顯示可選名稱（如加工費）讓用戶選或輸入
     if (currentMaterial.warehouse === '其他' || currentMaterial.warehouse === '供應商管理') {
       if (!searchText) {
         return OTHER_MATERIAL_OPTIONS;
@@ -959,37 +932,36 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         (opt) => opt.label.toLowerCase().includes(lower)
       );
     }
-    
-    // 如果選擇了倉庫，只顯示該倉庫的項目
-    const filteredItems = currentMaterial.warehouse 
-      ? warehouseItems.filter(item => item.warehouse === currentMaterial.warehouse)
-      : warehouseItems;
-    
-    if (!searchText) {
-      return filteredItems.map(item => ({
-        value: item.itemName,
-        label: `${item.itemName} (${item.warehouse}) - 庫存: ${item.quantity}`
-      }));
-    }
-    
-    return filteredItems
-      .filter(item => 
-        item.itemName.toLowerCase().includes(searchText.toLowerCase()) ||
-        (item.description && item.description.toLowerCase().includes(searchText.toLowerCase()))
-      )
-      .map(item => ({
-        value: item.itemName,
-        label: `${item.itemName} (${item.warehouse}) - 庫存: ${item.quantity}`
-      }));
+    return [];
   };
 
   // 更新當前材料
   const updateCurrentMaterial = (field, value) => {
-    const updatedMaterial = {
+    let updatedMaterial = {
       ...currentMaterial,
-      [field]: value
+      [field]: value,
     };
-    
+
+    if (field === 'warehouse') {
+      if (value === '其他' || value === '供應商管理') {
+        updatedMaterial = {
+          ...updatedMaterial,
+          warehouseInventory: undefined,
+          itemName: updatedMaterial.itemName || '',
+        };
+        fetchWarehouseItems(value);
+      } else if (value) {
+        updatedMaterial = {
+          ...updatedMaterial,
+          warehouseInventory: undefined,
+          itemName: '',
+          unitPrice: 0,
+          price: 0,
+        };
+        fetchWarehouseItems(value);
+      }
+    }
+
     // 當 quantity 或 unitPrice 改變時，自動計算總價
     if (field === 'quantity' || field === 'unitPrice') {
       const quantity = field === 'quantity' ? (value || 0) : (updatedMaterial.quantity || 0);
@@ -997,13 +969,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       const totalPrice = calculate.multiply(quantity, unitPrice);
       updatedMaterial.price = Number.parseFloat(totalPrice.toFixed(2));
     }
-    
+
     setCurrentMaterial(updatedMaterial);
-    
-    // 如果選擇了倉庫，動態加載該倉庫的項目
-    if (field === 'warehouse' && value) {
-      fetchWarehouseItems(value);
-    }
   };
 
   // 編輯材料
@@ -1019,8 +986,17 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     const totalPrice = record.price || 0;
     const unitPrice = record.unitPrice || (quantity > 0 ? totalPrice / quantity : 0);
     
+    const wid = record.warehouseInventory;
+    const warehouseInventoryStr =
+      wid != null && wid !== ''
+        ? typeof wid === 'object' && wid._id
+          ? String(wid._id)
+          : String(wid)
+        : undefined;
+
     const materialData = {
       warehouse: record.warehouse || '',
+      warehouseInventory: warehouseInventoryStr,
       itemName: record.itemName || '',
       quantity: quantity,
       unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
@@ -1037,8 +1013,25 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 添加或更新材料到列表
   const addMaterialToList = () => {
-    // 允許正數（加數）或負數（減數），但不允許 0
-    if (!currentMaterial.itemName || !currentMaterial.warehouse || currentMaterial.quantity === null || currentMaterial.quantity === undefined || currentMaterial.quantity === 0) {
+    const isVirtualWh =
+      currentMaterial.warehouse === '其他' ||
+      currentMaterial.warehouse === '供應商管理';
+
+    if (
+      !currentMaterial.warehouse ||
+      currentMaterial.quantity === null ||
+      currentMaterial.quantity === undefined ||
+      currentMaterial.quantity === 0
+    ) {
+      return;
+    }
+
+    if (!isVirtualWh) {
+      if (!currentMaterial.warehouseInventory || !currentMaterial.itemName) {
+        message.warning('倉 A–D 請從下拉選單選擇存倉貨品（不可手動輸入名稱）');
+        return;
+      }
+    } else if (!currentMaterial.itemName) {
       return;
     }
 
@@ -1060,11 +1053,14 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             currentMaterial.warehouse === '其他' && currentMaterial.itemName === '加工費'
               ? 'processing_fee'
               : undefined;
-          const updatedMaterial = { 
-            ...material,  // 保留所有原有字段
-            ...currentMaterial,  // 用新值覆蓋
-            key: material.key || editingMaterialKey,  // 確保 key 不變
-            _id: material._id,  // 保留 _id
+          const updatedMaterial = {
+            ...material,
+            ...currentMaterial,
+            warehouseInventory: isVirtualWh
+              ? undefined
+              : currentMaterial.warehouseInventory,
+            key: material.key || editingMaterialKey,
+            _id: material._id,
             accountingType,
           };
           console.log('Updating material:', { old: material, new: updatedMaterial });
@@ -1084,8 +1080,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 添加模式：添加新材料
       const newMaterial = {
         ...currentMaterial,
-        key: Date.now(), // 用作唯一標識
-        // 會計用：當「其他」+ 加工費 時標記，供後續 accounting 計算
+        key: Date.now(),
+        warehouseInventory: isVirtualWh ? undefined : currentMaterial.warehouseInventory,
         accountingType:
           currentMaterial.warehouse === '其他' && currentMaterial.itemName === '加工費'
             ? 'processing_fee'
@@ -1101,6 +1097,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     // 重置當前材料
     setCurrentMaterial({
       warehouse: '',
+      warehouseInventory: undefined,
       itemName: '',
       quantity: 1,
       unitPrice: 0,
@@ -1408,12 +1405,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               <Form.Item
                 name="openDate"
                 label="出貨日期"
-                rules={[{ required: false }]}
+                rules={[
+                  { required: true, message: '請選擇出貨日期' },
+                  { type: 'object', message: '請選擇出貨日期' },
+                ]}
                 initialValue={current?.openDate ? dayjs(current.openDate) : undefined}
               >
                 <DatePicker
                   style={{ width: '100%' }}
                   format={dateFormat}
+                  placeholder="請選擇出貨日期"
                 />
               </Form.Item>
             </Col>
@@ -1457,10 +1458,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               <Form.Item
                 name="openDate"
                 label="出貨日期"
-                rules={[{ required: false }]}
+                rules={[
+                  { required: true, message: '請選擇出貨日期' },
+                  { type: 'object', message: '請選擇出貨日期' },
+                ]}
                 initialValue={current?.openDate ? dayjs(current.openDate) : undefined}
               >
-                <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="出貨日期（選填）" />
+                <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="請選擇出貨日期" />
               </Form.Item>
             </Col>
             <Col className="gutter-row" span={8}>
@@ -1547,9 +1551,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       </Row>
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={24}>
-          <Form.Item label="簽收單收貨人地址" name="receiver">
+          <Form.Item label="簽收單送貨地址" name="receiver">
             <Input.TextArea
-              placeholder="顯示於 S 單 PDF「TO」下方之收貨地址（可多行）"
+              placeholder="顯示於 S 單 PDF「TO」下方之送貨地址（可多行）"
               rows={3}
               autoSize={{ minRows: 2, maxRows: 10 }}
             />
@@ -1729,18 +1733,71 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           />
         </Col>
         <Col span={8}>
-          <AutoComplete
-            placeholder="輸入材料名稱搜索..."
-            onSearch={handleMaterialSearch}
-            onSelect={handleMaterialSelect}
-            value={currentMaterial.itemName}
-            onChange={(value) => updateCurrentMaterial('itemName', value)}
-            loading={materialsLoading}
-            showSearch
-            filterOption={false}
-            options={handleMaterialSearch('')}
-            style={{ width: '100%' }}
-          />
+          {currentMaterial.warehouse === '其他' ||
+          currentMaterial.warehouse === '供應商管理' ? (
+            <AutoComplete
+              placeholder="輸入或選擇項目名稱..."
+              onSearch={handleMaterialSearch}
+              onSelect={handleOtherMaterialSelect}
+              value={currentMaterial.itemName}
+              onChange={(v) => updateCurrentMaterial('itemName', v)}
+              loading={materialsLoading}
+              showSearch
+              filterOption={false}
+              options={handleMaterialSearch('')}
+              style={{ width: '100%' }}
+            />
+          ) : (
+            <Select
+              placeholder={
+                currentMaterial.warehouse
+                  ? '從存倉選擇貨品（依貨品 ID 扣帳）'
+                  : '請先選倉庫'
+              }
+              loading={materialsLoading}
+              value={
+                currentMaterial.warehouseInventory
+                  ? String(currentMaterial.warehouseInventory)
+                  : undefined
+              }
+              onChange={(invId) => {
+                if (!invId) {
+                  setCurrentMaterial((prev) => ({
+                    ...prev,
+                    warehouseInventory: undefined,
+                    itemName: '',
+                    unitPrice: 0,
+                    price: 0,
+                  }));
+                  return;
+                }
+                const item = warehouseItems.find((w) => String(w._id) === String(invId));
+                if (!item) return;
+                const quantity = currentMaterial.quantity || 1;
+                const up = item.unitPrice || 0;
+                const totalPrice = calculate.multiply(quantity, up);
+                setCurrentMaterial((prev) => ({
+                  ...prev,
+                  warehouseInventory: String(item._id),
+                  itemName: item.itemName,
+                  warehouse: item.warehouse,
+                  unitPrice: up,
+                  price: Number.parseFloat(totalPrice.toFixed(2)),
+                }));
+              }}
+              showSearch
+              allowClear
+              disabled={!currentMaterial.warehouse}
+              filterOption={(input, option) =>
+                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+              }
+              options={warehouseItems.map((item) => ({
+                value: String(item._id),
+                label: `${item.itemName} — ${translate('Warehouse')} ${item.warehouse} — ${translate('Quantity')}: ${item.quantity}`,
+              }))}
+              style={{ width: '100%' }}
+            />
+          )}
         </Col>
         <Col span={3}>
           <InputNumber 

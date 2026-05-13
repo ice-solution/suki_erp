@@ -78,11 +78,18 @@ const create = async (req, res) => {
 
   let body = req.body;
 
-  // 允許「出貨日期」獨立保存（openDate）；空字串視為未填
+  // 出貨日期（openDate）必填；空字串視為未填
   if (body.openDate === '') body.openDate = null;
   if (body.openDate) {
     const d = new Date(body.openDate);
     if (!isNaN(d.getTime())) body.openDate = d;
+  }
+  if (!body.openDate) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: '請填寫出貨日期',
+    });
   }
 
   // 若前端有送 subTotal / total（手動編輯），則採用並據此計算 discountTotal
@@ -197,7 +204,7 @@ const create = async (req, res) => {
   // Creating a new document in the collection
   const result = await new Model(body).save();
 
-  // 材料及費用管理：新增 S 單時依材料從倉庫扣庫（與 WarehouseInventory 貨品名稱、倉 A–D 需一致）
+  // 材料及費用管理：新增 S 單時依材料從倉庫扣庫（倉 A–D 以 warehouseInventory ObjectId 為主，舊資料仍可用 倉+貨品名）
   let warehouseApplied = [];
   try {
     const syncRes = await applySupplierQuoteMaterialsWarehouseSync({

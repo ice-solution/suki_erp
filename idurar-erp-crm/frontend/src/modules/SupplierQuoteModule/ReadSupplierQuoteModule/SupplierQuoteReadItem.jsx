@@ -36,19 +36,26 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
 import { multilineStyle } from '@/utils/renderMultilineText';
 
-const Item = ({ item, currentErp }) => {
+const Item = ({ item, rowNumber }) => {
   return (
-    <Row gutter={[12, 0]} key={item._id}>
-      <Col className="gutter-row" span={15}>
+    <Row gutter={[12, 0]}>
+      <Col className="gutter-row" span={2} style={{ textAlign: 'center' }}>
+        <p style={{ marginBottom: 5 }}>{rowNumber}</p>
+      </Col>
+      <Col className="gutter-row" span={12}>
         <p style={{ marginBottom: 5 }}>
           <strong>{item.itemName}</strong>
         </p>
-        <p style={multilineStyle}>{item.description}</p>
+        {item.description ? <p style={multilineStyle}>{item.description}</p> : null}
       </Col>
-      <Col className="gutter-row" span={9}>
+      <Col className="gutter-row" span={4} style={{ textAlign: 'center' }}>
+        <p style={{ marginBottom: 5 }}>{item.unit != null && String(item.unit).trim() !== '' ? item.unit : '-'}</p>
+      </Col>
+      <Col className="gutter-row" span={6}>
         <p
           style={{
             textAlign: 'right',
+            marginBottom: 5,
           }}
         >
           {item.quantity}
@@ -479,7 +486,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label="Quote Number">{currentErp.invoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label="供應商 Invoice Number">{currentErp.counterpartyInvoiceNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label="簽收單聯絡人">{currentErp.contactPerson || '-'}</Descriptions.Item>
-        <Descriptions.Item label="簽收單收貨人地址">
+        <Descriptions.Item label="簽收單送貨地址">
           <span style={{ whiteSpace: 'pre-wrap' }}>{currentErp.receiver || '-'}</span>
         </Descriptions.Item>
         <Descriptions.Item label="備註">{currentErp.notes || '-'}</Descriptions.Item>
@@ -583,23 +590,29 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
       </Descriptions>
       <Divider />
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={15}>
+        <Col className="gutter-row" span={2} style={{ textAlign: 'center' }}>
           <p>
-            <strong>{translate('Product')}</strong>
+            <strong>序號</strong>
           </p>
         </Col>
-        <Col className="gutter-row" span={9}>
-          <p
-            style={{
-              textAlign: 'right',
-            }}
-          >
+        <Col className="gutter-row" span={12}>
+          <p>
+            <strong>品名</strong>
+          </p>
+        </Col>
+        <Col className="gutter-row" span={4} style={{ textAlign: 'center' }}>
+          <p>
+            <strong>單位</strong>
+          </p>
+        </Col>
+        <Col className="gutter-row" span={6}>
+          <p style={{ textAlign: 'right' }}>
             <strong>{translate('Quantity')}</strong>
           </p>
         </Col>
       </Row>
-      {itemslist.map((item) => (
-        <Item key={item._id} item={item} currentErp={currentErp} />
+      {itemslist.map((item, index) => (
+        <Item key={item._id || `item-${index}`} item={item} rowNumber={index + 1} />
       ))}
       {(currentErp?.materials?.length ?? 0) > 0 && (
         <>

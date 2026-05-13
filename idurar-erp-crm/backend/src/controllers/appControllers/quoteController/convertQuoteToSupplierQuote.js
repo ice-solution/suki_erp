@@ -5,12 +5,24 @@ const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const ProjectModel = mongoose.model('Project');
 
 const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
+const { aggregateOrderedQtyByQuoteLine } = require('@/helpers/quoteSupplierOrderFromQuote');
 
+function normalizeQty(n) {
+  const v = Math.floor(Number(n));
+  return Number.isFinite(v) ? v : 0;
+}
+
+function linePoNumber(item, headerPo) {
+  return String(item.poNumber || '').trim() || headerPo;
+}
+
+/**
+ * GET：依餘額一次上滿（舊客戶端相容）；POST：body { poNumber, lines: [{ itemIndex, quantity }] }
+ */
 const convertQuoteToSupplierQuote = async (req, res) => {
   try {
-    // Find the quote by id
     const quote = await QuoteModel.findById(req.params.id);
-    
+
     if (!quote) {
       return res.status(404).json({
         success: false,
@@ -19,10 +31,10 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       });
     }
 
-    // 檢查 Project Management 是否已建立此 Quote Number
-    const quoteNumber = quote.numberPrefix && quote.number
-      ? `${quote.numberPrefix}-${quote.number}`
-      : quote.invoiceNumber;
+    const quoteNumber =
+      quote.numberPrefix && quote.number
+        ? `${quote.numberPrefix}-${quote.number}`
+        : quote.invoiceNumber;
     if (quoteNumber) {
       const project = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
       if (!project) {
@@ -34,18 +46,8 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       }
     }
 
-    // Check if quote is already converted to supplier quote
-    // 檢查 converted.supplierQuote 是否存在（因為 converted.to 可能只支持 'invoice'）
-    if (quote.converted && quote.converted.supplierQuote) {
-      return res.status(400).json({
-        success: false,
-        result: null,
-        message: 'Quote has already been converted to supplier quote',
-      });
-    }
-
-    // 獲取 P.O number 參數
-    const poNumber = req.query.poNumber;
+    const isPost = req.method === 'POST';
+    const poNumber = String((isPost ? req.body?.poNumber : req.query?.poNumber) || '').trim();
     if (!poNumber) {
       return res.status(400).json({
         success: false,
@@ -54,28 +56,79 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       });
     }
 
-    // 過濾出指定 P.O number 的 items
-    const filteredItems = quote.items.filter(item => item.poNumber === poNumber);
-    
-    if (filteredItems.length === 0) {
+    const items = quote.items || [];
+    const headerPo = String(quote.poNumber || '').trim();
+    const orderedMap = await aggregateOrderedQtyByQuoteLine(quote._id, poNumber);
+
+    /** @type {{ itemIndex: number, quantity: number }[]} */
+    let resolvedLines = [];
+
+    if (isPost) {
+      const rawLines = Array.isArray(req.body?.lines) ? req.body.lines : null;
+      if (!rawLines || rawLines.length === 0) {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: '請提供 lines：[{ itemIndex, quantity }]',
+        });
+      }
+      for (const row of rawLines) {
+        const itemIndex = normalizeQty(row?.itemIndex);
+        const qty = normalizeQty(row?.quantity);
+        if (qty <= 0) continue;
+        const item = items[itemIndex];
+        if (!item || linePoNumber(item, headerPo) !== poNumber) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: `無效的 itemIndex：${itemIndex}`,
+          });
+        }
+        const totalQty = Math.max(0, normalizeQty(item.quantity));
+        const already = Math.max(0, normalizeQty(orderedMap[itemIndex] || 0));
+        const remaining = Math.max(0, totalQty - already);
+        if (qty > remaining) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: `第 ${itemIndex + 1} 行上單數量 ${qty} 超過餘額 ${remaining}`,
+          });
+        }
+        resolvedLines.push({ itemIndex, quantity: qty });
+      }
+    } else {
+      for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+        const item = items[itemIndex];
+        if (linePoNumber(item, headerPo) !== poNumber) continue;
+        const totalQty = Math.max(0, normalizeQty(item.quantity));
+        const already = Math.max(0, normalizeQty(orderedMap[itemIndex] || 0));
+        const remaining = Math.max(0, totalQty - already);
+        if (remaining > 0) {
+          resolvedLines.push({ itemIndex, quantity: remaining });
+        }
+      }
+    }
+
+    if (resolvedLines.length === 0) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: `No items found with P.O number: ${poNumber}`,
+        message: isPost
+          ? '請至少選擇一行且數量大於 0，且不可超過餘額'
+          : `此 P.O 已無可上單餘額或沒有符合的項目：${poNumber}`,
       });
     }
 
-    // Create supplier quote data from quote
-    // 注意：items 中的 poNumber 和 price 不需要傳遞到 SupplierQuote
-    // SupplierQuote 的 items 只需要 itemName, description, quantity
-    const supplierQuoteItems = filteredItems.map(item => ({
-      itemName: item.itemName,
-      description: item.description,
-      quantity: item.quantity,
-      // 不包含 price 和 total，因為 SupplierQuote 不需要 item 的價錢
-    }));
+    const supplierQuoteItems = resolvedLines.map(({ itemIndex, quantity }) => {
+      const item = items[itemIndex];
+      return {
+        itemName: item.itemName,
+        description: item.description,
+        quantity,
+        unit: item.unit,
+      };
+    });
 
-    // 映射 Quote 的 numberPrefix 到 SupplierQuote 的有效值（預設 S）
     let supplierQuotePrefix = 'S';
     if (quote.numberPrefix) {
       if (quote.numberPrefix === 'SML') {
@@ -86,30 +139,36 @@ const convertQuoteToSupplierQuote = async (req, res) => {
     }
 
     const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix(supplierQuotePrefix);
-    const supplierQuoteNumber = supplierQuoteNumberResult
-      ? supplierQuoteNumberResult.settingValue
-      : 1;
+    const supplierQuoteNumber = supplierQuoteNumberResult ? supplierQuoteNumberResult.settingValue : 1;
 
     const supplierQuoteData = {
-      converted: false, // SupplierQuote 的 converted 是 Boolean 類型
-      numberPrefix: supplierQuotePrefix, // 使用映射後的值
+      converted: false,
+      numberPrefix: supplierQuotePrefix,
       number: supplierQuoteNumber.toString(),
       year: new Date().getFullYear(),
       type: quote.type,
       shipType: quote.shipType,
       subcontractorCount: quote.subcontractorCount,
       costPrice: quote.costPrice,
-      date: new Date(), // Supplier Quote date是今天
+      date: new Date(),
+      openDate: new Date(),
       expiredDate: quote.expiredDate,
       isCompleted: quote.isCompleted,
-      invoiceNumber: quote.numberPrefix && quote.number ? `${quote.numberPrefix}-${quote.number}` : quote.invoiceNumber,
+      invoiceNumber:
+        quote.numberPrefix && quote.number ? `${quote.numberPrefix}-${quote.number}` : quote.invoiceNumber,
+      poNumber,
       contactPerson: quote.contactPerson,
       address: quote.address,
       clients: quote.clients,
-      client: quote.client, // 向後兼容
+      client: quote.client,
       project: quote.project,
+      sourceQuote: quote._id,
+      orderFromPoNumber: poNumber,
+      orderFromQuoteLines: resolvedLines.map((l) => ({
+        itemIndex: l.itemIndex,
+        quantity: l.quantity,
+      })),
       items: supplierQuoteItems,
-      // 只帶 items，不帶金額：轉成 S單後 subTotal、total 為 0，由材料及費用再計算
       subTotal: 0,
       discountTotal: 0,
       total: 0,
@@ -117,20 +176,18 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       currency: quote.currency,
       discount: 0,
       notes: quote.notes,
-      status: 'draft', // Supplier Quote初始狀態為draft
+      status: 'draft',
       createdBy: req.admin._id,
     };
 
-    // Create new supplier quote
     const supplierQuote = await new SupplierQuoteModel(supplierQuoteData).save();
-    
-    // Update quote as converted
-    // 注意：Quote 的 converted 字段可能已經有 to: 'invoice'，我們需要處理多個轉換
-    // 如果已經轉換成 invoice，我們仍然可以轉換成 supplier quote
-    // 使用 $set 來添加 converted.supplierQuote 字段，即使 converted 不存在也會自動創建
+
     await QuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {
         'converted.supplierQuote': supplierQuote._id,
+      },
+      $push: {
+        'converted.supplierQuotes': supplierQuote._id,
       },
     });
 
@@ -150,4 +207,3 @@ const convertQuoteToSupplierQuote = async (req, res) => {
 };
 
 module.exports = convertQuoteToSupplierQuote;
-

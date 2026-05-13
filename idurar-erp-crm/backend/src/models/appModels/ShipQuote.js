@@ -26,6 +26,11 @@ const shipQuoteSchema = new mongoose.Schema({
       type: mongoose.Schema.ObjectId,
       ref: 'SupplierQuote',
     },
+    /** 由此 Ship Quote 產生的所有 S 單（可多次上單／拆量） */
+    supplierQuotes: [{
+      type: mongoose.Schema.ObjectId,
+      ref: 'SupplierQuote',
+    }],
   },
   numberPrefix: {
     type: String,

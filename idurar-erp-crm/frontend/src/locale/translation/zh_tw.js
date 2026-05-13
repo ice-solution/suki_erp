@@ -16,6 +16,7 @@ const lang = {
   dashboard: '儀表板',
   customer: '客戶',
   invoice: '發票',
+  quote_number: '報價單號',
   quote: '報價單',
   quotation: '報價單',
   quotation_list: '報價單列表',

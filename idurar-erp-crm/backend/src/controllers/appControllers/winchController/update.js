@@ -4,7 +4,8 @@ const Model = mongoose.model('Winch');
 const SupplierQuote = mongoose.model('SupplierQuote');
 const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 
-// 當爬纜器狀態改為回倉/待回廠時，清掉 expiredDate / supplierNumber，避免顯示已無關的到期日
+// 當爬纜器狀態改為待回廠／香港倉時，清掉 expiredDate / supplierNumber，並寫入綁定歷史（回廠日期未填則用當前時間）
+// 當狀態為「待保養」時，回廠日期由使用者必填，僅寫入爬纜器文件（不觸發上述解除 S 單綁定流程）
 const updateWinch = async (req, res) => {
   req.body.removed = false;
   const now = new Date();
@@ -15,17 +16,20 @@ const updateWinch = async (req, res) => {
     req.body.updatedBy = req.admin._id;
   }
 
-  const returnedStatuses = ['returned_warehouse_cn', 'returned_warehouse_hk'];
-  if (req.body.status && returnedStatuses.includes(req.body.status)) {
+  const warehouseReturnStatuses = ['returned_warehouse_cn', 'returned_warehouse_hk'];
+  if (req.body.status && warehouseReturnStatuses.includes(req.body.status)) {
     const winchId = req.params.id;
     const returnDateValue = req.body.returnDate;
-    const parsedReturnDate = returnDateValue ? new Date(returnDateValue) : null;
-    if (!parsedReturnDate || Number.isNaN(parsedReturnDate.getTime())) {
+    let parsedReturnDate = returnDateValue ? new Date(returnDateValue) : null;
+    if (returnDateValue && (!parsedReturnDate || Number.isNaN(parsedReturnDate.getTime()))) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: '狀態為待回廠/香港倉時必須填寫回廠日期',
+        message: '回廠日期格式不正確',
       });
+    }
+    if (!parsedReturnDate || Number.isNaN(parsedReturnDate.getTime())) {
+      parsedReturnDate = now;
     }
 
     // 先抓出所有仍綁定到此爬纜器的 S單，做「歷史記錄」並解除關聯
@@ -100,6 +104,17 @@ const updateWinch = async (req, res) => {
     req.body.expiredDate = null;
     req.body.supplierNumber = null;
     req.body.assigned = null;
+    req.body.returnDate = parsedReturnDate;
+  } else if (req.body.status === 'pending_maintenance') {
+    const returnDateValue = req.body.returnDate;
+    const parsedReturnDate = returnDateValue ? new Date(returnDateValue) : null;
+    if (!parsedReturnDate || Number.isNaN(parsedReturnDate.getTime())) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: '狀態為待保養時必須填寫回廠日期',
+      });
+    }
     req.body.returnDate = parsedReturnDate;
   }
 

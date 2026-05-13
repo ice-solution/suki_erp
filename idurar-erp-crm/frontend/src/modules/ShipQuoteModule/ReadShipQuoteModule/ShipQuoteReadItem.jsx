@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Table, Checkbox, Space, Input } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Table, Checkbox, Space, Input, Select, InputNumber } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -67,6 +67,30 @@ const Item = ({ item, currentErp }) => {
   );
 };
 
+/** 合併 header poNumber 與各行 poNumber，去重且保留順序（與報價單 read 一致） */
+function collectShipQuotePoNumbers(erp) {
+  const out = [];
+  const push = (v) => {
+    const s = v == null ? '' : String(v).trim();
+    if (s && !out.includes(s)) out.push(s);
+  };
+  if (Array.isArray(erp?.poNumbers)) {
+    erp.poNumbers.forEach(push);
+  }
+  if (erp?.poNumber != null && String(erp.poNumber).trim()) {
+    const raw = String(erp.poNumber).trim();
+    if (raw.includes(',')) {
+      raw.split(',').forEach((x) => push(x));
+    } else {
+      push(raw);
+    }
+  }
+  if (erp?.items?.length) {
+    erp.items.forEach((item) => push(item?.poNumber));
+  }
+  return out;
+}
+
 export default function ShipQuoteReadItem({ config, selectedItem }) {
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
@@ -102,6 +126,12 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
   const [client, setClient] = useState({});
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertShipQuoteToSLoading, setConvertShipQuoteToSLoading] = useState(false);
+  const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
+  const [selectedPoNumber, setSelectedPoNumber] = useState(null);
+  const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
+  const [poPreviewLines, setPoPreviewLines] = useState([]);
+  const [poPreviewLoading, setPoPreviewLoading] = useState(false);
+  const [poOrderQtyByIndex, setPoOrderQtyByIndex] = useState({});
   const [convertToInvoiceModalVisible, setConvertToInvoiceModalVisible] = useState(false);
   const [selectedItemIndices, setSelectedItemIndices] = useState([]);
 
@@ -176,6 +206,14 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
   if (invRef) convertedInvoiceIds.add(String(invRef._id || invRef));
   const convertedInvoiceCount = convertedInvoiceIds.size;
 
+  const shipQuotePoLines = collectShipQuotePoNumbers(currentErp);
+  const supplierOrderCount =
+    Array.isArray(currentErp?.converted?.supplierQuotes) && currentErp.converted.supplierQuotes.length > 0
+      ? currentErp.converted.supplierQuotes.length
+      : currentErp?.converted?.supplierQuote
+        ? 1
+        : 0;
+
   useEffect(() => {
     const controller = new AbortController();
     if (currentResult) {
@@ -200,6 +238,47 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
       setItemsList(currentErp.items);
     }
   }, [currentErp]);
+
+  useEffect(() => {
+    if (!poNumberModalVisible || !selectedPoNumber || !currentErp?._id) {
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setPoPreviewLoading(true);
+      try {
+        const data = await request.get({
+          entity: `${entity}/po-order-status/${currentErp._id}`,
+          params: { poNumber: selectedPoNumber },
+        });
+        if (cancelled) return;
+        if (data?.success && Array.isArray(data?.result?.lines)) {
+          setPoPreviewLines(data.result.lines);
+          const init = {};
+          data.result.lines.forEach((row) => {
+            init[row.itemIndex] = row.remainingQty;
+          });
+          setPoOrderQtyByIndex(init);
+        } else {
+          setPoPreviewLines([]);
+          setPoOrderQtyByIndex({});
+          if (data?.message) {
+            message.error(data.message);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setPoPreviewLines([]);
+          setPoOrderQtyByIndex({});
+        }
+      } finally {
+        if (!cancelled) setPoPreviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [poNumberModalVisible, selectedPoNumber, currentErp?._id, entity]);
 
   // 吊船 Quote 轉 Invoice（與報價單相同：可重複轉換、可選項目）
   const handleConvertToInvoice = () => {
@@ -245,9 +324,8 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
     }
   };
 
-  // Ship Quote 轉 S單（整單轉換，無需選 P.O，可重覆上單）
+  // Ship Quote 轉 S 單：與報價單相同，選 P.O、拆量、餘額
   const handleConvertShipQuoteToS = async () => {
-    // 與 Quote 上單一致：須先在 Project Management 建立對應 SML 編號
     const quoteNumber =
       currentErp.numberPrefix && currentErp.number
         ? `${currentErp.numberPrefix}-${currentErp.number}`
@@ -267,43 +345,64 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
       return;
     }
 
-    Modal.confirm({
-      title: '確認轉換到 S單',
-      content: (
-        <div>
-          <p>您確定要將此 Ship Quote 轉換成 S單（Supplier Quote）嗎？</p>
-          <p><strong>編號：</strong>{`${currentErp.numberPrefix || ''}-${currentErp.number}/${currentErp.year || ''}`}</p>
-          <p><strong>總金額：</strong>{moneyFormatter({ amount: currentErp.total, currency_code: currentErp.currency })}</p>
-          <p style={{ color: '#ff4d4f', marginTop: 12 }}>轉換後將建立新的 S單，此操作不可撤銷</p>
-        </div>
-      ),
-      okText: '確認轉換',
-      cancelText: '取消',
-      okType: 'primary',
-      onOk: async () => {
-        setConvertShipQuoteToSLoading(true);
-        try {
-          axios.defaults.baseURL = API_BASE_URL;
-          axios.defaults.withCredentials = true;
-          const auth = storePersist.get('auth');
-          if (auth) {
-            axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
-          }
-          const response = await axios.get(`shipquote/convertToSupplierQuote/${currentErp._id}`);
-          if (response?.data?.success) {
-            message.success('Ship Quote 已成功轉換成 S單！');
-            navigate(`/supplierquote/read/${response.data.result._id}`);
-          } else {
-            message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
-          }
-        } catch (error) {
-          console.error('轉換錯誤:', error);
-          message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
-        } finally {
-          setConvertShipQuoteToSLoading(false);
-        }
-      },
-    });
+    const poNumbers = collectShipQuotePoNumbers(currentErp);
+    if (poNumbers.length === 0) {
+      message.warning('沒有 P.O number：請在單頭或項目填寫 P.O 後再上單');
+      return;
+    }
+
+    setAvailablePoNumbers(poNumbers);
+    setSelectedPoNumber(null);
+    setPoPreviewLines([]);
+    setPoOrderQtyByIndex({});
+    setPoNumberModalVisible(true);
+  };
+
+  const executeConvertShipQuoteToS = async () => {
+    if (!selectedPoNumber) {
+      message.warning('請選擇 P.O number');
+      return;
+    }
+
+    const lines = poPreviewLines
+      .map((row) => ({
+        itemIndex: row.itemIndex,
+        quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
+      }))
+      .filter((l) => l.quantity > 0);
+
+    if (lines.length === 0) {
+      message.warning('請至少一行填寫大於 0 的本次上單數量');
+      return;
+    }
+
+    setPoNumberModalVisible(false);
+    setConvertShipQuoteToSLoading(true);
+    try {
+      axios.defaults.baseURL = API_BASE_URL;
+      axios.defaults.withCredentials = true;
+      const auth = storePersist.get('auth');
+      if (auth) {
+        axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
+      }
+
+      const response = await axios.post(`${entity}/convertToSupplierQuote/${currentErp._id}`, {
+        poNumber: selectedPoNumber,
+        lines,
+      });
+      if (response?.data?.success) {
+        message.success('Ship Quote 已成功上單（S 單）！');
+        dispatch(erp.read({ entity, id: currentErp._id }));
+        navigate(`/supplierquote/read/${response.data.result._id}`);
+      } else {
+        message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('轉換錯誤:', error);
+      message.error('轉換過程中發生錯誤：' + (error.response?.data?.message || error.message));
+    } finally {
+      setConvertShipQuoteToSLoading(false);
+    }
   };
 
   return (
@@ -416,17 +515,8 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
                 onClick={handleConvertShipQuoteToS}
                 loading={convertShipQuoteToSLoading}
                 icon={<ArrowUpOutlined />}
-                style={{
-                  backgroundColor:
-                    currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
-                  borderColor:
-                    currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
-                  color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
-                }}
               >
-                {currentErp.converted && currentErp.converted.supplierQuote
-                  ? '已轉S單 / 重覆上單'
-                  : '轉換到S單'}
+                {supplierOrderCount > 0 ? `上單（已 ${supplierOrderCount} 筆 S 單）` : '上單'}
               </Button>
               <Button
                 key="sq-convert-inv"
@@ -528,6 +618,13 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
         )}
         <Descriptions.Item label="Quote Number">{currentErp.invoiceNumber}</Descriptions.Item>
         <Descriptions.Item label={translate('Contact Person')}>{currentErp.contactPerson || '-'}</Descriptions.Item>
+        <Descriptions.Item label={translate('P.O Number')} span={3}>
+          {shipQuotePoLines.length > 0 ? (
+            <span style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{shipQuotePoLines.join('\n')}</span>
+          ) : (
+            '-'
+          )}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
@@ -683,6 +780,96 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
           </Col>
         </Row>
       </div>
+
+      <Modal
+        title="選擇 P.O Number 與本次上單數量（吊船報價）"
+        open={poNumberModalVisible}
+        onOk={executeConvertShipQuoteToS}
+        onCancel={() => {
+          setPoNumberModalVisible(false);
+          setSelectedPoNumber(null);
+          setPoPreviewLines([]);
+          setPoOrderQtyByIndex({});
+          setPoPreviewLoading(false);
+        }}
+        okText="確認上單"
+        cancelText="取消"
+        width={800}
+        okButtonProps={{
+          disabled:
+            !selectedPoNumber ||
+            poPreviewLoading ||
+            !poPreviewLines.some(
+              (row) => row.remainingQty > 0 && Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
+            ),
+        }}
+      >
+        <div style={{ marginBottom: 16 }}>
+          <p>請選擇 P.O Number；將列出該 P.O 的項目、已上單量與餘額。單頭 P.O 會套用到未填行別的項目。</p>
+          <Select
+            style={{ width: '100%' }}
+            placeholder="選擇 P.O Number"
+            value={selectedPoNumber}
+            onChange={(v) => {
+              setSelectedPoNumber(v);
+              setPoPreviewLines([]);
+              setPoOrderQtyByIndex({});
+            }}
+          >
+            {availablePoNumbers.map((po) => (
+              <Select.Option key={po} value={po}>
+                {po}
+              </Select.Option>
+            ))}
+          </Select>
+        </div>
+        {selectedPoNumber ? (
+          <Table
+            size="small"
+            loading={poPreviewLoading}
+            pagination={false}
+            rowKey={(r) => String(r.itemIndex)}
+            dataSource={poPreviewLines}
+            columns={[
+              { title: '品名', dataIndex: 'itemName', key: 'itemName', width: 120, ellipsis: true },
+              {
+                title: '說明',
+                dataIndex: 'description',
+                key: 'description',
+                ellipsis: true,
+                render: (t) => <span style={multilineStyle}>{t || '-'}</span>,
+              },
+              { title: '單位', dataIndex: 'unit', key: 'unit', width: 72, render: (u) => (u != null && String(u).trim() ? u : '-') },
+              { title: '報價數量', dataIndex: 'quoteQuantity', key: 'quoteQuantity', width: 88 },
+              { title: '已上單', dataIndex: 'orderedQty', key: 'orderedQty', width: 72 },
+              { title: '餘額', dataIndex: 'remainingQty', key: 'remainingQty', width: 72 },
+              {
+                title: '本次上單',
+                key: 'thisQty',
+                width: 120,
+                render: (_, row) => (
+                  <InputNumber
+                    min={0}
+                    max={row.remainingQty}
+                    precision={0}
+                    value={poOrderQtyByIndex[row.itemIndex]}
+                    onChange={(v) => {
+                      const n = Math.floor(Number(v) || 0);
+                      setPoOrderQtyByIndex((prev) => ({
+                        ...prev,
+                        [row.itemIndex]: Math.min(Math.max(0, n), row.remainingQty),
+                      }));
+                    }}
+                  />
+                ),
+              },
+            ]}
+          />
+        ) : null}
+        <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
+          ℹ️ 可多次上單；餘額依此吊船報價該 P.O 已產生 S 單之紀錄計算。
+        </p>
+      </Modal>
 
       <Modal
         title="選擇要轉換的項目"

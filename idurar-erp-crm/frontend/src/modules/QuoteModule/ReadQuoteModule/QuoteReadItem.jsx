@@ -2,7 +2,22 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Select, Checkbox, Space, Input } from 'antd';
+import {
+  Button,
+  Row,
+  Col,
+  Descriptions,
+  Statistic,
+  Tag,
+  Modal,
+  message,
+  Select,
+  Checkbox,
+  Space,
+  Input,
+  Table,
+  InputNumber,
+} from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -133,6 +148,10 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
   const [selectedPoNumber, setSelectedPoNumber] = useState(null);
   const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
+  const [poPreviewLines, setPoPreviewLines] = useState([]);
+  const [poPreviewLoading, setPoPreviewLoading] = useState(false);
+  /** itemIndex -> 本次上單數量 */
+  const [poOrderQtyByIndex, setPoOrderQtyByIndex] = useState({});
   const [convertToInvoiceModalVisible, setConvertToInvoiceModalVisible] = useState(false);
   const [selectedItemIndices, setSelectedItemIndices] = useState([]);
 
@@ -201,6 +220,13 @@ export default function QuoteReadItem({ config, selectedItem }) {
 
   const quotePoLines = collectQuotePoNumbers(currentErp);
 
+  const supplierOrderCount =
+    Array.isArray(currentErp?.converted?.supplierQuotes) && currentErp.converted.supplierQuotes.length > 0
+      ? currentErp.converted.supplierQuotes.length
+      : currentErp?.converted?.supplierQuote
+        ? 1
+        : 0;
+
   useEffect(() => {
     const controller = new AbortController();
     if (currentResult) {
@@ -225,6 +251,47 @@ export default function QuoteReadItem({ config, selectedItem }) {
       setItemsList(currentErp.items);
     }
   }, [currentErp]);
+
+  useEffect(() => {
+    if (!poNumberModalVisible || !selectedPoNumber || !currentErp?._id) {
+      return undefined;
+    }
+    let cancelled = false;
+    (async () => {
+      setPoPreviewLoading(true);
+      try {
+        const data = await request.get({
+          entity: `${entity}/po-order-status/${currentErp._id}`,
+          params: { poNumber: selectedPoNumber },
+        });
+        if (cancelled) return;
+        if (data?.success && Array.isArray(data?.result?.lines)) {
+          setPoPreviewLines(data.result.lines);
+          const init = {};
+          data.result.lines.forEach((row) => {
+            init[row.itemIndex] = row.remainingQty;
+          });
+          setPoOrderQtyByIndex(init);
+        } else {
+          setPoPreviewLines([]);
+          setPoOrderQtyByIndex({});
+          if (data?.message) {
+            message.error(data.message);
+          }
+        }
+      } catch (e) {
+        if (!cancelled) {
+          setPoPreviewLines([]);
+          setPoOrderQtyByIndex({});
+        }
+      } finally {
+        if (!cancelled) setPoPreviewLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [poNumberModalVisible, selectedPoNumber, currentErp?._id, entity]);
 
   // 處理Quote轉Invoice（可重複轉換、可選擇項目）
   const handleConvertToInvoice = () => {
@@ -271,12 +338,6 @@ export default function QuoteReadItem({ config, selectedItem }) {
 
   // 處理Quote轉Supplier Quote（上單）
   const handleConvertToSupplierQuote = async () => {
-    // 檢查是否已經轉換（檢查 converted.supplierQuote 是否存在）
-    if (currentErp.converted && currentErp.converted.supplierQuote) {
-      message.warning('此Quote已經轉換成Supplier Quote');
-      return;
-    }
-
     // 檢查 Project Management 是否已建立此 Quote Number
     const quoteNumber = currentErp.numberPrefix && currentErp.number
       ? `${currentErp.numberPrefix}-${currentErp.number}`
@@ -314,6 +375,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
     // 顯示 P.O number 選擇 Modal
     setAvailablePoNumbers(poNumbers);
     setSelectedPoNumber(null);
+    setPoPreviewLines([]);
+    setPoOrderQtyByIndex({});
     setPoNumberModalVisible(true);
   };
 
@@ -324,21 +387,35 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
 
+    const lines = poPreviewLines
+      .map((row) => ({
+        itemIndex: row.itemIndex,
+        quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
+      }))
+      .filter((l) => l.quantity > 0);
+
+    if (lines.length === 0) {
+      message.warning('請至少一行填寫大於 0 的本次上單數量');
+      return;
+    }
+
     setPoNumberModalVisible(false);
     setConvertToSupplierQuoteLoading(true);
     try {
-      // 設置 axios 配置
       axios.defaults.baseURL = API_BASE_URL;
       axios.defaults.withCredentials = true;
       const auth = storePersist.get('auth');
       if (auth) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
       }
-      
-      const response = await axios.get(`quote/convertToSupplierQuote/${currentErp._id}?poNumber=${encodeURIComponent(selectedPoNumber)}`);
+
+      const response = await axios.post(`${entity}/convertToSupplierQuote/${currentErp._id}`, {
+        poNumber: selectedPoNumber,
+        lines,
+      });
       if (response && response.data && response.data.success) {
-        message.success('Quote成功轉換成Supplier Quote！');
-        // 跳轉到新創建的Supplier Quote
+        message.success('Quote 已成功上單（Supplier Quote）！');
+        dispatch(erp.read({ entity, id: currentErp._id }));
         navigate(`/supplierquote/read/${response.data.result._id}`);
       } else {
         message.error('轉換失敗：' + (response?.data?.message || '未知錯誤'));
@@ -463,15 +540,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
                 icon={<ArrowUpOutlined />}
                 style={{
                   display: entity === 'quote' ? 'inline-flex' : 'none',
-                  backgroundColor:
-                    currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
-                  borderColor:
-                    currentErp.converted && currentErp.converted.supplierQuote ? '#52c41a' : undefined,
-                  color: currentErp.converted && currentErp.converted.supplierQuote ? '#fff' : undefined,
                 }}
-                disabled={currentErp.converted && currentErp.converted.supplierQuote}
               >
-                {currentErp.converted && currentErp.converted.supplierQuote ? '已上單' : '上單'}
+                {supplierOrderCount > 0 ? `上單（已 ${supplierOrderCount} 筆 S 單）` : '上單'}
               </Button>
               <Button
                 key="quote-convert-inv"
@@ -679,34 +750,91 @@ export default function QuoteReadItem({ config, selectedItem }) {
 
       {/* P.O Number 選擇 Modal */}
       <Modal
-        title="選擇 P.O Number"
+        title="選擇 P.O Number 與本次上單數量"
         open={poNumberModalVisible}
         onOk={executeConvertToSupplierQuote}
         onCancel={() => {
           setPoNumberModalVisible(false);
           setSelectedPoNumber(null);
+          setPoPreviewLines([]);
+          setPoOrderQtyByIndex({});
+          setPoPreviewLoading(false);
         }}
         okText="確認上單"
         cancelText="取消"
-        okButtonProps={{ disabled: !selectedPoNumber }}
+        width={800}
+        okButtonProps={{
+          disabled:
+            !selectedPoNumber ||
+            poPreviewLoading ||
+            !poPreviewLines.some(
+              (row) => row.remainingQty > 0 && Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
+            ),
+        }}
       >
         <div style={{ marginBottom: 16 }}>
-          <p>請選擇要上單的 P.O Number：</p>
+          <p>請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。</p>
           <Select
             style={{ width: '100%' }}
             placeholder="選擇 P.O Number"
             value={selectedPoNumber}
-            onChange={setSelectedPoNumber}
+            onChange={(v) => {
+              setSelectedPoNumber(v);
+              setPoPreviewLines([]);
+              setPoOrderQtyByIndex({});
+            }}
           >
-            {availablePoNumbers.map(po => (
+            {availablePoNumbers.map((po) => (
               <Select.Option key={po} value={po}>
                 {po}
               </Select.Option>
             ))}
           </Select>
         </div>
-        <p style={{ color: '#1890ff', fontSize: '12px' }}>
-          ℹ️ 只會轉換所選 P.O Number 的 items 到 Supplier Quote
+        {selectedPoNumber ? (
+          <Table
+            size="small"
+            loading={poPreviewLoading}
+            pagination={false}
+            rowKey={(r) => String(r.itemIndex)}
+            dataSource={poPreviewLines}
+            columns={[
+              { title: '品名', dataIndex: 'itemName', key: 'itemName', width: 120, ellipsis: true },
+              {
+                title: '說明',
+                dataIndex: 'description',
+                key: 'description',
+                ellipsis: true,
+                render: (t) => <span style={multilineStyle}>{t || '-'}</span>,
+              },
+              { title: '報價數量', dataIndex: 'quoteQuantity', key: 'quoteQuantity', width: 88 },
+              { title: '已上單', dataIndex: 'orderedQty', key: 'orderedQty', width: 72 },
+              { title: '餘額', dataIndex: 'remainingQty', key: 'remainingQty', width: 72 },
+              {
+                title: '本次上單',
+                key: 'thisQty',
+                width: 120,
+                render: (_, row) => (
+                  <InputNumber
+                    min={0}
+                    max={row.remainingQty}
+                    precision={0}
+                    value={poOrderQtyByIndex[row.itemIndex]}
+                    onChange={(v) => {
+                      const n = Math.floor(Number(v) || 0);
+                      setPoOrderQtyByIndex((prev) => ({
+                        ...prev,
+                        [row.itemIndex]: Math.min(Math.max(0, n), row.remainingQty),
+                      }));
+                    }}
+                  />
+                ),
+              },
+            ]}
+          />
+        ) : null}
+        <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
+          ℹ️ 可多次上單；餘額 = 報價數量 − 歷史由此 Quote 該 P.O 已上單數量總和。
         </p>
       </Modal>
 

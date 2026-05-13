@@ -5,39 +5,66 @@ const WarehouseTransaction = mongoose.model('WarehouseTransaction');
 
 const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D'];
 
+function normalizeInventoryId(raw) {
+  if (raw == null || raw === '') return '';
+  if (typeof raw === 'object' && raw._id) return String(raw._id).trim();
+  return String(raw).trim();
+}
+
 /**
- * 可扣倉的材料列：倉 A–D、有名稱、有數量；排除「其他」及加工費等非實物項
+ * 可扣倉的材料列：倉 A–D、有數量；排除「其他」及加工費等非實物項。
+ * 優先使用 warehouseInventory（ObjectId）彙總；舊資料無 id 時仍用 倉+貨品名稱。
  */
 function parseStockableLine(m) {
   if (!m || typeof m !== 'object') return null;
   const wh = m.warehouse;
   if (!wh || !WAREHOUSE_KEYS.includes(String(wh).trim())) return null;
   if (m.accountingType === 'processing_fee') return null;
+
+  const idStr = normalizeInventoryId(m.warehouseInventory);
+  const hasValidId = mongoose.Types.ObjectId.isValid(idStr);
+
   const itemName = m.itemName != null ? String(m.itemName).trim() : '';
-  if (!itemName) return null;
+  if (!hasValidId && !itemName) return null;
+
   const qty = Number(m.quantity);
   if (!Number.isFinite(qty) || qty === 0) return null;
+
   return {
     warehouse: String(wh).trim(),
     itemName,
     quantity: qty,
+    warehouseInventoryId: hasValidId ? idStr : null,
   };
 }
 
-/** 依倉庫+貨品名稱加總數量 */
+/** 依「存倉貨品 id」或「倉+貨品名稱（舊）」加總數量 */
 function aggregateMaterials(materials) {
   const map = new Map();
   for (const m of materials || []) {
     const p = parseStockableLine(m);
     if (!p) continue;
-    const key = `${p.warehouse}\t${p.itemName}`;
-    map.set(key, (map.get(key) || 0) + p.quantity);
+    const key = p.warehouseInventoryId
+      ? `id:${p.warehouseInventoryId}`
+      : `legacy:${p.warehouse}\t${p.itemName}`;
+    const prev = map.get(key);
+    if (prev) {
+      prev.quantity += p.quantity;
+    } else {
+      map.set(key, {
+        warehouse: p.warehouse,
+        itemName: p.itemName,
+        quantity: p.quantity,
+        warehouseInventoryId: p.warehouseInventoryId,
+      });
+    }
   }
   return map;
 }
 
 /**
- * 回傳 { warehouse, itemName, materialDelta }，materialDelta = 新合計 − 舊合計（>0 表示 S 單多用，需從倉扣）
+ * 回傳 { warehouseInventoryId, warehouse, itemName, materialDelta }，
+ * materialDelta = 新合計 − 舊合計（>0 表示 S 單多用，需從倉扣）
  */
 function computeMaterialDeltas(oldMaterials, newMaterials) {
   const oldMap = aggregateMaterials(oldMaterials);
@@ -45,12 +72,17 @@ function computeMaterialDeltas(oldMaterials, newMaterials) {
   const keys = new Set([...oldMap.keys(), ...newMap.keys()]);
   const deltas = [];
   for (const k of keys) {
-    const oldQ = oldMap.get(k) || 0;
-    const newQ = newMap.get(k) || 0;
+    const oldQ = oldMap.get(k)?.quantity || 0;
+    const newQ = newMap.get(k)?.quantity || 0;
     const materialDelta = newQ - oldQ;
     if (materialDelta === 0) continue;
-    const [warehouse, itemName] = k.split('\t');
-    deltas.push({ warehouse, itemName, materialDelta });
+    const meta = newMap.get(k) || oldMap.get(k);
+    deltas.push({
+      warehouseInventoryId: meta.warehouseInventoryId,
+      warehouse: meta.warehouse,
+      itemName: meta.itemName,
+      materialDelta,
+    });
   }
   return deltas;
 }
@@ -58,28 +90,47 @@ function computeMaterialDeltas(oldMaterials, newMaterials) {
 /**
  * 庫存變動 = -materialDelta（S 單增加用量 → 倉庫減少）
  */
-async function applyOneStockChange({ warehouse, itemName, stockChange, supplierQuoteId, adminId }) {
+async function applyOneStockChange({
+  warehouseInventoryId,
+  warehouse,
+  itemName,
+  stockChange,
+  supplierQuoteId,
+  adminId,
+}) {
   if (stockChange === 0) return;
 
   if (!adminId) {
     throw new Error('缺少操作者資訊，無法同步倉庫');
   }
 
-  const inv = await WarehouseInventory.findOne({
-    removed: false,
-    warehouse,
-    itemName,
-  }).exec();
+  let inv = null;
+  const idStr = normalizeInventoryId(warehouseInventoryId);
+  if (idStr && mongoose.Types.ObjectId.isValid(idStr)) {
+    inv = await WarehouseInventory.findOne({
+      _id: idStr,
+      removed: false,
+    }).exec();
+  }
+  if (!inv && warehouse && itemName) {
+    inv = await WarehouseInventory.findOne({
+      removed: false,
+      warehouse,
+      itemName,
+    }).exec();
+  }
+
+  const displayWh = inv ? inv.warehouse : warehouse;
+  const displayName = inv ? inv.itemName : itemName;
 
   if (!inv) {
     if (stockChange < 0) {
       throw new Error(
-        `倉庫「${warehouse}」找不到貨品「${itemName}」，無法扣減庫存`
+        `倉庫「${displayWh}」找不到貨品「${displayName || itemName || idStr}」，無法扣減庫存`
       );
     }
-    // 退倉但無庫存列：略過（避免誤建 SKU）
     console.warn(
-      `[supplierQuoteMaterialsWarehouseSync] 略過退倉：倉 ${warehouse} 無「${itemName}」庫存列`
+      `[supplierQuoteMaterialsWarehouseSync] 略過退倉：找不到庫存列（id=${idStr || '-'} 名稱=${itemName || '-'}）`
     );
     return;
   }
@@ -88,7 +139,7 @@ async function applyOneStockChange({ warehouse, itemName, stockChange, supplierQ
   const newQuantity = oldQuantity + stockChange;
   if (newQuantity < 0) {
     throw new Error(
-      `倉庫「${warehouse}」貨品「${itemName}」庫存不足（現有 ${oldQuantity}，需扣 ${-stockChange}）`
+      `倉庫「${inv.warehouse}」貨品「${inv.itemName}」庫存不足（現有 ${oldQuantity}，需扣 ${-stockChange}）`
     );
   }
 
@@ -129,22 +180,34 @@ async function applySupplierQuoteMaterialsWarehouseSync({
 
   const applied = [];
   try {
-    for (const { warehouse, itemName, materialDelta } of deltas) {
+    for (const {
+      warehouseInventoryId,
+      warehouse,
+      itemName,
+      materialDelta,
+    } of deltas) {
       const stockChange = -materialDelta;
       await applyOneStockChange({
+        warehouseInventoryId,
         warehouse,
         itemName,
         stockChange,
         supplierQuoteId,
         adminId,
       });
-      applied.push({ warehouse, itemName, stockChange });
+      applied.push({
+        warehouseInventoryId,
+        warehouse,
+        itemName,
+        stockChange,
+      });
     }
     return { applied };
   } catch (err) {
     for (const row of applied.slice().reverse()) {
       try {
         await applyOneStockChange({
+          warehouseInventoryId: row.warehouseInventoryId,
           warehouse: row.warehouse,
           itemName: row.itemName,
           stockChange: -row.stockChange,
@@ -166,6 +229,7 @@ async function applySupplierQuoteMaterialsWarehouseSync({
 async function revertAppliedSupplierQuoteStockChanges(applied, supplierQuoteId, adminId) {
   for (const row of (applied || []).slice().reverse()) {
     await applyOneStockChange({
+      warehouseInventoryId: row.warehouseInventoryId,
       warehouse: row.warehouse,
       itemName: row.itemName,
       stockChange: -row.stockChange,

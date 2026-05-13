@@ -8,6 +8,11 @@ import useLanguage from '@/locale/useLanguage';
 import calculate from '@/utils/calculate';
 import { request } from '@/request';
 
+/** 建立專案時：吊船報價可選條件與一般報價「已接受」對齊，並保留「已完成」勾選 */
+function shipQuoteEligibleForProject(sq) {
+  return sq && (sq.status === 'accepted' || sq.isCompleted === true);
+}
+
 const { Title, Text } = Typography;
 
 export default function ProjectForm({ current = null }) {
@@ -66,7 +71,7 @@ export default function ProjectForm({ current = null }) {
         }),
         request.search({
           entity: 'shipquote',
-          options: { q: trimmed, fields: 'numberPrefix,number,isCompleted,address,poNumber,costPrice' },
+          options: { q: trimmed, fields: 'numberPrefix,number,status,isCompleted,address,poNumber,costPrice' },
         }),
       ]);
 
@@ -82,8 +87,9 @@ export default function ProjectForm({ current = null }) {
         }
       });
 
-      // 吊船 ShipQuote：只顯示 isCompleted = true
-      const acceptedShipQuotes = shipQuoteResponse?.result?.filter((sq) => sq.isCompleted === true) || [];
+      // 吊船 ShipQuote：已接受（與 Quote 一致）或已標記完成
+      const acceptedShipQuotes =
+        shipQuoteResponse?.result?.filter((sq) => shipQuoteEligibleForProject(sq)) || [];
       acceptedShipQuotes.forEach((sq) => {
         if (sq.numberPrefix && sq.number) {
           quoteNumbers.add(`${sq.numberPrefix}-${sq.number}`);
@@ -122,7 +128,7 @@ export default function ProjectForm({ current = null }) {
         }),
         request.search({
           entity: 'shipquote',
-          options: { q: quoteNum, fields: 'numberPrefix,number,isCompleted,address,poNumber,costPrice' },
+          options: { q: quoteNum, fields: 'numberPrefix,number,status,isCompleted,address,poNumber,costPrice' },
         }),
         request.search({
           entity: 'supplierquote',
@@ -181,13 +187,17 @@ export default function ProjectForm({ current = null }) {
         });
       }
 
-      // ShipQuote：加入成本價計算（需要 isCompleted=true）
+      // ShipQuote：已接受或已完成，且編號吻合時計入成本（優先 costPrice，否則 total）
       if (shipQuotations?.result) {
         shipQuotations.result.forEach((sq) => {
           if (!sq) return;
-          if (sq.isCompleted !== true) return;
+          if (!shipQuoteEligibleForProject(sq)) return;
           if (matchesShipQuoteNumber(sq)) {
-            if (sq.costPrice) totalCost = calculate.add(totalCost, sq.costPrice);
+            if (sq.costPrice != null && sq.costPrice !== '') {
+              totalCost = calculate.add(totalCost, Number(sq.costPrice) || 0);
+            } else if (sq.total != null) {
+              totalCost = calculate.add(totalCost, Number(sq.total) || 0);
+            }
           }
           if (sq.clients) {
             sq.clients.forEach((client) => {
@@ -236,7 +246,9 @@ export default function ProjectForm({ current = null }) {
       // 用第一個匹配的（Quote 或 ShipQuote）自動填入：Project name / P.O Number
       const matchedQuotes = quotations?.result?.filter((q) => matchesQuoteNumber(q) && q.status === 'accepted') || [];
       const matchedShipQuotes =
-        shipQuotations?.result?.filter((sq) => matchesShipQuoteNumber(sq) && sq.isCompleted === true) || [];
+        shipQuotations?.result?.filter(
+          (sq) => matchesShipQuoteNumber(sq) && shipQuoteEligibleForProject(sq)
+        ) || [];
 
       const firstQuote = matchedQuotes[0] || matchedShipQuotes[0];
       const updateValues = {};

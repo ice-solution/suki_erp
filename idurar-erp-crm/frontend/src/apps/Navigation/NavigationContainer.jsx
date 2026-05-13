@@ -36,6 +36,15 @@ import {
 
 const { Sider } = Layout;
 
+/** 左側選單：以新分頁開啟，避免覆蓋目前工作視窗 */
+function SideMenuLink({ to, children }) {
+  return (
+    <Link to={to} target="_blank" rel="noopener noreferrer">
+      {children}
+    </Link>
+  );
+}
+
 export default function Navigation() {
   const { isMobile } = useResponsive();
 
@@ -62,17 +71,17 @@ function Sidebar({ collapsible, isMobile = false }) {
     {
       key: 'dashboard',
       icon: <DashboardOutlined />,
-      label: <Link to={'/'}>{translate('dashboard')}</Link>,
+      label: <SideMenuLink to={'/'}>{translate('dashboard')}</SideMenuLink>,
     },
     {
       key: 'customer',
       icon: <CustomerServiceOutlined />,
-      label: <Link to={'/customer'}>{translate('customers')}</Link>,
+      label: <SideMenuLink to={'/customer'}>{translate('customers')}</SideMenuLink>,
     },
     {
       key: 'supplier',
       icon: <ShopOutlined />,
-      label: <Link to={'/supplier'}>{translate('suppliers')}</Link>,
+      label: <SideMenuLink to={'/supplier'}>{translate('suppliers')}</SideMenuLink>,
     },
     {
       key: 'contractor',
@@ -81,62 +90,62 @@ function Sidebar({ collapsible, isMobile = false }) {
       children: [
         {
           key: 'contractor-list',
-          label: <Link to={'/contractor'}>{translate('contractors')}</Link>,
+          label: <SideMenuLink to={'/contractor'}>{translate('contractors')}</SideMenuLink>,
         },
         {
           key: 'contractor-employee',
-          label: <Link to={'/contractor-employee'}>{translate('contractor_employees')}</Link>,
+          label: <SideMenuLink to={'/contractor-employee'}>{translate('contractor_employees')}</SideMenuLink>,
         },
       ],
     },
     {
       key: 'quote',
       icon: <FileSyncOutlined />,
-      label: <Link to={'/quote'}>{translate('quote')}</Link>,
+      label: <SideMenuLink to={'/quote'}>{translate('quote')}</SideMenuLink>,
     },
     {
       key: 'shipquote',
       icon: <FileSyncOutlined />,
-      label: <Link to={'/shipquote'}>{translate('ship_quote')}</Link>,
+      label: <SideMenuLink to={'/shipquote'}>{translate('ship_quote')}</SideMenuLink>,
     },
     {
       key: 'supplierquote',
       icon: <FileSyncOutlined />,
-      label: <Link to={'/supplierquote'}>{translate('supplier_quote')}</Link>,
+      label: <SideMenuLink to={'/supplierquote'}>{translate('supplier_quote')}</SideMenuLink>,
     },
     {
       key: 'ship',
       icon: <RocketOutlined />,
-      label: <Link to={'/ship'}>{translate('ship_management')}</Link>,
+      label: <SideMenuLink to={'/ship'}>{translate('ship_management')}</SideMenuLink>,
     },
     {
       key: 'winch',
       icon: <ToolOutlined />,
-      label: <Link to={'/winch'}>{translate('winch_management')}</Link>,
+      label: <SideMenuLink to={'/winch'}>{translate('winch_management')}</SideMenuLink>,
     },
     {
       key: 'invoice',
       icon: <ContainerOutlined />,
-      label: <Link to={'/invoice'}>{translate('invoices')}</Link>,
+      label: <SideMenuLink to={'/invoice'}>{translate('invoices')}</SideMenuLink>,
     },
     {
       key: 'project-list',
       icon: <ProjectOutlined />,
-      label: <Link to={'/project'}>{translate('project_management')}</Link>,
+      label: <SideMenuLink to={'/project'}>{translate('project_management')}</SideMenuLink>,
     },
     {
       key: 'warehouse',
       icon: <DatabaseOutlined />,
-      label: <Link to={'/warehouse'}>{translate('warehouse_management')}</Link>,
+      label: <SideMenuLink to={'/warehouse'}>{translate('warehouse_management')}</SideMenuLink>,
     },
     {
       key: 'xero-export',
       icon: <FileOutlined />,
       label: 'Xero 匯出',
       children: [
-        { key: 'xero-invoice', label: <Link to="/invoice/xero-export">發票滙出</Link> },
-        { key: 'xero-po', label: <Link to="/supplierquote/xero-po-export">PO單滙出</Link> },
-        { key: 'xero-eo', label: <Link to="/project/xero-eo-export">EO單滙出</Link> },
+        { key: 'xero-invoice', label: <SideMenuLink to="/invoice/xero-export">發票滙出</SideMenuLink> },
+        { key: 'xero-po', label: <SideMenuLink to="/supplierquote/xero-po-export">PO單滙出</SideMenuLink> },
+        { key: 'xero-eo', label: <SideMenuLink to="/project/xero-eo-export">EO單滙出</SideMenuLink> },
       ],
     },
     {
@@ -144,18 +153,18 @@ function Sidebar({ collapsible, isMobile = false }) {
       icon: <FileOutlined />,
       label: '報告',
       children: [
-        { key: 'project-report', label: <Link to={'/project/report'}>{translate('project_report')}</Link> },
-        { key: 'project-contractor-report', label: <Link to={'/project/contractor-report'}>承辦商報告</Link> },
+        { key: 'project-report', label: <SideMenuLink to={'/project/report'}>{translate('project_report')}</SideMenuLink> },
+        { key: 'project-contractor-report', label: <SideMenuLink to={'/project/contractor-report'}>承辦商報告</SideMenuLink> },
         {
           key: 'project-contractor-employee-report',
-          label: <Link to={'/project/contractor-employee-report'}>承辦商員工報告</Link>,
+          label: <SideMenuLink to={'/project/contractor-employee-report'}>承辦商員工報告</SideMenuLink>,
         },
-        { key: 'quote-operational-report', label: <Link to={'/quote/operational-report'}>報價／發票營運報告</Link> },
+        { key: 'quote-operational-report', label: <SideMenuLink to={'/quote/operational-report'}>報價／發票營運報告</SideMenuLink> },
       ],
     },
     {
       key: 'settings',
-      label: <Link to={'/settings'}>{translate('settings')}</Link>,
+      label: <SideMenuLink to={'/settings'}>{translate('settings')}</SideMenuLink>,
       icon: <SettingOutlined />,
     },
   ];

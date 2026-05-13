@@ -213,6 +213,7 @@ const lang = {
   lead: 'Lead',
   offer: 'Offer',
   invoice: 'Invoice',
+  quote_number: 'Quote Number',
   quote: 'Quote',
   payment: 'Payment',
   product: 'Product',

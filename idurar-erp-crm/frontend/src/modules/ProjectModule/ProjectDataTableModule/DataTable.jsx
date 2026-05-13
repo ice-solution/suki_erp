@@ -15,15 +15,14 @@ import useLanguage from '@/locale/useLanguage';
 import { erp } from '@/redux/erp/actions';
 import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
-import { useNavigate } from 'react-router-dom';
+import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
 import { request } from '@/request';
 
 function AddNewItem({ config }) {
-  const navigate = useNavigate();
   const { entity, ADD_NEW_ENTITY } = config;
 
   const handelClick = () => {
-    navigate(`/${entity.toLowerCase()}/create`);
+    openSpaPathInNewTab(`/${entity.toLowerCase()}/create`);
   };
 
   return (
@@ -68,18 +67,17 @@ export default function DataTable({ config, extra = [] }) {
     },
   ];
 
-  const navigate = useNavigate();
   const dispatch = useDispatch();
 
   const handleRead = (record) => {
     dispatch(erp.currentItem({ data: record }));
-    navigate(`/${entity}/read/${record._id}`);
+    openSpaPathInNewTab(`/${entity}/read/${record._id}`);
   };
   
   const handleEdit = (record) => {
     const data = { ...record };
     dispatch(erp.currentAction({ actionType: 'update', data }));
-    navigate(`/${entity}/update/${record._id}`);
+    openSpaPathInNewTab(`/${entity}/update/${record._id}`);
   };
 
   const handleDelete = (record) => {

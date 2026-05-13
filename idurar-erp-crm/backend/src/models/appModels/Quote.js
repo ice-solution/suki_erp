@@ -176,6 +176,16 @@ const quoteSchema = new mongoose.Schema({
       type: mongoose.Schema.ObjectId,
       ref: 'Invoice',
     }],
+    /** 最近一次由此 Quote 產生的 S 單（向後相容） */
+    supplierQuote: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'SupplierQuote',
+    },
+    /** 由此 Quote 產生的所有 S 單（可多次上單／拆量） */
+    supplierQuotes: [{
+      type: mongoose.Schema.ObjectId,
+      ref: 'SupplierQuote',
+    }],
   },
   pdf: {
     type: String,

@@ -214,7 +214,7 @@ body
     - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
     - const receiverPdfRaw = (model.receiver != null && String(model.receiver).trim()) ? String(model.receiver) : ''
     - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number
-    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
+    - const docDate = model.openDate ? moment(model.openDate).utcOffset(480).format('DD/MM/YYYY') : '-'
     - const itemsOnly = model.items || []
     -
       // 行數估算分頁（取代固定 8 筆）：與 tbody 內 contentText 邏輯一致；保守係數避免 overlay
@@ -287,7 +287,7 @@ body
                 
               td.info-right
                 .info-row 報價編號 : #{docNumber}
-                .info-row 日期 : #{docDate}
+                .info-row 出貨日期 : #{docDate}
                 .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
                 .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
                 .info-row INVOICE: 

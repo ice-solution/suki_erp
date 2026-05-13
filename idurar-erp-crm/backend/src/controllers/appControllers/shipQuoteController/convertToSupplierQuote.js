@@ -5,9 +5,19 @@ const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const ProjectModel = mongoose.model('Project');
 
 const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
+const { aggregateOrderedQtyByShipQuoteLine } = require('@/helpers/quoteSupplierOrderFromQuote');
+
+function normalizeQty(n) {
+  const v = Math.floor(Number(n));
+  return Number.isFinite(v) ? v : 0;
+}
+
+function linePoNumber(item, headerPo) {
+  return String(item.poNumber || '').trim() || headerPo;
+}
 
 /**
- * 將 Ship Quote 轉換為 S單（Supplier Quote）
+ * 將 Ship Quote 轉為 S 單。GET：依餘額一次上滿；POST：body { poNumber, lines: [{ itemIndex, quantity }] }
  */
 const convertToSupplierQuote = async (req, res) => {
   try {
@@ -21,8 +31,6 @@ const convertToSupplierQuote = async (req, res) => {
       });
     }
 
-    // 吊船Quote 可重覆上單，不檢查是否已轉換
-
     if (!shipQuote.items || shipQuote.items.length === 0) {
       return res.status(400).json({
         success: false,
@@ -31,7 +39,6 @@ const convertToSupplierQuote = async (req, res) => {
       });
     }
 
-    // 與 Quote 上單一致：須先在 Project Management 建立對應 Quote Number（如 SML-xxx）
     const quoteNumber =
       shipQuote.numberPrefix && shipQuote.number
         ? `${shipQuote.numberPrefix}-${shipQuote.number}`
@@ -47,18 +54,91 @@ const convertToSupplierQuote = async (req, res) => {
       }
     }
 
-    const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix('S');
-    const supplierQuoteNumber = supplierQuoteNumberResult
-      ? supplierQuoteNumberResult.settingValue
-      : 1;
+    const isPost = req.method === 'POST';
+    const poNumber = String((isPost ? req.body?.poNumber : req.query?.poNumber) || '').trim();
+    if (!poNumber) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: 'P.O number is required',
+      });
+    }
 
-    // 與 Quote 上單一致：不帶銀碼，items 只有 itemName, description, quantity, unit
-    const supplierQuoteItems = shipQuote.items.map((item) => ({
-      itemName: item.itemName,
-      description: item.description || '',
-      quantity: item.quantity,
-      unit: item.unit,
-    }));
+    const items = shipQuote.items || [];
+    const headerPo = String(shipQuote.poNumber || '').trim();
+    const orderedMap = await aggregateOrderedQtyByShipQuoteLine(shipQuote._id, poNumber);
+
+    /** @type {{ itemIndex: number, quantity: number }[]} */
+    let resolvedLines = [];
+
+    if (isPost) {
+      const rawLines = Array.isArray(req.body?.lines) ? req.body.lines : null;
+      if (!rawLines || rawLines.length === 0) {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: '請提供 lines：[{ itemIndex, quantity }]',
+        });
+      }
+      for (const row of rawLines) {
+        const itemIndex = normalizeQty(row?.itemIndex);
+        const qty = normalizeQty(row?.quantity);
+        if (qty <= 0) continue;
+        const item = items[itemIndex];
+        if (!item || linePoNumber(item, headerPo) !== poNumber) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: `無效的 itemIndex：${itemIndex}`,
+          });
+        }
+        const totalQty = Math.max(0, normalizeQty(item.quantity));
+        const already = Math.max(0, normalizeQty(orderedMap[itemIndex] || 0));
+        const remaining = Math.max(0, totalQty - already);
+        if (qty > remaining) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: `第 ${itemIndex + 1} 行上單數量 ${qty} 超過餘額 ${remaining}`,
+          });
+        }
+        resolvedLines.push({ itemIndex, quantity: qty });
+      }
+    } else {
+      for (let itemIndex = 0; itemIndex < items.length; itemIndex++) {
+        const item = items[itemIndex];
+        if (linePoNumber(item, headerPo) !== poNumber) continue;
+        const totalQty = Math.max(0, normalizeQty(item.quantity));
+        const already = Math.max(0, normalizeQty(orderedMap[itemIndex] || 0));
+        const remaining = Math.max(0, totalQty - already);
+        if (remaining > 0) {
+          resolvedLines.push({ itemIndex, quantity: remaining });
+        }
+      }
+    }
+
+    if (resolvedLines.length === 0) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: isPost
+          ? '請至少選擇一行且數量大於 0，且不可超過餘額'
+          : `此 P.O 已無可上單餘額或沒有符合的項目：${poNumber}`,
+      });
+    }
+
+    const supplierQuoteItems = resolvedLines.map(({ itemIndex, quantity }) => {
+      const item = items[itemIndex];
+      return {
+        itemName: item.itemName,
+        description: item.description || '',
+        quantity,
+        unit: item.unit,
+      };
+    });
+
+    const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix('S');
+    const supplierQuoteNumber = supplierQuoteNumberResult ? supplierQuoteNumberResult.settingValue : 1;
 
     const supplierQuoteData = {
       converted: false,
@@ -70,12 +150,14 @@ const convertToSupplierQuote = async (req, res) => {
       subcontractorCount: shipQuote.subcontractorCount,
       costPrice: shipQuote.costPrice,
       date: new Date(),
+      openDate: new Date(),
       expiredDate: shipQuote.expiredDate,
       isCompleted: shipQuote.isCompleted,
       invoiceNumber:
         shipQuote.numberPrefix && shipQuote.number
           ? `${shipQuote.numberPrefix}-${shipQuote.number}/${shipQuote.year || ''}`
           : shipQuote.invoiceNumber,
+      poNumber,
       contactPerson: shipQuote.contactPerson,
       receiver: shipQuote.receiver,
       receiptDisplayName: shipQuote.receiptDisplayName,
@@ -83,6 +165,12 @@ const convertToSupplierQuote = async (req, res) => {
       clients: shipQuote.clients,
       client: shipQuote.client,
       project: shipQuote.project,
+      sourceShipQuote: shipQuote._id,
+      orderFromPoNumber: poNumber,
+      orderFromQuoteLines: resolvedLines.map((l) => ({
+        itemIndex: l.itemIndex,
+        quantity: l.quantity,
+      })),
       items: supplierQuoteItems,
       subTotal: 0,
       discountTotal: 0,
@@ -90,6 +178,7 @@ const convertToSupplierQuote = async (req, res) => {
       credit: 0,
       currency: shipQuote.currency || 'NA',
       discount: shipQuote.discount ?? 0,
+      notes: shipQuote.notes,
       status: 'draft',
       createdBy: req.admin._id,
     };
@@ -99,6 +188,9 @@ const convertToSupplierQuote = async (req, res) => {
     await ShipQuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {
         'converted.supplierQuote': supplierQuote._id,
+      },
+      $push: {
+        'converted.supplierQuotes': supplierQuote._id,
       },
     });
 

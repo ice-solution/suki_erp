@@ -50,11 +50,11 @@ export default function WinchForm({ isUpdateForm = false }) {
         }}
       </Form.Item>
 
-      {/* 回廠日期 - 只在狀態為待回廠/香港倉時顯示且必填 */}
+      {/* 回廠日期 - 僅在狀態為「待保養」時顯示且必填 */}
       <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}>
         {({ getFieldValue }) => {
           const statusValue = getFieldValue('status');
-          if (statusValue === 'returned_warehouse_cn' || statusValue === 'returned_warehouse_hk') {
+          if (statusValue === 'pending_maintenance') {
             return (
               <Form.Item
                 label="回廠日期"

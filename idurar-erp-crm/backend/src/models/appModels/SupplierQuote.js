@@ -46,10 +46,10 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: Date,
     required: true,
   },
-  /** 出貨日期（選填；與上單日期 date 分開） */
+  /** 出貨日期（必填；與上單日期 date 分開） */
   openDate: {
     type: Date,
-    required: false,
+    required: true,
   },
   expiredDate: {
     type: Date,
@@ -82,7 +82,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   contactPerson: {
     type: String,
   },
-  /** 簽收單收貨人地址（多行），S 單 PDF「TO」下方顯示 */
+  /** 簽收單送貨地址（多行），S 單 PDF「TO」下方顯示 */
   receiver: {
     type: String,
   },
@@ -122,6 +122,30 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
   },
+  /** 由 Quote 上單產生時：來源報價單 */
+  sourceQuote: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Quote',
+    required: false,
+  },
+  /** 由吊船報價上單產生時：來源 ShipQuote */
+  sourceShipQuote: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'ShipQuote',
+    required: false,
+  },
+  /** 上單時選的 P.O number（與 Quote 行上的 poNumber 對齊） */
+  orderFromPoNumber: {
+    type: String,
+    required: false,
+  },
+  /** 本次從 Quote 各行的上單數量（itemIndex 對應 quote.items 下標） */
+  orderFromQuoteLines: [
+    {
+      itemIndex: { type: Number, required: true },
+      quantity: { type: Number, required: true },
+    },
+  ],
   ship: {
     type: mongoose.Schema.ObjectId,
     ref: 'Ship',
@@ -162,6 +186,12 @@ const supplierQuoteSchema = new mongoose.Schema({
   ],
   materials: [
     {
+      /** 存倉貨品 _id；倉 A–D 扣庫優先用此欄位，改名後仍可對應 */
+      warehouseInventory: {
+        type: mongoose.Schema.ObjectId,
+        ref: 'WarehouseInventory',
+        required: false,
+      },
       warehouse: {
         type: String,
         enum: ['A', 'B', 'C', 'D', '供應商管理', '其他'],

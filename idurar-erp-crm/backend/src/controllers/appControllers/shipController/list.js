@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 const { catchErrors } = require('@/handlers/errorHandlers');
+const {
+  escapeRegex,
+  supplierQuoteNumbersMatchingAssetSearchQuery,
+} = require('../_shared/supplierQuoteNumbersForAssetListSearch');
 
 const Model = mongoose.model('Ship');
 
@@ -14,8 +18,25 @@ const list = catchErrors(async (req, res) => {
   if (filter && equal !== undefined) match[filter] = equal;
 
   if (q && fieldsParam) {
-    const fieldsArray = fieldsParam.split(',');
-    match.$or = fieldsArray.map((f) => ({ [f]: { $regex: new RegExp(q, 'i') } }));
+    const fieldsArray = fieldsParam.split(',').map((f) => f.trim()).filter(Boolean);
+    const qTrim = String(q).trim();
+    const rx = new RegExp(escapeRegex(qTrim), 'i');
+    const shipFieldClauses = fieldsArray.map((f) => ({ [f]: { $regex: rx } }));
+
+    let quoteSupplierNumbers = [];
+    try {
+      quoteSupplierNumbers = await supplierQuoteNumbersMatchingAssetSearchQuery(qTrim);
+    } catch (e) {
+      quoteSupplierNumbers = [];
+    }
+
+    const clauses = [...shipFieldClauses];
+    if (quoteSupplierNumbers.length > 0) {
+      clauses.push({ supplierNumber: { $in: quoteSupplierNumbers } });
+    }
+    if (clauses.length > 0) {
+      match.$or = clauses;
+    }
   }
 
   const pipeline = [

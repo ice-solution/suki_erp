@@ -39,7 +39,11 @@ const routerApp = (entity, controller) => {
 
   if (entity === 'quote') {
     router.route(`/${entity}/convert/:id`).get(catchErrors(controller['convert']));
-    router.route(`/${entity}/convertToSupplierQuote/:id`).get(catchErrors(controller['convertToSupplierQuote']));
+    router
+      .route(`/${entity}/convertToSupplierQuote/:id`)
+      .get(catchErrors(controller['convertToSupplierQuote']))
+      .post(catchErrors(controller['convertToSupplierQuote']));
+    router.route(`/${entity}/po-order-status/:id`).get(catchErrors(controller['poOrderStatus']));
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
     router
       .route(`/${entity}/operational-report`)
@@ -48,7 +52,11 @@ const routerApp = (entity, controller) => {
 
   if (entity === 'shipquote') {
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
-    router.route(`/${entity}/convertToSupplierQuote/:id`).get(catchErrors(controller['convertToSupplierQuote']));
+    router
+      .route(`/${entity}/convertToSupplierQuote/:id`)
+      .get(catchErrors(controller['convertToSupplierQuote']))
+      .post(catchErrors(controller['convertToSupplierQuote']));
+    router.route(`/${entity}/po-order-status/:id`).get(catchErrors(controller['poOrderStatus']));
   }
 
   if (entity === 'project') {

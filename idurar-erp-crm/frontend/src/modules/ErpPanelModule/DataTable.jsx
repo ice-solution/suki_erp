@@ -19,16 +19,15 @@ import { erp } from '@/redux/erp/actions';
 import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
 import { generate as uniqueId } from 'shortid';
-import { useNavigate } from 'react-router-dom';
+import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 
 function AddNewItem({ config }) {
-  const navigate = useNavigate();
   const { ADD_NEW_ENTITY, entity } = config;
 
   const handleClick = () => {
-    navigate(`/${entity.toLowerCase()}/create`);
+    openSpaPathInNewTab(`/${entity.toLowerCase()}/create`);
   };
 
   return (
@@ -79,16 +78,14 @@ export default function DataTable({ config, extra = [] }) {
     },
   ];
 
-  const navigate = useNavigate();
-
   const handleRead = (record) => {
     dispatch(erp.currentItem({ data: record }));
-    navigate(`/${entity}/read/${record._id}`);
+    openSpaPathInNewTab(`/${entity}/read/${record._id}`);
   };
   const handleEdit = (record) => {
     const data = { ...record };
     dispatch(erp.currentAction({ actionType: 'update', data }));
-    navigate(`/${entity}/update/${record._id}`);
+    openSpaPathInNewTab(`/${entity}/update/${record._id}`);
   };
   const handleDownload = (record) => {
     const v = encodeURIComponent(String(record?.modified_at || record?.updated || Date.now()));
@@ -102,7 +99,7 @@ export default function DataTable({ config, extra = [] }) {
 
   const handleRecordPayment = (record) => {
     dispatch(erp.currentItem({ data: record }));
-    navigate(`/invoice/pay/${record._id}`);
+    openSpaPathInNewTab(`/invoice/pay/${record._id}`);
   };
 
   dataTableColumns = [

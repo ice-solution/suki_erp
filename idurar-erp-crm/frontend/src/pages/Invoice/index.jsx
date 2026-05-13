@@ -38,6 +38,13 @@ export default function Invoice() {
       },
     },
     {
+      title: translate('quote_number'),
+      dataIndex: 'invoiceNumber',
+      width: 150,
+      ellipsis: true,
+      render: (invoiceNumber) => (invoiceNumber != null && String(invoiceNumber).trim() !== '' ? String(invoiceNumber).trim() : '-'),
+    },
+    {
       title: translate('Clients'),
       dataIndex: 'clients',
       width: 200,

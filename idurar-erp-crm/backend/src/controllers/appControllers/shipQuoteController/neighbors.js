@@ -1,26 +1,14 @@
 const mongoose = require('mongoose');
-const { neighborsByCreatedDesc, neighborsByYearDescNumberAsc } = require('../_shared/neighbors');
+const { neighborsByYearDescNumberAsc } = require('../_shared/neighbors');
 
 /**
- * GET /shipquote/neighbors/:id?q=...
- * ShipQuote list 默認 year desc, number asc；search 則 createdAt desc
+ * GET /shipquote/neighbors/:id
+ * 依 year desc、number asc（吊船 type）。查詢參數 q 已忽略。
  */
 module.exports = async function neighbors(req, res) {
   const id = req.params.id;
-  const q = (req.query.q || '').trim();
   const Model = mongoose.model('ShipQuote');
   const baseMatch = { removed: false, type: '吊船' };
-
-  if (q) {
-    const { prevId, nextId } = await neighborsByCreatedDesc({
-      Model,
-      baseMatch,
-      currentId: id,
-      q,
-      fieldsArray: ['address', 'invoiceNumber', 'number', 'numberPrefix', 'contactPerson'],
-    });
-    return res.status(200).json({ success: true, result: { prevId, nextId } });
-  }
 
   const { prevId, nextId } = await neighborsByYearDescNumberAsc({
     Model,
@@ -29,4 +17,3 @@ module.exports = async function neighbors(req, res) {
   });
   return res.status(200).json({ success: true, result: { prevId, nextId } });
 };
-

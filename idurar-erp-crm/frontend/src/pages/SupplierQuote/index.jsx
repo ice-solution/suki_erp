@@ -60,6 +60,18 @@ export default function SupplierQuote() {
       render: (_, record) => record.supplier?.name || '-',
     },
     {
+      title: '制單人',
+      dataIndex: 'createdBy',
+      width: 150,
+      ellipsis: false,
+      render: (_, record) => {
+        const u = record.createdBy;
+        if (!u || typeof u !== 'object') return '-';
+        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
+        return name || u.email || '-';
+      },
+    },
+    {
       title: '上單日期',
       dataIndex: 'date',
       width: 110,
@@ -79,18 +91,6 @@ export default function SupplierQuote() {
       width: 110,
       ellipsis: false,
       render: (d) => (d ? dayjs(d).format(dateFormat) : '-'),
-    },
-    {
-      title: '制單人',
-      dataIndex: 'createdBy',
-      width: 150,
-      ellipsis: false,
-      render: (_, record) => {
-        const u = record.createdBy;
-        if (!u || typeof u !== 'object') return '-';
-        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
-        return name || u.email || '-';
-      },
     },
     {
       title: translate('Total'),

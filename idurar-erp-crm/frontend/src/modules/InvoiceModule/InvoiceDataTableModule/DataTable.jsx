@@ -20,16 +20,17 @@ import { erp } from '@/redux/erp/actions';
 import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
 import { generate as uniqueId } from 'shortid';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
+
+import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 
 function AddNewItem({ config }) {
-  const navigate = useNavigate();
   const { entity, ADD_NEW_ENTITY } = config;
 
   const handelClick = () => {
-    navigate(`/${entity.toLowerCase()}/table/create`);
+    openSpaPathInNewTab(`/${entity.toLowerCase()}/table/create`);
   };
 
   return (
@@ -88,7 +89,6 @@ export default function DataTable({ config, extra = [] }) {
     },
   ];
 
-  const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
 
@@ -115,7 +115,7 @@ export default function DataTable({ config, extra = [] }) {
     dispatch(erp.currentItem({ data: record }));
     persistNavContext();
     const q = searchValue != null ? String(searchValue).trim() : '';
-    navigate(`/${entity}/read/${record._id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+    openSpaPathInNewTab(`/${entity}/read/${record._id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
   };
   
   const handleEdit = (record) => {
@@ -123,7 +123,7 @@ export default function DataTable({ config, extra = [] }) {
     dispatch(erp.currentAction({ actionType: 'update', data }));
     persistNavContext();
     const q = searchValue != null ? String(searchValue).trim() : '';
-    navigate(`/${entity}/table/update/${record._id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
+    openSpaPathInNewTab(`/${entity}/table/update/${record._id}${q ? `?q=${encodeURIComponent(q)}` : ''}`);
   };
 
   const handleDownload = (record) => {

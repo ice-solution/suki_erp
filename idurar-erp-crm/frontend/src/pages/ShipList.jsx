@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Modal, Table, Tag } from 'antd';
 import CrudModule from '@/modules/CrudModule/CrudModule';
@@ -45,18 +45,19 @@ export default function ShipList() {
 
   const searchConfig = {
     displayLabels: ['registrationNumber'],
-    searchFields: 'registrationNumber',
+    searchFields: 'registrationNumber,supplierNumber,name,description',
   };
   const deleteModalLabels = ['registrationNumber'];
 
-  // 存儲 supplierNumber -> { id, address, invoiceNumber, installationDate, dismantlingDate } 的映射
+  // 存儲 supplierNumber -> { id, address, invoiceNumber, installationDate, dismantlingDate, receiver } 的映射
   const [supplierQuoteMap, setSupplierQuoteMap] = useState({});
 
   const isSupplierQuoteCacheComplete = (c) =>
     c &&
     typeof c === 'object' &&
     Object.prototype.hasOwnProperty.call(c, 'installationDate') &&
-    Object.prototype.hasOwnProperty.call(c, 'dismantlingDate');
+    Object.prototype.hasOwnProperty.call(c, 'dismantlingDate') &&
+    Object.prototype.hasOwnProperty.call(c, 'receiver');
 
   // 根據 supplierNumber 查找 SupplierQuote（含裝拆日期）
   const findSupplierQuoteInfo = async (supplierNumber) => {
@@ -69,7 +70,8 @@ export default function ShipList() {
         entity: 'supplierquote',
         options: {
           q: supplierNumber,
-          fields: 'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate',
+          fields:
+            'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate,receiver',
         },
       });
 
@@ -86,6 +88,7 @@ export default function ShipList() {
             invoiceNumber: matchedQuote.invoiceNumber || null,
             installationDate: matchedQuote.installationDate || null,
             dismantlingDate: matchedQuote.dismantlingDate || null,
+            receiver: matchedQuote.receiver != null ? String(matchedQuote.receiver) : null,
           };
           setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
           return info;
@@ -198,6 +201,26 @@ export default function ShipList() {
         const info = supplierQuoteMap[supplierNumber];
         if (isSupplierQuoteCacheComplete(info)) {
           return info.address || '-';
+        }
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
+      },
+    });
+
+    baseColumns.push({
+      title: '簽收單送貨地址',
+      dataIndex: 'supplierNumber',
+      key: 'receiverAddress',
+      width: 220,
+      ellipsis: true,
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') {
+          return '-';
+        }
+        const info = supplierQuoteMap[supplierNumber];
+        if (isSupplierQuoteCacheComplete(info)) {
+          const t = info.receiver;
+          return t && String(t).trim() ? String(t) : '-';
         }
         findSupplierQuoteInfo(supplierNumber);
         return '-';

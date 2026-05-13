@@ -460,8 +460,13 @@ export default function Warehouse() {
                 name="itemName"
                 label="貨品名稱"
                 rules={[{ required: true, message: '請輸入貨品名稱' }]}
+                extra={
+                  editingItem
+                    ? '修改名稱後，已綁定此存倉貨品 ID 的 S 單仍會正確扣帳；畫面上顯示的舊名稱可於各 S 單重新選貨後更新。'
+                    : undefined
+                }
               >
-                <Input placeholder="請輸入貨品名稱" disabled={!!editingItem} />
+                <Input placeholder="請輸入貨品名稱" />
               </Form.Item>
             </Col>
             <Col span={12}>

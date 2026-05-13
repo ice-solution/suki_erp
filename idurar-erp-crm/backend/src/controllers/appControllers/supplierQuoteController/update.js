@@ -88,7 +88,7 @@ const update = async (req, res) => {
 
   let body = req.body;
 
-  // 允許「出貨日期」獨立保存（openDate）；空字串視為未填
+  // 出貨日期（openDate）必填；空字串視為未填（更新時可沿用原值）
   if (body.openDate === '') body.openDate = null;
   if (body.openDate) {
     const d = new Date(body.openDate);
@@ -261,6 +261,24 @@ const update = async (req, res) => {
     });
   }
 
+  let resolvedOpenDate = body.openDate != null ? body.openDate : existingQuote.openDate;
+  if (!resolvedOpenDate) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: '請填寫出貨日期',
+    });
+  }
+  const openDateParsed = resolvedOpenDate instanceof Date ? resolvedOpenDate : new Date(resolvedOpenDate);
+  if (Number.isNaN(openDateParsed.getTime())) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: '請填寫出貨日期',
+    });
+  }
+  body.openDate = openDateParsed;
+
   // 材料及費用管理：依舊→新差異同步倉庫（先扣/退庫存，再寫入 S 單；失敗則不更新 S 單）
   let warehouseApplied = [];
   try {
@@ -323,6 +341,20 @@ const update = async (req, res) => {
     });
   }
 
+  const normalizeRefId = (ref) => {
+    if (ref == null || ref === '') return null;
+    if (typeof ref === 'object' && ref._id != null) return ref._id.toString();
+    return ref.toString();
+  };
+
+  // body 未帶 ship／winch 時，勿當成「已移除綁定」；以更新後文件為準（避免誤設為香港倉）
+  const newShipId = Object.prototype.hasOwnProperty.call(body, 'ship')
+    ? normalizeRefId(body.ship)
+    : normalizeRefId(result.ship);
+  const newWinchId = Object.prototype.hasOwnProperty.call(body, 'winch')
+    ? normalizeRefId(body.winch)
+    : normalizeRefId(result.winch);
+
   // 如果有船隻或爬纜器，更新它們的status、supplierNumber和expiredDate
   const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
   const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
@@ -333,22 +365,12 @@ const update = async (req, res) => {
       ? existingQuote.ship._id.toString()
       : existingQuote.ship.toString()
     : null;
-  const newShipId = body.ship
-    ? typeof body.ship === 'object'
-      ? body.ship._id?.toString?.() || body.ship.toString()
-      : body.ship.toString()
-    : null;
   const shouldCreateShipBinding = !!newShipId && oldShipId !== newShipId;
 
   const oldWinchId = existingQuote?.winch
     ? typeof existingQuote.winch === 'object'
       ? existingQuote.winch._id.toString()
       : existingQuote.winch.toString()
-    : null;
-  const newWinchId = body.winch
-    ? typeof body.winch === 'object'
-      ? body.winch._id?.toString?.() || body.winch.toString()
-      : body.winch.toString()
     : null;
   const shouldCreateWinchBinding = !!newWinchId && oldWinchId !== newWinchId;
 
