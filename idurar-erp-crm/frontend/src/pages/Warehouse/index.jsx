@@ -140,9 +140,9 @@ export default function Warehouse() {
 
   const fetchSuppliers = async () => {
     try {
-      const response = await request.get({ entity: 'client/listAll' });
+      const response = await request.listAll({ entity: 'supplier' });
       if (response.success) {
-        setSuppliers(response.result || []);
+        setSuppliers(Array.isArray(response.result) ? response.result : []);
       }
     } catch (error) {
       console.error('Error fetching suppliers:', error);
