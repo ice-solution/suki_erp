@@ -55,12 +55,36 @@ const bindings = async (req, res) => {
         created: r.created,
         returnDate: r.returnDate || null,
       })),
-      ...placeholderRows,
+      ...placeholderRows.map((r) => ({ ...r, returnDate: r.returnDate ?? null })),
     ].sort((a, b) => {
       const da = a.created ? new Date(a.created).getTime() : 0;
       const db = b.created ? new Date(b.created).getTime() : 0;
       return db - da;
     });
+
+    const quoteIds = [...new Set(rows.map((r) => r.supplierQuoteId).filter(Boolean).map(String))];
+    if (quoteIds.length > 0) {
+      const quotes = await SupplierQuote.find({ _id: { $in: quoteIds } })
+        .select('address receiver receiptDisplayName')
+        .lean()
+        .exec();
+      const byId = {};
+      quotes.forEach((q) => {
+        byId[String(q._id)] = q;
+      });
+      rows.forEach((r) => {
+        const q = r.supplierQuoteId ? byId[String(r.supplierQuoteId)] : null;
+        if (q) {
+          r.projectAddress = q.address != null ? String(q.address) : '';
+          r.receiverAddress = q.receiver != null ? String(q.receiver) : '';
+          r.receiptDisplayName = q.receiptDisplayName != null ? String(q.receiptDisplayName) : '';
+        } else {
+          r.projectAddress = '';
+          r.receiverAddress = '';
+          r.receiptDisplayName = '';
+        }
+      });
+    }
 
     return res.status(200).json({
       success: true,

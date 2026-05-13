@@ -71,7 +71,7 @@ export default function ShipList() {
         options: {
           q: supplierNumber,
           fields:
-            'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate,receiver',
+            'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate,receiver,receiptDisplayName',
         },
       });
 
@@ -89,6 +89,8 @@ export default function ShipList() {
             installationDate: matchedQuote.installationDate || null,
             dismantlingDate: matchedQuote.dismantlingDate || null,
             receiver: matchedQuote.receiver != null ? String(matchedQuote.receiver) : null,
+            receiptDisplayName:
+              matchedQuote.receiptDisplayName != null ? String(matchedQuote.receiptDisplayName) : null,
           };
           setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
           return info;
@@ -194,6 +196,8 @@ export default function ShipList() {
       title: translate('Project Address') || 'Project Address',
       dataIndex: 'supplierNumber',
       key: 'projectAddress',
+      width: 200,
+      ellipsis: true,
       render: (supplierNumber, record) => {
         if (!supplierNumber || record.status !== 'in_use') {
           return '-';
@@ -201,6 +205,26 @@ export default function ShipList() {
         const info = supplierQuoteMap[supplierNumber];
         if (isSupplierQuoteCacheComplete(info)) {
           return info.address || '-';
+        }
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
+      },
+    });
+
+    baseColumns.push({
+      title: '簽收顯示名稱（收件人）',
+      dataIndex: 'supplierNumber',
+      key: 'receiptDisplayName',
+      width: 140,
+      ellipsis: true,
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') {
+          return '-';
+        }
+        const info = supplierQuoteMap[supplierNumber];
+        if (isSupplierQuoteCacheComplete(info)) {
+          const t = info.receiptDisplayName;
+          return t && String(t).trim() ? String(t) : '-';
         }
         findSupplierQuoteInfo(supplierNumber);
         return '-';
@@ -324,18 +348,20 @@ export default function ShipList() {
         open={bindingModalOpen}
         onCancel={() => setBindingModalOpen(false)}
         footer={null}
-        width={700}
+        width={1000}
       >
         <Table
           size="small"
           rowKey={(row) => row.bindingId || `${row.supplierQuoteId || 'na'}-${row.created || ''}`}
           loading={bindingLoading}
           pagination={false}
+          scroll={{ x: 960 }}
           columns={[
             {
               title: 'Supplier Quote Number',
               dataIndex: 'supplierQuoteNumber',
               key: 'supplierQuoteNumber',
+              width: 130,
               render: (val, row) =>
                 row?.supplierQuoteId ? (
                   <Link to={`/supplierquote/read/${row.supplierQuoteId}`}>{val}</Link>
@@ -343,17 +369,43 @@ export default function ShipList() {
                   val || '-'
                 ),
             },
-            { title: 'Quote Number', dataIndex: 'quoteNumber', key: 'quoteNumber', render: (v) => v || '-' },
+            { title: 'Quote Number', dataIndex: 'quoteNumber', key: 'quoteNumber', width: 120, ellipsis: true, render: (v) => v || '-' },
+            {
+              title: '專案地址',
+              dataIndex: 'projectAddress',
+              key: 'projectAddress',
+              width: 180,
+              ellipsis: true,
+              render: (v) => (v && String(v).trim() ? String(v) : '-'),
+            },
+            {
+              title: '簽收顯示名稱',
+              dataIndex: 'receiptDisplayName',
+              key: 'receiptDisplayName',
+              width: 120,
+              ellipsis: true,
+              render: (v) => (v && String(v).trim() ? String(v) : '-'),
+            },
+            {
+              title: '簽收送貨地址',
+              dataIndex: 'receiverAddress',
+              key: 'receiverAddress',
+              width: 200,
+              ellipsis: true,
+              render: (v) => (v && String(v).trim() ? String(v) : '-'),
+            },
             {
               title: 'Created',
               dataIndex: 'created',
               key: 'created',
+              width: 100,
               render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
             },
             {
               title: '回廠日期',
               dataIndex: 'returnDate',
               key: 'returnDate',
+              width: 100,
               render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
             },
           ]}
