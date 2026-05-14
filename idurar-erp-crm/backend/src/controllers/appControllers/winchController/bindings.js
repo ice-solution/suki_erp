@@ -65,7 +65,7 @@ const bindings = async (req, res) => {
     const quoteIds = [...new Set(rows.map((r) => r.supplierQuoteId).filter(Boolean).map(String))];
     if (quoteIds.length > 0) {
       const quotes = await SupplierQuote.find({ _id: { $in: quoteIds } })
-        .select('address receiver receiptDisplayName')
+        .select('address receiver')
         .lean()
         .exec();
       const byId = {};
@@ -77,11 +77,9 @@ const bindings = async (req, res) => {
         if (q) {
           r.projectAddress = q.address != null ? String(q.address) : '';
           r.receiverAddress = q.receiver != null ? String(q.receiver) : '';
-          r.receiptDisplayName = q.receiptDisplayName != null ? String(q.receiptDisplayName) : '';
         } else {
           r.projectAddress = '';
           r.receiverAddress = '';
-          r.receiptDisplayName = '';
         }
       });
     }

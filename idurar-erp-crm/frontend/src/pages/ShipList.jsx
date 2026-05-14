@@ -71,7 +71,7 @@ export default function ShipList() {
         options: {
           q: supplierNumber,
           fields:
-            'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate,receiver,receiptDisplayName',
+            'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate,receiver',
         },
       });
 
@@ -89,8 +89,6 @@ export default function ShipList() {
             installationDate: matchedQuote.installationDate || null,
             dismantlingDate: matchedQuote.dismantlingDate || null,
             receiver: matchedQuote.receiver != null ? String(matchedQuote.receiver) : null,
-            receiptDisplayName:
-              matchedQuote.receiptDisplayName != null ? String(matchedQuote.receiptDisplayName) : null,
           };
           setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
           return info;
@@ -205,26 +203,6 @@ export default function ShipList() {
         const info = supplierQuoteMap[supplierNumber];
         if (isSupplierQuoteCacheComplete(info)) {
           return info.address || '-';
-        }
-        findSupplierQuoteInfo(supplierNumber);
-        return '-';
-      },
-    });
-
-    baseColumns.push({
-      title: '簽收顯示名稱（收件人）',
-      dataIndex: 'supplierNumber',
-      key: 'receiptDisplayName',
-      width: 140,
-      ellipsis: true,
-      render: (supplierNumber, record) => {
-        if (!supplierNumber || record.status !== 'in_use') {
-          return '-';
-        }
-        const info = supplierQuoteMap[supplierNumber];
-        if (isSupplierQuoteCacheComplete(info)) {
-          const t = info.receiptDisplayName;
-          return t && String(t).trim() ? String(t) : '-';
         }
         findSupplierQuoteInfo(supplierNumber);
         return '-';
@@ -348,14 +326,14 @@ export default function ShipList() {
         open={bindingModalOpen}
         onCancel={() => setBindingModalOpen(false)}
         footer={null}
-        width={1000}
+        width={880}
       >
         <Table
           size="small"
           rowKey={(row) => row.bindingId || `${row.supplierQuoteId || 'na'}-${row.created || ''}`}
           loading={bindingLoading}
           pagination={false}
-          scroll={{ x: 960 }}
+          scroll={{ x: 820 }}
           columns={[
             {
               title: 'Supplier Quote Number',
@@ -379,18 +357,10 @@ export default function ShipList() {
               render: (v) => (v && String(v).trim() ? String(v) : '-'),
             },
             {
-              title: '簽收顯示名稱',
-              dataIndex: 'receiptDisplayName',
-              key: 'receiptDisplayName',
-              width: 120,
-              ellipsis: true,
-              render: (v) => (v && String(v).trim() ? String(v) : '-'),
-            },
-            {
-              title: '簽收送貨地址',
+              title: '簽收單送貨地址',
               dataIndex: 'receiverAddress',
               key: 'receiverAddress',
-              width: 200,
+              width: 220,
               ellipsis: true,
               render: (v) => (v && String(v).trim() ? String(v) : '-'),
             },

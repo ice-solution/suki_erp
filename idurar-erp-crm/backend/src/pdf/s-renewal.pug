@@ -286,8 +286,6 @@ body
                 .info-row 供應商 Invoice No.: #{model.counterpartyInvoiceNumber || ''}
           .doc-title 導向吊船租賃報價
           .project-address-line(style='white-space:pre-wrap') 簽收單送貨地址：#{receiverPdfRaw || '-'}
-          if model.notes && String(model.notes).trim()
-            .project-address-line(style='white-space:pre-wrap') 備註：#{String(model.notes)}
           table.quotation-table
             thead
               tr
