@@ -5,6 +5,7 @@ const Model = mongoose.model('ShipQuote');
 const custom = require('@/controllers/pdfController');
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
+const { normalizeShipQuoteRentalExtraItems } = require('@/helpers/normalizeShipQuoteRentalExtras');
 
 const create = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
@@ -49,6 +50,7 @@ const create = async (req, res) => {
   body['total'] = total;
   body['items'] = items;
   body['createdBy'] = req.admin._id;
+  normalizeShipQuoteRentalExtraItems(body);
 
   // Creating a new document in the collection
   const result = await new Model(body).save();

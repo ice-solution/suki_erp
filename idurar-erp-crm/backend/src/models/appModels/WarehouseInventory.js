@@ -45,12 +45,19 @@ const warehouseInventorySchema = new mongoose.Schema({
     min: 0,
     default: 0,
   },
+
+  /** 重量（公斤） */
+  weight: {
+    type: Number,
+    min: 0,
+    default: 0,
+  },
   
-  // 倉庫信息
+  // 倉庫信息（代碼由設定 warehouse_list 維護，如 A、B、E 等）
   warehouse: {
     type: String,
-    enum: ['A', 'B', 'C', 'D'],
     required: true,
+    trim: true,
   },
   
   // 價格信息
@@ -144,8 +151,22 @@ warehouseInventorySchema.virtual('statusDisplay').get(function() {
   return statusMap[this.status] || this.status;
 });
 
-// 自動計算總價值
+/** 依庫存數量同步狀態：0 → 缺貨；有貨且原為缺貨 → 可用 */
+function syncStatusFromQuantity(doc) {
+  const qty = Number(doc.quantity);
+  if (!Number.isFinite(qty) || qty <= 0) {
+    doc.quantity = 0;
+    doc.status = 'out_of_stock';
+  } else if (doc.status === 'out_of_stock') {
+    doc.status = 'available';
+  }
+}
+
+warehouseInventorySchema.statics.syncStatusFromQuantity = syncStatusFromQuantity;
+
+// 自動計算總價值、依數量更新狀態
 warehouseInventorySchema.pre('save', function(next) {
+  syncStatusFromQuantity(this);
   this.totalValue = this.quantity * this.unitPrice;
   this.lastUpdated = new Date();
   next();

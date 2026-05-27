@@ -23,6 +23,15 @@ import { selectCurrentItem } from '@/redux/erp/selectors';
 
 import { useMoney, useDate } from '@/settings';
 import { useNavigate } from 'react-router-dom';
+import {
+  allocateUsedByLineId,
+  buildContractorFeeLineOptions,
+  ensureContractorFeeLineIds,
+  formatFeeLineLabel,
+  formatFeeLineShortLabel,
+  getFeeLineLabel,
+} from '@/utils/projectContractorFees';
+import { resolveCustomerQuoteNumber } from '@/utils/projectCustomerQuoteNumber';
 import { request } from '@/request';
 import SalaryManagement from '@/components/SalaryManagement';
 import calculate from '@/utils/calculate';
@@ -66,15 +75,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
   const [nextEoPreview, setNextEoPreview] = useState('');
   const [nextEoLoading, setNextEoLoading] = useState(false);
   
-  // 從 contractorFees 中提取工程名選項
-  const projectNameOptions = currentProject.contractorFees && Array.isArray(currentProject.contractorFees)
-    ? currentProject.contractorFees
-        .filter(fee => fee.projectName && fee.projectName.trim() !== '')
-        .map(fee => ({
-          value: fee.projectName,
-          label: fee.projectName,
-        }))
-    : [];
+  const contractorFeeLineOptions = buildContractorFeeLineOptions(currentProject.contractorFees);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -138,7 +139,16 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
 
   const handleEditUsedContractorFee = (record, index) => {
     setEditingUsedFeeIndex(index);
+    const fees = ensureContractorFeeLineIds(currentProject.contractorFees || []);
+    let lineId = record.contractorFeeLineId || '';
+    if (!lineId && record.projectName) {
+      const matches = fees.filter(
+        (f) => (f.projectName || '').trim() === String(record.projectName).trim()
+      );
+      if (matches.length === 1) lineId = matches[0].lineId;
+    }
     contractorFeesForm.setFieldsValue({
+      contractorFeeLineId: lineId || undefined,
       projectName: record.projectName || '',
       date: record.date ? dayjs(record.date) : null,
       dueDate: record.dueDate ? dayjs(record.dueDate) : null,
@@ -155,35 +165,42 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     try {
       // 獲取當前的 usedContractorFees 數組
       const currentUsedContractorFees = currentProject.usedContractorFees || [];
-      const projectName = values.projectName;
+      const lineId = values.contractorFeeLineId;
+      const fees = ensureContractorFeeLineIds(currentProject.contractorFees || []);
+      const feeLine = fees.find((f) => f.lineId === lineId);
+      if (!feeLine) {
+        message.error('請選擇判頭費預算行');
+        return;
+      }
+      const projectName = feeLine.projectName;
       const newAmount = Number(values.amount) || 0;
 
-      // 財務信息中該工程名的判頭費總額度（可有多行同工程名則加總）
-      const allocated = (currentProject.contractorFees || [])
-        .filter((f) => f && f.projectName === projectName)
-        .reduce((sum, f) => calculate.add(sum, Number(f.amount) || 0), 0);
-
-      // 同工程名下已使用金額（修改時排除正在編輯的那一筆）
-      let usedSum = 0;
-      currentUsedContractorFees.forEach((u, i) => {
-        if (!u || u.projectName !== projectName) return;
-        if (editingUsedFeeIndex !== null && i === editingUsedFeeIndex) return;
-        usedSum = calculate.add(usedSum, Number(u.amount) || 0);
-      });
-
+      const listForAlloc =
+        editingUsedFeeIndex !== null
+          ? currentUsedContractorFees.filter((_, i) => i !== editingUsedFeeIndex)
+          : currentUsedContractorFees;
+      const { usedByLineId } = allocateUsedByLineId(fees, listForAlloc);
+      const allocated = Number(feeLine.amount) || 0;
+      const usedSum = usedByLineId[lineId] || 0;
       const remaining = calculate.sub(allocated, usedSum);
+
       if (calculate.sub(newAmount, remaining) > 0) {
+        const lineLabel = formatFeeLineLabel(
+          feeLine,
+          fees.findIndex((f) => f.lineId === lineId),
+          fees
+        );
         Modal.warning({
           title: '提示',
-          content: `${projectName || '—'}，金額不足`,
+          content: `${lineLabel} 金額不足（剩餘 ${moneyFormatter({ amount: remaining })})`,
           okText: '知道了',
         });
         return;
       }
 
-      // 添加新的使用判頭費記錄
       const newUsedContractorFee = {
-        projectName: values.projectName,
+        contractorFeeLineId: lineId,
+        projectName,
         date: values.date ? dayjs(values.date).toDate() : new Date(),
         dueDate: values.dueDate ? dayjs(values.dueDate).toDate() : null,
         eoNumber: values.eoNumber || '',
@@ -543,20 +560,22 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
   // 使用判頭費表格列（固定欄寬 + 金額 nowrap；Remark 限高可捲動，避免撐爆版面）
   const contractorFeesColumns = [
     {
-      title: '工程名',
-      dataIndex: 'projectName',
-      key: 'projectName',
-      width: 120,
+      title: '判頭費預算行',
+      key: 'feeLine',
+      width: 200,
       ellipsis: true,
       onCell: () => ({
-        style: { verticalAlign: 'top', maxWidth: 120 },
+        style: { verticalAlign: 'top', maxWidth: 200 },
       }),
-      render: (projectName) => {
-        if (!projectName) return '-';
+      render: (_, record) => {
+        const label =
+          getFeeLineLabel(record.contractorFeeLineId, currentProject.contractorFees) ||
+          record.projectName;
+        if (!label) return '-';
         return (
-          <Tooltip title={projectName}>
+          <Tooltip title={label}>
             <Text strong style={{ whiteSpace: 'normal', wordBreak: 'break-word' }}>
-              {projectName}
+              {label}
             </Text>
           </Tooltip>
         );
@@ -888,6 +907,9 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       
       <Descriptions title={translate('Project Information')}>
         <Descriptions.Item label="Quote Number">{currentProject.invoiceNumber}</Descriptions.Item>
+        <Descriptions.Item label="客戶 Quote Number">
+          {resolveCustomerQuoteNumber(currentProject) || '-'}
+        </Descriptions.Item>
         <Descriptions.Item label={translate('P.O Number')}>{currentProject.poNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Description')}>{currentProject.description || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Address')}>{currentProject.address || '-'}</Descriptions.Item>
@@ -903,16 +925,19 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         <Descriptions.Item label="判頭費總計" span={3}>
           {currentProject.contractorFees && Array.isArray(currentProject.contractorFees) && currentProject.contractorFees.length > 0 ? (
             <div>
-              {currentProject.contractorFees.map((fee, index) => {
-                const usedForThis = (currentProject.usedContractorFees || []).filter(
-                  u => (u.projectName || '').trim() === (fee.projectName || '').trim()
+              {(() => {
+                const { fees, usedByLineId } = allocateUsedByLineId(
+                  currentProject.contractorFees,
+                  currentProject.usedContractorFees
                 );
-                const usedAmount = usedForThis.reduce((sum, u) => sum + (u.amount || 0), 0);
+                return fees.map((fee, index) => {
+                const usedAmount = usedByLineId[fee.lineId] || 0;
                 const originalAmount = fee.amount || 0;
                 const remaining = originalAmount - usedAmount;
+                const lineTitle = formatFeeLineShortLabel(fee, index, fees);
                 return (
-                  <div key={index} style={{ marginBottom: 8 }}>
-                    <Text strong>{fee.projectName || '判頭費'}: </Text>
+                  <div key={fee.lineId || index} style={{ marginBottom: 8 }}>
+                    <Text strong>{lineTitle}: </Text>
                     <Text>{moneyFormatter({ amount: originalAmount })}</Text>
                     {usedAmount > 0 && (
                       <>
@@ -924,7 +949,8 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
                     )}
                   </div>
                 );
-              })}
+              });
+              })()}
               <Divider style={{ margin: '8px 0' }} />
               <Text strong>總計: </Text>
               <Text strong>
@@ -1162,22 +1188,34 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           layout="vertical"
           onFinish={handleAddContractorFee}
         >
+          <Form.Item name="projectName" hidden>
+            <Input />
+          </Form.Item>
           <Form.Item
-            label="工程名"
-            name="projectName"
-            rules={[{ required: true, message: '請選擇工程名' }]}
+            label="判頭費預算行"
+            name="contractorFeeLineId"
+            rules={[{ required: true, message: '請選擇判頭費預算行' }]}
           >
             <Select
-              placeholder="選擇工程名"
+              placeholder="選擇判頭費預算行"
               showSearch
               filterOption={(input, option) => {
                 const q = String(input || '').toLowerCase();
                 const label = option?.label != null ? String(option.label) : '';
-                const value = option?.value != null ? String(option.value) : '';
-                return label.toLowerCase().includes(q) || value.toLowerCase().includes(q);
+                return label.toLowerCase().includes(q);
               }}
-              options={projectNameOptions}
-              notFoundContent={projectNameOptions.length === 0 ? '請先在財務信息中添加判頭費工程名' : '無匹配的工程名'}
+              options={contractorFeeLineOptions}
+              notFoundContent={
+                contractorFeeLineOptions.length === 0
+                  ? '請先在財務信息中添加判頭費項目'
+                  : '無匹配項目'
+              }
+              onChange={(lineId) => {
+                const opt = contractorFeeLineOptions.find((o) => o.value === lineId);
+                contractorFeesForm.setFieldsValue({
+                  projectName: opt?.projectName || '',
+                });
+              }}
             />
           </Form.Item>
 

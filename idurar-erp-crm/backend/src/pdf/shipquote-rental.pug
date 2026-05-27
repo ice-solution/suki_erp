@@ -74,6 +74,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
         white-space: pre-wrap;
         word-break: break-word;
       }
+      .extra-table .col-unit { text-align: center; width: 56px; }
       .extra-table .col-price { text-align: right; width: 120px; }
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
       .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
@@ -160,7 +161,8 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
         { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: null },
         { description: '三角足場續租(每14日)', unitPrice: null },
       ]
-      const rentalRowsAll = (model.rentalExtraItems && model.rentalExtraItems.length) ? model.rentalExtraItems : defaultRentalExtras
+      const rentalRowsRaw = (model.rentalExtraItems && model.rentalExtraItems.length) ? model.rentalExtraItems : defaultRentalExtras
+      const rentalRowsAll = rentalRowsRaw.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
       const EXTRA_CHARS_PER_LINE = 40
       const EXTRA_SAFETY_FACTOR = 1.2
       const EXTRA_MAX_LINES_PER_PAGE = 28
@@ -242,12 +244,14 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 .summary-row.subtotal
                   span.summary-label 合共港幣：
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                .summary-row
-                  span.summary-label 折扣%：
-                  span.summary-value #{formatDiscountPct(discount)}%
-                .summary-row
-                  span.summary-label 折扣金額：
-                  span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+                if model.showDiscountPercentOnPdf !== false
+                  .summary-row
+                    span.summary-label 折扣%：
+                    span.summary-value #{formatDiscountPct(discount)}%
+                if model.showDiscountAmountOnPdf !== false
+                  .summary-row
+                    span.summary-label 折扣金額：
+                    span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row.grand
                   span.summary-label 總金額：
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
@@ -283,13 +287,16 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 thead
                   tr
                     th.col-desc 摘要
+                    th.col-unit 單位
                     th.col-price 單價 HKD $
                 tbody
                   each row in extraChunk
                     - const desc = (row && row.description) ? row.description : ''
+                    - const unitLabel = (row && row.unit) ? String(row.unit) : ''
                     - const up = row && row.unitPrice
                     tr
                       td #{desc}
+                      td.col-unit #{unitLabel || '-'}
                       td.col-price.num
                         if up != null && up !== '' && !isNaN(Number(up))
                           | #{moneyFormatter({ amount: Number(up), currency_code: currency })}

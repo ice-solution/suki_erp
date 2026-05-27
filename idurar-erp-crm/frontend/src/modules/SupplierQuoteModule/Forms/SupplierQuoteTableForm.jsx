@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message, Upload } from 'antd';
 
@@ -19,7 +19,17 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import {
+  DiscountAmountPdfCheckboxCol,
+  DiscountPercentPdfCheckboxCol,
+  discountPdfFieldsFromRecord,
+} from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
+import {
+  getMaxOutboundQuantityForLine,
+  isRealWarehouseMaterial,
+  validateSupplierQuoteMaterialsStock,
+} from '@/utils/validateSupplierQuoteMaterialsStock';
 
 function getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) {
   const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
@@ -87,9 +97,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     itemName: '',
     quantity: 1,
     unitPrice: 0, // 單價
-    price: 0 // 總價（quantity * unitPrice）
+    price: 0, // 總價（quantity * unitPrice）
+    stockOnHand: null, // 選中存倉貨品的可用庫存
   });
+  const originalMaterialsRef = useRef([]);
   const [warehouseItems, setWarehouseItems] = useState([]);
+  /** 存倉下拉目前顯示的選項（全量或搜尋結果） */
+  const [warehouseSelectList, setWarehouseSelectList] = useState([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   
   // Ships and Winches form states
@@ -342,6 +356,27 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
+  const mapWarehouseItemFromApi = (item) => ({
+    itemName: item.itemName,
+    sku: item.sku != null ? String(item.sku) : '',
+    warehouse: item.warehouse,
+    quantity: item.quantity,
+    status: item.status,
+    unitPrice: item.unitPrice,
+    description: item.description,
+    _id: item._id,
+  });
+
+  const filterStockableWarehouseRows = (rows) =>
+    (rows || []).filter(
+      (item) => Number(item.quantity) > 0 && item.status === 'available'
+    );
+
+  const getWarehouseItemOptionLabel = (item) => {
+    const skuPart = item.sku ? `${item.sku} · ` : '';
+    return `${skuPart}${item.itemName} — ${translate('Warehouse')} ${item.warehouse} — ${translate('Quantity')}: ${item.quantity}`;
+  };
+
   const fetchWarehouseItems = async (selectedWarehouse = null) => {
     try {
       setMaterialsLoading(true);
@@ -350,73 +385,78 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 「供應商管理」「其他」不對應實體倉庫，不從 API 獲取
       if (selectedWarehouse === '其他' || selectedWarehouse === '供應商管理') {
         setWarehouseItems([]);
+        setWarehouseSelectList([]);
         setMaterialsLoading(false);
         return;
       }
       
-      // 使用正確的倉庫 API
-      const entity = selectedWarehouse 
-        ? `warehouse?warehouse=${selectedWarehouse}` 
-        : 'warehouse';
+      // 僅載入有庫存、非缺貨的貨品（S 單不可選數量為 0 的存倉）
+      const stockParams = 'stockAvailable=1&limit=500';
+      const entity = selectedWarehouse
+        ? `warehouse?warehouse=${selectedWarehouse}&${stockParams}`
+        : `warehouse?${stockParams}`;
       const response = await request.get({ entity });
       
       console.log('📦 Warehouse Items API response:', response);
       
       if (response.success && response.result) {
-        // 轉換API數據格式為組件期望的格式
-        const apiWarehouseItems = response.result.map(item => ({
-          itemName: item.itemName,
-          warehouse: item.warehouse,
-          quantity: item.quantity,
-          unitPrice: item.unitPrice,
-          description: item.description,
-          _id: item._id
-        }));
+        const apiWarehouseItems = filterStockableWarehouseRows(response.result).map(mapWarehouseItemFromApi);
         setWarehouseItems(apiWarehouseItems);
+        setWarehouseSelectList(apiWarehouseItems);
         console.log(`✅ Loaded ${apiWarehouseItems.length} Warehouse Items from API`);
       } else {
-        console.warn('❌ Warehouse Items API failed, using fallback mock data');
-        // 如果API失敗，使用備用的模擬數據
-        const fallbackItems = [
-          { itemName: '不鏽鋼板', warehouse: 'A', quantity: 50, unitPrice: 1000, description: '304不鏽鋼板' },
-          { itemName: '鋁合金', warehouse: 'A', quantity: 30, unitPrice: 800, description: '6061鋁合金' },
-          { itemName: '水泥', warehouse: 'B', quantity: 100, unitPrice: 500, description: '高級水泥' },
-          { itemName: '鋼筋', warehouse: 'B', quantity: 80, unitPrice: 800, description: '建築用鋼筋' },
-          { itemName: '磚塊', warehouse: 'C', quantity: 200, unitPrice: 200, description: '紅磚' },
-          { itemName: '玻璃', warehouse: 'C', quantity: 40, unitPrice: 300, description: '建築玻璃' },
-          { itemName: '木材', warehouse: 'D', quantity: 60, unitPrice: 600, description: '建築木材' },
-          { itemName: '油漆', warehouse: 'D', quantity: 25, unitPrice: 150, description: '內牆油漆' },
-        ];
-        setWarehouseItems(fallbackItems);
+        console.warn('❌ Warehouse Items API failed');
+        setWarehouseItems([]);
+        setWarehouseSelectList([]);
+        message.warning('無法載入存倉貨品，請稍後再試');
       }
     } catch (error) {
       console.error('❌ Error fetching Warehouse Items:', error);
-      // 使用備用的模擬數據
-      const fallbackItems = [
-        { itemName: '不鏽鋼板', warehouse: 'A', quantity: 50, unitPrice: 1000, description: '304不鏽鋼板' },
-        { itemName: '鋁合金', warehouse: 'A', quantity: 30, unitPrice: 800, description: '6061鋁合金' },
-        { itemName: '水泥', warehouse: 'B', quantity: 100, unitPrice: 500, description: '高級水泥' },
-        { itemName: '鋼筋', warehouse: 'B', quantity: 80, unitPrice: 800, description: '建築用鋼筋' },
-        { itemName: '磚塊', warehouse: 'C', quantity: 200, unitPrice: 200, description: '紅磚' },
-        { itemName: '玻璃', warehouse: 'C', quantity: 40, unitPrice: 300, description: '建築玻璃' },
-        { itemName: '木材', warehouse: 'D', quantity: 60, unitPrice: 600, description: '建築木材' },
-        { itemName: '油漆', warehouse: 'D', quantity: 25, unitPrice: 150, description: '內牆油漆' },
-      ];
-      setWarehouseItems(fallbackItems);
+      setWarehouseItems([]);
+      setWarehouseSelectList([]);
+      message.warning('無法載入存倉貨品，請稍後再試');
     } finally {
       setMaterialsLoading(false);
     }
   };
 
-  // 獲取狀態為「正常」的船隻列表
+  /** 依貨品名稱或貨品編號（SKU）搜尋存倉（後端 search 已含 sku） */
+  const searchWarehouseItemsForSelect = async (warehouse, searchText) => {
+    if (!warehouse || warehouse === '其他' || warehouse === '供應商管理') {
+      return;
+    }
+    const q = (searchText || '').trim();
+    if (!q) {
+      setWarehouseSelectList(warehouseItems);
+      return;
+    }
+    try {
+      setMaterialsLoading(true);
+      const entity = `warehouse?warehouse=${encodeURIComponent(warehouse)}&stockAvailable=1&limit=100&search=${encodeURIComponent(q)}`;
+      const response = await request.get({ entity });
+      if (response.success && response.result) {
+        const rows = filterStockableWarehouseRows(response.result).map(mapWarehouseItemFromApi);
+        setWarehouseSelectList(rows);
+      }
+    } catch (error) {
+      console.error('搜尋存倉貨品失敗:', error);
+    } finally {
+      setMaterialsLoading(false);
+    }
+  };
+
+  const ASSET_SELECT_STATUS = 'returned_warehouse_hk'; // 香港倉
+
+  // 獲取狀態為「香港倉」的船隻列表
   const fetchShips = async () => {
     try {
       setShipsLoading(true);
       const response = await request.listAll({ entity: 'ship' });
       if (response.success && Array.isArray(response.result)) {
-        // 只過濾 status = 'normal' 的船隻
-        const normalShips = response.result.filter(ship => ship.status === 'normal');
-        const shipOptions = normalShips.map(ship => ({
+        const hkWarehouseShips = response.result.filter(
+          (ship) => ship.status === ASSET_SELECT_STATUS
+        );
+        const shipOptions = hkWarehouseShips.map(ship => ({
           value: ship._id,
           label: ship.registrationNumber || '—',
           ...ship
@@ -431,15 +471,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  // 獲取狀態為「正常」的爬纜器列表
+  // 獲取狀態為「香港倉」的爬纜器列表
   const fetchWinches = async () => {
     try {
       setWinchesLoading(true);
       const response = await request.listAll({ entity: 'winch' });
       if (response.success && Array.isArray(response.result)) {
-        // 只過濾 status = 'normal' 的爬纜器
-        const normalWinches = response.result.filter(winch => winch.status === 'normal');
-        const winchOptions = normalWinches.map(winch => ({
+        const hkWarehouseWinches = response.result.filter(
+          (winch) => winch.status === ASSET_SELECT_STATUS
+        );
+        const winchOptions = hkWarehouseWinches.map(winch => ({
           value: winch._id,
           label: winch.serialNumber || '—',
           ...winch
@@ -539,6 +580,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         ...item, 
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
+      originalMaterialsRef.current = currentMaterials.map((m) => ({ ...m }));
+
       setMaterials(
         currentMaterials.map((material, index) => {
           const wid = material.warehouseInventory;
@@ -627,6 +670,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           dismantlingDate: current.dismantlingDate ? dayjs(current.dismantlingDate) : undefined,
           subTotal: subVal,
           total: totalVal,
+          discount: discount != null && discount !== '' ? discount : 0,
+          discountTotal:
+            current.discountTotal != null && current.discountTotal !== ''
+              ? Number(Number(current.discountTotal).toFixed(2))
+              : undefined,
+          ...discountPdfFieldsFromRecord(current),
         });
       }, 100);
     }
@@ -743,7 +792,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       // 從存倉中查找相同名字的貨品，獲取其價格
       try {
         // 使用 request.get 來搜索 warehouse，支持 search 參數
-        const entity = `warehouse?search=${encodeURIComponent(value)}&limit=50`;
+        const entity = `warehouse?search=${encodeURIComponent(value)}&limit=50&stockAvailable=1`;
         const warehouseResponse = await request.get({ entity });
         
         // warehouse API 返回格式: { success: true, result: [...], pagination: {...} }
@@ -948,6 +997,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           ...updatedMaterial,
           warehouseInventory: undefined,
           itemName: updatedMaterial.itemName || '',
+          stockOnHand: null,
         };
         fetchWarehouseItems(value);
       } else if (value) {
@@ -957,6 +1007,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           itemName: '',
           unitPrice: 0,
           price: 0,
+          stockOnHand: null,
         };
         fetchWarehouseItems(value);
       }
@@ -1000,7 +1051,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       itemName: record.itemName || '',
       quantity: quantity,
       unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
-      price: totalPrice
+      price: totalPrice,
+      stockOnHand: null,
     };
     setCurrentMaterial(materialData);
     setEditingMaterialKey(materialKey);
@@ -1010,6 +1062,24 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       fetchWarehouseItems(materialData.warehouse);
     }
   };
+
+  const maxOutboundForCurrentMaterial = useMemo(() => {
+    if (!isRealWarehouseMaterial(currentMaterial)) return null;
+    if (!currentMaterial.warehouseInventory) return null;
+    const stock =
+      currentMaterial.stockOnHand ??
+      warehouseItems.find((w) => String(w._id) === String(currentMaterial.warehouseInventory))
+        ?.quantity ??
+      warehouseSelectList.find((w) => String(w._id) === String(currentMaterial.warehouseInventory))
+        ?.quantity;
+    return getMaxOutboundQuantityForLine({
+      warehouseInventoryId: currentMaterial.warehouseInventory,
+      materials,
+      editingMaterialKey,
+      originalMaterials: originalMaterialsRef.current,
+      stockOnHand: stock,
+    });
+  }, [currentMaterial, materials, editingMaterialKey, warehouseItems, warehouseSelectList]);
 
   // 添加或更新材料到列表
   const addMaterialToList = () => {
@@ -1029,6 +1099,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     if (!isVirtualWh) {
       if (!currentMaterial.warehouseInventory || !currentMaterial.itemName) {
         message.warning('倉 A–D 請從下拉選單選擇存倉貨品（不可手動輸入名稱）');
+        return;
+      }
+      const qty = Number(currentMaterial.quantity);
+      if (qty > 0 && maxOutboundForCurrentMaterial != null && qty > maxOutboundForCurrentMaterial) {
+        message.error(
+          `庫存不足：「${currentMaterial.itemName}」最多可出庫 ${maxOutboundForCurrentMaterial}`
+        );
         return;
       }
     } else if (!currentMaterial.itemName) {
@@ -1101,7 +1178,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       itemName: '',
       quantity: 1,
       unitPrice: 0,
-      price: 0
+      price: 0,
+      stockOnHand: null,
     });
   };
 
@@ -1347,7 +1425,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 required: false,
               },
             ]}
-            initialValue={'draft'}
+            initialValue="accepted"
           >
             <Select
               options={[
@@ -1751,7 +1829,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             <Select
               placeholder={
                 currentMaterial.warehouse
-                  ? '從存倉選擇貨品（依貨品 ID 扣帳）'
+                  ? '搜尋貨品名稱或貨品編號…'
                   : '請先選倉庫'
               }
               loading={materialsLoading}
@@ -1768,10 +1846,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                     itemName: '',
                     unitPrice: 0,
                     price: 0,
+                    stockOnHand: null,
                   }));
                   return;
                 }
-                const item = warehouseItems.find((w) => String(w._id) === String(invId));
+                const item =
+                  warehouseItems.find((w) => String(w._id) === String(invId)) ||
+                  warehouseSelectList.find((w) => String(w._id) === String(invId));
                 if (!item) return;
                 const quantity = currentMaterial.quantity || 1;
                 const up = item.unitPrice || 0;
@@ -1783,31 +1864,60 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                   warehouse: item.warehouse,
                   unitPrice: up,
                   price: Number.parseFloat(totalPrice.toFixed(2)),
+                  stockOnHand: item.quantity,
                 }));
               }}
               showSearch
               allowClear
               disabled={!currentMaterial.warehouse}
-              filterOption={(input, option) =>
-                (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
-              }
-              options={warehouseItems.map((item) => ({
+              filterOption={(input, option) => {
+                const q = (input || '').trim().toLowerCase();
+                if (!q) return true;
+                const label = (option?.label ?? '').toLowerCase();
+                const sku = (option?.sku ?? '').toLowerCase();
+                const name = (option?.itemName ?? '').toLowerCase();
+                return label.includes(q) || sku.includes(q) || name.includes(q);
+              }}
+              onSearch={(text) => searchWarehouseItemsForSelect(currentMaterial.warehouse, text)}
+              onDropdownVisibleChange={(open) => {
+                if (open) {
+                  setWarehouseSelectList(warehouseItems);
+                }
+              }}
+              options={warehouseSelectList.map((item) => ({
                 value: String(item._id),
-                label: `${item.itemName} — ${translate('Warehouse')} ${item.warehouse} — ${translate('Quantity')}: ${item.quantity}`,
+                label: getWarehouseItemOptionLabel(item),
+                sku: item.sku || '',
+                itemName: item.itemName || '',
               }))}
               style={{ width: '100%' }}
             />
           )}
         </Col>
         <Col span={3}>
-          <InputNumber 
+          <InputNumber
             placeholder="數量（正=加，負=減）"
             step={0.01}
             precision={2}
+            min={undefined}
+            max={
+              isRealWarehouseMaterial(currentMaterial) &&
+              Number(currentMaterial.quantity) > 0 &&
+              maxOutboundForCurrentMaterial != null
+                ? maxOutboundForCurrentMaterial
+                : undefined
+            }
             value={currentMaterial.quantity}
             onChange={(value) => updateCurrentMaterial('quantity', value)}
             style={{ width: '100%' }}
           />
+          {isRealWarehouseMaterial(currentMaterial) &&
+            currentMaterial.warehouseInventory &&
+            maxOutboundForCurrentMaterial != null && (
+              <div style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+                可用庫存：{maxOutboundForCurrentMaterial}
+              </div>
+            )}
         </Col>
         <Col span={3}>
           <InputNumber
@@ -1859,7 +1969,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         <Col span={12}>
           <h4>選擇船隻</h4>
           <Select
-            placeholder="選擇船隻（只顯示狀態為「正常」的）"
+            placeholder="選擇船隻（只顯示狀態為「香港倉」的）"
             value={selectedShip}
             onChange={(value, option) => {
               setSelectedShip(value);
@@ -1879,7 +1989,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         <Col span={12}>
           <h4>選擇爬纜器</h4>
           <Select
-            placeholder="選擇爬纜器（只顯示狀態為「正常」的）"
+            placeholder="選擇爬纜器（只顯示狀態為「香港倉」的）"
             value={selectedWinch}
             onChange={(value, option) => {
               setSelectedWinch(value);
@@ -1964,7 +2074,24 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       <Form.Item name="items" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
-      <Form.Item name="materials" style={{ display: 'none' }}>
+      <Form.Item
+        name="materials"
+        style={{ display: 'none' }}
+        rules={[
+          {
+            validator: async () => {
+              const check = await validateSupplierQuoteMaterialsStock({
+                materials,
+                originalMaterials: originalMaterialsRef.current,
+              });
+              if (!check.ok) {
+                message.error(check.message);
+                throw new Error(check.message);
+              }
+            },
+          },
+        ]}
+      >
         <Input />
       </Form.Item>
       <Form.Item name="shouldLinkToProject" style={{ display: 'none' }}>
@@ -2039,7 +2166,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               {translate('Discount')} (%) :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item
               name="discount"
               rules={[
@@ -2060,6 +2187,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               />
             </Form.Item>
           </Col>
+          <DiscountPercentPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>
@@ -2074,9 +2202,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               {translate('Discount Amount')} :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
+            <Form.Item name="discountTotal" hidden>
+              <InputNumber />
+            </Form.Item>
             <MoneyInputFormItem readOnly value={discountTotal} />
           </Col>
+          <DiscountAmountPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>

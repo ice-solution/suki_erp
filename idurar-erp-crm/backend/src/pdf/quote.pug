@@ -178,12 +178,14 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
                 .summary-row.subtotal
                   span.summary-label 合共港幣：
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                .summary-row
-                  span.summary-label 折扣%：
-                  span.summary-value #{formatDiscountPct(discount)}%
-                .summary-row
-                  span.summary-label 折扣金額：
-                  span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+                if model.showDiscountPercentOnPdf !== false
+                  .summary-row
+                    span.summary-label 折扣%：
+                    span.summary-value #{formatDiscountPct(discount)}%
+                if model.showDiscountAmountOnPdf !== false
+                  .summary-row
+                    span.summary-label 折扣金額：
+                    span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row.grand
                   span.summary-label 總金額：
                   span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}

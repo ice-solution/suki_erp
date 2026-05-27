@@ -12,6 +12,9 @@ const {
   applySupplierQuoteMaterialsWarehouseSync,
   revertAppliedSupplierQuoteStockChanges,
 } = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
+const {
+  assertSupplierQuoteMaterialsStock,
+} = require('@/helpers/validateSupplierQuoteMaterialsStock');
 
 const create = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -199,6 +202,19 @@ const create = async (req, res) => {
       
       body['invoiceFiles'] = processedInvoiceFiles;
     }
+  }
+
+  try {
+    await assertSupplierQuoteMaterialsStock({
+      oldMaterials: [],
+      newMaterials: materials,
+    });
+  } catch (stockErr) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: stockErr.message || '材料庫存不足',
+    });
   }
 
   // Creating a new document in the collection

@@ -51,6 +51,7 @@ const create = async (req, res) => {
       sku,
       category,
       quantity,
+      weight,
       warehouse,
       unitPrice,
       supplier,
@@ -61,13 +62,15 @@ const create = async (req, res) => {
       notes
     } = req.body;
 
-    // 驗證必填欄位
-    if (!itemName || !quantity || !warehouse) {
+    // 驗證必填欄位（數量可為 0）
+    if (!itemName || quantity === undefined || quantity === null || quantity === '' || !warehouse) {
       return res.status(400).json({
         success: false,
         message: '貨品名稱、數量和倉庫為必填欄位'
       });
     }
+
+    const parsedQuantity = Math.max(0, parseInt(quantity, 10) || 0);
 
     // 如果沒有提供 SKU，自動生成下一個可用的 SKU
     let finalSku = sku;
@@ -95,12 +98,13 @@ const create = async (req, res) => {
       description,
       sku: finalSku,
       category: category != null && String(category).trim() ? String(category).trim() : undefined,
-      quantity: parseInt(quantity),
+      quantity: parsedQuantity,
+      weight: weight != null && weight !== '' ? parseFloat(weight) : 0,
       warehouse,
       unitPrice: parseFloat(unitPrice) || 0,
       supplier,
       project,
-      status,
+      status: parsedQuantity <= 0 ? 'out_of_stock' : status,
       minStockLevel: parseInt(minStockLevel) || 0,
       location,
       notes,
@@ -111,15 +115,15 @@ const create = async (req, res) => {
     await warehouseInventory.save();
 
     // 建立入庫交易記錄
-    if (parseInt(quantity) > 0) {
+    if (parsedQuantity > 0) {
       const transaction = new WarehouseTransaction({
         warehouseInventory: warehouseInventory._id,
         transactionType: 'inbound',
-        quantityChange: parseInt(quantity),
+        quantityChange: parsedQuantity,
         quantityBefore: 0,
-        quantityAfter: parseInt(quantity),
+        quantityAfter: parsedQuantity,
         unitPrice: parseFloat(unitPrice) || 0,
-        totalValue: (parseInt(quantity) * (parseFloat(unitPrice) || 0)),
+        totalValue: parsedQuantity * (parseFloat(unitPrice) || 0),
         project,
         reason: '初始入庫',
         notes: '系統自動建立',
@@ -131,7 +135,7 @@ const create = async (req, res) => {
     // 重新查詢包含關聯數據的記錄
     const populatedInventory = await WarehouseInventory.findById(warehouseInventory._id)
       .populate('supplier', 'name')
-      .populate('project', 'name')
+      .populate('project', 'name invoiceNumber')
       .populate('createdBy', 'name')
       .lean();
 

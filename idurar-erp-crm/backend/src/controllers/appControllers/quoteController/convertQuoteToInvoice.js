@@ -6,10 +6,37 @@ const InvoiceModel = mongoose.model('Invoice');
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
 const resolveInvoicePoNumberForConversion = require('@/helpers/resolveInvoicePoNumberForConversion');
+const { aggregateInvoicedQtyByQuoteLine } = require('@/helpers/quoteInvoiceFromQuote');
+const { resolvePoConversionLines } = require('@/helpers/resolvePoConversionLines');
+
+function buildInvoiceItemsFromResolvedLines(items, resolvedLines) {
+  return resolvedLines.map(({ itemIndex, quantity }) => {
+    const item = items[itemIndex];
+    const price = Number(item.price) || 0;
+    const lineTotal = calculate.multiply(quantity, price);
+    return {
+      itemName: item.itemName,
+      description: item.description,
+      quantity,
+      unit: item.unit,
+      price,
+      total: Number(Number(lineTotal).toFixed(2)),
+    };
+  });
+}
+
+function sumItemTotals(invoiceItems) {
+  let subTotal = 0;
+  invoiceItems.forEach((item) => {
+    if (item && item.total != null) {
+      subTotal = calculate.add(subTotal, Number(item.total));
+    }
+  });
+  return subTotal;
+}
 
 /**
- * 將 Quote 轉換為 Invoice（可重複轉換，可選擇部分 items）
- * Query: itemIndices 可選，逗號分隔的項目索引，例如 "0,1,3"。不傳則轉換全部項目。
+ * GET：舊版 itemIndices；POST：body { poNumber, lines }（與上單相同，依 P.O 拆量）
  */
 const convertQuoteToInvoice = async (req, res) => {
   try {
@@ -31,22 +58,70 @@ const convertQuoteToInvoice = async (req, res) => {
       });
     }
 
-    // 解析要轉換的項目索引（0-based）
-    let selectedItems = quote.items;
-    const itemIndicesParam = req.query.itemIndices;
-    if (itemIndicesParam && typeof itemIndicesParam === 'string' && itemIndicesParam.trim() !== '') {
-      const indices = itemIndicesParam
-        .split(',')
-        .map((s) => parseInt(s.trim(), 10))
-        .filter((n) => !Number.isNaN(n) && n >= 0 && n < quote.items.length);
-      if (indices.length === 0) {
+    const isPost = req.method === 'POST';
+    const items = quote.items || [];
+    const headerPo = String(quote.poNumber || '').trim();
+    let selectedItems;
+    let poNumberForInvoice;
+    let orderFromQuoteLines;
+
+    if (isPost) {
+      poNumberForInvoice = String(req.body?.poNumber || '').trim();
+      if (!poNumberForInvoice) {
         return res.status(400).json({
           success: false,
           result: null,
-          message: '請至少選擇一項項目轉換',
+          message: 'P.O number is required',
         });
       }
-      selectedItems = indices.map((i) => quote.items[i]);
+
+      const invoicedMap = await aggregateInvoicedQtyByQuoteLine(quote._id, poNumberForInvoice);
+      const resolved = resolvePoConversionLines({
+        items,
+        headerPo,
+        poNumber: poNumberForInvoice,
+        qtyByLineMap: invoicedMap,
+        rawLines: req.body?.lines,
+        isPost: true,
+      });
+      if (!resolved.ok) {
+        return res.status(resolved.status).json({
+          success: false,
+          result: null,
+          message: resolved.message,
+        });
+      }
+      orderFromQuoteLines = resolved.lines.map((l) => ({
+        itemIndex: l.itemIndex,
+        quantity: l.quantity,
+      }));
+      selectedItems = buildInvoiceItemsFromResolvedLines(items, resolved.lines);
+    } else {
+      let selectedRaw = items;
+      const itemIndicesParam = req.query.itemIndices;
+      if (itemIndicesParam && typeof itemIndicesParam === 'string' && itemIndicesParam.trim() !== '') {
+        const indices = itemIndicesParam
+          .split(',')
+          .map((s) => parseInt(s.trim(), 10))
+          .filter((n) => !Number.isNaN(n) && n >= 0 && n < items.length);
+        if (indices.length === 0) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: '請至少選擇一項項目轉換',
+          });
+        }
+        selectedRaw = indices.map((i) => items[i]);
+      }
+      selectedItems = selectedRaw.map((item) => ({
+        itemName: item.itemName,
+        description: item.description,
+        quantity: item.quantity,
+        unit: item.unit,
+        price: item.price,
+        total: item.total,
+      }));
+      poNumberForInvoice = resolveInvoicePoNumberForConversion(quote, selectedRaw);
     }
 
     const invoiceNumberResult = await increaseBySettingKey({
@@ -54,13 +129,7 @@ const convertQuoteToInvoice = async (req, res) => {
     });
     const invoiceNumber = invoiceNumberResult ? invoiceNumberResult.settingValue : 1;
 
-    // 依選中項目計算 subTotal、discountTotal、total
-    let subTotal = 0;
-    selectedItems.forEach((item) => {
-      if (item && item.total != null) {
-        subTotal = calculate.add(subTotal, Number(item.total));
-      }
-    });
+    const subTotal = sumItemTotals(selectedItems);
     const discount = quote.discount != null ? Number(quote.discount) : 0;
     const discountTotal = calculate.multiply(subTotal, discount / 100);
     const total = calculate.sub(subTotal, discountTotal);
@@ -73,6 +142,13 @@ const convertQuoteToInvoice = async (req, res) => {
         from: 'quote',
         quote: quote._id,
       },
+      sourceQuote: quote._id,
+      ...(isPost
+        ? {
+            orderFromPoNumber: poNumberForInvoice,
+            orderFromQuoteLines,
+          }
+        : {}),
       numberPrefix: 'SMI',
       number: invoiceNumber.toString(),
       year: new Date().getFullYear(),
@@ -88,28 +164,22 @@ const convertQuoteToInvoice = async (req, res) => {
         quote.numberPrefix && quote.number
           ? `${quote.numberPrefix}-${quote.number}`
           : quote.invoiceNumber,
-      poNumber: resolveInvoicePoNumberForConversion(quote, selectedItems),
+      poNumber: poNumberForInvoice,
       contactPerson: quote.contactPerson,
       address: quote.address,
       clients: quote.clients,
       client: quote.client,
       project: quote.project,
-      items: selectedItems.map((item) => ({
-        itemName: item.itemName,
-        description: item.description,
-        quantity: item.quantity,
-        unit: item.unit,
-        price: item.price,
-        total: item.total,
-      })),
+      items: selectedItems,
       subTotal: Number(subTotal.toFixed(2)),
       discountTotal: Number(discountTotal.toFixed(2)),
       total: Number(total.toFixed(2)),
       credit: 0,
       currency: quote.currency,
       discount: quote.discount,
+      showDiscountPercentOnPdf: quote.showDiscountPercentOnPdf,
+      showDiscountAmountOnPdf: quote.showDiscountAmountOnPdf,
       notes: quote.notes,
-      // Invoice.status 僅允許 sent | paid（與 Quote 的 draft 等不同）
       status: 'sent',
       paymentStatus: 'unpaid',
       isOverdue: false,
@@ -119,11 +189,10 @@ const convertQuoteToInvoice = async (req, res) => {
 
     const invoice = await new InvoiceModel(invoiceData).save();
 
-    // 更新 Quote：記錄此 Invoice（可重複轉換，用 $push）
     await QuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {
         'converted.to': 'invoice',
-        'converted.invoice': invoice._id, // 最後一筆，向後兼容
+        'converted.invoice': invoice._id,
       },
       $push: {
         'converted.invoices': invoice._id,

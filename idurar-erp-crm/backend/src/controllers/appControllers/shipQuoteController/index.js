@@ -12,6 +12,7 @@ const search = require('./search');
 const linkProject = require('./linkProject');
 const convertToSupplierQuote = require('./convertToSupplierQuote');
 const poOrderStatus = require('./poOrderStatus');
+const poInvoiceStatus = require('./poInvoiceStatus');
 const convertShipQuoteToInvoice = require('./convertShipQuoteToInvoice');
 const neighbors = require('./neighbors');
 
@@ -25,6 +26,7 @@ methods.update = update;
 methods.linkProject = linkProject;
 methods.convertToSupplierQuote = convertToSupplierQuote;
 methods.poOrderStatus = poOrderStatus;
+methods.poInvoiceStatus = poInvoiceStatus;
 methods.convert = convertShipQuoteToInvoice;
 
 module.exports = methods;

@@ -8,10 +8,28 @@ const Invoice = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
 const { allocateNextEoNumbers, needsAutoEo } = require('@/helpers/usedContractorFeeEoSequence');
+const {
+  ensureContractorFeeLineIds,
+  normalizeUsedContractorFees,
+} = require('@/helpers/projectContractorFees');
 
 const update = async (req, res) => {
   try {
-    const { contractorFees, contractorFee, usedContractorFees, description, address, startDate, endDate, costBy, contractors, invoiceNumber, poNumber, status } = req.body;
+    const {
+      contractorFees,
+      contractorFee,
+      usedContractorFees,
+      description,
+      address,
+      startDate,
+      endDate,
+      costBy,
+      contractors,
+      invoiceNumber,
+      customerQuoteNumber,
+      poNumber,
+      status,
+    } = req.body;
 
     // 查找現有項目
     const existingProject = await Project.findOne({ _id: req.params.id, removed: false });
@@ -36,12 +54,12 @@ const update = async (req, res) => {
       // 新格式：contractorFees 數組（projectName + amount）
       if (Array.isArray(contractorFees) && contractorFees.length > 0) {
         // 過濾有效的 fee - 必須有 projectName 和 amount
-        contractorFeesArray = contractorFees.filter(fee => {
-          return fee && fee.projectName !== undefined && fee.amount !== undefined;
-        }).map(fee => ({
-          projectName: fee.projectName || '',
-          amount: fee.amount || 0,
-        }));
+        contractorFeesArray = ensureContractorFeeLineIds(
+          contractorFees.filter((fee) => {
+            return fee && fee.projectName !== undefined && fee.amount !== undefined;
+          }),
+          existingProject.contractorFees || []
+        );
         totalContractorFee = contractorFeesArray.reduce((sum, fee) => {
           return calculate.add(sum, fee.amount || 0);
         }, 0);
@@ -98,21 +116,22 @@ const update = async (req, res) => {
 
     // 如果有新的 usedContractorFees 值，則更新它（EO 編號空白時由全站序號自動配發）
     if (usedContractorFees !== undefined) {
-      let fees = Array.isArray(usedContractorFees) ? [...usedContractorFees] : [];
-      fees = fees.map((f) => ({
-        projectName: f && f.projectName !== undefined ? String(f.projectName) : '',
-        date: f && f.date ? new Date(f.date) : new Date(),
-        dueDate: f && f.dueDate ? new Date(f.dueDate) : null,
-        eoNumber:
-          f && f.eoNumber !== undefined && f.eoNumber !== null ? String(f.eoNumber).trim() : '',
-        invoiceNo:
-          f && f.invoiceNo !== undefined && f.invoiceNo !== null
-            ? String(f.invoiceNo).trim()
-            : '',
-        remark:
-          f && f.remark !== undefined && f.remark !== null ? String(f.remark).trim() : '',
-        amount: f && f.amount !== undefined && f.amount !== null ? f.amount : 0,
-      }));
+      const feeLinesForUsed = ensureContractorFeeLineIds(
+        updateData.contractorFees !== undefined
+          ? contractorFeesArray
+          : existingProject.contractorFees || []
+      );
+      if (
+        updateData.contractorFees === undefined &&
+        feeLinesForUsed.length > 0 &&
+        (existingProject.contractorFees || []).some((f) => !f?.lineId)
+      ) {
+        updateData.contractorFees = feeLinesForUsed;
+      }
+      let fees = normalizeUsedContractorFees(
+        Array.isArray(usedContractorFees) ? usedContractorFees : [],
+        feeLinesForUsed
+      );
       const needIndices = [];
       fees.forEach((f, i) => {
         if (needsAutoEo(f.eoNumber)) needIndices.push(i);
@@ -136,6 +155,10 @@ const update = async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (contractors !== undefined) updateData.contractors = contractors || [];
     if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
+    if (customerQuoteNumber !== undefined) {
+      updateData.customerQuoteNumber =
+        customerQuoteNumber != null ? String(customerQuoteNumber).trim() : '';
+    }
     if (poNumber !== undefined) updateData.poNumber = poNumber;
 
     const result = await Project.findOneAndUpdate(

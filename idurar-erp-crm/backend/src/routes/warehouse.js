@@ -9,11 +9,13 @@ const update = require('../controllers/appControllers/warehouseController/update
 const deleteItem = require('../controllers/appControllers/warehouseController/delete');
 const adjust = require('../controllers/appControllers/warehouseController/adjust');
 const transfer = require('../controllers/appControllers/warehouseController/transfer');
+const transferSkuCheck = require('../controllers/appControllers/warehouseController/transferSkuCheck');
 
 // 引入中間件
 const adminAuth = require('../controllers/coreControllers/adminAuth');
 
 // 存倉管理路由
+router.get('/transfer/sku-check', adminAuth.isValidAuthToken, transferSkuCheck);
 router.get('/', adminAuth.isValidAuthToken, list);
 router.post('/', adminAuth.isValidAuthToken, create);
 router.get('/:id', adminAuth.isValidAuthToken, read);

@@ -11,6 +11,7 @@ const update = async (req, res) => {
       sku,
       category,
       quantity,
+      weight,
       warehouse,
       unitPrice,
       supplier,
@@ -65,7 +66,16 @@ const update = async (req, res) => {
       updateData.category =
         category != null && String(category).trim() ? String(category).trim() : null;
     }
-    if (quantity !== undefined) updateData.quantity = newQuantity;
+    if (quantity !== undefined) {
+      const normalizedQty = Math.max(0, newQuantity);
+      updateData.quantity = normalizedQty;
+      if (normalizedQty <= 0) {
+        updateData.status = 'out_of_stock';
+      } else if (existingInventory.status === 'out_of_stock') {
+        updateData.status = 'available';
+      }
+    }
+    if (weight !== undefined) updateData.weight = parseFloat(weight) || 0;
     if (warehouse !== undefined) updateData.warehouse = warehouse;
     if (unitPrice !== undefined) updateData.unitPrice = parseFloat(unitPrice) || 0;
     if (supplier !== undefined) updateData.supplier = supplier;
@@ -103,7 +113,7 @@ const update = async (req, res) => {
     // 重新查詢包含關聯數據的記錄
     const populatedInventory = await WarehouseInventory.findById(id)
       .populate('supplier', 'name')
-      .populate('project', 'name')
+      .populate('project', 'name invoiceNumber')
       .populate('createdBy', 'name')
       .populate('updatedBy', 'name')
       .lean();

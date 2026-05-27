@@ -25,7 +25,9 @@ import {
   SettingOutlined,
   WarningOutlined,
   SearchOutlined,
+  FileExcelOutlined,
 } from '@ant-design/icons';
+import * as XLSX from 'xlsx';
 import { request } from '@/request';
 import { useSelector } from 'react-redux';
 import { selectWarehouseOptions, selectWarehouseItemCategories } from '@/redux/settings/selectors';
@@ -42,9 +44,10 @@ export default function Warehouse() {
     total: 0
   });
   const [filters, setFilters] = useState({});
-  /** 已套用的貨品名稱關鍵字（僅在按搜尋／Enter 時更新） */
-  const [itemNameSearch, setItemNameSearch] = useState('');
+  /** 已套用的搜尋關鍵字（貨品名稱、編號、報價單等；僅在按搜尋／Enter 時更新） */
+  const [listSearch, setListSearch] = useState('');
   const [searchDraft, setSearchDraft] = useState('');
+  const [exporting, setExporting] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
   const [adjustModalVisible, setAdjustModalVisible] = useState(false);
   const [transferModalVisible, setTransferModalVisible] = useState(false);
@@ -58,6 +61,9 @@ export default function Warehouse() {
   const [form] = Form.useForm();
   const [adjustForm] = Form.useForm();
   const [transferForm] = Form.useForm();
+  const [transferSkuHint, setTransferSkuHint] = useState('');
+  const [transferSkuHintType, setTransferSkuHintType] = useState('info');
+  const [transferSkuChecking, setTransferSkuChecking] = useState(false);
   const warehouseOptions = useSelector(selectWarehouseOptions);
   const warehouseItemCategories = useSelector(selectWarehouseItemCategories);
 
@@ -94,7 +100,7 @@ export default function Warehouse() {
 
   useEffect(() => {
     fetchInventoryList();
-  }, [pagination.current, pagination.pageSize, filters, itemNameSearch]);
+  }, [pagination.current, pagination.pageSize, filters, listSearch]);
 
   useEffect(() => {
     fetchSuppliers();
@@ -108,9 +114,9 @@ export default function Warehouse() {
         page: pagination.current,
         limit: pagination.pageSize,
       };
-      const nameQ = itemNameSearch.trim();
-      if (nameQ) {
-        params.itemName = nameQ;
+      const searchQ = listSearch.trim();
+      if (searchQ) {
+        params.search = searchQ;
       }
       if (filters.warehouse && filters.warehouse.length) {
         params.warehouse = filters.warehouse[0];
@@ -225,18 +231,141 @@ export default function Warehouse() {
   const handleTransfer = (record) => {
     setEditingItem(record);
     transferForm.resetFields();
+    setTransferSkuHint('');
+    setTransferSkuHintType('info');
     setTransferModalVisible(true);
+  };
+
+  const checkTransferTargetSku = async () => {
+    const targetSku = transferForm.getFieldValue('targetSku');
+    const toWarehouse = transferForm.getFieldValue('toWarehouse');
+    const sku = targetSku != null ? String(targetSku).trim() : '';
+    if (!sku || !toWarehouse || !editingItem?._id) {
+      setTransferSkuHint('');
+      return;
+    }
+    if (sku === editingItem.sku) {
+      setTransferSkuHint('目標貨品編號不可與源貨品編號相同');
+      setTransferSkuHintType('error');
+      return;
+    }
+    setTransferSkuChecking(true);
+    try {
+      const res = await request.get({
+        entity: 'warehouse/transfer/sku-check',
+        params: {
+          sku,
+          toWarehouse,
+          excludeId: editingItem._id,
+        },
+      });
+      if (res?.success && res.result) {
+        setTransferSkuHint(res.result.message || '');
+        if (res.result.willMerge) {
+          setTransferSkuHintType('success');
+        } else if (res.result.exists && !res.result.sameWarehouse) {
+          setTransferSkuHintType('error');
+        } else if (res.result.willCreate) {
+          setTransferSkuHintType('info');
+        } else {
+          setTransferSkuHintType('info');
+        }
+      } else {
+        setTransferSkuHint(res?.message || '無法檢查貨品編號');
+        setTransferSkuHintType('error');
+      }
+    } catch (error) {
+      console.error('檢查轉倉貨品編號失敗:', error);
+    } finally {
+      setTransferSkuChecking(false);
+    }
   };
 
   const handleTransferSave = async (values) => {
     try {
-      await request.post({ entity: `warehouse/${editingItem._id}/transfer`, jsonData: values });
-      message.success('倉庫轉移成功');
-      setTransferModalVisible(false);
-      fetchInventoryList();
+      const res = await request.post({
+        entity: `warehouse/${editingItem._id}/transfer`,
+        jsonData: values,
+      });
+      if (res?.success) {
+        message.success(res.message || '倉庫轉移成功');
+        setTransferModalVisible(false);
+        setTransferSkuHint('');
+        fetchInventoryList();
+      } else {
+        message.error(res?.message || '倉庫轉移失敗');
+      }
     } catch (error) {
-      message.error('倉庫轉移失敗');
+      message.error(error?.message || '倉庫轉移失敗');
       console.error('Error transferring inventory:', error);
+    }
+  };
+
+  const getQuoteNumber = (record) => {
+    const p = record?.project;
+    if (!p) return '';
+    return p.invoiceNumber || p.quoteNumber || '';
+  };
+
+  const getWarehouseLabel = (warehouse) => {
+    const opt = warehouseOptions.find((o) => o.value === warehouse);
+    return opt ? opt.label : warehouse || '';
+  };
+
+  const getStatusLabel = (status) =>
+    statusOptions.find((opt) => opt.value === status)?.label || status || '';
+
+  const buildListParams = (page = 1, limit = 10000) => {
+    const params = { page, limit };
+    const searchQ = listSearch.trim();
+    if (searchQ) params.search = searchQ;
+    if (filters.warehouse && filters.warehouse.length) {
+      params.warehouse = filters.warehouse[0];
+    }
+    if (filters.status && filters.status.length) {
+      params.status = filters.status[0];
+    }
+    if (filters.category && filters.category.length) {
+      params.category = filters.category[0];
+    }
+    return params;
+  };
+
+  const exportXlsx = async () => {
+    setExporting(true);
+    try {
+      const response = await request.get({ entity: 'warehouse', params: buildListParams(1, 10000) });
+      const rows = (response?.success ? response.result : []) || [];
+      if (!rows.length) {
+        message.warning('沒有可匯出的資料');
+        return;
+      }
+      const sheetRows = rows.map((r) => ({
+        貨品編號: r.sku || '',
+        貨品名稱: r.itemName || '',
+        類別: r.category || '',
+        數量: r.quantity != null ? r.quantity : '',
+        重量_KG: r.weight != null && r.weight !== '' ? Number(r.weight) : '',
+        倉庫: getWarehouseLabel(r.warehouse),
+        報價單編號: getQuoteNumber(r) || '',
+        單價: r.unitPrice != null ? r.unitPrice : '',
+        總價值: r.totalValue != null ? r.totalValue : '',
+        狀態: getStatusLabel(r.status),
+        供應商: r.supplier?.name || '',
+        位置: r.location || '',
+        備註: r.notes || '',
+      }));
+      const ws = XLSX.utils.json_to_sheet(sheetRows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '存倉管理');
+      const filename = `存倉管理_${dayjs().format('YYYY-MM-DD')}.xlsx`;
+      XLSX.writeFile(wb, filename);
+      message.success('已匯出 Excel');
+    } catch (error) {
+      message.error('匯出失敗');
+      console.error('Error exporting warehouse:', error);
+    } finally {
+      setExporting(false);
     }
   };
 
@@ -298,6 +427,27 @@ export default function Warehouse() {
           )}
         </span>
       ),
+    },
+    {
+      title: '重量 (KG)',
+      dataIndex: 'weight',
+      key: 'weight',
+      width: 100,
+      render: (weight) =>
+        weight != null && weight !== '' && Number(weight) > 0
+          ? `${Number(weight)} KG`
+          : '-',
+    },
+    {
+      title: '報價單編號',
+      dataIndex: 'project',
+      key: 'quoteNumber',
+      width: 140,
+      ellipsis: true,
+      render: (_, record) => {
+        const qn = getQuoteNumber(record);
+        return qn ? qn : '-';
+      },
     },
     {
       title: '倉庫',
@@ -401,16 +551,23 @@ export default function Warehouse() {
           >
             新增存倉記錄
           </Button>
+          <Button
+            icon={<FileExcelOutlined />}
+            loading={exporting}
+            onClick={exportXlsx}
+          >
+            匯出 Excel
+          </Button>
           <Input.Search
             allowClear
-            placeholder="搜尋貨品名稱"
+            placeholder="搜尋貨品名稱、編號、報價單編號"
             prefix={<SearchOutlined style={{ color: 'rgba(0,0,0,.45)' }} />}
-            style={{ width: 280 }}
+            style={{ width: 320 }}
             value={searchDraft}
             onChange={(e) => setSearchDraft(e.target.value)}
             onSearch={(value) => {
               setSearchDraft(value);
-              setItemNameSearch((value || '').trim());
+              setListSearch((value || '').trim());
               setPagination((prev) => ({ ...prev, current: 1 }));
             }}
             enterButton="搜尋"
@@ -437,7 +594,7 @@ export default function Warehouse() {
             setFilters(tableFilters || {});
           }}
           rowKey="_id"
-          scroll={{ x: 1470 }}
+          scroll={{ x: 1710 }}
         />
       </Card>
 
@@ -509,6 +666,17 @@ export default function Warehouse() {
 
           <Row gutter={16}>
             <Col span={12}>
+              <Form.Item name="weight" label="重量 (KG)">
+                <InputNumber
+                  min={0}
+                  precision={2}
+                  style={{ width: '100%' }}
+                  placeholder="請輸入重量"
+                  addonAfter="KG"
+                />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
               <Form.Item
                 name="warehouse"
                 label="倉庫"
@@ -523,6 +691,9 @@ export default function Warehouse() {
                 </Select>
               </Form.Item>
             </Col>
+          </Row>
+
+          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="unitPrice"
@@ -537,9 +708,6 @@ export default function Warehouse() {
                 />
               </Form.Item>
             </Col>
-          </Row>
-
-          <Row gutter={16}>
             <Col span={12}>
               <Form.Item
                 name="status"
@@ -795,17 +963,31 @@ export default function Warehouse() {
       <Modal
         title="倉庫轉移"
         open={transferModalVisible}
-        onCancel={() => setTransferModalVisible(false)}
+        onCancel={() => {
+          setTransferModalVisible(false);
+          setTransferSkuHint('');
+        }}
         footer={null}
       >
         <Form
           form={transferForm}
           layout="vertical"
           onFinish={handleTransferSave}
+          onValuesChange={(changed) => {
+            if (changed.targetSku !== undefined || changed.toWarehouse !== undefined) {
+              checkTransferTargetSku();
+            }
+          }}
         >
           <Form.Item label="源倉庫">
             <span style={{ fontSize: 16, fontWeight: 'bold' }}>
               {warehouseOptions.find((o) => o.value === editingItem?.warehouse)?.label || (editingItem?.warehouse ? `${editingItem.warehouse}` : '-')}
+            </span>
+          </Form.Item>
+
+          <Form.Item label="源貨品編號">
+            <span style={{ fontSize: 16, fontWeight: 'bold' }}>
+              {editingItem?.sku || '-'}
             </span>
           </Form.Item>
 
@@ -816,11 +998,39 @@ export default function Warehouse() {
           </Form.Item>
 
           <Form.Item
+            name="targetSku"
+            label="目標貨品編號"
+            rules={[
+              { required: true, message: '請輸入目標倉庫的貨品編號' },
+              {
+                validator: (_, value) => {
+                  const v = value != null ? String(value).trim() : '';
+                  if (!v) return Promise.resolve();
+                  if (v === editingItem?.sku) {
+                    return Promise.reject(new Error('目標貨品編號不可與源貨品編號相同'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
+            extra={
+              transferSkuChecking
+                ? '正在檢查貨品編號…'
+                : transferSkuHint || '輸入後系統會檢查：編號已存在則併入該筆庫存，否則於目標倉建立新貨品'
+            }
+            validateStatus={
+              transferSkuHintType === 'error' ? 'error' : transferSkuHintType === 'success' ? 'success' : undefined
+            }
+          >
+            <Input placeholder="請輸入目標倉庫貨品編號" onBlur={checkTransferTargetSku} />
+          </Form.Item>
+
+          <Form.Item
             name="toWarehouse"
             label="目標倉庫"
             rules={[{ required: true, message: '請選擇目標倉庫' }]}
           >
-            <Select placeholder="請選擇目標倉庫">
+            <Select placeholder="請選擇目標倉庫" onChange={() => setTimeout(checkTransferTargetSku, 0)}>
               {warehouseOptions
                 .filter(option => option.value !== editingItem?.warehouse)
                 .map(option => (
@@ -858,9 +1068,17 @@ export default function Warehouse() {
             <TextArea rows={3} placeholder="請輸入備註" />
           </Form.Item>
 
+          {transferSkuHint && transferSkuHintType === 'error' && (
+            <p style={{ color: '#ff4d4f', marginBottom: 12, fontSize: 13 }}>{transferSkuHint}</p>
+          )}
+
           <Form.Item>
             <Space>
-              <Button type="primary" htmlType="submit">
+              <Button
+                type="primary"
+                htmlType="submit"
+                disabled={transferSkuHintType === 'error' || transferSkuChecking}
+              >
                 確認轉移
               </Button>
               <Button onClick={() => setTransferModalVisible(false)}>

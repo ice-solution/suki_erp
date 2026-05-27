@@ -57,16 +57,16 @@ const warehouseTransactionSchema = new mongoose.Schema({
     default: 0,
   },
   
-  // 來源倉庫（用於轉移）
+  // 來源倉庫（用於轉移；代碼與設定 warehouse_list 一致）
   fromWarehouse: {
     type: String,
-    enum: ['A', 'B', 'C', 'D'],
+    trim: true,
   },
   
   // 目標倉庫（用於轉移）
   toWarehouse: {
     type: String,
-    enum: ['A', 'B', 'C', 'D'],
+    trim: true,
   },
   
   // 關聯項目

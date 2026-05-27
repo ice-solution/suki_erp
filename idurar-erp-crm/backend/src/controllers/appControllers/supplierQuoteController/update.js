@@ -12,6 +12,9 @@ const {
   applySupplierQuoteMaterialsWarehouseSync,
   revertAppliedSupplierQuoteStockChanges,
 } = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
+const {
+  assertSupplierQuoteMaterialsStock,
+} = require('@/helpers/validateSupplierQuoteMaterialsStock');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -278,6 +281,19 @@ const update = async (req, res) => {
     });
   }
   body.openDate = openDateParsed;
+
+  try {
+    await assertSupplierQuoteMaterialsStock({
+      oldMaterials: existingQuote.materials || [],
+      newMaterials: materials,
+    });
+  } catch (stockErr) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: stockErr.message || '材料庫存不足',
+    });
+  }
 
   // 材料及費用管理：依舊→新差異同步倉庫（先扣/退庫存，再寫入 S 單；失敗則不更新 S 單）
   let warehouseApplied = [];

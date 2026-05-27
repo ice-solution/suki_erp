@@ -7,10 +7,24 @@ const ShipQuote = mongoose.model('ShipQuote');
 const Invoice = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
+const { ensureContractorFeeLineIds } = require('@/helpers/projectContractorFees');
 
 const create = async (req, res) => {
   try {
-    const { invoiceNumber, poNumber, costBy, contractorFees = [], contractorFee, description, address, startDate, endDate, contractors = [], name } = req.body;
+    const {
+      invoiceNumber,
+      customerQuoteNumber,
+      poNumber,
+      costBy,
+      contractorFees = [],
+      contractorFee,
+      description,
+      address,
+      startDate,
+      endDate,
+      contractors = [],
+      name,
+    } = req.body;
 
     if (!invoiceNumber) {
       return res.status(400).json({
@@ -84,8 +98,9 @@ const create = async (req, res) => {
     let contractorFeesArray = [];
     
     if (contractorFees && Array.isArray(contractorFees) && contractorFees.length > 0) {
-      // 新格式：contractorFees 數組
-      contractorFeesArray = contractorFees.filter(fee => fee && fee.projectName && fee.amount !== undefined);
+      contractorFeesArray = ensureContractorFeeLineIds(
+        contractorFees.filter((fee) => fee && fee.projectName && fee.amount !== undefined)
+      );
       totalContractorFee = contractorFeesArray.reduce((sum, fee) => {
         return calculate.add(sum, fee.amount || 0);
       }, 0);
@@ -94,10 +109,9 @@ const create = async (req, res) => {
       totalContractorFee = contractorFee || 0;
       if (totalContractorFee > 0) {
         // 將舊的單一值轉換為數組格式
-        contractorFeesArray = [{
-          projectName: '判頭費',
-          amount: totalContractorFee,
-        }];
+        contractorFeesArray = ensureContractorFeeLineIds([
+          { projectName: '判頭費', amount: totalContractorFee },
+        ]);
       }
     }
 
@@ -141,6 +155,8 @@ const create = async (req, res) => {
     const projectData = {
       name: projectName,
       invoiceNumber,
+      customerQuoteNumber:
+        customerQuoteNumber != null ? String(customerQuoteNumber).trim() : '',
       poNumber: poNumber || '',
       costBy,
       contractorFees: contractorFeesArray,

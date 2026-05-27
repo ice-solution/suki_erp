@@ -155,7 +155,7 @@ const convertToSupplierQuote = async (req, res) => {
       isCompleted: shipQuote.isCompleted,
       invoiceNumber:
         shipQuote.numberPrefix && shipQuote.number
-          ? `${shipQuote.numberPrefix}-${shipQuote.number}/${shipQuote.year || ''}`
+          ? `${shipQuote.numberPrefix}-${shipQuote.number}`
           : shipQuote.invoiceNumber,
       poNumber,
       contactPerson: shipQuote.contactPerson,
@@ -179,7 +179,7 @@ const convertToSupplierQuote = async (req, res) => {
       currency: shipQuote.currency || 'NA',
       discount: shipQuote.discount ?? 0,
       notes: shipQuote.notes,
-      status: 'draft',
+      status: 'accepted',
       createdBy: req.admin._id,
     };
 

@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const { catchErrors } = require('../../../handlers/errorHandlers');
 
@@ -18,53 +19,62 @@ const list = async (req, res) => {
       supplier,
       project,
       sortBy = 'warehouse',
-      sortOrder = 'asc'
+      sortOrder = 'asc',
+      stockAvailable,
     } = req.query;
 
-    // 建立查詢條件
     const query = { removed: false };
 
-    // 僅依貨品名稱（模糊搜尋）
-    if (itemName && String(itemName).trim()) {
-      const safe = escapeRegex(String(itemName).trim());
-      query.itemName = { $regex: safe, $options: 'i' };
-    } else if (search && String(search).trim()) {
-      // 通用搜尋：貨品名稱、描述、SKU、位置
-      const safe = escapeRegex(String(search).trim());
-      query.$or = [
+    // S 單選貨等場景：僅回傳可用且有庫存的貨品
+    if (stockAvailable === '1' || stockAvailable === 'true') {
+      query.quantity = { $gt: 0 };
+      query.status = 'available';
+    }
+
+    const textQuery = (itemName && String(itemName).trim()) || (search && String(search).trim());
+    if (textQuery) {
+      const safe = escapeRegex(String(textQuery).trim());
+      const Project = mongoose.model('Project');
+      const matchingProjects = await Project.find({
+        removed: false,
+        invoiceNumber: { $regex: safe, $options: 'i' },
+      })
+        .select('_id')
+        .lean();
+      const projectIds = matchingProjects.map((p) => p._id);
+
+      const orConditions = [
         { itemName: { $regex: safe, $options: 'i' } },
         { description: { $regex: safe, $options: 'i' } },
         { sku: { $regex: safe, $options: 'i' } },
         { location: { $regex: safe, $options: 'i' } },
       ];
+      if (projectIds.length > 0) {
+        orConditions.push({ project: { $in: projectIds } });
+      }
+      query.$or = orConditions;
     }
 
-    // 倉庫篩選
     if (warehouse) {
       query.warehouse = warehouse;
     }
 
-    // 狀態篩選
     if (status) {
       query.status = status;
     }
 
-    // 類別篩選
     if (category && String(category).trim()) {
       query.category = String(category).trim();
     }
 
-    // 供應商篩選
     if (supplier) {
       query.supplier = supplier;
     }
 
-    // 項目篩選
     if (project) {
       query.project = project;
     }
 
-    // 排序：預設倉庫 A→D，再依 SKU；自訂 sortBy 時仍建議帶 sku 作第二排序鍵
     const sort = {};
     if (sortBy === 'warehouse') {
       sort.warehouse = sortOrder === 'desc' ? -1 : 1;
@@ -73,25 +83,22 @@ const list = async (req, res) => {
       sort[sortBy] = sortOrder === 'desc' ? -1 : 1;
     }
 
-    // 分頁
-    const skip = (parseInt(page) - 1) * parseInt(limit);
+    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
 
-    // 執行查詢
     const [inventory, total] = await Promise.all([
       WarehouseInventory.find(query)
         .populate('supplier', 'name')
-        .populate('project', 'name')
+        .populate('project', 'name invoiceNumber')
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name')
         .sort(sort)
         .skip(skip)
-        .limit(parseInt(limit))
+        .limit(parseInt(limit, 10))
         .lean(),
-      WarehouseInventory.countDocuments(query)
+      WarehouseInventory.countDocuments(query),
     ]);
 
-    // 計算分頁信息
-    const totalPages = Math.ceil(total / parseInt(limit));
+    const totalPages = Math.ceil(total / parseInt(limit, 10));
     const hasNextPage = page < totalPages;
     const hasPrevPage = page > 1;
 
@@ -99,21 +106,20 @@ const list = async (req, res) => {
       success: true,
       result: inventory,
       pagination: {
-        currentPage: parseInt(page),
+        currentPage: parseInt(page, 10),
         totalPages,
         totalItems: total,
-        itemsPerPage: parseInt(limit),
+        itemsPerPage: parseInt(limit, 10),
         hasNextPage,
-        hasPrevPage
-      }
+        hasPrevPage,
+      },
     });
-
   } catch (error) {
     console.error('Error in warehouse inventory list:', error);
     res.status(500).json({
       success: false,
       message: '獲取存倉列表失敗',
-      error: error.message
+      error: error.message,
     });
   }
 };

@@ -16,8 +16,8 @@ export default function Invoice() {
 
   const searchConfig = {
     entity: 'invoice',
-    displayLabels: ['address', 'invoiceNumber'],
-    searchFields: 'address,invoiceNumber,contactPerson',
+    displayLabels: ['address', 'invoiceNumber', 'poNumber'],
+    searchFields: 'address,invoiceNumber,poNumber,contactPerson',
   };
   const deleteModalLabels = ['number', 'client.name'];
   const dataTableColumns = [
@@ -43,6 +43,14 @@ export default function Invoice() {
       width: 150,
       ellipsis: true,
       render: (invoiceNumber) => (invoiceNumber != null && String(invoiceNumber).trim() !== '' ? String(invoiceNumber).trim() : '-'),
+    },
+    {
+      title: translate('P.O Number'),
+      dataIndex: 'poNumber',
+      width: 130,
+      ellipsis: true,
+      render: (poNumber) =>
+        poNumber != null && String(poNumber).trim() !== '' ? String(poNumber).trim() : '-',
     },
     {
       title: translate('Clients'),

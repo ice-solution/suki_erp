@@ -12,7 +12,6 @@ import {
   Modal,
   message,
   Select,
-  Checkbox,
   Space,
   Input,
   Table,
@@ -145,15 +144,14 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [client, setClient] = useState({});
   const [convertLoading, setConvertLoading] = useState(false);
   const [convertToSupplierQuoteLoading, setConvertToSupplierQuoteLoading] = useState(false);
-  const [poNumberModalVisible, setPoNumberModalVisible] = useState(false);
+  /** null | 'supplier'（上單）| 'invoice'（轉發票） */
+  const [poModalMode, setPoModalMode] = useState(null);
   const [selectedPoNumber, setSelectedPoNumber] = useState(null);
   const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
   const [poPreviewLines, setPoPreviewLines] = useState([]);
   const [poPreviewLoading, setPoPreviewLoading] = useState(false);
-  /** itemIndex -> 本次上單數量 */
+  /** itemIndex -> 本次數量 */
   const [poOrderQtyByIndex, setPoOrderQtyByIndex] = useState({});
-  const [convertToInvoiceModalVisible, setConvertToInvoiceModalVisible] = useState(false);
-  const [selectedItemIndices, setSelectedItemIndices] = useState([]);
 
   let storedCtx = null;
   try {
@@ -220,12 +218,13 @@ export default function QuoteReadItem({ config, selectedItem }) {
 
   const quotePoLines = collectQuotePoNumbers(currentErp);
 
-  const supplierOrderCount =
-    Array.isArray(currentErp?.converted?.supplierQuotes) && currentErp.converted.supplierQuotes.length > 0
-      ? currentErp.converted.supplierQuotes.length
-      : currentErp?.converted?.supplierQuote
-        ? 1
-        : 0;
+  const convertedInvoiceIds = new Set();
+  (currentErp?.converted?.invoices || []).forEach((id) => {
+    if (id) convertedInvoiceIds.add(String(id));
+  });
+  const invRef = currentErp?.converted?.invoice;
+  if (invRef) convertedInvoiceIds.add(String(invRef._id || invRef));
+  const convertedInvoiceCount = convertedInvoiceIds.size;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -253,15 +252,19 @@ export default function QuoteReadItem({ config, selectedItem }) {
   }, [currentErp]);
 
   useEffect(() => {
-    if (!poNumberModalVisible || !selectedPoNumber || !currentErp?._id) {
+    if (!poModalMode || !selectedPoNumber || !currentErp?._id) {
       return undefined;
     }
+    const statusEntity =
+      poModalMode === 'invoice'
+        ? `${entity}/po-invoice-status/${currentErp._id}`
+        : `${entity}/po-order-status/${currentErp._id}`;
     let cancelled = false;
     (async () => {
       setPoPreviewLoading(true);
       try {
         const data = await request.get({
-          entity: `${entity}/po-order-status/${currentErp._id}`,
+          entity: statusEntity,
           params: { poNumber: selectedPoNumber },
         });
         if (cancelled) return;
@@ -291,24 +294,57 @@ export default function QuoteReadItem({ config, selectedItem }) {
     return () => {
       cancelled = true;
     };
-  }, [poNumberModalVisible, selectedPoNumber, currentErp?._id, entity]);
+  }, [poModalMode, selectedPoNumber, currentErp?._id, entity]);
 
-  // 處理Quote轉Invoice（可重複轉換、可選擇項目）
+  const closePoModal = () => {
+    setPoModalMode(null);
+    setSelectedPoNumber(null);
+    setPoPreviewLines([]);
+    setPoOrderQtyByIndex({});
+    setPoPreviewLoading(false);
+  };
+
+  const openPoModal = (mode) => {
+    const poNumbers = collectQuotePoNumbers(currentErp);
+    if (poNumbers.length === 0) {
+      message.warning('沒有 P.O number：請在單頭或項目填寫 P.O 後再操作');
+      return;
+    }
+    setPoModalMode(mode);
+    setAvailablePoNumbers(poNumbers);
+    setSelectedPoNumber(null);
+    setPoPreviewLines([]);
+    setPoOrderQtyByIndex({});
+  };
+
+  // 轉發票：與上單相同，選 P.O、拆量
   const handleConvertToInvoice = () => {
     if (!currentErp.items || currentErp.items.length === 0) {
       message.warning('此 Quote 沒有項目，無法轉換');
       return;
     }
-    setSelectedItemIndices(currentErp.items.map((_, i) => i));
-    setConvertToInvoiceModalVisible(true);
+    openPoModal('invoice');
   };
 
   const executeConvertToInvoice = async () => {
-    if (selectedItemIndices.length === 0) {
-      message.warning('請至少選擇一項項目');
+    if (!selectedPoNumber) {
+      message.warning('請選擇 P.O number');
       return;
     }
-    setConvertToInvoiceModalVisible(false);
+    const lines = poPreviewLines
+      .map((row) => ({
+        itemIndex: row.itemIndex,
+        quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
+      }))
+      .filter((l) => l.quantity > 0);
+
+    if (lines.length === 0) {
+      message.warning('請至少一行填寫大於 0 的本次轉發票數量');
+      return;
+    }
+
+    const poNumber = selectedPoNumber;
+    closePoModal();
     setConvertLoading(true);
     try {
       axios.defaults.baseURL = API_BASE_URL;
@@ -317,10 +353,10 @@ export default function QuoteReadItem({ config, selectedItem }) {
       if (auth) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
       }
-      const query = selectedItemIndices.length === currentErp.items.length
-        ? ''
-        : `?itemIndices=${selectedItemIndices.join(',')}`;
-      const response = await axios.get(`quote/convert/${currentErp._id}${query}`);
+      const response = await axios.post(`quote/convert/${currentErp._id}`, {
+        poNumber,
+        lines,
+      });
       if (response?.data?.success) {
         message.success('Quote 已成功轉換成 Invoice！');
         navigate(`/invoice/read/${response.data.result._id}`);
@@ -357,27 +393,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
 
-    // 提取所有唯一的 P.O numbers
-    const poNumbers = [];
-    if (currentErp.items && currentErp.items.length > 0) {
-      currentErp.items.forEach(item => {
-        if (item.poNumber && !poNumbers.includes(item.poNumber)) {
-          poNumbers.push(item.poNumber);
-        }
-      });
-    }
-
-    if (poNumbers.length === 0) {
-      message.warning('此Quote沒有包含任何 P.O number 的 items');
-      return;
-    }
-
-    // 顯示 P.O number 選擇 Modal
-    setAvailablePoNumbers(poNumbers);
-    setSelectedPoNumber(null);
-    setPoPreviewLines([]);
-    setPoOrderQtyByIndex({});
-    setPoNumberModalVisible(true);
+    openPoModal('supplier');
   };
 
   // 執行轉換
@@ -399,7 +415,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
 
-    setPoNumberModalVisible(false);
+    const poNumber = selectedPoNumber;
+    closePoModal();
     setConvertToSupplierQuoteLoading(true);
     try {
       axios.defaults.baseURL = API_BASE_URL;
@@ -410,7 +427,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
       }
 
       const response = await axios.post(`${entity}/convertToSupplierQuote/${currentErp._id}`, {
-        poNumber: selectedPoNumber,
+        poNumber,
         lines,
       });
       if (response && response.data && response.data.success) {
@@ -542,7 +559,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
                   display: entity === 'quote' ? 'inline-flex' : 'none',
                 }}
               >
-                {supplierOrderCount > 0 ? `上單（已 ${supplierOrderCount} 筆 S 單）` : '上單'}
+                上單
               </Button>
               <Button
                 key="quote-convert-inv"
@@ -551,11 +568,12 @@ export default function QuoteReadItem({ config, selectedItem }) {
                 icon={<RetweetOutlined />}
                 style={{
                   display: entity === 'quote' ? 'inline-flex' : 'none',
+                  backgroundColor: convertedInvoiceCount > 0 ? '#52c41a' : undefined,
+                  borderColor: convertedInvoiceCount > 0 ? '#52c41a' : undefined,
+                  color: convertedInvoiceCount > 0 ? '#fff' : undefined,
                 }}
               >
-                {currentErp.converted?.invoices?.length > 0
-                  ? `轉換成 Invoice (已轉 ${currentErp.converted.invoices.length} 個)`
-                  : translate('Convert to Invoice')}
+                {translate('Convert to Invoice')}
               </Button>
               <Button
                 key="quote-edit"
@@ -748,19 +766,17 @@ export default function QuoteReadItem({ config, selectedItem }) {
         </Row>
       </div>
 
-      {/* P.O Number 選擇 Modal */}
+      {/* P.O 選擇 Modal（上單 / 轉發票） */}
       <Modal
-        title="選擇 P.O Number 與本次上單數量"
-        open={poNumberModalVisible}
-        onOk={executeConvertToSupplierQuote}
-        onCancel={() => {
-          setPoNumberModalVisible(false);
-          setSelectedPoNumber(null);
-          setPoPreviewLines([]);
-          setPoOrderQtyByIndex({});
-          setPoPreviewLoading(false);
-        }}
-        okText="確認上單"
+        title={
+          poModalMode === 'invoice'
+            ? '選擇 P.O Number 與本次轉發票數量'
+            : '選擇 P.O Number 與本次上單數量'
+        }
+        open={poModalMode != null}
+        onOk={poModalMode === 'invoice' ? executeConvertToInvoice : executeConvertToSupplierQuote}
+        onCancel={closePoModal}
+        okText={poModalMode === 'invoice' ? '確認轉換' : '確認上單'}
         cancelText="取消"
         width={800}
         okButtonProps={{
@@ -773,7 +789,11 @@ export default function QuoteReadItem({ config, selectedItem }) {
         }}
       >
         <div style={{ marginBottom: 16 }}>
-          <p>請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。</p>
+          <p>
+            {poModalMode === 'invoice'
+              ? '請選擇 P.O Number，將列出該 P.O 的項目、已開票量與餘額；請填寫「本次轉發票」數量（不可超過餘額）。'
+              : '請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。'}
+          </p>
           <Select
             style={{ width: '100%' }}
             placeholder="選擇 P.O Number"
@@ -808,10 +828,15 @@ export default function QuoteReadItem({ config, selectedItem }) {
                 render: (t) => <span style={multilineStyle}>{t || '-'}</span>,
               },
               { title: '報價數量', dataIndex: 'quoteQuantity', key: 'quoteQuantity', width: 88 },
-              { title: '已上單', dataIndex: 'orderedQty', key: 'orderedQty', width: 72 },
+              {
+                title: poModalMode === 'invoice' ? '已開票' : '已上單',
+                dataIndex: 'orderedQty',
+                key: 'orderedQty',
+                width: 72,
+              },
               { title: '餘額', dataIndex: 'remainingQty', key: 'remainingQty', width: 72 },
               {
-                title: '本次上單',
+                title: poModalMode === 'invoice' ? '本次轉發票' : '本次上單',
                 key: 'thisQty',
                 width: 120,
                 render: (_, row) => (
@@ -834,82 +859,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
           />
         ) : null}
         <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
-          ℹ️ 可多次上單；餘額 = 報價數量 − 歷史由此 Quote 該 P.O 已上單數量總和。
-        </p>
-      </Modal>
-
-      {/* 轉換成 Invoice：選擇項目 Modal */}
-      <Modal
-        title="選擇要轉換的項目"
-        open={convertToInvoiceModalVisible}
-        onOk={executeConvertToInvoice}
-        onCancel={() => {
-          setConvertToInvoiceModalVisible(false);
-        }}
-        okText="確認轉換"
-        cancelText="取消"
-        okButtonProps={{ disabled: selectedItemIndices.length === 0 }}
-        width={560}
-      >
-        <div style={{ marginBottom: 12 }}>
-          <p>請勾選要轉換到 Invoice 的項目（可重複轉換）：</p>
-          <Checkbox
-            style={{ marginBottom: 8 }}
-            checked={
-              currentErp.items?.length > 0 &&
-              selectedItemIndices.length === currentErp.items.length
-            }
-            indeterminate={
-              selectedItemIndices.length > 0 &&
-              selectedItemIndices.length < (currentErp.items?.length || 0)
-            }
-            onChange={(e) => {
-              if (e.target.checked) {
-                setSelectedItemIndices(currentErp.items?.map((_, i) => i) || []);
-              } else {
-                setSelectedItemIndices([]);
-              }
-            }}
-          >
-            全選
-          </Checkbox>
-        </div>
-        <div style={{ maxHeight: 320, overflow: 'auto', border: '1px solid #f0f0f0', padding: 8, borderRadius: 4 }}>
-          {(currentErp.items || []).map((item, index) => (
-            <div key={item._id || index} style={{ marginBottom: 8 }}>
-              <Checkbox
-                checked={selectedItemIndices.includes(index)}
-                onChange={(e) => {
-                  if (e.target.checked) {
-                    setSelectedItemIndices((prev) => [...prev, index].sort((a, b) => a - b));
-                  } else {
-                    setSelectedItemIndices((prev) => prev.filter((i) => i !== index));
-                  }
-                }}
-              >
-                <span style={{ marginRight: 8 }}><strong>{item.itemName}</strong></span>
-                {item.description ? (
-                  <span
-                    style={{
-                      display: 'block',
-                      color: '#666',
-                      fontSize: 12,
-                      marginTop: 2,
-                      ...multilineStyle,
-                    }}
-                  >
-                    {item.description}
-                  </span>
-                ) : null}
-                <span style={{ color: '#888', fontSize: 12, display: 'block', marginTop: 2 }}>
-                  {item.quantity} × {moneyFormatter({ amount: item.price, currency_code: currentErp.currency })} = {moneyFormatter({ amount: item.total, currency_code: currentErp.currency })}
-                </span>
-              </Checkbox>
-            </div>
-          ))}
-        </div>
-        <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
-          ℹ️ 只會將所選項目轉成新 Invoice，可多次轉換
+          ℹ️ 餘額 = 報價數量 − 此 P.O{' '}
+          {poModalMode === 'invoice' ? '已開票' : '已上單'}數量總和。可多次
+          {poModalMode === 'invoice' ? '轉發票' : '上單'}。
         </p>
       </Modal>
     </>

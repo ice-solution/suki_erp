@@ -21,6 +21,13 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
 
+  /** 客戶 Quote Number（報價單 invoiceNumber，與關聯單號 SML-xxx 可不同） */
+  customerQuoteNumber: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+
   // 備存 P.O Number (注意：此字段不是唯一字段，允許多個項目使用相同的 P.O Number)
   poNumber: {
     type: String,
@@ -171,8 +178,12 @@ const projectSchema = new mongoose.Schema({
     default: 0,
   },
 
-  // 判頭費（多行：工程名 + 金額）
+  // 判頭費（多行：工程名 + 金額；lineId 區分同名多行）
   contractorFees: [{
+    lineId: {
+      type: String,
+      trim: true,
+    },
     projectName: {
       type: String,
       required: false,
@@ -186,6 +197,11 @@ const projectSchema = new mongoose.Schema({
 
   // 使用判頭費記錄（記錄使用了的判頭費：工程名 + 日期 + 金額）
   usedContractorFees: [{
+    /** 對應 contractorFees[].lineId（同名多行時必填） */
+    contractorFeeLineId: {
+      type: String,
+      trim: true,
+    },
     projectName: {
       type: String,
       required: true,

@@ -170,14 +170,24 @@ const shipQuoteSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  showDiscountPercentOnPdf: {
+    type: Boolean,
+    default: true,
+  },
+  showDiscountAmountOnPdf: {
+    type: Boolean,
+    default: true,
+  },
   notes: {
     type: String,
   },
-  /** 吊船租賃 PDF「附加項目」：摘要 + 單價（可編輯；無則 PDF 用內建預設列） */
+  /** 吊船租賃 PDF「附加項目」：摘要 + 單位 + 單價（可排序） */
   rentalExtraItems: [
     {
       description: { type: String, default: '' },
+      unit: { type: String, trim: true },
       unitPrice: { type: Number },
+      sortOrder: { type: Number, default: 0 },
     },
   ],
   /** 吊船租賃 PDF「租賃說明」正文（多行；空則 PDF 用內建條款列表） */

@@ -8,7 +8,6 @@ import {
   EditOutlined,
   FilePdfOutlined,
   CloseCircleOutlined,
-  RetweetOutlined,
   DeleteOutlined,
 } from '@ant-design/icons';
 
@@ -383,16 +382,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
                 {translate('Download PDF')}
               </Button>,
             ]),
-          <Button
-            key={`${uniqueId()}`}
-            onClick={() => {
-              dispatch(erp.convert({ entity, id: currentErp._id }));
-            }}
-            icon={<RetweetOutlined />}
-            style={{ display: entity === 'supplierquote' ? 'inline-block' : 'none' }}
-          >
-            {translate('Convert to Invoice')}
-          </Button>,
 
           <Button
             key={`${uniqueId()}`}

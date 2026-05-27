@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message } from 'antd';
 
-import { PlusOutlined, DeleteOutlined, LinkOutlined, EditOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, LinkOutlined, EditOutlined, HolderOutlined } from '@ant-design/icons';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
@@ -17,17 +17,43 @@ import useLanguage from '@/locale/useLanguage';
 import calculate from '@/utils/calculate';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
+import {
+  DiscountAmountPdfCheckboxCol,
+  DiscountPercentPdfCheckboxCol,
+  discountPdfFieldsFromRecord,
+} from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
+
+/** 租賃附加項目可選單位 */
+export const SHIP_RENTAL_EXTRA_UNITS = ['日', '米', '部', '套'];
 
 /** 吊船租賃 PDF「附加項目」預設列（與 shipquote-rental.pug 後備一致） */
 export const DEFAULT_SHIP_RENTAL_EXTRA_ITEMS = [
-  { description: '續租-導向吊船 (GSWP-P1)', unitPrice: undefined },
-  { description: '額外電源線(200米以外部份)', unitPrice: undefined },
-  { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: undefined },
-  { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: undefined },
-  { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: undefined },
-  { description: '三角足場續租(每14日)', unitPrice: undefined },
+  { description: '續租-導向吊船 (GSWP-P1)', unit: undefined, unitPrice: undefined },
+  { description: '額外電源線(200米以外部份)', unit: undefined, unitPrice: undefined },
+  { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unit: undefined, unitPrice: undefined },
+  { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unit: undefined, unitPrice: undefined },
+  { description: '吊船改吊點重新安排檢驗F2/F3證書', unit: undefined, unitPrice: undefined },
+  { description: '三角足場續租(每14日)', unit: undefined, unitPrice: undefined },
 ];
+
+export function parseRentalExtraItems(savedItems) {
+  if (!savedItems || !savedItems.length) {
+    return DEFAULT_SHIP_RENTAL_EXTRA_ITEMS.map((row) => ({ ...row }));
+  }
+  return [...savedItems]
+    .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0))
+    .map((row, index) => ({
+      description: row.description != null ? String(row.description) : '',
+      unit:
+        row.unit && SHIP_RENTAL_EXTRA_UNITS.includes(String(row.unit)) ? String(row.unit) : undefined,
+      unitPrice:
+        row.unitPrice != null && row.unitPrice !== '' && !Number.isNaN(Number(row.unitPrice))
+          ? Number(row.unitPrice)
+          : undefined,
+      sortOrder: row.sortOrder ?? index,
+    }));
+}
 
 /** 租賃說明預設內容（與 shipquote-rental.pug 內建條款一致；可於表單自由修改） */
 export const DEFAULT_SHIP_RENTAL_DESCRIPTION = [
@@ -90,6 +116,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const [clients, setClients] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [dragRentalExtraIndex, setDragRentalExtraIndex] = useState(null);
   
   const form = Form.useFormInstance();
   const shipTypeWatched = Form.useWatch('shipType', form);
@@ -435,14 +462,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       let pdfPaymentMethodValue;
       let pdfQuoteValidityValue;
       if (shipType === '租賃') {
-        if (currentRentalExtras && currentRentalExtras.length > 0) {
-          rentalExtraFormValue = currentRentalExtras.map((r) => ({
-            description: r.description || '',
-            unitPrice: r.unitPrice != null && r.unitPrice !== '' ? Number(r.unitPrice) : undefined,
-          }));
-        } else {
-          rentalExtraFormValue = [...DEFAULT_SHIP_RENTAL_EXTRA_ITEMS];
-        }
+        rentalExtraFormValue = parseRentalExtraItems(currentRentalExtras);
         rentalDescriptionValue =
           savedRentalDescription !== undefined && savedRentalDescription !== null
             ? String(savedRentalDescription)
@@ -480,6 +500,12 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           rentalDescription: rentalDescriptionValue,
           pdfPaymentMethod: pdfPaymentMethodValue,
           pdfQuoteValidity: pdfQuoteValidityValue,
+          discount: discount != null && discount !== '' ? discount : 0,
+          discountTotal:
+            current.discountTotal != null && current.discountTotal !== ''
+              ? Number(Number(current.discountTotal).toFixed(2))
+              : undefined,
+          ...discountPdfFieldsFromRecord(current),
         });
       }, 100);
     }
@@ -982,39 +1008,84 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       {shipTypeWatched === '租賃' && (
         <>
           <Divider orientation="left">租賃附加項目（PDF「附加項目」區）</Divider>
+          <p style={{ color: '#666', fontSize: 12, marginBottom: 8 }}>
+            拖曳左側圖示可調整順序；PDF 依此順序顯示。
+          </p>
           <Form.List name="rentalExtraItems">
-            {(fields, { add, remove }) => (
+            {(fields, { add, remove, move }) => (
               <>
-                {fields.map(({ key, name, ...restField }) => (
-                  <Row gutter={[8, 0]} key={key} align="top" style={{ marginBottom: 8 }}>
-                    <Col span={15}>
+                {fields.map(({ key, name, ...restField }, index) => (
+                  <Row
+                    key={key}
+                    gutter={[8, 0]}
+                    align="top"
+                    style={{
+                      marginBottom: 8,
+                      padding: '4px 8px',
+                      borderRadius: 4,
+                      background: dragRentalExtraIndex === index ? '#f0f5ff' : '#fafafa',
+                      border: '1px solid #f0f0f0',
+                    }}
+                    draggable
+                    onDragStart={() => setDragRentalExtraIndex(index)}
+                    onDragEnd={() => setDragRentalExtraIndex(null)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      if (dragRentalExtraIndex !== null && dragRentalExtraIndex !== index) {
+                        move(dragRentalExtraIndex, index);
+                      }
+                      setDragRentalExtraIndex(null);
+                    }}
+                  >
+                    <Col flex="28px" style={{ paddingTop: 10 }}>
+                      <HolderOutlined style={{ cursor: 'grab', color: '#999', fontSize: 16 }} title="拖曳排序" />
+                    </Col>
+                    <Col flex="auto">
                       <Form.Item
                         {...restField}
                         name={[name, 'description']}
                         rules={[{ required: true, message: '請填摘要' }]}
+                        style={{ marginBottom: 0 }}
                       >
                         <Input.TextArea rows={2} placeholder="摘要" />
                       </Form.Item>
                     </Col>
-                    <Col span={7}>
-                      <Form.Item {...restField} name={[name, 'unitPrice']}>
+                    <Col span={4}>
+                      <Form.Item {...restField} name={[name, 'unit']} label="單位" style={{ marginBottom: 0 }}>
+                        <Select allowClear placeholder="單位">
+                          {SHIP_RENTAL_EXTRA_UNITS.map((u) => (
+                            <Select.Option key={u} value={u}>
+                              {u}
+                            </Select.Option>
+                          ))}
+                        </Select>
+                      </Form.Item>
+                    </Col>
+                    <Col span={5}>
+                      <Form.Item {...restField} name={[name, 'unitPrice']} label="單價" style={{ marginBottom: 0 }}>
                         <InputNumber
                           min={0}
                           precision={2}
                           style={{ width: '100%' }}
-                          placeholder="單價 HKD（可留空）"
+                          placeholder="HKD"
                           addonBefore="$"
                         />
                       </Form.Item>
                     </Col>
-                    <Col span={2}>
+                    <Col flex="48px" style={{ paddingTop: 30 }}>
                       <Button type="link" danger onClick={() => remove(name)}>
                         刪除
                       </Button>
                     </Col>
                   </Row>
                 ))}
-                <Button type="dashed" onClick={() => add({ description: '', unitPrice: undefined })} block icon={<PlusOutlined />}>
+                <Button
+                  type="dashed"
+                  onClick={() => add({ description: '', unit: undefined, unitPrice: undefined })}
+                  block
+                  icon={<PlusOutlined />}
+                >
                   新增附加項目
                 </Button>
               </>
@@ -1224,7 +1295,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
               {translate('Discount')} (%) :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item
               name="discount"
               rules={[
@@ -1245,6 +1316,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
               />
             </Form.Item>
           </Col>
+          <DiscountPercentPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>
@@ -1259,7 +1331,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
               {translate('Discount Amount')} :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item name="discountTotal" rules={[{ required: false }]} style={{ marginBottom: 0 }}>
               <InputNumber
                 min={0}
@@ -1271,6 +1343,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
               />
             </Form.Item>
           </Col>
+          <DiscountAmountPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>

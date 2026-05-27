@@ -19,6 +19,11 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import {
+  DiscountAmountPdfCheckboxCol,
+  DiscountPercentPdfCheckboxCol,
+  discountPdfFieldsFromRecord,
+} from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
 
 export default function QuoteTableForm({ subTotal = 0, current = null }) {
@@ -412,7 +417,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
           shipType: shipType,
           subcontractorCount: subcontractorCount,
           costPrice: costPrice,
-          poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined
+          poNumbers: poNumbersArray.length > 0 ? poNumbersArray : undefined,
+          ...discountPdfFieldsFromRecord(current),
         });
       }, 100);
     }
@@ -1049,7 +1055,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               {translate('Discount')} (%) :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item
               name="discount"
               rules={[
@@ -1070,6 +1076,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               />
             </Form.Item>
           </Col>
+          <DiscountPercentPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>
@@ -1084,7 +1091,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               {translate('Discount Amount')} :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item
               name="discountTotal"
               rules={[{ required: false }]}
@@ -1102,6 +1109,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               />
             </Form.Item>
           </Col>
+          <DiscountAmountPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>

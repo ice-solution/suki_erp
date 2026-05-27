@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { fetchPaginatedByQuoteNumberSort } = require('../../../helpers/paginatedQuoteSort');
 
 const Model = mongoose.model('Quote');
 
@@ -26,46 +27,18 @@ const paginatedList = async (req, res) => {
     ...fields,
   };
 
-  // 默認排序：numberPrefix 先 SML 再 QU，其次 year 降序、number 升序（與列表期望一致）
+  // 默認排序：SML 先於 QU，單號數字由小到大
   let result;
   let count;
 
   if (!sortBy) {
-    const orderedIds = await Model.aggregate([
-      { $match: matchQuery },
-      {
-        $addFields: {
-          _prefixRank: {
-            $switch: {
-              branches: [
-                { case: { $eq: ['$numberPrefix', 'SML'] }, then: 0 },
-                { case: { $eq: ['$numberPrefix', 'QU'] }, then: 1 },
-              ],
-              default: 2,
-            },
-          },
-        },
-      },
-      { $sort: { _prefixRank: 1, year: -1, number: 1 } },
-      { $skip: skip },
-      { $limit: limit },
-      { $project: { _id: 1 } },
-    ]);
-
-    const ids = orderedIds.map((d) => d._id);
-    if (ids.length === 0) {
-      result = [];
-    } else {
-      const docs = await Model.find({ _id: { $in: ids } })
-        .populate('createdBy', 'name surname email')
-        .populate('updatedBy', 'name surname email')
-        .exec();
-      const orderMap = new Map(ids.map((id, i) => [id.toString(), i]));
-      result = [...docs].sort(
-        (a, b) => orderMap.get(a._id.toString()) - orderMap.get(b._id.toString())
-      );
-    }
-
+    result = await fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, {
+      includePrefixRank: true,
+      populate: [
+        { path: 'createdBy', select: 'name surname email' },
+        { path: 'updatedBy', select: 'name surname email' },
+      ],
+    });
     count = await Model.countDocuments(matchQuery);
   } else {
     const sortObj = { [sortBy]: sortValue || 1 };

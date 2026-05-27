@@ -112,6 +112,28 @@ const invoiceSchema = new mongoose.Schema({
       ref: 'ShipQuote',
     },
   },
+  /** 由報價單轉發票時：來源 Quote */
+  sourceQuote: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Quote',
+  },
+  /** 由吊船報價轉發票時：來源 ShipQuote */
+  sourceShipQuote: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'ShipQuote',
+  },
+  /** 轉發票時選的 P.O number */
+  orderFromPoNumber: {
+    type: String,
+    trim: true,
+  },
+  /** 本次從報價各行的轉發票數量（itemIndex 對應 quote.items 下標） */
+  orderFromQuoteLines: [
+    {
+      itemIndex: { type: Number },
+      quantity: { type: Number },
+    },
+  ],
 
   // 項目items - 與Quote完全一致
   items: [
@@ -154,6 +176,14 @@ const invoiceSchema = new mongoose.Schema({
   discount: {
     type: Number,
     default: 0,
+  },
+  showDiscountPercentOnPdf: {
+    type: Boolean,
+    default: true,
+  },
+  showDiscountAmountOnPdf: {
+    type: Boolean,
+    default: true,
   },
   currency: {
     type: String,

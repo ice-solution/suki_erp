@@ -146,6 +146,14 @@ const quoteSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  showDiscountPercentOnPdf: {
+    type: Boolean,
+    default: true,
+  },
+  showDiscountAmountOnPdf: {
+    type: Boolean,
+    default: true,
+  },
   notes: {
     type: String,
   },

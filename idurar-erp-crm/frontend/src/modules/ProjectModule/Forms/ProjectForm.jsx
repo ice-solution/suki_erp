@@ -7,6 +7,8 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 import calculate from '@/utils/calculate';
 import { request } from '@/request';
+import { ensureContractorFeeLineIds, newContractorFeeLineId, formatFeeLineShortLabel } from '@/utils/projectContractorFees';
+import { pickCustomerQuoteNumberFromDoc } from '@/utils/projectCustomerQuoteNumber';
 
 /** 建立專案時：吊船報價可選條件與一般報價「已接受」對齊，並保留「已完成」勾選 */
 function shipQuoteEligibleForProject(sq) {
@@ -124,11 +126,14 @@ export default function ProjectForm({ current = null }) {
       const [quotationsRes, shipQuotationsRes, supplierQuotationsRes, invoicesRes] = await Promise.all([
         request.search({
           entity: 'quote',
-          options: { q: quoteNum, fields: 'numberPrefix,number,status,address,poNumber' },
+          options: { q: quoteNum, fields: 'numberPrefix,number,status,address,poNumber,invoiceNumber' },
         }),
         request.search({
           entity: 'shipquote',
-          options: { q: quoteNum, fields: 'numberPrefix,number,status,isCompleted,address,poNumber,costPrice' },
+          options: {
+            q: quoteNum,
+            fields: 'numberPrefix,number,status,isCompleted,address,poNumber,costPrice,invoiceNumber',
+          },
         }),
         request.search({
           entity: 'supplierquote',
@@ -257,6 +262,8 @@ export default function ProjectForm({ current = null }) {
         if (addr !== '') updateValues.name = addr;
         const po = firstQuote.poNumber != null ? firstQuote.poNumber : '';
         if (po !== '') updateValues.poNumber = po;
+        const cq = pickCustomerQuoteNumberFromDoc(firstQuote, quoteNum);
+        if (cq) updateValues.customerQuoteNumber = cq;
       }
       if (Object.keys(updateValues).length > 0) {
         form.setFieldsValue(updateValues);
@@ -382,10 +389,7 @@ export default function ProjectForm({ current = null }) {
         let contractorFees = [];
         if (current.contractorFees && Array.isArray(current.contractorFees)) {
           // 新格式：contractorFees 數組
-          contractorFees = current.contractorFees.map(fee => ({
-            projectName: fee.projectName || '',
-            amount: fee.amount || 0,
-          }));
+          contractorFees = ensureContractorFeeLineIds(current.contractorFees);
         } else if (current.contractorFee !== undefined && current.contractorFee !== null) {
           // 舊格式：單一 contractorFee 值（向後兼容）
           if (current.contractorFee > 0) {
@@ -578,6 +582,12 @@ export default function ProjectForm({ current = null }) {
                   />
                 </Form.Item>
               </Col>
+
+              <Col span={24}>
+                <Form.Item label="客戶 Quote Number" name="customerQuoteNumber">
+                  <Input placeholder="報價單上的客戶 Quote Number（可與關聯單號不同）" allowClear />
+                </Form.Item>
+              </Col>
               
               <Col span={12}>
                 <Form.Item
@@ -691,8 +701,28 @@ export default function ProjectForm({ current = null }) {
                   <Form.List name="contractorFees" initialValue={[]}>
                     {(fields, { add, remove }) => (
                       <>
-                        {fields.map(({ key, name, ...restField }) => (
-                          <Row key={key} gutter={8} style={{ marginBottom: 8 }}>
+                        {fields.map(({ key, name, ...restField }) => {
+                          const feeRows = form?.getFieldValue?.('contractorFees') || [];
+                          const rowLineId = form?.getFieldValue?.(['contractorFees', name, 'lineId']);
+                          const rowName = form?.getFieldValue?.(['contractorFees', name, 'projectName']) || '';
+                          const rowIndex = typeof name === 'number' ? name : feeRows.length;
+                          const rowLabel = formatFeeLineShortLabel(
+                            { projectName: rowName, lineId: rowLineId },
+                            rowIndex,
+                            feeRows
+                          );
+                          return (
+                          <Row key={key} gutter={8} style={{ marginBottom: 8 }} align="middle">
+                            <Form.Item {...restField} name={[name, 'lineId']} hidden>
+                              <Input />
+                            </Form.Item>
+                            {rowName ? (
+                              <Col span={24} style={{ marginBottom: 4 }}>
+                                <Text type="secondary" style={{ fontSize: 12 }}>
+                                  {rowLabel}
+                                </Text>
+                              </Col>
+                            ) : null}
                             <Col span={10}>
                               <Form.Item
                                 {...restField}
@@ -758,11 +788,12 @@ export default function ProjectForm({ current = null }) {
                               </Button>
                             </Col>
                           </Row>
-                        ))}
+                          );
+                        })}
                         <Form.Item style={{ marginBottom: 0 }}>
                           <Button
                             type="dashed"
-                            onClick={() => add({ projectName: '', amount: 0 })}
+                            onClick={() => add({ lineId: newContractorFeeLineId(), projectName: '', amount: 0 })}
                             icon={<PlusOutlined />}
                             block
                           >

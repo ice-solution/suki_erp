@@ -19,6 +19,11 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import {
+  DiscountAmountPdfCheckboxCol,
+  DiscountPercentPdfCheckboxCol,
+  discountPdfFieldsFromRecord,
+} from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
 
 export default function InvoiceTableForm({ subTotal = 0, current = null }) {
@@ -507,6 +512,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             current.discountTotal != null && current.discountTotal !== ''
               ? Number(Number(current.discountTotal).toFixed(cent_precision ?? 2))
               : undefined,
+          ...discountPdfFieldsFromRecord(current),
         });
       }, 100);
     }
@@ -1281,7 +1287,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               {translate('Discount')} (%) :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item
               name="discount"
               initialValue={0}
@@ -1301,6 +1307,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               />
             </Form.Item>
           </Col>
+          <DiscountPercentPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>
@@ -1315,7 +1322,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               {translate('Discount Amount')} :
             </p>
           </Col>
-          <Col className="gutter-row" span={5}>
+          <Col className="gutter-row" span={4}>
             <Form.Item
               name="discountTotal"
               rules={[{ required: false }]}
@@ -1333,6 +1340,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               />
             </Form.Item>
           </Col>
+          <DiscountAmountPdfCheckboxCol />
         </Row>
         <Row gutter={[12, -5]}>
           <Col className="gutter-row" span={4} offset={15}>

@@ -176,7 +176,7 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       currency: quote.currency,
       discount: 0,
       notes: quote.notes,
-      status: 'draft',
+      status: 'accepted',
       createdBy: req.admin._id,
     };
 

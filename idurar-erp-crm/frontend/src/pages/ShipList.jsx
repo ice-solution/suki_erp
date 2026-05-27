@@ -189,26 +189,6 @@ export default function ShipList() {
       },
     });
 
-    // Project Address列（對應 Supplier Quote 的 address）
-    baseColumns.push({
-      title: translate('Project Address') || 'Project Address',
-      dataIndex: 'supplierNumber',
-      key: 'projectAddress',
-      width: 200,
-      ellipsis: true,
-      render: (supplierNumber, record) => {
-        if (!supplierNumber || record.status !== 'in_use') {
-          return '-';
-        }
-        const info = supplierQuoteMap[supplierNumber];
-        if (isSupplierQuoteCacheComplete(info)) {
-          return info.address || '-';
-        }
-        findSupplierQuoteInfo(supplierNumber);
-        return '-';
-      },
-    });
-
     baseColumns.push({
       title: '簽收單送貨地址',
       dataIndex: 'supplierNumber',
@@ -291,6 +271,26 @@ export default function ShipList() {
       render: (val) => (val && val.name ? val.name : '-'),
     });
 
+    // Project Address列（對應 Supplier Quote 的 address，放最後）
+    baseColumns.push({
+      title: translate('Project Address') || 'Project Address',
+      dataIndex: 'supplierNumber',
+      key: 'projectAddress',
+      width: 200,
+      ellipsis: true,
+      render: (supplierNumber, record) => {
+        if (!supplierNumber || record.status !== 'in_use') {
+          return '-';
+        }
+        const info = supplierQuoteMap[supplierNumber];
+        if (isSupplierQuoteCacheComplete(info)) {
+          return info.address || '-';
+        }
+        findSupplierQuoteInfo(supplierNumber);
+        return '-';
+      },
+    });
+
     return baseColumns;
   };
 
@@ -349,14 +349,6 @@ export default function ShipList() {
             },
             { title: 'Quote Number', dataIndex: 'quoteNumber', key: 'quoteNumber', width: 120, ellipsis: true, render: (v) => v || '-' },
             {
-              title: '專案地址',
-              dataIndex: 'projectAddress',
-              key: 'projectAddress',
-              width: 180,
-              ellipsis: true,
-              render: (v) => (v && String(v).trim() ? String(v) : '-'),
-            },
-            {
               title: '簽收單送貨地址',
               dataIndex: 'receiverAddress',
               key: 'receiverAddress',
@@ -377,6 +369,14 @@ export default function ShipList() {
               key: 'returnDate',
               width: 100,
               render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
+            },
+            {
+              title: '專案地址',
+              dataIndex: 'projectAddress',
+              key: 'projectAddress',
+              width: 180,
+              ellipsis: true,
+              render: (v) => (v && String(v).trim() ? String(v) : '-'),
             },
           ]}
           dataSource={bindingRows}
