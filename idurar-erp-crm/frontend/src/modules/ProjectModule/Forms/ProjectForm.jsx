@@ -9,6 +9,7 @@ import calculate from '@/utils/calculate';
 import { request } from '@/request';
 import { ensureContractorFeeLineIds, newContractorFeeLineId, formatFeeLineShortLabel } from '@/utils/projectContractorFees';
 import { pickCustomerQuoteNumberFromDoc } from '@/utils/projectCustomerQuoteNumber';
+import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
 
 /** 建立專案時：吊船報價可選條件與一般報價「已接受」對齊，並保留「已完成」勾選 */
 function shipQuoteEligibleForProject(sq) {
@@ -33,6 +34,9 @@ export default function ProjectForm({ current = null }) {
   const [invoiceNumberChangeWarning, setInvoiceNumberChangeWarning] = useState(null);
   const [originalInvoiceNumber, setOriginalInvoiceNumber] = useState('');
   const [contractorNameOptions, setContractorNameOptions] = useState([]);
+  const [clientOptions, setClientOptions] = useState([]);
+  const [clientRecords, setClientRecords] = useState([]);
+  const [clientsLoading, setClientsLoading] = useState(false);
 
   // 檢查 Invoice Number 變更
   const checkInvoiceNumberChange = async (newInvoiceNumber) => {
@@ -262,8 +266,17 @@ export default function ProjectForm({ current = null }) {
         if (addr !== '') updateValues.name = addr;
         const po = firstQuote.poNumber != null ? firstQuote.poNumber : '';
         if (po !== '') updateValues.poNumber = po;
-        const cq = pickCustomerQuoteNumberFromDoc(firstQuote, quoteNum);
-        if (cq) updateValues.customerQuoteNumber = cq;
+        const firstClient =
+          (firstQuote.clients && firstQuote.clients[0]) || firstQuote.client || null;
+        if (firstClient) {
+          const clientId = firstClient._id || firstClient;
+          const clientName = firstClient.name ? String(firstClient.name).trim() : '';
+          if (clientId) updateValues.client = clientId;
+          if (clientName) updateValues.customerName = clientName;
+        } else {
+          const cq = pickCustomerQuoteNumberFromDoc(firstQuote, quoteNum);
+          if (cq) updateValues.customerName = cq;
+        }
       }
       if (Object.keys(updateValues).length > 0) {
         form.setFieldsValue(updateValues);
@@ -337,10 +350,65 @@ export default function ProjectForm({ current = null }) {
   };
 
 
+  const fetchClients = async () => {
+    try {
+      setClientsLoading(true);
+      const response = await request.listAll({ entity: 'client' });
+      const clientData = response?.result;
+      if (Array.isArray(clientData)) {
+        setClientRecords(clientData);
+        setClientOptions(
+          clientData.map((c) => ({
+            value: c._id,
+            label: c.name,
+          }))
+        );
+      } else {
+        setClientRecords([]);
+        setClientOptions([]);
+      }
+    } catch (error) {
+      console.error('獲取商戶列表失敗:', error);
+      setClientRecords([]);
+      setClientOptions([]);
+    } finally {
+      setClientsLoading(false);
+    }
+  };
+
+  const handleClientSelect = (clientId) => {
+    if (!clientId) {
+      form.setFieldsValue({ client: undefined, customerName: '' });
+      return;
+    }
+    const record = clientRecords.find((c) => String(c._id) === String(clientId));
+    form.setFieldsValue({
+      client: clientId,
+      customerName: record?.name ? String(record.name).trim() : '',
+    });
+  };
+
   useEffect(() => {
-    // 載入承包商列表
     fetchContractors();
+    fetchClients();
   }, []);
+
+  // 處理現有項目的商戶選項（編輯時確保下拉包含已選商戶）
+  useEffect(() => {
+    if (current?.client && typeof current.client === 'object' && current.client._id && current.client.name) {
+      setClientOptions((prev) => {
+        const exists = prev.some((o) => String(o.value) === String(current.client._id));
+        if (exists) return prev;
+        return [
+          ...prev,
+          {
+            value: current.client._id,
+            label: current.client.name,
+          },
+        ];
+      });
+    }
+  }, [current]);
 
   // 處理現有項目的承包商數據，確保選項正確顯示
   useEffect(() => {
@@ -372,9 +440,9 @@ export default function ProjectForm({ current = null }) {
     }
   }, [current]);
 
-  // 延遲設置表單值，確保contractors選項已經載入
+  // 延遲設置表單值，確保 contractors / clients 選項已經載入
   useEffect(() => {
-    if (current && contractors.length > 0) {
+    if (current && contractors.length > 0 && !clientsLoading) {
       console.log('💾 Project: 設置表單值，contractors選項數量:', contractors.length);
       console.log('📄 Project: 當前項目數據:', current);
       
@@ -400,10 +468,21 @@ export default function ProjectForm({ current = null }) {
           }
         }
         
+        let clientId =
+          current.client && typeof current.client === 'object'
+            ? current.client._id
+            : current.client;
+        const resolvedName = resolveProjectCustomerName(current);
+        if (!clientId && resolvedName && clientRecords.length > 0) {
+          const matched = clientRecords.find((c) => String(c.name).trim() === resolvedName);
+          if (matched) clientId = matched._id;
+        }
         const formData = {
           ...current,
-          contractors: contractorIds,  // 確保使用ID數組
-          contractorFees: contractorFees,  // 使用處理後的 contractorFees 數組
+          client: clientId || undefined,
+          customerName: resolvedName || '',
+          contractors: contractorIds,
+          contractorFees: contractorFees,
           startDate: current.startDate ? dayjs(current.startDate) : null,
           endDate: current.endDate ? dayjs(current.endDate) : null,
         };
@@ -425,7 +504,7 @@ export default function ProjectForm({ current = null }) {
       
       return () => clearTimeout(timer);
     }
-  }, [current, form, contractors]);
+  }, [current, form, contractors, clientsLoading, clientRecords]);
 
   // Invoice Number 變更警告模態框
   const showInvoiceNumberChangeWarning = () => {
@@ -584,8 +663,19 @@ export default function ProjectForm({ current = null }) {
               </Col>
 
               <Col span={24}>
-                <Form.Item label="客戶 Quote Number" name="customerQuoteNumber">
-                  <Input placeholder="報價單上的客戶 Quote Number（可與關聯單號不同）" allowClear />
+                <Form.Item label="客戶名" name="client">
+                  <Select
+                    showSearch
+                    allowClear
+                    placeholder="請選擇商戶名"
+                    options={clientOptions}
+                    loading={clientsLoading}
+                    optionFilterProp="label"
+                    onChange={handleClientSelect}
+                  />
+                </Form.Item>
+                <Form.Item name="customerName" hidden>
+                  <Input />
                 </Form.Item>
               </Col>
               

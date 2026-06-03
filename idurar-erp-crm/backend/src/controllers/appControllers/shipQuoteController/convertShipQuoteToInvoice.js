@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const ShipQuoteModel = mongoose.model('ShipQuote');
 const InvoiceModel = mongoose.model('Invoice');
+const ProjectModel = mongoose.model('Project');
 
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
@@ -41,6 +42,13 @@ function sumItemTotals(invoiceItems) {
 const convertShipQuoteToInvoice = async (req, res) => {
   try {
     const shipQuote = await ShipQuoteModel.findById(req.params.id);
+    const quoteNumberLink =
+      shipQuote.numberPrefix && shipQuote.number
+        ? `${shipQuote.numberPrefix}-${shipQuote.number}`
+        : shipQuote.invoiceNumber;
+    const linkedProject = quoteNumberLink
+      ? await ProjectModel.findOne({ invoiceNumber: quoteNumberLink, removed: false })
+      : null;
 
     if (!shipQuote) {
       return res.status(404).json({
@@ -165,11 +173,11 @@ const convertShipQuoteToInvoice = async (req, res) => {
           ? `${shipQuote.numberPrefix}-${shipQuote.number}`
           : shipQuote.invoiceNumber,
       poNumber: poNumberForInvoice,
-      contactPerson: shipQuote.contactPerson,
+      // 上單／轉發票：不帶備註與簽收單聯絡人（僅保留在原 ShipQuote 作內部記錄）
       address: shipQuote.address,
       clients: shipQuote.clients,
       client: shipQuote.client,
-      project: shipQuote.project,
+      project: linkedProject?._id || shipQuote.project,
       items: selectedItems,
       subTotal: Number(subTotal.toFixed(2)),
       discountTotal: Number(discountTotal.toFixed(2)),
@@ -179,7 +187,6 @@ const convertShipQuoteToInvoice = async (req, res) => {
       discount: shipQuote.discount,
       showDiscountPercentOnPdf: shipQuote.showDiscountPercentOnPdf,
       showDiscountAmountOnPdf: shipQuote.showDiscountAmountOnPdf,
-      notes: shipQuote.notes,
       status: 'sent',
       paymentStatus: 'unpaid',
       isOverdue: false,
@@ -188,6 +195,17 @@ const convertShipQuoteToInvoice = async (req, res) => {
     };
 
     const invoice = await new InvoiceModel(invoiceData).save();
+
+    // 同步到 Project Management：讓 project 詳情可即時見到新 Invoice
+    if (linkedProject && linkedProject._id) {
+      await ProjectModel.updateOne(
+        { _id: linkedProject._id, removed: false },
+        {
+          $addToSet: { invoices: invoice._id },
+          $set: { updated: new Date(), modified_at: new Date() },
+        }
+      );
+    }
 
     await ShipQuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {

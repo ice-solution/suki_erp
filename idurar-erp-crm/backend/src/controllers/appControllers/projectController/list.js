@@ -16,6 +16,7 @@ const list = async (req, res) => {
     // Project list 預設依 Quote Number（Project.invoiceNumber）倒序
     .sort({ invoiceNumber: -1, created: -1 })
     .populate('createdBy', 'name')
+    .populate('client', 'name')
     .populate('suppliers', 'name')
     .populate('contractors', 'name')
     .populate({

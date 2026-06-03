@@ -26,6 +26,8 @@ const update = async (req, res) => {
       costBy,
       contractors,
       invoiceNumber,
+      customerName,
+      client,
       customerQuoteNumber,
       poNumber,
       status,
@@ -155,6 +157,12 @@ const update = async (req, res) => {
     if (status !== undefined) updateData.status = status;
     if (contractors !== undefined) updateData.contractors = contractors || [];
     if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;
+    if (customerName !== undefined) {
+      updateData.customerName = customerName != null ? String(customerName).trim() : '';
+    }
+    if (client !== undefined) {
+      updateData.client = client || null;
+    }
     if (customerQuoteNumber !== undefined) {
       updateData.customerQuoteNumber =
         customerQuoteNumber != null ? String(customerQuoteNumber).trim() : '';

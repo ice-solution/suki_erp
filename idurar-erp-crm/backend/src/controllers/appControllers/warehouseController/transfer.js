@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
+const {
+  computeTotalValue,
+  computeWeightedAverageUnitPrice,
+  roundMoney,
+} = require('../../../helpers/warehouseInventoryPricing');
 
 /** 轉倉失敗時還原已變更的庫存與已寫入的交易 */
 async function rollbackTransfer({
@@ -47,7 +52,7 @@ const transfer = async (req, res) => {
 
   try {
     const { id } = req.params;
-    const { toWarehouse, quantity, targetSku, reason, notes } = req.body;
+    const { toWarehouse, quantity, targetSku, unitPrice, reason, notes } = req.body;
 
     const parsedQty = parseInt(quantity, 10);
     const skuTrimmed = targetSku != null ? String(targetSku).trim() : '';
@@ -66,6 +71,14 @@ const transfer = async (req, res) => {
         message: '請輸入目標倉庫的貨品編號',
       });
     }
+
+    if (unitPrice === undefined || unitPrice === null || unitPrice === '') {
+      return res.status(400).json({
+        success: false,
+        message: '請填寫轉移單價',
+      });
+    }
+    const transferUnitPrice = roundMoney(parseFloat(unitPrice) || 0);
 
     const sourceInventory = await WarehouseInventory.findById(id);
     if (!sourceInventory || sourceInventory.removed) {
@@ -128,7 +141,7 @@ const transfer = async (req, res) => {
       quantityBefore: sourceOldQuantity,
       quantityAfter: sourceAfterQty,
       unitPrice: sourceInventory.unitPrice,
-      totalValue: parsedQty * sourceInventory.unitPrice,
+      totalValue: computeTotalValue(parsedQty, sourceInventory.unitPrice),
       fromWarehouse: sourceInventory.warehouse,
       toWarehouse: toWarehouseCode,
       project: sourceInventory.project,
@@ -148,8 +161,8 @@ const transfer = async (req, res) => {
       quantityChange: parsedQty,
       quantityBefore: targetOldQuantity,
       quantityAfter: targetAfterQty,
-      unitPrice: sourceInventory.unitPrice,
-      totalValue: parsedQty * sourceInventory.unitPrice,
+      unitPrice: transferUnitPrice,
+      totalValue: computeTotalValue(parsedQty, transferUnitPrice),
       fromWarehouse: sourceInventory.warehouse,
       toWarehouse: toWarehouseCode,
       project: sourceInventory.project,
@@ -169,7 +182,8 @@ const transfer = async (req, res) => {
         quantity: parsedQty,
         weight: sourceInventory.weight,
         warehouse: toWarehouseCode,
-        unitPrice: sourceInventory.unitPrice,
+        unitPrice: transferUnitPrice,
+        totalValue: computeTotalValue(parsedQty, transferUnitPrice),
         supplier: sourceInventory.supplier,
         project: sourceInventory.project,
         status: 'available',
@@ -192,7 +206,14 @@ const transfer = async (req, res) => {
     sourceTransactionId = sourceTransactionDoc._id;
 
     if (targetInventory) {
+      targetInventory.unitPrice = computeWeightedAverageUnitPrice(
+        targetOldQuantity,
+        targetInventory.unitPrice,
+        parsedQty,
+        transferUnitPrice
+      );
       targetInventory.quantity = targetAfterQty;
+      targetInventory.totalValue = computeTotalValue(targetAfterQty, targetInventory.unitPrice);
       targetInventory.updatedBy = req.admin._id;
       targetInventory.lastUpdated = new Date();
       await targetInventory.save();
@@ -207,7 +228,8 @@ const transfer = async (req, res) => {
         quantity: parsedQty,
         weight: sourceInventory.weight,
         warehouse: toWarehouseCode,
-        unitPrice: sourceInventory.unitPrice,
+        unitPrice: transferUnitPrice,
+        totalValue: computeTotalValue(parsedQty, transferUnitPrice),
         supplier: sourceInventory.supplier,
         project: sourceInventory.project,
         status: 'available',

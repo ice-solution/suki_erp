@@ -27,6 +27,11 @@ const formItems = [
     settingKey: 'last_payment_number',
     valueType: 'number',
   },
+  {
+    label: 'default_quote_supplier_name',
+    settingKey: 'default_quote_supplier_name',
+    valueType: 'string',
+  },
   ...supplierTypeLastNumberItems.map((item) => ({
     label: item.label,
     settingKey: item.settingKey,

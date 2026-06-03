@@ -35,6 +35,18 @@ import { selectWarehouseOptions, selectWarehouseItemCategories } from '@/redux/s
 const { Option } = Select;
 const { TextArea } = Input;
 
+const formatMoney = (value) => {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '-';
+  return `$${n.toFixed(2)}`;
+};
+
+const computeDisplayTotal = (quantity, unitPrice) => {
+  const qty = Math.max(0, Number(quantity) || 0);
+  const price = Math.max(0, Number(unitPrice) || 0);
+  return Math.round((qty * price + Number.EPSILON) * 100) / 100;
+};
+
 export default function Warehouse() {
   const [loading, setLoading] = useState(false);
   const [inventoryList, setInventoryList] = useState([]);
@@ -213,6 +225,9 @@ export default function Warehouse() {
   const handleAdjust = (record) => {
     setEditingItem(record);
     adjustForm.resetFields();
+    adjustForm.setFieldsValue({
+      unitPrice: record?.unitPrice != null ? Number(record.unitPrice) : 0,
+    });
     setAdjustModalVisible(true);
   };
 
@@ -231,6 +246,9 @@ export default function Warehouse() {
   const handleTransfer = (record) => {
     setEditingItem(record);
     transferForm.resetFields();
+    transferForm.setFieldsValue({
+      unitPrice: record?.unitPrice != null ? Number(record.unitPrice) : 0,
+    });
     setTransferSkuHint('');
     setTransferSkuHintType('info');
     setTransferModalVisible(true);
@@ -345,13 +363,16 @@ export default function Warehouse() {
         貨品名稱: r.itemName || '',
         類別: r.category || '',
         數量: r.quantity != null ? r.quantity : '',
-        重量_KG: r.weight != null && r.weight !== '' ? Number(r.weight) : '',
         倉庫: getWarehouseLabel(r.warehouse),
-        報價單編號: getQuoteNumber(r) || '',
         單價: r.unitPrice != null ? r.unitPrice : '',
-        總價值: r.totalValue != null ? r.totalValue : '',
+        總價值:
+          r.totalValue != null
+            ? r.totalValue
+            : computeDisplayTotal(r.quantity, r.unitPrice),
         狀態: getStatusLabel(r.status),
         供應商: r.supplier?.name || '',
+        重量_KG: r.weight != null && r.weight !== '' ? Number(r.weight) : '',
+        報價單編號: getQuoteNumber(r) || '',
         位置: r.location || '',
         備註: r.notes || '',
       }));
@@ -429,6 +450,57 @@ export default function Warehouse() {
       ),
     },
     {
+      title: '倉庫',
+      dataIndex: 'warehouse',
+      key: 'warehouse',
+      width: 200,
+      ellipsis: false,
+      render: (warehouse, record) => {
+        const opt = warehouseOptions.find((o) => o.value === warehouse);
+        const text = opt ? opt.label : (warehouse ? `${warehouse} / -` : '-');
+        return <span style={{ whiteSpace: 'nowrap' }}>{text}</span>;
+      },
+      filters: warehouseOptions.map(opt => ({ text: opt.label, value: opt.value })),
+    },
+    {
+      title: '單價',
+      dataIndex: 'unitPrice',
+      key: 'unitPrice',
+      width: 100,
+      render: (price) => formatMoney(price),
+    },
+    {
+      title: '總價值',
+      dataIndex: 'totalValue',
+      key: 'totalValue',
+      width: 100,
+      render: (value, record) => {
+        const display =
+          value != null && Number.isFinite(Number(value))
+            ? Number(value)
+            : computeDisplayTotal(record.quantity, record.unitPrice);
+        return formatMoney(display);
+      },
+    },
+    {
+      title: '狀態',
+      dataIndex: 'status',
+      key: 'status',
+      width: 80,
+      render: (status) => (
+        <Tag color={getStatusColor(status)}>
+          {statusOptions.find(opt => opt.value === status)?.label || status}
+        </Tag>
+      ),
+      filters: statusOptions.map(opt => ({ text: opt.label, value: opt.value })),
+    },
+    {
+      title: '供應商',
+      dataIndex: ['supplier', 'name'],
+      key: 'supplier',
+      width: 120,
+    },
+    {
       title: '重量 (KG)',
       dataIndex: 'weight',
       key: 'weight',
@@ -448,51 +520,6 @@ export default function Warehouse() {
         const qn = getQuoteNumber(record);
         return qn ? qn : '-';
       },
-    },
-    {
-      title: '倉庫',
-      dataIndex: 'warehouse',
-      key: 'warehouse',
-      width: 200,
-      ellipsis: false,
-      render: (warehouse, record) => {
-        const opt = warehouseOptions.find((o) => o.value === warehouse);
-        const text = opt ? opt.label : (warehouse ? `${warehouse} / -` : '-');
-        return <span style={{ whiteSpace: 'nowrap' }}>{text}</span>;
-      },
-      filters: warehouseOptions.map(opt => ({ text: opt.label, value: opt.value })),
-    },
-    {
-      title: '單價',
-      dataIndex: 'unitPrice',
-      key: 'unitPrice',
-      width: 100,
-      render: (price) => price ? `$${price.toFixed(2)}` : '-',
-    },
-    {
-      title: '總價值',
-      dataIndex: 'totalValue',
-      key: 'totalValue',
-      width: 100,
-      render: (value) => value ? `$${value.toFixed(2)}` : '-',
-    },
-    {
-      title: '狀態',
-      dataIndex: 'status',
-      key: 'status',
-      width: 80,
-      render: (status) => (
-        <Tag color={getStatusColor(status)}>
-          {statusOptions.find(opt => opt.value === status)?.label || status}
-        </Tag>
-      ),
-      filters: statusOptions.map(opt => ({ text: opt.label, value: opt.value })),
-    },
-    {
-      title: '供應商',
-      dataIndex: ['supplier', 'name'],
-      key: 'supplier',
-      width: 120,
     },
     {
       title: '操作',
@@ -707,6 +734,25 @@ export default function Warehouse() {
                   addonBefore="$"
                 />
               </Form.Item>
+              <Form.Item
+                noStyle
+                shouldUpdate={(prev, cur) =>
+                  prev.unitPrice !== cur.unitPrice || prev.quantity !== cur.quantity
+                }
+              >
+                {({ getFieldValue }) => {
+                  const qty = editingItem
+                    ? editingItem.quantity
+                    : getFieldValue('quantity');
+                  const unitPrice = getFieldValue('unitPrice');
+                  const total = computeDisplayTotal(qty, unitPrice);
+                  return (
+                    <div style={{ marginTop: -8, marginBottom: 8, color: '#666', fontSize: 12 }}>
+                      總價值（數量 × 單價）：{formatMoney(total)}
+                    </div>
+                  );
+                }}
+              </Form.Item>
             </Col>
             <Col span={12}>
               <Form.Item
@@ -838,7 +884,7 @@ export default function Warehouse() {
           setRecordItem(null);
         }}
         footer={null}
-        width={900}
+        width={1000}
       >
         <Table
           size="small"
@@ -846,6 +892,7 @@ export default function Warehouse() {
           dataSource={Array.isArray(transactionList) ? transactionList : []}
           rowKey={(r) => r._id}
           pagination={{ pageSize: 10 }}
+          scroll={{ x: 960 }}
           columns={[
             {
               title: '日期',
@@ -874,6 +921,25 @@ export default function Warehouse() {
               width: 110,
               render: (_, r) =>
                 `${r.quantityBefore != null ? r.quantityBefore : '-'} → ${r.quantityAfter != null ? r.quantityAfter : '-'}`,
+            },
+            {
+              title: '單價',
+              dataIndex: 'unitPrice',
+              key: 'unitPrice',
+              width: 90,
+              render: (v) => formatMoney(v),
+            },
+            {
+              title: '總金額',
+              dataIndex: 'totalValue',
+              key: 'totalValue',
+              width: 100,
+              render: (v, r) =>
+                formatMoney(
+                  v != null && Number.isFinite(Number(v))
+                    ? v
+                    : computeDisplayTotal(Math.abs(r.quantityChange || 0), r.unitPrice)
+                ),
             },
             {
               title: '原因',
@@ -928,6 +994,39 @@ export default function Warehouse() {
               style={{ width: '100%' }} 
               placeholder="正數為入庫，負數為出庫"
             />
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, cur) => prev.quantityChange !== cur.quantityChange}
+          >
+            {({ getFieldValue }) => {
+              const change = Number(getFieldValue('quantityChange'));
+              if (!Number.isFinite(change) || change === 0) return null;
+              const isInbound = change > 0;
+              return (
+                <Form.Item
+                  name="unitPrice"
+                  label={isInbound ? '本次入庫單價' : '本次出庫單價'}
+                  rules={[{ required: true, message: '請填寫單價' }]}
+                  extra={
+                    isInbound
+                      ? editingItem
+                        ? `入庫後將與現有平均單價（${formatMoney(editingItem.unitPrice)}）依件數計算加權平均，小數點後 2 位`
+                        : '入庫單價將與現有庫存加權平均'
+                      : '出庫僅記錄於交易明細，存倉平均單價不變'
+                  }
+                >
+                  <InputNumber
+                    min={0}
+                    precision={2}
+                    style={{ width: '100%' }}
+                    placeholder={isInbound ? '請輸入本次入庫單價' : '請輸入本次出庫單價'}
+                    addonBefore="$"
+                  />
+                </Form.Item>
+              );
+            }}
           </Form.Item>
 
           <Form.Item
@@ -1052,6 +1151,43 @@ export default function Warehouse() {
               style={{ width: '100%' }} 
               placeholder="請輸入轉移數量"
             />
+          </Form.Item>
+
+          <Form.Item
+            name="unitPrice"
+            label="轉移單價"
+            rules={[{ required: true, message: '請填寫轉移單價' }]}
+            extra={
+              editingItem
+                ? `預設為源倉平均單價（${formatMoney(editingItem.unitPrice)}）；併入目標倉時將依此單價加權平均`
+                : '併入目標倉時將依此單價加權平均'
+            }
+          >
+            <InputNumber
+              min={0}
+              precision={2}
+              style={{ width: '100%' }}
+              placeholder="請輸入轉移單價"
+              addonBefore="$"
+            />
+          </Form.Item>
+
+          <Form.Item
+            noStyle
+            shouldUpdate={(prev, cur) =>
+              prev.quantity !== cur.quantity || prev.unitPrice !== cur.unitPrice
+            }
+          >
+            {({ getFieldValue }) => {
+              const qty = Number(getFieldValue('quantity'));
+              const price = getFieldValue('unitPrice');
+              if (!Number.isFinite(qty) || qty <= 0) return null;
+              return (
+                <div style={{ marginBottom: 16, color: '#666', fontSize: 12 }}>
+                  轉移總金額：{formatMoney(computeDisplayTotal(qty, price))}
+                </div>
+              );
+            }}
           </Form.Item>
 
           <Form.Item

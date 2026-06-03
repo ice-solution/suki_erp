@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { computeTotalValue, roundMoney } = require('../../helpers/warehouseInventoryPricing');
 
 const warehouseInventorySchema = new mongoose.Schema({
   removed: {
@@ -167,7 +168,10 @@ warehouseInventorySchema.statics.syncStatusFromQuantity = syncStatusFromQuantity
 // 自動計算總價值、依數量更新狀態
 warehouseInventorySchema.pre('save', function(next) {
   syncStatusFromQuantity(this);
-  this.totalValue = this.quantity * this.unitPrice;
+  if (this.unitPrice != null) {
+    this.unitPrice = roundMoney(this.unitPrice);
+  }
+  this.totalValue = computeTotalValue(this.quantity, this.unitPrice);
   this.lastUpdated = new Date();
   next();
 });

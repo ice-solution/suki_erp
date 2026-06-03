@@ -213,7 +213,7 @@ body
     - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
     - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
     - const receiverPdfRaw = (model.receiver != null && String(model.receiver).trim()) ? String(model.receiver) : ''
-    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number
+    - const docNumber = (model.numberPrefix || 'S') + '-' + model.number
     - const docDate = model.openDate ? moment(model.openDate).utcOffset(480).format('DD/MM/YYYY') : '-'
     - const itemsOnly = model.items || []
     -

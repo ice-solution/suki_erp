@@ -8,6 +8,7 @@ const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
+const { syncSupplierQuoteOrderFromSourceOnUpdate } = require('@/helpers/syncSupplierQuoteOrderFromSource');
 const {
   applySupplierQuoteMaterialsWarehouseSync,
   revertAppliedSupplierQuoteStockChanges,
@@ -261,6 +262,17 @@ const update = async (req, res) => {
       success: false,
       result: null,
       message: 'Supplier Quote not found',
+    });
+  }
+
+  // 仍關聯報價單／吊船報價時：items 數量變更須寫回 orderFromQuoteLines，來源「已上單／餘額」才會正確
+  try {
+    await syncSupplierQuoteOrderFromSourceOnUpdate({ existingQuote, body, items });
+  } catch (syncOrderErr) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: syncOrderErr.message || '同步來源報價上單數失敗',
     });
   }
 

@@ -82,5 +82,11 @@
     "settingKey": "last_supplier_quote_number_y",
     "settingValue": 0,
     "valueType": "number"
+  },
+  {
+    "settingCategory": "finance_settings",
+    "settingKey": "default_quote_supplier_name",
+    "settingValue": "興成",
+    "valueType": "string"
   }
 ]

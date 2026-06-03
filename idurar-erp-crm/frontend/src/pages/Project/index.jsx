@@ -3,7 +3,7 @@ import { Tag, Typography } from 'antd';
 import ProjectDataTableModule from '@/modules/ProjectModule/ProjectDataTableModule';
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
-import { resolveCustomerQuoteNumber } from '@/utils/projectCustomerQuoteNumber';
+import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
 
 const { Text } = Typography;
 
@@ -20,9 +20,9 @@ export default function Project() {
     // - Project name / address / P.O number
     // - EO 單（usedContractorFees.eoNumber / usedContractorFees.invoiceNo）
     // - 另外後端亦會用 S/SML/SMI 等關聯單據號反查 project
-    displayLabels: ['invoiceNumber', 'customerQuoteNumber', 'name'],
+    displayLabels: ['invoiceNumber', 'customerName', 'name'],
     searchFields:
-      'invoiceNumber,customerQuoteNumber,name,address,poNumber,usedContractorFees.eoNumber,usedContractorFees.invoiceNo',
+      'invoiceNumber,customerName,customerQuoteNumber,name,address,poNumber,usedContractorFees.eoNumber,usedContractorFees.invoiceNo',
   };
   const deleteModalLabels = ['invoiceNumber', 'name'];
   
@@ -59,15 +59,12 @@ export default function Project() {
       },
     },
     {
-      title: '客戶 Quote Number',
-      dataIndex: 'customerQuoteNumber',
-      key: 'customerQuoteNumber',
+      title: '客戶名',
+      dataIndex: 'customerName',
+      key: 'customerName',
       width: 150,
       ellipsis: true,
-      render: (_, record) => {
-        const val = resolveCustomerQuoteNumber(record);
-        return val || '-';
-      },
+      render: (_, record) => resolveProjectCustomerName(record) || '-',
     },
     {
       title: translate('Project Name'),

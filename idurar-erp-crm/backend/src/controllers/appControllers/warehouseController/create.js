@@ -1,6 +1,7 @@
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
+const { computeTotalValue, roundMoney } = require('../../../helpers/warehouseInventoryPricing');
 
 /**
  * 生成下一個可用的 SKU 編號
@@ -71,6 +72,7 @@ const create = async (req, res) => {
     }
 
     const parsedQuantity = Math.max(0, parseInt(quantity, 10) || 0);
+    const parsedUnitPrice = roundMoney(parseFloat(unitPrice) || 0);
 
     // 如果沒有提供 SKU，自動生成下一個可用的 SKU
     let finalSku = sku;
@@ -101,7 +103,8 @@ const create = async (req, res) => {
       quantity: parsedQuantity,
       weight: weight != null && weight !== '' ? parseFloat(weight) : 0,
       warehouse,
-      unitPrice: parseFloat(unitPrice) || 0,
+      unitPrice: parsedUnitPrice,
+      totalValue: computeTotalValue(parsedQuantity, parsedUnitPrice),
       supplier,
       project,
       status: parsedQuantity <= 0 ? 'out_of_stock' : status,
@@ -122,8 +125,8 @@ const create = async (req, res) => {
         quantityChange: parsedQuantity,
         quantityBefore: 0,
         quantityAfter: parsedQuantity,
-        unitPrice: parseFloat(unitPrice) || 0,
-        totalValue: parsedQuantity * (parseFloat(unitPrice) || 0),
+        unitPrice: parsedUnitPrice,
+        totalValue: computeTotalValue(parsedQuantity, parsedUnitPrice),
         project,
         reason: '初始入庫',
         notes: '系統自動建立',

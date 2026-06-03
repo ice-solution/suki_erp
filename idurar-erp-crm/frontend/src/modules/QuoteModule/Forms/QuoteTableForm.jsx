@@ -25,6 +25,7 @@ import {
   discountPdfFieldsFromRecord,
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
+import { applyDefaultQuoteSupplierOnCreate } from '@/utils/defaultQuoteSupplier';
 
 export default function QuoteTableForm({ subTotal = 0, current = null }) {
   const { last_quote_number } = useSelector(selectFinanceSettings);
@@ -40,7 +41,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter, currency_symbol, currency_position, cent_precision } = useMoney();
-  const { last_quote_number } = useSelector(selectFinanceSettings);
+  const financeSettings = useSelector(selectFinanceSettings);
+  const { last_quote_number } = financeSettings;
   const itemUnitOptions = useSelector(selectItemUnitOptions);
   const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
   const navigate = useNavigate();
@@ -216,7 +218,9 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       const response = await request.listAll({ entity: 'supplier' });
       const data = response?.result;
       if (Array.isArray(data)) {
-        setSuppliers(data.map(s => ({ value: s._id, label: s.name })));
+        const options = data.map((s) => ({ value: s._id, label: s.name }));
+        setSuppliers(options);
+        applyDefaultQuoteSupplierOnCreate(form, options, { current, financeSettings });
       } else {
         setSuppliers([]);
       }

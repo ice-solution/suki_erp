@@ -21,6 +21,20 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
 
+  /** 客戶名（顯示用；可從商戶 Client 選擇） */
+  customerName: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+
+  /** 關聯商戶（Client） */
+  client: {
+    type: mongoose.Schema.ObjectId,
+    ref: 'Client',
+    autopopulate: true,
+  },
+
   /** 客戶 Quote Number（報價單 invoiceNumber，與關聯單號 SML-xxx 可不同） */
   customerQuoteNumber: {
     type: String,

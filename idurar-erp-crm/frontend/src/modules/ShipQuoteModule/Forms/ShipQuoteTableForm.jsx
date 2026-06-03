@@ -23,6 +23,7 @@ import {
   discountPdfFieldsFromRecord,
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
+import { applyDefaultQuoteSupplierOnCreate } from '@/utils/defaultQuoteSupplier';
 
 /** 租賃附加項目可選單位 */
 export const SHIP_RENTAL_EXTRA_UNITS = ['日', '米', '部', '套'];
@@ -88,7 +89,8 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
-  const { last_quote_number } = useSelector(selectFinanceSettings);
+  const financeSettings = useSelector(selectFinanceSettings);
+  const { last_quote_number } = financeSettings;
   const itemUnitOptions = useSelector(selectItemUnitOptions);
   const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
   const navigate = useNavigate();
@@ -261,7 +263,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
       const response = await request.listAll({ entity: 'supplier' });
       const data = response?.result;
       if (Array.isArray(data)) {
-        setSuppliers(data.map(s => ({ value: s._id, label: s.name })));
+        const options = data.map((s) => ({ value: s._id, label: s.name }));
+        setSuppliers(options);
+        applyDefaultQuoteSupplierOnCreate(form, options, { current, financeSettings });
       } else {
         setSuppliers([]);
       }

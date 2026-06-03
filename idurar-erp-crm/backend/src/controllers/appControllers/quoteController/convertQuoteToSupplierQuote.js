@@ -35,9 +35,10 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       quote.numberPrefix && quote.number
         ? `${quote.numberPrefix}-${quote.number}`
         : quote.invoiceNumber;
+    let linkedProject = null;
     if (quoteNumber) {
-      const project = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
-      if (!project) {
+      linkedProject = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
+      if (!linkedProject) {
         return res.status(400).json({
           success: false,
           result: null,
@@ -157,11 +158,11 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       invoiceNumber:
         quote.numberPrefix && quote.number ? `${quote.numberPrefix}-${quote.number}` : quote.invoiceNumber,
       poNumber,
-      contactPerson: quote.contactPerson,
+      // 上單／轉發票：不帶備註與簽收單聯絡人（僅保留在原 Quote 作內部記錄）
       address: quote.address,
       clients: quote.clients,
       client: quote.client,
-      project: quote.project,
+      project: linkedProject?._id || quote.project,
       sourceQuote: quote._id,
       orderFromPoNumber: poNumber,
       orderFromQuoteLines: resolvedLines.map((l) => ({
@@ -175,12 +176,22 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       credit: 0,
       currency: quote.currency,
       discount: 0,
-      notes: quote.notes,
       status: 'accepted',
       createdBy: req.admin._id,
     };
 
     const supplierQuote = await new SupplierQuoteModel(supplierQuoteData).save();
+
+    // 同步到 Project Management：讓 project 詳情可即時見到新 S 單
+    if (linkedProject && linkedProject._id) {
+      await ProjectModel.updateOne(
+        { _id: linkedProject._id, removed: false },
+        {
+          $addToSet: { supplierQuotations: supplierQuote._id },
+          $set: { updated: new Date(), modified_at: new Date() },
+        }
+      );
+    }
 
     await QuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {

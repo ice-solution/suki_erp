@@ -137,6 +137,7 @@ const lang = {
   modified_by: '修改人',
   last_invoice_number: '發票最後編號',
   last_quote_number: '報價單最後編號',
+  default_quote_supplier_name: '報價預設供應商名稱',
   last_payment_number: '付款最後編號',
   supplier_last_number_no: 'Supplier 編號 (NO) 最後號碼',
   supplier_last_number_po: 'Supplier 編號 (PO) 最後號碼',

@@ -43,9 +43,10 @@ const convertToSupplierQuote = async (req, res) => {
       shipQuote.numberPrefix && shipQuote.number
         ? `${shipQuote.numberPrefix}-${shipQuote.number}`
         : shipQuote.invoiceNumber;
+    let linkedProject = null;
     if (quoteNumber) {
-      const project = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
-      if (!project) {
+      linkedProject = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
+      if (!linkedProject) {
         return res.status(400).json({
           success: false,
           result: null,
@@ -158,13 +159,11 @@ const convertToSupplierQuote = async (req, res) => {
           ? `${shipQuote.numberPrefix}-${shipQuote.number}`
           : shipQuote.invoiceNumber,
       poNumber,
-      contactPerson: shipQuote.contactPerson,
-      receiver: shipQuote.receiver,
-      receiptDisplayName: shipQuote.receiptDisplayName,
+      // 上單／轉發票：不帶備註與簽收單聯絡人（僅保留在原 ShipQuote 作內部記錄）
       address: shipQuote.address,
       clients: shipQuote.clients,
       client: shipQuote.client,
-      project: shipQuote.project,
+      project: linkedProject?._id || shipQuote.project,
       sourceShipQuote: shipQuote._id,
       orderFromPoNumber: poNumber,
       orderFromQuoteLines: resolvedLines.map((l) => ({
@@ -178,12 +177,22 @@ const convertToSupplierQuote = async (req, res) => {
       credit: 0,
       currency: shipQuote.currency || 'NA',
       discount: shipQuote.discount ?? 0,
-      notes: shipQuote.notes,
       status: 'accepted',
       createdBy: req.admin._id,
     };
 
     const supplierQuote = await new SupplierQuoteModel(supplierQuoteData).save();
+
+    // 同步到 Project Management：讓 project 詳情可即時見到新 S 單
+    if (linkedProject && linkedProject._id) {
+      await ProjectModel.updateOne(
+        { _id: linkedProject._id, removed: false },
+        {
+          $addToSet: { supplierQuotations: supplierQuote._id },
+          $set: { updated: new Date(), modified_at: new Date() },
+        }
+      );
+    }
 
     await ShipQuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {

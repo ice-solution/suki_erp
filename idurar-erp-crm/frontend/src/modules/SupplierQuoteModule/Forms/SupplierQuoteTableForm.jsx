@@ -123,13 +123,29 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const form = Form.useFormInstance();
   const watchedClients = Form.useWatch('clients', form) || [];
   const watchedSupplierPrefix = Form.useWatch('numberPrefix', form) || 'S';
+  const numberManuallyEditedRef = useRef(false);
+  const prevPrefixRef = useRef(watchedSupplierPrefix);
 
-  useEffect(() => {
-    if (current) return;
-    const prefix = watchedSupplierPrefix || 'S';
+  const applySuggestedNumber = (prefix = watchedSupplierPrefix || 'S') => {
     const next = getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) + 1;
     setLastNumber(next);
     form.setFieldsValue({ number: String(next) });
+    numberManuallyEditedRef.current = false;
+  };
+
+  // 建立時預填建議編號；使用者手動改過後不再覆寫（避免設定載入時把輸入清掉）
+  useEffect(() => {
+    if (current) return;
+
+    const prefix = watchedSupplierPrefix || 'S';
+    if (prevPrefixRef.current !== prefix) {
+      prevPrefixRef.current = prefix;
+      numberManuallyEditedRef.current = false;
+    }
+
+    if (numberManuallyEditedRef.current) return;
+
+    applySuggestedNumber(prefix);
   }, [financeSettings, supplierQuoteSettings, watchedSupplierPrefix, current, form]);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -1372,10 +1388,32 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             rules={[
               {
                 required: true,
+                message: '請輸入編號',
               },
             ]}
+            extra={
+              !current ? (
+                <span>
+                  預設為系統建議編號，可直接修改。
+                  <Button
+                    type="link"
+                    size="small"
+                    style={{ padding: 0, height: 'auto', marginLeft: 4 }}
+                    onClick={() => applySuggestedNumber()}
+                  >
+                    使用建議編號
+                  </Button>
+                </span>
+              ) : null
+            }
           >
-            <Input style={{ width: '100%' }} />
+            <Input
+              style={{ width: '100%' }}
+              placeholder="可手動輸入編號"
+              onChange={() => {
+                if (!current) numberManuallyEditedRef.current = true;
+              }}
+            />
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={4}>

@@ -13,6 +13,8 @@ const create = async (req, res) => {
   try {
     const {
       invoiceNumber,
+      customerName,
+      client,
       customerQuoteNumber,
       poNumber,
       costBy,
@@ -155,6 +157,8 @@ const create = async (req, res) => {
     const projectData = {
       name: projectName,
       invoiceNumber,
+      customerName: customerName != null ? String(customerName).trim() : '',
+      client: client || undefined,
       customerQuoteNumber:
         customerQuoteNumber != null ? String(customerQuoteNumber).trim() : '',
       poNumber: poNumber || '',

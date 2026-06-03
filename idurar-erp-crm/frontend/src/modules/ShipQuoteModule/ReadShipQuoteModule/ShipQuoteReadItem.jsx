@@ -685,21 +685,16 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
                 render: (t) => (t ? renderMultilineText(t) : '-'),
               },
               {
-                title: '單位',
-                dataIndex: 'unit',
-                width: 72,
-                align: 'center',
-                render: (v) => (v ? String(v) : '-'),
-              },
-              {
-                title: '單價 HKD',
-                dataIndex: 'unitPrice',
-                width: 160,
+                title: '單價/單位',
+                key: 'unitPricePerUnit',
+                width: 180,
                 align: 'right',
-                render: (v, row) =>
-                  v != null && v !== '' && !Number.isNaN(Number(v))
-                    ? moneyFormatter({ amount: Number(v), currency_code: currentErp.currency })
-                    : '-',
+                render: (_, row) => {
+                  const unitLabel = row?.unit != null && String(row.unit).trim() ? String(row.unit).trim() : '-';
+                  const v = row?.unitPrice;
+                  if (v == null || v === '' || Number.isNaN(Number(v))) return '-';
+                  return `${moneyFormatter({ amount: Number(v), currency_code: currentErp.currency })}/${unitLabel}`;
+                },
               },
             ]}
             dataSource={parseRentalExtraItems(currentErp.rentalExtraItems)}

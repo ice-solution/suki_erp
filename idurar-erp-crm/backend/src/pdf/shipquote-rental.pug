@@ -47,6 +47,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .summary-label { font-weight: bold; display: inline-block; min-width: 90px; text-align: right; padding-right: 8px; }
       .summary-value { display: inline-block; min-width: 100px; text-align: right; }
       .summary-row.subtotal .summary-value { text-decoration: underline; }
+      .summary-row.underline .summary-value { text-decoration: underline; }
       .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
@@ -74,8 +75,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
         white-space: pre-wrap;
         word-break: break-word;
       }
-      .extra-table .col-unit { text-align: center; width: 56px; }
-      .extra-table .col-price { text-align: right; width: 120px; }
+      .extra-table .col-price { text-align: right; width: 160px; white-space: nowrap; }
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
       .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
       .terms-section ol { margin: 0; padding-left: 18px; }
@@ -104,7 +104,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
     - const clientAddressPdf = (client.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
     - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
     - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
-    - const docNumber = model.invoiceNumber || (model.numberPrefix || 'S') + '-' + model.number + '/' + (model.year || '')
+    - const docNumber = (model.numberPrefix || 'S') + '-' + model.number
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
     - const itemsOnly = model.items || []
     -
@@ -245,11 +245,11 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   span.summary-label 合共港幣：
                   span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
                 if model.showDiscountPercentOnPdf !== false
-                  .summary-row
+                  .summary-row.underline
                     span.summary-label 折扣%：
                     span.summary-value #{formatDiscountPct(discount)}%
                 if model.showDiscountAmountOnPdf !== false
-                  .summary-row
+                  .summary-row.underline
                     span.summary-label 折扣金額：
                     span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
                 .summary-row.grand
@@ -287,8 +287,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 thead
                   tr
                     th.col-desc 摘要
-                    th.col-unit 單位
-                    th.col-price 單價 HKD $
+                    th.col-price 單價/單位 HKD $
                 tbody
                   each row in extraChunk
                     - const desc = (row && row.description) ? row.description : ''
@@ -296,10 +295,9 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                     - const up = row && row.unitPrice
                     tr
                       td #{desc}
-                      td.col-unit #{unitLabel || '-'}
                       td.col-price.num
                         if up != null && up !== '' && !isNaN(Number(up))
-                          | #{moneyFormatter({ amount: Number(up), currency_code: currency })}
+                          | #{moneyFormatter({ amount: Number(up), currency_code: currency })}/#{unitLabel || '-'}
                         else
                           | -
           unless isPuppeteer

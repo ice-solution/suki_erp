@@ -1,6 +1,10 @@
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
+const {
+  computeTotalValue,
+  roundMoney,
+} = require('../../../helpers/warehouseInventoryPricing');
 
 const update = async (req, res) => {
   try {
@@ -77,13 +81,19 @@ const update = async (req, res) => {
     }
     if (weight !== undefined) updateData.weight = parseFloat(weight) || 0;
     if (warehouse !== undefined) updateData.warehouse = warehouse;
-    if (unitPrice !== undefined) updateData.unitPrice = parseFloat(unitPrice) || 0;
+    if (unitPrice !== undefined) updateData.unitPrice = roundMoney(parseFloat(unitPrice) || 0);
     if (supplier !== undefined) updateData.supplier = supplier;
     if (project !== undefined) updateData.project = project;
     if (status !== undefined) updateData.status = status;
     if (minStockLevel !== undefined) updateData.minStockLevel = parseInt(minStockLevel) || 0;
     if (location !== undefined) updateData.location = location;
     if (notes !== undefined) updateData.notes = notes;
+
+    const finalQty =
+      updateData.quantity !== undefined ? updateData.quantity : existingInventory.quantity;
+    const finalUnitPrice =
+      updateData.unitPrice !== undefined ? updateData.unitPrice : existingInventory.unitPrice;
+    updateData.totalValue = computeTotalValue(finalQty, finalUnitPrice);
 
     const updatedInventory = await WarehouseInventory.findByIdAndUpdate(
       id,
@@ -100,8 +110,11 @@ const update = async (req, res) => {
         quantityChange: quantityChange,
         quantityBefore: oldQuantity,
         quantityAfter: newQuantity,
-        unitPrice: parseFloat(unitPrice) || existingInventory.unitPrice,
-        totalValue: Math.abs(quantityChange) * (parseFloat(unitPrice) || existingInventory.unitPrice),
+        unitPrice: updateData.unitPrice ?? existingInventory.unitPrice,
+        totalValue: computeTotalValue(
+          Math.abs(quantityChange),
+          updateData.unitPrice ?? existingInventory.unitPrice
+        ),
         project: project || existingInventory.project,
         reason: '庫存調整',
         notes: `數量從 ${oldQuantity} 調整為 ${newQuantity}`,

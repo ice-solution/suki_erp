@@ -31,7 +31,7 @@ import {
   formatFeeLineShortLabel,
   getFeeLineLabel,
 } from '@/utils/projectContractorFees';
-import { resolveCustomerQuoteNumber } from '@/utils/projectCustomerQuoteNumber';
+import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
 import { request } from '@/request';
 import SalaryManagement from '@/components/SalaryManagement';
 import calculate from '@/utils/calculate';
@@ -907,8 +907,8 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       
       <Descriptions title={translate('Project Information')}>
         <Descriptions.Item label="Quote Number">{currentProject.invoiceNumber}</Descriptions.Item>
-        <Descriptions.Item label="客戶 Quote Number">
-          {resolveCustomerQuoteNumber(currentProject) || '-'}
+        <Descriptions.Item label="客戶名">
+          {resolveProjectCustomerName(currentProject) || '-'}
         </Descriptions.Item>
         <Descriptions.Item label={translate('P.O Number')}>{currentProject.poNumber || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Description')}>{currentProject.description || '-'}</Descriptions.Item>

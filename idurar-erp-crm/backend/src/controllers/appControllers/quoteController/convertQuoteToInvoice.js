@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const QuoteModel = mongoose.model('Quote');
 const InvoiceModel = mongoose.model('Invoice');
+const ProjectModel = mongoose.model('Project');
 
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
@@ -41,6 +42,11 @@ function sumItemTotals(invoiceItems) {
 const convertQuoteToInvoice = async (req, res) => {
   try {
     const quote = await QuoteModel.findById(req.params.id);
+    const quoteNumberLink =
+      quote.numberPrefix && quote.number ? `${quote.numberPrefix}-${quote.number}` : quote.invoiceNumber;
+    const linkedProject = quoteNumberLink
+      ? await ProjectModel.findOne({ invoiceNumber: quoteNumberLink, removed: false })
+      : null;
 
     if (!quote) {
       return res.status(404).json({
@@ -165,11 +171,11 @@ const convertQuoteToInvoice = async (req, res) => {
           ? `${quote.numberPrefix}-${quote.number}`
           : quote.invoiceNumber,
       poNumber: poNumberForInvoice,
-      contactPerson: quote.contactPerson,
+      // 上單／轉發票：不帶備註與簽收單聯絡人（僅保留在原 Quote 作內部記錄）
       address: quote.address,
       clients: quote.clients,
       client: quote.client,
-      project: quote.project,
+      project: linkedProject?._id || quote.project,
       items: selectedItems,
       subTotal: Number(subTotal.toFixed(2)),
       discountTotal: Number(discountTotal.toFixed(2)),
@@ -179,7 +185,6 @@ const convertQuoteToInvoice = async (req, res) => {
       discount: quote.discount,
       showDiscountPercentOnPdf: quote.showDiscountPercentOnPdf,
       showDiscountAmountOnPdf: quote.showDiscountAmountOnPdf,
-      notes: quote.notes,
       status: 'sent',
       paymentStatus: 'unpaid',
       isOverdue: false,
@@ -188,6 +193,17 @@ const convertQuoteToInvoice = async (req, res) => {
     };
 
     const invoice = await new InvoiceModel(invoiceData).save();
+
+    // 同步到 Project Management：讓 project 詳情可即時見到新 Invoice
+    if (linkedProject && linkedProject._id) {
+      await ProjectModel.updateOne(
+        { _id: linkedProject._id, removed: false },
+        {
+          $addToSet: { invoices: invoice._id },
+          $set: { updated: new Date(), modified_at: new Date() },
+        }
+      );
+    }
 
     await QuoteModel.findByIdAndUpdate(req.params.id, {
       $set: {
