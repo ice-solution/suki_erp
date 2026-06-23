@@ -5,16 +5,20 @@ const ProjectModel = mongoose.model('Project');
 
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
-const { aggregateInvoicedQtyByQuoteLine, aggregateInvoicedQtyByShipQuoteLine } = require('@/helpers/quoteInvoiceFromQuote');
-const { resolvePoConversionLines } = require('@/helpers/resolvePoConversionLines');
+const {
+  aggregateInvoicedQtyByQuoteLine,
+  aggregateInvoicedQtyByShipQuoteLine,
+  aggregateInvoicedPercentageByQuoteLine,
+  aggregateInvoicedPercentageByShipQuoteLine,
+} = require('@/helpers/quoteInvoiceFromQuote');
+const { resolvePoConversionLines, resolvePoPercentageLines } = require('@/helpers/resolvePoConversionLines');
 const {
   MODE_A,
   MODE_B,
   roundMoney,
-  computeSourceDiscountedTotal,
   assertConversionModeAllowed,
-  assertPercentageWithinRemaining,
-  buildFullItemsFromSource,
+  assertLinePercentagesWithinRemaining,
+  buildInvoiceItemsFromPercentageLines,
   lockSourceInvoiceConversionMode,
 } = require('@/helpers/quoteInvoiceConversion');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
@@ -58,7 +62,7 @@ function computeInvoiceTotalsFromItems(selectedItems, discount) {
 
 /**
  * POST 轉發票核心（Quote / ShipQuote 共用）
- * body: { poNumber, conversionMode: 'A'|'B', lines?, projectPercentage? }
+ * body: { poNumber, conversionMode: 'A'|'B', lines?: [{ itemIndex, quantity|percentage }] }
  */
 async function convertSourceDocumentToInvoice({
   sourceDoc,
@@ -87,7 +91,6 @@ async function convertSourceDocumentToInvoice({
 
   let selectedItems;
   let orderFromQuoteLines;
-  let projectPercentage = null;
 
   if (conversionMode === MODE_A) {
     const aggregateFn = sourceQuoteId ? aggregateInvoicedQtyByQuoteLine : aggregateInvoicedQtyByShipQuoteLine;
@@ -110,13 +113,34 @@ async function convertSourceDocumentToInvoice({
     }));
     selectedItems = buildInvoiceItemsFromResolvedLines(items, resolved.lines);
   } else {
-    projectPercentage = Number(req.body?.projectPercentage);
+    const invoicedPctMap = sourceQuoteId
+      ? await aggregateInvoicedPercentageByQuoteLine(sourceQuoteId)
+      : await aggregateInvoicedPercentageByShipQuoteLine(sourceShipQuoteId);
+    const resolved = resolvePoPercentageLines({
+      items,
+      headerPo,
+      poNumber: poNumberForInvoice,
+      pctByLineMap: invoicedPctMap,
+      rawLines: req.body?.lines,
+      isPost: true,
+    });
+    if (!resolved.ok) {
+      return { ok: false, status: resolved.status, message: resolved.message };
+    }
     try {
-      await assertPercentageWithinRemaining(sourceQuoteId, sourceShipQuoteId, projectPercentage);
+      await assertLinePercentagesWithinRemaining(
+        sourceQuoteId,
+        sourceShipQuoteId,
+        resolved.lines
+      );
     } catch (err) {
       return { ok: false, status: 400, message: err.message };
     }
-    selectedItems = buildFullItemsFromSource(items);
+    orderFromQuoteLines = resolved.lines.map((l) => ({
+      itemIndex: l.itemIndex,
+      percentage: l.percentage,
+    }));
+    selectedItems = buildInvoiceItemsFromPercentageLines(items, resolved.lines);
   }
 
   const quoteNumberLink =
@@ -133,12 +157,7 @@ async function convertSourceDocumentToInvoice({
 
   const discount = sourceDoc.discount != null ? Number(sourceDoc.discount) : 0;
   const totals = computeInvoiceTotalsFromItems(selectedItems, discount);
-
-  let invoiceTotal = totals.total;
-  if (conversionMode === MODE_B) {
-    const sourceDiscountedTotal = computeSourceDiscountedTotal(sourceDoc);
-    invoiceTotal = roundMoney(calculate.multiply(sourceDiscountedTotal, projectPercentage / 100));
-  }
+  const invoiceTotal = totals.total;
 
   const invDate = new Date();
   const paymentDueDate = new Date(invDate.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -153,8 +172,7 @@ async function convertSourceDocumentToInvoice({
     ...(sourceShipQuoteId ? { sourceShipQuote: sourceShipQuoteId } : {}),
     invoiceConversionMode: conversionMode,
     orderFromPoNumber: poNumberForInvoice,
-    ...(conversionMode === MODE_A ? { orderFromQuoteLines } : {}),
-    ...(conversionMode === MODE_B ? { projectPercentage } : {}),
+    orderFromQuoteLines,
     numberPrefix: 'SMI',
     number: invoiceNumber.toString(),
     year: new Date().getFullYear(),

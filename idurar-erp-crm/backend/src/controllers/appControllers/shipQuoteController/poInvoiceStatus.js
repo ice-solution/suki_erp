@@ -1,12 +1,11 @@
 const mongoose = require('mongoose');
 
 const ShipQuoteModel = mongoose.model('ShipQuote');
-const { aggregateInvoicedQtyByShipQuoteLine } = require('@/helpers/quoteInvoiceFromQuote');
 const {
-  computeSourceDiscountedTotal,
-  detectLockedInvoiceConversionMode,
-  aggregateInvoicedPercentageBySource,
-} = require('@/helpers/quoteInvoiceConversion');
+  aggregateInvoicedQtyByShipQuoteLine,
+  aggregateInvoicedPercentageByShipQuoteLine,
+} = require('@/helpers/quoteInvoiceFromQuote');
+const { detectLockedInvoiceConversionMode } = require('@/helpers/quoteInvoiceConversion');
 
 /**
  * GET /shipquote/po-invoice-status/:id?poNumber=
@@ -32,6 +31,7 @@ const poInvoiceStatus = async (req, res) => {
     }
 
     const invoicedMap = await aggregateInvoicedQtyByShipQuoteLine(shipQuote._id, poNumber);
+    const invoicedPctMap = await aggregateInvoicedPercentageByShipQuoteLine(shipQuote._id);
     const headerPo = String(shipQuote.poNumber || '').trim();
     const lines = [];
     (shipQuote.items || []).forEach((item, itemIndex) => {
@@ -39,6 +39,7 @@ const poInvoiceStatus = async (req, res) => {
       if (linePo !== poNumber) return;
       const totalQty = Math.max(0, Math.floor(Number(item.quantity) || 0));
       const invoicedQty = Math.max(0, Math.floor(Number(invoicedMap[itemIndex] || 0)));
+      const invoicedPercentage = Math.max(0, Number(invoicedPctMap[itemIndex] || 0));
       lines.push({
         itemIndex,
         itemName: item.itemName,
@@ -47,6 +48,8 @@ const poInvoiceStatus = async (req, res) => {
         quoteQuantity: totalQty,
         orderedQty: invoicedQty,
         remainingQty: Math.max(0, totalQty - invoicedQty),
+        invoicedPercentage: Math.round(invoicedPercentage * 100) / 100,
+        remainingPercentage: Math.max(0, Math.round((100 - invoicedPercentage) * 100) / 100),
       });
     });
 
@@ -59,8 +62,6 @@ const poInvoiceStatus = async (req, res) => {
     }
 
     const lockedMode = await detectLockedInvoiceConversionMode(null, shipQuote._id);
-    const invoicedPercentage = await aggregateInvoicedPercentageBySource(null, shipQuote._id);
-    const quoteDiscountedTotal = computeSourceDiscountedTotal(shipQuote);
 
     return res.status(200).json({
       success: true,
@@ -68,9 +69,6 @@ const poInvoiceStatus = async (req, res) => {
         poNumber,
         lines,
         lockedConversionMode: lockedMode,
-        quoteDiscountedTotal,
-        invoicedPercentage,
-        remainingPercentage: Math.max(0, Math.round((100 - invoicedPercentage) * 100) / 100),
       },
       message: 'OK',
     });

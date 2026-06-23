@@ -222,7 +222,7 @@ body
     - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
     - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
     - const receiverPdfRaw = (model.receiver != null && String(model.receiver).trim()) ? String(model.receiver) : ''
-    - const docNumber = (model.numberPrefix || 'SML') + '-' + model.number
+    - const quoteNumber = model.invoiceNumber || ''
     - const docDate = model.openDate ? moment(model.openDate).utcOffset(480).format('DD/MM/YYYY') : '-'
     - const itemsOnly = model.items || []
     -
@@ -280,7 +280,7 @@ body
                 .info-row.info-row-indent #{projectAddressPdf || '-'}
                 .info-row 簽收單聯絡人：#{contactPersonPdf || '-'}
               td.info-right
-                .info-row 報價編號 : #{docNumber}
+                .info-row 報價編號 : #{quoteNumber}
                 .info-row 出貨日期 : #{docDate}
                 .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
                 .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}

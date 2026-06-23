@@ -1,6 +1,10 @@
 const mongoose = require('mongoose');
 
 const { calculate } = require('@/helpers');
+const {
+  aggregateInvoicedPercentageByQuoteLine,
+  aggregateInvoicedPercentageByShipQuoteLine,
+} = require('@/helpers/quoteInvoiceFromQuote');
 
 const MODE_A = 'A';
 const MODE_B = 'B';
@@ -52,7 +56,14 @@ function inferInvoiceConversionMode(invoice) {
     return invoice.invoiceConversionMode;
   }
   if (Array.isArray(invoice?.orderFromQuoteLines) && invoice.orderFromQuoteLines.length > 0) {
-    return MODE_A;
+    const hasQty = invoice.orderFromQuoteLines.some(
+      (l) => l?.quantity != null && Number(l.quantity) > 0
+    );
+    const hasPct = invoice.orderFromQuoteLines.some(
+      (l) => l?.percentage != null && Number(l.percentage) > 0
+    );
+    if (hasQty) return MODE_A;
+    if (hasPct) return MODE_B;
   }
   if (invoice?.projectPercentage != null && Number(invoice.projectPercentage) > 0 && Number(invoice.projectPercentage) < 100) {
     return MODE_B;
@@ -123,11 +134,39 @@ async function aggregateInvoicedPercentageBySource(sourceQuoteId, sourceShipQuot
 async function assertConversionModeAllowed(sourceQuoteId, sourceShipQuoteId, requestedMode) {
   const locked = await detectLockedInvoiceConversionMode(sourceQuoteId, sourceShipQuoteId);
   if (locked && locked !== requestedMode) {
-    const label = locked === MODE_A ? '按 P.O 行數量（A）' : '專案佔比（B）';
+    const label = locked === MODE_A ? '按 P.O 行數量（A）' : '逐項專案佔比（B）';
     throw new Error(`此報價已使用「${label}」方式轉發票，不可改用其他方式`);
   }
 }
 
+async function assertLinePercentagesWithinRemaining(
+  sourceQuoteId,
+  sourceShipQuoteId,
+  lines,
+  excludeInvoiceId = null
+) {
+  if (!Array.isArray(lines) || lines.length === 0) {
+    throw new Error('請至少一行填寫大於 0 的專案佔比 (%)');
+  }
+  const usedMap = sourceQuoteId
+    ? await aggregateInvoicedPercentageByQuoteLine(sourceQuoteId, excludeInvoiceId)
+    : await aggregateInvoicedPercentageByShipQuoteLine(sourceShipQuoteId, excludeInvoiceId);
+
+  for (const row of lines) {
+    const itemIndex = Number(row.itemIndex);
+    const pct = Number(row.percentage);
+    if (!Number.isFinite(itemIndex) || !Number.isFinite(pct) || pct <= 0 || pct > 100) {
+      throw new Error(`第 ${itemIndex + 1} 行專案佔比須為 0 至 100 之間的正數`);
+    }
+    const used = usedMap[itemIndex] != null ? Number(usedMap[itemIndex]) : 0;
+    const remaining = roundMoney(100 - used);
+    if (pct > remaining + 0.0001) {
+      throw new Error(`第 ${itemIndex + 1} 行專案佔比 ${pct}% 超過餘額 ${remaining}%`);
+    }
+  }
+}
+
+/** @deprecated 舊版整單專案佔比；新單請用 assertLinePercentagesWithinRemaining */
 async function assertPercentageWithinRemaining(sourceQuoteId, sourceShipQuoteId, percentage, excludeInvoiceId = null) {
   const pct = Number(percentage);
   if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
@@ -138,6 +177,26 @@ async function assertPercentageWithinRemaining(sourceQuoteId, sourceShipQuoteId,
   if (pct > remaining + 0.0001) {
     throw new Error(`專案佔比 ${pct}% 超過剩餘可轉 ${remaining}%`);
   }
+}
+
+function buildInvoiceItemsFromPercentageLines(items, resolvedLines) {
+  return resolvedLines.map(({ itemIndex, percentage }) => {
+    const item = items[itemIndex];
+    const pct = Math.min(100, Math.max(0, Number(percentage) || 0));
+    const quantity = Number(item.quantity) || 0;
+    const price = Number(item.price) || 0;
+    const baseTotal =
+      item.total != null ? Number(item.total) : calculate.multiply(quantity, price);
+    const lineTotal = roundMoney(calculate.multiply(baseTotal, pct / 100));
+    return {
+      itemName: item.itemName,
+      description: item.description,
+      quantity,
+      unit: item.unit,
+      price,
+      total: lineTotal,
+    };
+  });
 }
 
 function buildFullItemsFromSource(items) {
@@ -175,6 +234,24 @@ async function syncInvoicePercentageModeOnUpdate({ existingInvoice, body }) {
   const sourceShipQuoteId = existingInvoice.sourceShipQuote;
   if (!sourceQuoteId && !sourceShipQuoteId) return body;
 
+  if (Array.isArray(body.orderFromQuoteLines) && body.orderFromQuoteLines.length > 0) {
+    const pctLines = body.orderFromQuoteLines
+      .filter((l) => l?.percentage != null && Number(l.percentage) > 0)
+      .map((l) => ({
+        itemIndex: Number(l.itemIndex),
+        percentage: Number(l.percentage),
+      }));
+    if (pctLines.length > 0) {
+      await assertLinePercentagesWithinRemaining(
+        sourceQuoteId,
+        sourceShipQuoteId,
+        pctLines,
+        existingInvoice._id
+      );
+    }
+    return body;
+  }
+
   const rawPct =
     body.projectPercentage !== undefined ? body.projectPercentage : existingInvoice.projectPercentage;
   const newPct =
@@ -203,7 +280,9 @@ module.exports = {
   aggregateInvoicedPercentageBySource,
   assertConversionModeAllowed,
   assertPercentageWithinRemaining,
+  assertLinePercentagesWithinRemaining,
   buildFullItemsFromSource,
+  buildInvoiceItemsFromPercentageLines,
   lockSourceInvoiceConversionMode,
   syncInvoicePercentageModeOnUpdate,
 };
