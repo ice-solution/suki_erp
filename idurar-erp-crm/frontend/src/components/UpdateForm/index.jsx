@@ -36,11 +36,19 @@ export default function UpdateForm({ config, formElements, withUpload = false })
     if (fieldsValue.file && withUpload) {
       fieldsValue.file = fieldsValue.file[0].originFileObj;
     }
-    // const trimmedValues = Object.keys(fieldsValue).reduce((acc, key) => {
-    //   acc[key] = typeof fieldsValue[key] === 'string' ? fieldsValue[key].trim() : fieldsValue[key];
-    //   return acc;
-    // }, {});
-    dispatch(crud.update({ entity, id, jsonData: fieldsValue, withUpload }));
+
+    const payload = { ...fieldsValue };
+    if (['ship', 'winch'].includes(entity)) {
+      ['installationDate', 'dismantlingDate', 'returnDate', 'expiredDate'].forEach((field) => {
+        if (payload[field]) {
+          payload[field] = dayjs(payload[field]).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else if (Object.prototype.hasOwnProperty.call(payload, field)) {
+          payload[field] = null;
+        }
+      });
+    }
+
+    dispatch(crud.update({ entity, id, jsonData: payload, withUpload }));
   };
   useEffect(() => {
     if (current) {
@@ -77,6 +85,13 @@ export default function UpdateForm({ config, formElements, withUpload = false })
       }
       if (entity === 'client' && (newValues.contacts === undefined || newValues.contacts === null)) {
         newValues.contacts = [];
+      }
+      if (['ship', 'winch'].includes(entity)) {
+        ['installationDate', 'dismantlingDate', 'returnDate', 'expiredDate'].forEach((field) => {
+          if (newValues[field]) {
+            newValues[field] = dayjs(newValues[field]);
+          }
+        });
       }
       form.resetFields();
       form.setFieldsValue(newValues);

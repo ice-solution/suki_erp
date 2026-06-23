@@ -28,6 +28,14 @@ const schema = new mongoose.Schema({
   expiredDate: {
     type: Date,
   },
+  /** 安裝日期（使用中時由 S 單指派或於資產頁維護） */
+  installationDate: {
+    type: Date,
+  },
+  /** 拆卸日期 */
+  dismantlingDate: {
+    type: Date,
+  },
   // 狀態為待回廠/香港倉時，記錄回廠日期
   returnDate: {
     type: Date,

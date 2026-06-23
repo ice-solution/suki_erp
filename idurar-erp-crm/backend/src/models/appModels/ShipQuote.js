@@ -32,6 +32,11 @@ const shipQuoteSchema = new mongoose.Schema({
       ref: 'SupplierQuote',
     }],
   },
+  /** 轉發票鎖定方式：A=按行數量，B=專案佔比（首張發票決定） */
+  invoiceConversionMode: {
+    type: String,
+    enum: ['A', 'B'],
+  },
   numberPrefix: {
     type: String,
     enum: ['SML'],

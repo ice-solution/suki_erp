@@ -7,6 +7,7 @@ const {
   computeWeightedAverageUnitPrice,
   roundMoney,
 } = require('../../../helpers/warehouseInventoryPricing');
+const { warehouseProjectPopulate } = require('../../../helpers/warehouseProjects');
 
 /** 轉倉失敗時還原已變更的庫存與已寫入的交易 */
 async function rollbackTransfer({
@@ -186,9 +187,15 @@ const transfer = async (req, res) => {
         totalValue: computeTotalValue(parsedQty, transferUnitPrice),
         supplier: sourceInventory.supplier,
         project: sourceInventory.project,
+        projects: sourceInventory.projects?.length
+          ? sourceInventory.projects
+          : sourceInventory.project
+            ? [sourceInventory.project]
+            : [],
         status: 'available',
         minStockLevel: sourceInventory.minStockLevel,
         location: sourceInventory.location,
+        siteAddress: sourceInventory.siteAddress,
         notes: sourceInventory.notes,
         createdBy: req.admin._id,
       });
@@ -232,9 +239,15 @@ const transfer = async (req, res) => {
         totalValue: computeTotalValue(parsedQty, transferUnitPrice),
         supplier: sourceInventory.supplier,
         project: sourceInventory.project,
+        projects: sourceInventory.projects?.length
+          ? sourceInventory.projects
+          : sourceInventory.project
+            ? [sourceInventory.project]
+            : [],
         status: 'available',
         minStockLevel: sourceInventory.minStockLevel,
         location: sourceInventory.location,
+        siteAddress: sourceInventory.siteAddress,
         notes: sourceInventory.notes,
         createdBy: req.admin._id,
       });
@@ -248,12 +261,12 @@ const transfer = async (req, res) => {
 
     const updatedSourceInventory = await WarehouseInventory.findById(id)
       .populate('supplier', 'name')
-      .populate('project', 'name invoiceNumber')
+      .populate(warehouseProjectPopulate)
       .lean();
 
     const updatedTargetInventory = await WarehouseInventory.findById(targetInventoryId)
       .populate('supplier', 'name')
-      .populate('project', 'name invoiceNumber')
+      .populate(warehouseProjectPopulate)
       .lean();
 
     const successMessage =

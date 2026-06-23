@@ -13,8 +13,16 @@ const {
   revertAppliedSupplierQuoteStockChanges,
 } = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
 const {
+  assertAssetAssignableForSupplierQuote,
+} = require('@/helpers/assignableAssetStatus');
+const {
   assertSupplierQuoteMaterialsStock,
 } = require('@/helpers/validateSupplierQuoteMaterialsStock');
+const {
+  getAssetDatePayload,
+  stripSupplierQuoteAssetDateFields,
+  clearedAssetDateFields,
+} = require('@/helpers/supplierQuoteAssetDates');
 
 const create = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -217,6 +225,35 @@ const create = async (req, res) => {
     });
   }
 
+  try {
+    if (body.ship) {
+      const shipId = typeof body.ship === 'object' ? body.ship._id : body.ship;
+      const shipDoc = await Ship.findById(shipId).select('status registrationNumber').lean();
+      assertAssetAssignableForSupplierQuote(
+        shipDoc,
+        `船隻「${shipDoc?.registrationNumber || shipId}」`
+      );
+    }
+    if (body.winch) {
+      const winchId = typeof body.winch === 'object' ? body.winch._id : body.winch;
+      const winchDoc = await Winch.findById(winchId).select('status serialNumber').lean();
+      assertAssetAssignableForSupplierQuote(
+        winchDoc,
+        `爬纜器「${winchDoc?.serialNumber || winchId}」`
+      );
+    }
+  } catch (assetErr) {
+    return res.status(assetErr.statusCode || 400).json({
+      success: false,
+      result: null,
+      message: assetErr.message || '船隻／爬纜器狀態不符合指派條件',
+    });
+  }
+
+  const shipAssetDates = getAssetDatePayload(body, 'ship');
+  const winchAssetDates = getAssetDatePayload(body, 'winch');
+  stripSupplierQuoteAssetDateFields(body);
+
   // Creating a new document in the collection
   const result = await new Model(body).save();
 
@@ -278,7 +315,8 @@ const create = async (req, res) => {
       status: 'in_use',
       supplierNumber: supplierQuoteNumber,
       expiredDate: expiredDate,
-      updated: new Date()
+      ...shipAssetDates,
+      updated: new Date(),
     });
 
     // 記錄：這次 S單綁定到船隻
@@ -302,7 +340,8 @@ const create = async (req, res) => {
       status: 'in_use',
       supplierNumber: supplierQuoteNumber,
       expiredDate: expiredDate,
-      updated: new Date()
+      ...winchAssetDates,
+      updated: new Date(),
     });
 
     // 記錄：這次 S單綁定到爬纜器

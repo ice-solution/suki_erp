@@ -79,7 +79,12 @@ const warehouseInventorySchema = new mongoose.Schema({
     ref: 'Client',
   },
   
-  // 項目關聯
+  // 項目關聯（可多個報價／Project）
+  projects: [{
+    type: mongoose.Schema.ObjectId,
+    ref: 'Project',
+  }],
+  /** @deprecated 保留首個 project 供舊資料／查詢相容 */
   project: {
     type: mongoose.Schema.ObjectId,
     ref: 'Project',
@@ -101,6 +106,12 @@ const warehouseInventorySchema = new mongoose.Schema({
   
   // 位置信息
   location: {
+    type: String,
+    trim: true,
+  },
+
+  /** 地盤地址 */
+  siteAddress: {
     type: String,
     trim: true,
   },
@@ -128,6 +139,7 @@ warehouseInventorySchema.index({ category: 1 });
 warehouseInventorySchema.index({ sku: 1 });
 warehouseInventorySchema.index({ supplier: 1 });
 warehouseInventorySchema.index({ project: 1 });
+warehouseInventorySchema.index({ projects: 1 });
 warehouseInventorySchema.index({ status: 1 });
 
 // 虛擬字段：倉庫顯示名稱

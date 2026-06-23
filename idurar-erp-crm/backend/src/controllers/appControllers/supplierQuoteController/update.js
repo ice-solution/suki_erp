@@ -14,8 +14,16 @@ const {
   revertAppliedSupplierQuoteStockChanges,
 } = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
 const {
+  assertAssetAssignableForSupplierQuote,
+} = require('@/helpers/assignableAssetStatus');
+const {
   assertSupplierQuoteMaterialsStock,
 } = require('@/helpers/validateSupplierQuoteMaterialsStock');
+const {
+  getAssetDatePayload,
+  stripSupplierQuoteAssetDateFields,
+  clearedAssetDateFields,
+} = require('@/helpers/supplierQuoteAssetDates');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -124,6 +132,10 @@ const update = async (req, res) => {
   body['items'] = items;
   body['materials'] = materials;
   body['pdf'] = 'supplier-quote-' + req.params.id + '.pdf';
+
+  const shipAssetDates = getAssetDatePayload(body, 'ship');
+  const winchAssetDates = getAssetDatePayload(body, 'winch');
+  stripSupplierQuoteAssetDateFields(body);
 
   // Handle file uploads using express-fileupload
   if (req.files) {
@@ -402,14 +414,38 @@ const update = async (req, res) => {
     : null;
   const shouldCreateWinchBinding = !!newWinchId && oldWinchId !== newWinchId;
 
+  try {
+    if (newShipId && String(newShipId) !== String(oldShipId || '')) {
+      const shipDoc = await Ship.findById(newShipId).select('status registrationNumber').lean();
+      assertAssetAssignableForSupplierQuote(
+        shipDoc,
+        `船隻「${shipDoc?.registrationNumber || newShipId}」`
+      );
+    }
+    if (newWinchId && String(newWinchId) !== String(oldWinchId || '')) {
+      const winchDoc = await Winch.findById(newWinchId).select('status serialNumber').lean();
+      assertAssetAssignableForSupplierQuote(
+        winchDoc,
+        `爬纜器「${winchDoc?.serialNumber || newWinchId}」`
+      );
+    }
+  } catch (assetErr) {
+    return res.status(assetErr.statusCode || 400).json({
+      success: false,
+      result: null,
+      message: assetErr.message || '船隻／爬纜器狀態不符合指派條件',
+    });
+  }
+
   // 處理船隻：如果之前有ship但現在沒有，將之前的ship狀態改為回倉
   if (oldShipId) {
     // ship 被移除（現在沒有）或換了新的 ship
     if (!newShipId || oldShipId !== newShipId) {
       await Ship.findByIdAndUpdate(oldShipId, {
-        status: 'returned_warehouse_hk', // 預設為回倉(表衣)
+        status: 'returned_warehouse_hk',
         supplierNumber: null,
         expiredDate: null,
+        ...clearedAssetDateFields(),
         updated: new Date(),
       });
     }
@@ -420,9 +456,10 @@ const update = async (req, res) => {
     // winch 被移除（現在沒有）或換了新的 winch
     if (!newWinchId || oldWinchId !== newWinchId) {
       await Winch.findByIdAndUpdate(oldWinchId, {
-        status: 'returned_warehouse_hk', // 預設為回倉(表衣)
+        status: 'returned_warehouse_hk',
         supplierNumber: null,
         expiredDate: null,
+        ...clearedAssetDateFields(),
         updated: new Date(),
       });
     }
@@ -434,6 +471,7 @@ const update = async (req, res) => {
       status: 'in_use',
       supplierNumber: supplierQuoteNumber,
       expiredDate: expiredDate,
+      ...shipAssetDates,
       updated: new Date(),
     });
 
@@ -459,6 +497,7 @@ const update = async (req, res) => {
       status: 'in_use',
       supplierNumber: supplierQuoteNumber,
       expiredDate: expiredDate,
+      ...winchAssetDates,
       updated: new Date(),
     });
 

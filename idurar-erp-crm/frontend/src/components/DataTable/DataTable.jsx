@@ -21,6 +21,7 @@ import { useMoney, useDate } from '@/settings';
 import { generate as uniqueId } from 'shortid';
 
 import { useCrudContext } from '@/context/crud';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 function AddNewItem({ config }) {
   const { crudContextAction } = useCrudContext();
@@ -43,6 +44,7 @@ export default function DataTable({ config, extra = [] }) {
   const { crudContextAction } = useCrudContext();
   const { panel, collapsedBox, modal, readBox, editBox, advancedBox } = crudContextAction;
   const translate = useLanguage();
+  const showDelete = useCanDeleteRecords();
   const { moneyFormatter } = useMoney();
   const { dateFormat } = useDate();
 
@@ -119,9 +121,11 @@ export default function DataTable({ config, extra = [] }) {
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {translate('edit')}
           </Button>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
-            {translate('delete')}
-          </Button>
+          {showDelete ? (
+            <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
+              {translate('delete')}
+            </Button>
+          ) : null}
         </Space>
       ),
     },

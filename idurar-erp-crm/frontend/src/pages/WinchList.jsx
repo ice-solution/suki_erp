@@ -55,8 +55,6 @@ export default function WinchList() {
   const isSupplierQuoteCacheComplete = (c) =>
     c &&
     typeof c === 'object' &&
-    Object.prototype.hasOwnProperty.call(c, 'installationDate') &&
-    Object.prototype.hasOwnProperty.call(c, 'dismantlingDate') &&
     Object.prototype.hasOwnProperty.call(c, 'receiver');
 
   // 根據 supplierNumber 查找 SupplierQuote（含裝拆日期）
@@ -71,7 +69,7 @@ export default function WinchList() {
         options: {
           q: supplierNumber,
           fields:
-            'numberPrefix,number,address,invoiceNumber,installationDate,dismantlingDate,receiver',
+            'numberPrefix,number,address,invoiceNumber,receiver',
         },
       });
 
@@ -86,8 +84,6 @@ export default function WinchList() {
             id: matchedQuote._id,
             address: matchedQuote.address || null,
             invoiceNumber: matchedQuote.invoiceNumber || null,
-            installationDate: matchedQuote.installationDate || null,
-            dismantlingDate: matchedQuote.dismantlingDate || null,
             receiver: matchedQuote.receiver != null ? String(matchedQuote.receiver) : null,
           };
           setSupplierQuoteMap(prev => ({ ...prev, [supplierNumber]: info }));
@@ -209,37 +205,25 @@ export default function WinchList() {
       },
     });
 
-    // 裝拆日期（來自目前綁定之 S 單）
+    // 裝拆日期（記錄於爬纜器本身）
     baseColumns.push({
       title: '安裝日期',
-      dataIndex: 'supplierNumber',
+      dataIndex: 'installationDate',
       key: 'installationDate',
       width: 120,
-      render: (supplierNumber, record) => {
-        if (!supplierNumber || record.status !== 'in_use') return '-';
-        const info = supplierQuoteMap[supplierNumber];
-        if (isSupplierQuoteCacheComplete(info)) {
-          const d = info.installationDate;
-          return d ? dayjs(d).format(dateFormat) : '-';
-        }
-        findSupplierQuoteInfo(supplierNumber);
-        return '-';
+      render: (date, record) => {
+        if (record.status !== 'in_use' || !date) return '-';
+        return dayjs(date).format(dateFormat);
       },
     });
     baseColumns.push({
       title: '拆卸日期',
-      dataIndex: 'supplierNumber',
+      dataIndex: 'dismantlingDate',
       key: 'dismantlingDate',
       width: 120,
-      render: (supplierNumber, record) => {
-        if (!supplierNumber || record.status !== 'in_use') return '-';
-        const info = supplierQuoteMap[supplierNumber];
-        if (isSupplierQuoteCacheComplete(info)) {
-          const d = info.dismantlingDate;
-          return d ? dayjs(d).format(dateFormat) : '-';
-        }
-        findSupplierQuoteInfo(supplierNumber);
-        return '-';
+      render: (date, record) => {
+        if (record.status !== 'in_use' || !date) return '-';
+        return dayjs(date).format(dateFormat);
       },
     });
 

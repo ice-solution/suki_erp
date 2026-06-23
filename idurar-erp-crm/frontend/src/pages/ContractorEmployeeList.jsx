@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Popconfirm, message, Modal, Form, Input, Select, Space, Tag, DatePicker } from 'antd';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 function alphaNumGroupKey(raw) {
   const s = raw == null ? '' : String(raw).trim();
@@ -27,6 +28,7 @@ function compareAlphaNumGroup(a, b) {
 }
 
 const ContractorEmployeeList = () => {
+  const showDelete = useCanDeleteRecords();
   const [data, setData] = useState([]);
   const [contractors, setContractors] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -205,9 +207,11 @@ const ContractorEmployeeList = () => {
       render: (_, record) => (
         <div>
           <Button type="link" onClick={() => showModal(record)}>編輯</Button>
-          <Popconfirm title="確定要刪除嗎？" onConfirm={() => handleDelete(record._id)}>
-            <Button type="link" danger>刪除</Button>
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm title="確定要刪除嗎？" onConfirm={() => handleDelete(record._id)}>
+              <Button type="link" danger>刪除</Button>
+            </Popconfirm>
+          ) : null}
         </div>
       ),
     },

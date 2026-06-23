@@ -50,3 +50,8 @@ export function hasPermission({ perms, key, role }) {
   return normalized.includes(key);
 }
 
+/** 僅 owner / admin 可刪除業務記錄（一般 user 隱藏 del 按鈕） */
+export function canDeleteRecords(role) {
+  return role === 'admin' || role === 'owner';
+}
+

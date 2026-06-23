@@ -17,6 +17,7 @@ import request from '@/request/request';
 import { useSelector } from 'react-redux';
 import { selectCurrentAdmin } from '@/redux/auth/selectors';
 import { PAGE_PERMISSION_OPTIONS } from '@/utils/pagePermissions';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const ROLE_OPTIONS = [
   { value: 'owner', label: 'Owner' },
@@ -25,6 +26,7 @@ const ROLE_OPTIONS = [
 ];
 
 export default function AccountSettings() {
+  const showDelete = useCanDeleteRecords();
   const currentAdmin = useSelector(selectCurrentAdmin) || {};
   const canManageAccounts = currentAdmin?.role === 'admin' || currentAdmin?.role === 'owner';
   const [form] = Form.useForm();
@@ -177,16 +179,18 @@ export default function AccountSettings() {
             >
               重設密碼
             </Button>
-            <Popconfirm
-              title="確定要刪除此帳號嗎？刪除後該用戶將無法登入。"
-              onConfirm={() => handleDelete(record._id)}
-              okText="確定"
-              cancelText="取消"
-            >
-              <Button type="text" danger icon={<DeleteOutlined />} size="small">
-                刪除
-              </Button>
-            </Popconfirm>
+            {showDelete ? (
+              <Popconfirm
+                title="確定要刪除此帳號嗎？刪除後該用戶將無法登入。"
+                onConfirm={() => handleDelete(record._id)}
+                okText="確定"
+                cancelText="取消"
+              >
+                <Button type="text" danger icon={<DeleteOutlined />} size="small">
+                  刪除
+                </Button>
+              </Popconfirm>
+            ) : null}
           </Space>
         ) : null
       ),

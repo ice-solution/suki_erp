@@ -9,6 +9,12 @@ const {
   syncInvoiceNumberAcrossDocuments,
   syncProjectInvoiceNumberIfMatched,
 } = require('@/helpers/syncInvoiceNumberAcrossDocuments');
+const { syncInvoiceOrderFromSourceOnUpdate } = require('@/helpers/syncInvoiceOrderFromSource');
+const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
+const {
+  syncInvoicePercentageModeOnUpdate,
+  inferInvoiceConversionMode,
+} = require('@/helpers/quoteInvoiceConversion');
 const schema = require('./schemaValidate');
 
 const update = async (req, res) => {
@@ -69,7 +75,20 @@ const update = async (req, res) => {
   if (body.hasOwnProperty('currency')) {
     delete body.currency;
   }
-  
+
+  try {
+    if (inferInvoiceConversionMode(previousInvoice) !== 'B') {
+      await syncInvoiceOrderFromSourceOnUpdate({ existingInvoice: previousInvoice, body, items });
+    }
+    await syncInvoicePercentageModeOnUpdate({ existingInvoice: previousInvoice, body });
+  } catch (syncOrderErr) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: syncOrderErr.message || '同步來源報價轉發票數量失敗',
+    });
+  }
+
   // 注意：invoiceNumber 是用來關聯 Quote 的，如果用戶提供了就使用，否則保持原值
   // Invoice 自己的編號是從 numberPrefix + number 生成的（用於顯示）
   
@@ -150,11 +169,24 @@ const update = async (req, res) => {
     new: true, // return the new result instead of the old one
   }).exec();
 
+  let projectLink = null;
+  if (newQuoteNo || oldQuoteNo) {
+    try {
+      projectLink = await syncInvoiceToProjectsByQuoteNumber(req.params.id, newQuoteNo, {
+        previousQuoteNumber: oldQuoteNo,
+        preferredProjectId: body.linkToProjectId,
+      });
+    } catch (linkErr) {
+      console.error('Invoice project link failed:', linkErr);
+    }
+  }
+
   return res.status(200).json({
     success: true,
     result,
     message: 'we update this document ',
     ...(invoiceNumberSync ? { invoiceNumberSync } : {}),
+    ...(projectLink ? { projectLink } : {}),
   });
 };
 

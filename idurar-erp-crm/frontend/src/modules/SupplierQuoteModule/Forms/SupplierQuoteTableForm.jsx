@@ -25,11 +25,17 @@ import {
   discountPdfFieldsFromRecord,
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
+import { filterAssignableAssets } from '@/utils/assignableAssetStatus';
 import {
   getMaxOutboundQuantityForLine,
   isRealWarehouseMaterial,
   validateSupplierQuoteMaterialsStock,
 } from '@/utils/validateSupplierQuoteMaterialsStock';
+import {
+  XINGCHENG_FACTORY_WAREHOUSE,
+  isVirtualMaterialWarehouse,
+  formatMaterialWarehouseLabel,
+} from '@/utils/supplierQuoteMaterialWarehouse';
 
 function getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) {
   const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
@@ -265,9 +271,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     fetchClients();
     fetchSuppliers();
     fetchWarehouseItems();
+  }, []);
+
+  useEffect(() => {
     fetchShips();
     fetchWinches();
-  }, []);
+  }, [current?._id]);
 
   const fetchClients = async () => {
     try {
@@ -398,8 +407,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setMaterialsLoading(true);
       console.log('🔍 Fetching Warehouse Items from API...', selectedWarehouse ? `for warehouse ${selectedWarehouse}` : 'all warehouses');
       
-      // 「供應商管理」「其他」不對應實體倉庫，不從 API 獲取
-      if (selectedWarehouse === '其他' || selectedWarehouse === '供應商管理') {
+      // 「與成廠房」「其他」不對應實體倉庫，不從 API 獲取
+      if (isVirtualMaterialWarehouse(selectedWarehouse)) {
         setWarehouseItems([]);
         setWarehouseSelectList([]);
         setMaterialsLoading(false);
@@ -438,7 +447,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   /** 依貨品名稱或貨品編號（SKU）搜尋存倉（後端 search 已含 sku） */
   const searchWarehouseItemsForSelect = async (warehouse, searchText) => {
-    if (!warehouse || warehouse === '其他' || warehouse === '供應商管理') {
+    if (!warehouse || isVirtualMaterialWarehouse(warehouse)) {
       return;
     }
     const q = (searchText || '').trim();
@@ -461,21 +470,22 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  const ASSET_SELECT_STATUS = 'returned_warehouse_hk'; // 香港倉
-
-  // 獲取狀態為「香港倉」的船隻列表
+  // 獲取狀態為「香港倉」的船隻列表（非「正常」；編輯時保留本單已指派船隻）
   const fetchShips = async () => {
     try {
       setShipsLoading(true);
       const response = await request.listAll({ entity: 'ship' });
       if (response.success && Array.isArray(response.result)) {
-        const hkWarehouseShips = response.result.filter(
-          (ship) => ship.status === ASSET_SELECT_STATUS
-        );
-        const shipOptions = hkWarehouseShips.map(ship => ({
+        const assignedId = current?.ship
+          ? typeof current.ship === 'object'
+            ? current.ship._id
+            : current.ship
+          : null;
+        const hkWarehouseShips = filterAssignableAssets(response.result, assignedId);
+        const shipOptions = hkWarehouseShips.map((ship) => ({
           value: ship._id,
           label: ship.registrationNumber || '—',
-          ...ship
+          ...ship,
         }));
         setShips(shipOptions);
       }
@@ -487,19 +497,22 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  // 獲取狀態為「香港倉」的爬纜器列表
+  // 獲取狀態為「香港倉」的爬纜器列表（非「正常」；編輯時保留本單已指派爬纜器）
   const fetchWinches = async () => {
     try {
       setWinchesLoading(true);
       const response = await request.listAll({ entity: 'winch' });
       if (response.success && Array.isArray(response.result)) {
-        const hkWarehouseWinches = response.result.filter(
-          (winch) => winch.status === ASSET_SELECT_STATUS
-        );
-        const winchOptions = hkWarehouseWinches.map(winch => ({
+        const assignedId = current?.winch
+          ? typeof current.winch === 'object'
+            ? current.winch._id
+            : current.winch
+          : null;
+        const hkWarehouseWinches = filterAssignableAssets(response.result, assignedId);
+        const winchOptions = hkWarehouseWinches.map((winch) => ({
           value: winch._id,
           label: winch.serialNumber || '—',
-          ...winch
+          ...winch,
         }));
         setWinches(winchOptions);
       }
@@ -682,8 +695,6 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           date: dateVal,
           openDate: openDateVal,
           expiredDate: expiredVal,
-          installationDate: current.installationDate ? dayjs(current.installationDate) : undefined,
-          dismantlingDate: current.dismantlingDate ? dayjs(current.dismantlingDate) : undefined,
           subTotal: subVal,
           total: totalVal,
           discount: discount != null && discount !== '' ? discount : 0,
@@ -733,8 +744,27 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         setSelectedWinch(null);
         setSelectedWinchName(null);
       }
+
+      const datePatch = {};
+      if (currentShip) {
+        const shipObj = typeof currentShip === 'object' ? currentShip : null;
+        const shipInst = shipObj?.installationDate || current.installationDate;
+        const shipDism = shipObj?.dismantlingDate || current.dismantlingDate;
+        if (shipInst) datePatch.shipInstallationDate = dayjs(shipInst);
+        if (shipDism) datePatch.shipDismantlingDate = dayjs(shipDism);
+      }
+      if (currentWinch) {
+        const winchObj = typeof currentWinch === 'object' ? currentWinch : null;
+        const winchInst = winchObj?.installationDate || current.installationDate;
+        const winchDism = winchObj?.dismantlingDate || current.dismantlingDate;
+        if (winchInst) datePatch.winchInstallationDate = dayjs(winchInst);
+        if (winchDism) datePatch.winchDismantlingDate = dayjs(winchDism);
+      }
+      if (Object.keys(datePatch).length > 0) {
+        form.setFieldsValue(datePatch);
+      }
     }
-  }, [current, ships, winches]);
+  }, [current, ships, winches, form]);
 
   // 計算subTotal當materials或items改變時（計算 materials 和 items）
   useEffect(() => {
@@ -971,7 +1001,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     form.setFieldsValue({ items: updatedItems });
   };
 
-  // 處理材料選擇（僅「供應商管理」「其他」：從預設選項帶入名稱）
+  // 處理材料選擇（僅「與成廠房」「其他」：從預設選項帶入名稱）
   const handleOtherMaterialSelect = (value) => {
     setCurrentMaterial((prev) => ({
       ...prev,
@@ -986,9 +1016,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     { value: '雜項', label: '雜項' },
   ];
 
-  // 搜索倉庫項目（僅「供應商管理」「其他」用 AutoComplete 選項）
+  // 搜索倉庫項目（僅「與成廠房」「其他」用 AutoComplete 選項）
   const handleMaterialSearch = (searchText) => {
-    if (currentMaterial.warehouse === '其他' || currentMaterial.warehouse === '供應商管理') {
+    if (isVirtualMaterialWarehouse(currentMaterial.warehouse)) {
       if (!searchText) {
         return OTHER_MATERIAL_OPTIONS;
       }
@@ -1008,7 +1038,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     };
 
     if (field === 'warehouse') {
-      if (value === '其他' || value === '供應商管理') {
+      if (isVirtualMaterialWarehouse(value)) {
         updatedMaterial = {
           ...updatedMaterial,
           warehouseInventory: undefined,
@@ -1099,9 +1129,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 添加或更新材料到列表
   const addMaterialToList = () => {
-    const isVirtualWh =
-      currentMaterial.warehouse === '其他' ||
-      currentMaterial.warehouse === '供應商管理';
+    const isVirtualWh = isVirtualMaterialWarehouse(currentMaterial.warehouse);
 
     if (
       !currentMaterial.warehouse ||
@@ -1260,10 +1288,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       dataIndex: 'warehouse',
       key: 'warehouse',
       width: '15%',
-      render: (warehouse) => {
-        const opt = warehouseOptions?.find((o) => o.value === warehouse);
-        return opt ? opt.label : (warehouse || '-');
-      },
+      render: (warehouse) => formatMaterialWarehouseLabel(warehouse, warehouseOptions),
     },
     {
       title: translate('Item'),
@@ -1601,19 +1626,6 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       </Row>
 
       <Row gutter={[12, 0]}>
-        <Col className="gutter-row" span={12}>
-          <Form.Item name="installationDate" label="安裝日期" rules={[{ required: false }]}>
-            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="安裝日期（選填）" />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={12}>
-          <Form.Item name="dismantlingDate" label="拆卸日期" rules={[{ required: false }]}>
-            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="拆卸日期（選填）" />
-          </Form.Item>
-        </Col>
-      </Row>
-      
-      <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={6}>
           <Form.Item
             label={translate('Completed')}
@@ -1843,14 +1855,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
             options={[
               ...(warehouseOptions || []),
-              { value: '供應商管理', label: '供應商管理' },
+              { value: XINGCHENG_FACTORY_WAREHOUSE, label: XINGCHENG_FACTORY_WAREHOUSE },
               { value: '其他', label: '其他' },
             ]}
           />
         </Col>
         <Col span={8}>
-          {currentMaterial.warehouse === '其他' ||
-          currentMaterial.warehouse === '供應商管理' ? (
+          {isVirtualMaterialWarehouse(currentMaterial.warehouse) ? (
             <AutoComplete
               placeholder="輸入或選擇項目名稱..."
               onSearch={handleMaterialSearch}
@@ -2068,18 +2079,44 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               title: '類型',
               dataIndex: 'type',
               key: 'type',
-              width: '15%',
+              width: '10%',
             },
             {
               title: '登記號碼 / 序列號',
               dataIndex: 'name',
               key: 'name',
-              width: '70%',
+              width: '25%',
+            },
+            {
+              title: '安裝日期',
+              key: 'installationDate',
+              width: '20%',
+              render: (_, record) => (
+                <Form.Item
+                  name={record.key === 'ship' ? 'shipInstallationDate' : 'winchInstallationDate'}
+                  noStyle
+                >
+                  <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="安裝日期" />
+                </Form.Item>
+              ),
+            },
+            {
+              title: '拆卸日期',
+              key: 'dismantlingDate',
+              width: '20%',
+              render: (_, record) => (
+                <Form.Item
+                  name={record.key === 'ship' ? 'shipDismantlingDate' : 'winchDismantlingDate'}
+                  noStyle
+                >
+                  <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="拆卸日期" />
+                </Form.Item>
+              ),
             },
             {
               title: '操作',
               key: 'action',
-              width: '15%',
+              width: '10%',
               render: (_, record) => (
                 <Button
                   type="link"
@@ -2089,11 +2126,19 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                     if (record.type === '船隻') {
                       setSelectedShip(null);
                       setSelectedShipName(null);
-                      form.setFieldsValue({ ship: null });
+                      form.setFieldsValue({
+                        ship: null,
+                        shipInstallationDate: null,
+                        shipDismantlingDate: null,
+                      });
                     } else if (record.type === '爬纜器') {
                       setSelectedWinch(null);
                       setSelectedWinchName(null);
-                      form.setFieldsValue({ winch: null });
+                      form.setFieldsValue({
+                        winch: null,
+                        winchInstallationDate: null,
+                        winchDismantlingDate: null,
+                      });
                     }
                   }}
                 >
@@ -2147,10 +2192,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       <Form.Item name="winch" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
-      <Form.Item name="ship" style={{ display: 'none' }}>
+      <Form.Item name="shipInstallationDate" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
-      <Form.Item name="winch" style={{ display: 'none' }}>
+      <Form.Item name="shipDismantlingDate" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="winchInstallationDate" style={{ display: 'none' }}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="winchDismantlingDate" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
 

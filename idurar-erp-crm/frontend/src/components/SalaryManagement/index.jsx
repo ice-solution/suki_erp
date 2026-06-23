@@ -34,12 +34,14 @@ import {
 import { useMoney } from '@/settings';
 import { request } from '@/request';
 import dayjs from 'dayjs';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { Option } = Select;
 
 const isEmployedStatus = (employee) => (employee?.employmentStatus || '在職') === '在職';
 
 export default function SalaryManagement({ projectId, workProgressList = [] }) {
+  const showDelete = useCanDeleteRecords();
   const { moneyFormatter } = useMoney();
   const [salaries, setSalaries] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -374,21 +376,23 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
           >
             打咭
           </Button>
-          <Popconfirm
-            title="確定要刪除這條人工記錄嗎？"
-            onConfirm={() => handleDelete(record._id)}
-            okText="確定"
-            cancelText="取消"
-          >
-            <Button 
-              type="link" 
-              danger 
-              icon={<DeleteOutlined />} 
-              size="small"
+          {showDelete ? (
+            <Popconfirm
+              title="確定要刪除這條人工記錄嗎？"
+              onConfirm={() => handleDelete(record._id)}
+              okText="確定"
+              cancelText="取消"
             >
-              刪除
-            </Button>
-          </Popconfirm>
+              <Button 
+                type="link" 
+                danger 
+                icon={<DeleteOutlined />} 
+                size="small"
+              >
+                刪除
+              </Button>
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },

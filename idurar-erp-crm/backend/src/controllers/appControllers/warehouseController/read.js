@@ -1,6 +1,7 @@
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
+const { warehouseProjectPopulate } = require('../../../helpers/warehouseProjects');
 
 const read = async (req, res) => {
   try {
@@ -9,7 +10,7 @@ const read = async (req, res) => {
     // 查找存倉記錄
     const inventory = await WarehouseInventory.findById(id)
       .populate('supplier', 'name email phone')
-      .populate('project', 'name description')
+      .populate(warehouseProjectPopulate)
       .populate('createdBy', 'name email')
       .populate('updatedBy', 'name email')
       .lean();

@@ -10,8 +10,10 @@ import useLanguage from '@/locale/useLanguage';
 import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
 import { BASE_URL } from '@/config/serverApiConfig';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 export default function WorkProgressRead() {
+  const showDelete = useCanDeleteRecords();
   const { id } = useParams();
   const navigate = useNavigate();
   const translate = useLanguage();
@@ -526,21 +528,23 @@ export default function WorkProgressRead() {
                         style={{ padding: '4px', minWidth: 'auto' }}
                         title="編輯"
                       />
-                      <Button 
-                        type="text" 
-                        danger 
-                        icon={<DeleteOutlined />} 
-                        size="small"
-                        onClick={() => {
-                          Modal.confirm({
-                            title: '確認刪除',
-                            content: '確定要刪除這條進度記錄嗎？',
-                            onOk: () => handleDeleteHistory(record),
-                          });
-                        }}
-                        style={{ padding: '4px', minWidth: 'auto' }}
-                        title="刪除"
-                      />
+                      {showDelete ? (
+                        <Button 
+                          type="text" 
+                          danger 
+                          icon={<DeleteOutlined />} 
+                          size="small"
+                          onClick={() => {
+                            Modal.confirm({
+                              title: '確認刪除',
+                              content: '確定要刪除這條進度記錄嗎？',
+                              onOk: () => handleDeleteHistory(record),
+                            });
+                          }}
+                          style={{ padding: '4px', minWidth: 'auto' }}
+                          title="刪除"
+                        />
+                      ) : null}
                     </Space>
                   ),
                 },

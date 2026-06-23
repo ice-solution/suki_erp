@@ -679,11 +679,11 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Form.Item
             name="supplier"
             label={translate('suppliers')}
+            rules={[{ required: true, message: '請選擇供應商' }]}
           >
             <Select
               placeholder={translate('suppliers')}
               showSearch
-              allowClear
               filterOption={(input, option) =>
                 option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }

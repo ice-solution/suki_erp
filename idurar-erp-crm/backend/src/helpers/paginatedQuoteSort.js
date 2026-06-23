@@ -1,19 +1,27 @@
 /**
- * 報價／吊船列表預設排序：SML 單號數字由小到大。
- * Quote：先 SML 再 QU，同 prefix 依 number 數值升序。
- * ShipQuote（全為 SML）：僅依 number 數值升序。
+ * 報價／吊船列表預設排序：
+ * - Quote：SML → QU → 其他 prefix；同 prefix 依 number 前段數字升序，再依後綴字母升序
+ * - ShipQuote（全為 SML）：依 number 數字升序，再依後綴字母升序
  */
 
 function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-/**
- * 列表／搜尋：依關鍵字組成 $or 條件（含 SML-12345 子字串匹配）。
- * @param {string} searchTerm
- * @param {string[]} fieldsArray
- * @param {object} baseMatch 例如 { removed: false, type: '吊船' }
- */
+/** 與 aggregation 邏輯一致，供 neighbors 等處解析當前單號 */
+function parseQuoteNumberForSort(number) {
+  const raw = String(number ?? '').trim();
+  const m = raw.match(/^([0-9]+)(.*)$/);
+  if (!m) {
+    return { num: 0, suffix: raw.toLowerCase(), raw: raw.toLowerCase() };
+  }
+  return {
+    num: parseInt(m[1], 10) || 0,
+    suffix: (m[2] || '').toLowerCase(),
+    raw: raw.toLowerCase(),
+  };
+}
+
 function buildQuoteNumberSearchMatch(searchTerm, fieldsArray = [], baseMatch = { removed: false }) {
   const q = String(searchTerm || '').trim();
   const fields = { $or: [] };
@@ -86,32 +94,74 @@ const PREFIX_RANK_SWITCH = {
 };
 
 const NUMBER_NUM_FIELD = {
-  $convert: { input: '$number', to: 'int', onError: 0, onNull: 0 },
+  $let: {
+    vars: {
+      s: { $toString: { $ifNull: ['$number', ''] } },
+      lead: {
+        $regexFind: {
+          input: { $toString: { $ifNull: ['$number', ''] } },
+          regex: '^[0-9]+',
+        },
+      },
+    },
+    in: {
+      $convert: {
+        input: { $ifNull: ['$$lead.match', '0'] },
+        to: 'int',
+        onError: 0,
+        onNull: 0,
+      },
+    },
+  },
+};
+
+const NUMBER_SUFFIX_FIELD = {
+  $let: {
+    vars: {
+      s: { $toString: { $ifNull: ['$number', ''] } },
+      lead: {
+        $regexFind: {
+          input: { $toString: { $ifNull: ['$number', ''] } },
+          regex: '^[0-9]+',
+        },
+      },
+    },
+    in: {
+      $toLower: {
+        $cond: [
+          { $ifNull: ['$$lead.match', false] },
+          { $substrCP: ['$$s', { $strLenCP: '$$lead.match' }, 999] },
+          '$$s',
+        ],
+      },
+    },
+  },
+};
+
+const NUMBER_RAW_FIELD = {
+  $toLower: { $toString: { $ifNull: ['$number', ''] } },
 };
 
 function sortAddFields(includePrefixRank) {
+  const numberFields = {
+    _numberNum: NUMBER_NUM_FIELD,
+    _numberSuffix: NUMBER_SUFFIX_FIELD,
+    _numberRaw: NUMBER_RAW_FIELD,
+  };
   if (includePrefixRank) {
     return {
       _prefixRank: PREFIX_RANK_SWITCH,
-      _numberNum: NUMBER_NUM_FIELD,
+      ...numberFields,
     };
   }
-  return { _numberNum: NUMBER_NUM_FIELD };
+  return numberFields;
 }
 
 function defaultSortObj(includePrefixRank) {
-  return includePrefixRank
-    ? { _prefixRank: 1, _numberNum: 1 }
-    : { _numberNum: 1 };
+  const numberSort = { _numberNum: 1, _numberSuffix: 1, _numberRaw: 1 };
+  return includePrefixRank ? { _prefixRank: 1, ...numberSort } : numberSort;
 }
 
-/**
- * @param {import('mongoose').Model} Model
- * @param {object} matchQuery
- * @param {number} skip
- * @param {number} limit
- * @param {{ includePrefixRank?: boolean, populate?: object[] }} options
- */
 async function fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, options = {}) {
   const { includePrefixRank = true, populate = [] } = options;
 
@@ -142,6 +192,9 @@ async function fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, o
 module.exports = {
   PREFIX_RANK_SWITCH,
   NUMBER_NUM_FIELD,
+  NUMBER_SUFFIX_FIELD,
+  NUMBER_RAW_FIELD,
+  parseQuoteNumberForSort,
   sortAddFields,
   defaultSortObj,
   buildQuoteNumberSearchMatch,

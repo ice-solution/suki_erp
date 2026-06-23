@@ -104,6 +104,8 @@ const updateWinch = async (req, res) => {
     req.body.expiredDate = null;
     req.body.supplierNumber = null;
     req.body.assigned = null;
+    req.body.installationDate = null;
+    req.body.dismantlingDate = null;
     req.body.returnDate = parsedReturnDate;
   } else if (req.body.status === 'pending_maintenance') {
     const returnDateValue = req.body.returnDate;

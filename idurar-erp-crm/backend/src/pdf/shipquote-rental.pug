@@ -70,11 +70,8 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       }
       .extra-table th, .extra-table td { border: none; padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; }
       .extra-table th { background: transparent; font-weight: bold; }
-      .extra-table .col-desc { width: auto; }
-      .extra-table tbody td:first-child {
-        white-space: pre-wrap;
-        word-break: break-word;
-      }
+      .extra-table .col-no { width: 6%; text-align: center; white-space: nowrap; }
+      .extra-table .col-desc { width: auto; white-space: pre-wrap; word-break: break-word; }
       .extra-table .col-price { text-align: right; width: 160px; white-space: nowrap; }
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
       .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
@@ -199,6 +196,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
     - var serialBase = 0
+    - var extraSerialBase = 0
 
     each chunk, pageIndex in itemChunks
       .rental-page
@@ -286,20 +284,23 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 caption.extra-section-caption 附加項目
                 thead
                   tr
+                    th.col-no
                     th.col-desc 摘要
                     th.col-price 單價/單位 HKD $
                 tbody
-                  each row in extraChunk
+                  each row, extraIdx in extraChunk
                     - const desc = (row && row.description) ? row.description : ''
                     - const unitLabel = (row && row.unit) ? String(row.unit) : ''
                     - const up = row && row.unitPrice
                     tr
-                      td #{desc}
+                      td.col-no #{extraSerialBase + extraIdx + 1}
+                      td.col-desc #{desc}
                       td.col-price.num
                         if up != null && up !== '' && !isNaN(Number(up))
                           | #{moneyFormatter({ amount: Number(up), currency_code: currency })}/#{unitLabel || '-'}
                         else
                           | -
+          - extraSerialBase += extraChunk.length
           unless isPuppeteer
             .footer-section
               img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')

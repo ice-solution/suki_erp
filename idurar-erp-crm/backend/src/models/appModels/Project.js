@@ -13,9 +13,8 @@ const projectSchema = new mongoose.Schema({
     required: true,
   },
 
-  // Quote Number / 關聯單號：用來連結 Quote / S單 / 吊船 / Invoice，允許多個專案共用同一字串。
-  // 報價單不可重複應以「單據類別 type + numberPrefix + number」在各自 Collection 檢查，而非此欄位唯一。
-  // 若資料庫仍有舊索引 invoiceNumber_1，請執行：db.projects.dropIndex("invoiceNumber_1")
+  // Quote Number / 關聯單號：用來連結 Quote / S單 / 吊船 / Invoice。
+  // SML 單號在報價單與吊船報價之間不可重複；多張發票（SMI 等）可關聯同一專案。
   invoiceNumber: {
     type: String,
     required: true,

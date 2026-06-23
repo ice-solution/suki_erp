@@ -79,20 +79,6 @@ export default function SupplierQuote() {
       render: (date) => (date ? dayjs(date).format(dateFormat) : '-'),
     },
     {
-      title: '安裝日期',
-      dataIndex: 'installationDate',
-      width: 110,
-      ellipsis: false,
-      render: (d) => (d ? dayjs(d).format(dateFormat) : '-'),
-    },
-    {
-      title: '拆卸日期',
-      dataIndex: 'dismantlingDate',
-      width: 110,
-      ellipsis: false,
-      render: (d) => (d ? dayjs(d).format(dateFormat) : '-'),
-    },
-    {
       title: translate('Total'),
       dataIndex: 'total',
       width: 120,

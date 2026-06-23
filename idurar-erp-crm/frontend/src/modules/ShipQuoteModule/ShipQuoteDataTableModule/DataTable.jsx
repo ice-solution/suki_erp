@@ -23,6 +23,7 @@ import { generate as uniqueId } from 'shortid';
 import { useLocation } from 'react-router-dom';
 
 import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 
@@ -42,6 +43,7 @@ function AddNewItem({ config }) {
 
 export default function DataTable({ config, extra = [] }) {
   const translate = useLanguage();
+  const showDelete = useCanDeleteRecords();
   let { entity, dataTableColumns, disableAdd = false, searchConfig } = config;
 
   const { DATATABLE_TITLE } = config;
@@ -158,15 +160,17 @@ export default function DataTable({ config, extra = [] }) {
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {translate('edit')}
           </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record)}
-          >
-            {translate('delete')}
-          </Button>
+          {showDelete ? (
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+            >
+              {translate('delete')}
+            </Button>
+          ) : null}
         </Space>
       ),
     },

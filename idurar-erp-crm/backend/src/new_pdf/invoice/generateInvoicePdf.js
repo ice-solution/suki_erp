@@ -18,7 +18,9 @@ const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/form
 const {
   buildStandardQuoteFooterTemplate,
   buildSuperMaxImageFooterTemplate,
+  WING_SHUN_PDF_BOTTOM_MARGIN,
 } = require('../shared/quotePdfFooterTemplate');
+const { getWingShunQuotePdfPugLocals } = require('@/helpers/quotePdfPagination');
 
 /** 與 pdfController 內 Invoice 模板選擇一致 */
 function resolveInvoiceTemplateBasename(model) {
@@ -79,6 +81,7 @@ async function generateInvoicePdfBuffer(model) {
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
 
   const templatePath = resolveInvoiceTemplatePath(model);
+  const templateBasename = resolveInvoiceTemplateBasename(model);
   const htmlContent = pug.renderFile(templatePath, {
     model,
     settings,
@@ -89,6 +92,7 @@ async function generateInvoicePdfBuffer(model) {
     formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
+    ...(templateBasename === 'wse' ? getWingShunQuotePdfPugLocals(model.items || []) : {}),
   });
 
   const launchOpts = {
@@ -123,7 +127,7 @@ async function generateInvoicePdfBuffer(model) {
       margin: {
         top: '12mm',
         right: '10mm',
-        bottom: '28mm',
+        bottom: isSmi ? '28mm' : WING_SHUN_PDF_BOTTOM_MARGIN,
         left: '10mm',
       },
     });

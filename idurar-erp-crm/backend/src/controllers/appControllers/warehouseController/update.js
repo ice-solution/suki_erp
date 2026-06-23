@@ -5,6 +5,10 @@ const {
   computeTotalValue,
   roundMoney,
 } = require('../../../helpers/warehouseInventoryPricing');
+const {
+  applyWarehouseProjectsFields,
+  warehouseProjectPopulate,
+} = require('../../../helpers/warehouseProjects');
 
 const update = async (req, res) => {
   try {
@@ -20,9 +24,11 @@ const update = async (req, res) => {
       unitPrice,
       supplier,
       project,
+      projects,
       status,
       minStockLevel,
       location,
+      siteAddress,
       notes
     } = req.body;
 
@@ -83,10 +89,16 @@ const update = async (req, res) => {
     if (warehouse !== undefined) updateData.warehouse = warehouse;
     if (unitPrice !== undefined) updateData.unitPrice = roundMoney(parseFloat(unitPrice) || 0);
     if (supplier !== undefined) updateData.supplier = supplier;
-    if (project !== undefined) updateData.project = project;
+    if (projects !== undefined || project !== undefined) {
+      applyWarehouseProjectsFields(updateData, projects !== undefined ? projects : project);
+    }
     if (status !== undefined) updateData.status = status;
     if (minStockLevel !== undefined) updateData.minStockLevel = parseInt(minStockLevel) || 0;
     if (location !== undefined) updateData.location = location;
+    if (siteAddress !== undefined) {
+      updateData.siteAddress =
+        siteAddress != null && String(siteAddress).trim() ? String(siteAddress).trim() : null;
+    }
     if (notes !== undefined) updateData.notes = notes;
 
     const finalQty =
@@ -115,7 +127,7 @@ const update = async (req, res) => {
           Math.abs(quantityChange),
           updateData.unitPrice ?? existingInventory.unitPrice
         ),
-        project: project || existingInventory.project,
+        project: updateData.project ?? existingInventory.project,
         reason: '庫存調整',
         notes: `數量從 ${oldQuantity} 調整為 ${newQuantity}`,
         createdBy: req.admin._id
@@ -126,7 +138,7 @@ const update = async (req, res) => {
     // 重新查詢包含關聯數據的記錄
     const populatedInventory = await WarehouseInventory.findById(id)
       .populate('supplier', 'name')
-      .populate('project', 'name invoiceNumber')
+      .populate(warehouseProjectPopulate)
       .populate('createdBy', 'name')
       .populate('updatedBy', 'name')
       .lean();

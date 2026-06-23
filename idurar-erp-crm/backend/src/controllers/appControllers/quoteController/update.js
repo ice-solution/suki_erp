@@ -6,9 +6,22 @@ const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
 const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
+const assertQuoteSupplierRequired = require('@/helpers/assertQuoteSupplierRequired');
 
 const update = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
+
+  if (Object.prototype.hasOwnProperty.call(req.body, 'supplier')) {
+    try {
+      assertQuoteSupplierRequired(req.body);
+    } catch (err) {
+      return res.status(err.statusCode || 400).json({
+        success: false,
+        result: null,
+        message: err.message,
+      });
+    }
+  }
 
   if (items.length === 0) {
     return res.status(400).json({
@@ -55,6 +68,12 @@ const update = async (req, res) => {
     ...body,
     type: body.type != null && body.type !== '' ? body.type : existingTypeDoc?.type,
   };
+  if (!bodyForDup.invoiceNumber && bodyForDup.numberPrefix && bodyForDup.number) {
+    bodyForDup.invoiceNumber = `${bodyForDup.numberPrefix}-${bodyForDup.number}`;
+  }
+  if (!body.invoiceNumber && body.numberPrefix && body.number) {
+    body.invoiceNumber = `${body.numberPrefix}-${body.number}`;
+  }
   const dupCheck = await assertQuoteNumberUnique(Model, bodyForDup, req.params.id);
   if (!dupCheck.ok) {
     return res.status(400).json({

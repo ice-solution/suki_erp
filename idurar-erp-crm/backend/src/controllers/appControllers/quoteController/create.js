@@ -6,9 +6,20 @@ const custom = require('@/controllers/pdfController');
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
 const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
+const assertQuoteSupplierRequired = require('@/helpers/assertQuoteSupplierRequired');
 
 const create = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
+
+  try {
+    assertQuoteSupplierRequired(req.body);
+  } catch (err) {
+    return res.status(err.statusCode || 400).json({
+      success: false,
+      result: null,
+      message: err.message,
+    });
+  }
 
   // default
   let subTotal = 0;
@@ -32,6 +43,10 @@ const create = async (req, res) => {
   body['total'] = total;
   body['items'] = items;
   body['createdBy'] = req.admin._id;
+
+  if (!body['invoiceNumber'] && body['numberPrefix'] && body['number']) {
+    body['invoiceNumber'] = `${body['numberPrefix']}-${body['number']}`;
+  }
 
   const dupCheck = await assertQuoteNumberUnique(Model, body);
   if (!dupCheck.ok) {

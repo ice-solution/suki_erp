@@ -6,9 +6,23 @@ const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
 const { normalizeShipQuoteRentalExtraItems } = require('@/helpers/normalizeShipQuoteRentalExtras');
+const assertQuoteSupplierRequired = require('@/helpers/assertQuoteSupplierRequired');
+const { assertSharedQuoteNumberUnique } = require('@/helpers/assertSharedQuoteNumberUnique');
 
 const update = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
+
+  if (Object.prototype.hasOwnProperty.call(req.body, 'supplier')) {
+    try {
+      assertQuoteSupplierRequired(req.body);
+    } catch (err) {
+      return res.status(err.statusCode || 400).json({
+        success: false,
+        result: null,
+        message: err.message,
+      });
+    }
+  }
 
   if (items.length === 0) {
     return res.status(400).json({
@@ -41,6 +55,15 @@ const update = async (req, res) => {
   // 如果沒有提供 invoiceNumber，從 numberPrefix 和 number 組合生成
   if (!body['invoiceNumber'] && body['numberPrefix'] && body['number']) {
     body['invoiceNumber'] = `${body['numberPrefix']}-${body['number']}`;
+  }
+
+  const dupCheck = await assertSharedQuoteNumberUnique('shipquote', body, req.params.id);
+  if (!dupCheck.ok) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: dupCheck.message,
+    });
   }
 
   body['subTotal'] = subTotal;

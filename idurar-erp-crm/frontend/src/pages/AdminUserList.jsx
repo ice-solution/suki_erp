@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Popconfirm, message, Modal, Form, Input, Select } from 'antd';
 import axios from 'axios';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const AdminUserList = () => {
+  const showDelete = useCanDeleteRecords();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -55,9 +57,11 @@ const AdminUserList = () => {
       title: '操作',
       key: 'action',
       render: (_, record) => (
-        <Popconfirm title="確定要刪除嗎？" onConfirm={() => handleDelete(record._id)}>
-          <Button danger size="small">刪除</Button>
-        </Popconfirm>
+        showDelete ? (
+          <Popconfirm title="確定要刪除嗎？" onConfirm={() => handleDelete(record._id)}>
+            <Button danger size="small">刪除</Button>
+          </Popconfirm>
+        ) : null
       ),
     },
   ];

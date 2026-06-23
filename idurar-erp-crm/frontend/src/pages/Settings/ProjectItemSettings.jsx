@@ -4,10 +4,12 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 import { request } from '@/request';
 import { useMoney } from '@/settings';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { TextArea } = Input;
 
 export default function ProjectItemSettings() {
+  const showDelete = useCanDeleteRecords();
   const { moneyFormatter } = useMoney();
   const [form] = Form.useForm();
   
@@ -239,21 +241,23 @@ export default function ProjectItemSettings() {
             onClick={() => openModal(record)}
             title="編輯"
           />
-          <Popconfirm
-            title="確認刪除"
-            description="確定要刪除這個工程項目嗎？"
-            onConfirm={() => handleDelete(record._id)}
-            okText="確認"
-            cancelText="取消"
-          >
-            <Button 
-              type="text" 
-              danger 
-              icon={<DeleteOutlined />} 
-              size="small"
-              title="刪除"
-            />
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm
+              title="確認刪除"
+              description="確定要刪除這個工程項目嗎？"
+              onConfirm={() => handleDelete(record._id)}
+              okText="確認"
+              cancelText="取消"
+            >
+              <Button 
+                type="text" 
+                danger 
+                icon={<DeleteOutlined />} 
+                size="small"
+                title="刪除"
+              />
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },

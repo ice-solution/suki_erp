@@ -35,10 +35,12 @@ import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
 import { request } from '@/request';
 import SalaryManagement from '@/components/SalaryManagement';
 import calculate from '@/utils/calculate';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { Title, Text } = Typography;
 
 export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl }) {
+  const showDelete = useCanDeleteRecords();
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
@@ -678,16 +680,18 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           >
             Edit
           </Button>
-          <Button
-            type="link"
-            size="small"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => handleDeleteUsedContractorFee(index)}
-            style={{ paddingInline: 4 }}
-          >
-            刪除
-          </Button>
+          {showDelete ? (
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDeleteUsedContractorFee(index)}
+              style={{ paddingInline: 4 }}
+            >
+              刪除
+            </Button>
+          ) : null}
         </Space>
       ),
     },

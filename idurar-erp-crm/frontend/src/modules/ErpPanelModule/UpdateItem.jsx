@@ -114,16 +114,15 @@ export default function UpdateItem({ config, UpdateForm }) {
         } else {
           dataToUpdate.openDate = null;
         }
-        if (fieldsValue.installationDate) {
-          dataToUpdate.installationDate = dayjs(fieldsValue.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        } else {
-          dataToUpdate.installationDate = null;
-        }
-        if (fieldsValue.dismantlingDate) {
-          dataToUpdate.dismantlingDate = dayjs(fieldsValue.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        } else {
-          dataToUpdate.dismantlingDate = null;
-        }
+        ['shipInstallationDate', 'shipDismantlingDate', 'winchInstallationDate', 'winchDismantlingDate'].forEach(
+          (field) => {
+            if (fieldsValue[field]) {
+              dataToUpdate[field] = dayjs(fieldsValue[field]).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+            } else {
+              dataToUpdate[field] = null;
+            }
+          }
+        );
       }
       
       // Handle Invoice-specific date fields
@@ -165,6 +164,11 @@ export default function UpdateItem({ config, UpdateForm }) {
         dataToUpdate.poNumber = '';
         delete dataToUpdate.poNumbers;
       }
+
+      if (fieldsValue.shouldLinkToProject) {
+        dataToUpdate.linkToProjectId = fieldsValue.shouldLinkToProject;
+      }
+      delete dataToUpdate.shouldLinkToProject;
     }
 
     // Check if this is a supplierquote with actual file objects (not just empty arrays)
@@ -270,8 +274,10 @@ export default function UpdateItem({ config, UpdateForm }) {
 
       if ((entity || '').toLowerCase() === 'supplierquote') {
         formData.openDate = normalizePickerDate(formData.openDate);
-        formData.installationDate = normalizePickerDate(formData.installationDate);
-        formData.dismantlingDate = normalizePickerDate(formData.dismantlingDate);
+        formData.shipInstallationDate = normalizePickerDate(formData.shipInstallationDate);
+        formData.shipDismantlingDate = normalizePickerDate(formData.shipDismantlingDate);
+        formData.winchInstallationDate = normalizePickerDate(formData.winchInstallationDate);
+        formData.winchDismantlingDate = normalizePickerDate(formData.winchDismantlingDate);
       }
 
       if (!formData.taxRate) {

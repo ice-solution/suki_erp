@@ -118,6 +118,9 @@ export default function CreateItem({ config, CreateForm }) {
     if (fieldsValue) {
       // 移除shouldLinkToProject字段，這個字段只用於前端邏輯
       const { shouldLinkToProject, ...dataToSubmit } = fieldsValue;
+      if (shouldLinkToProject) {
+        dataToSubmit.linkToProjectId = shouldLinkToProject;
+      }
       
       if (dataToSubmit.items) {
         const newList = dataToSubmit.items.map(({ key, ...rest }) => ({
@@ -159,16 +162,15 @@ export default function CreateItem({ config, CreateForm }) {
         } else {
           dataToSubmit.openDate = null;
         }
-        if (dataToSubmit.installationDate) {
-          dataToSubmit.installationDate = dayjs(dataToSubmit.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        } else {
-          dataToSubmit.installationDate = null;
-        }
-        if (dataToSubmit.dismantlingDate) {
-          dataToSubmit.dismantlingDate = dayjs(dataToSubmit.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        } else {
-          dataToSubmit.dismantlingDate = null;
-        }
+        ['shipInstallationDate', 'shipDismantlingDate', 'winchInstallationDate', 'winchDismantlingDate'].forEach(
+          (field) => {
+            if (dataToSubmit[field]) {
+              dataToSubmit[field] = dayjs(dataToSubmit[field]).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+            } else {
+              dataToSubmit[field] = null;
+            }
+          }
+        );
       }
       
       // Check if this is a supplierquote with actual file objects (not just empty arrays)

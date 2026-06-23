@@ -127,13 +127,18 @@ const invoiceSchema = new mongoose.Schema({
     type: String,
     trim: true,
   },
-  /** 本次從報價各行的轉發票數量（itemIndex 對應 quote.items 下標） */
+  /** 本次從報價各行的轉發票數量（itemIndex 對應 quote.items 下標；A 模式） */
   orderFromQuoteLines: [
     {
       itemIndex: { type: Number },
       quantity: { type: Number },
     },
   ],
+  /** 轉發票方式：A=按 P.O 行數量，B=整單專案佔比 */
+  invoiceConversionMode: {
+    type: String,
+    enum: ['A', 'B'],
+  },
 
   // 項目items - 與Quote完全一致
   items: [

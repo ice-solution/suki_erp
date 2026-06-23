@@ -15,6 +15,7 @@ import { selectCurrentItem } from '@/redux/crud/selectors';
 import useLanguage from '@/locale/useLanguage';
 import { crud } from '@/redux/crud/actions';
 import { useCrudContext } from '@/context/crud';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 import { CrudLayout } from '@/layout';
 
@@ -27,6 +28,7 @@ function SidePanelTopContent({ config, formElements, withUpload }) {
   const { isReadBoxOpen, isEditBoxOpen } = state;
   const { result: currentItem } = useSelector(selectCurrentItem);
   const dispatch = useDispatch();
+  const showDelete = useCanDeleteRecords();
 
   const [labels, setLabels] = useState('');
   useEffect(() => {
@@ -54,15 +56,17 @@ function SidePanelTopContent({ config, formElements, withUpload }) {
           <p style={{ marginBottom: '10px' }}>{labels}</p>
         </Col>
         <Col span={14}>
-          <Button
-            onClick={removeItem}
-            type="text"
-            icon={<DeleteOutlined />}
-            size="small"
-            style={{ float: 'right', marginLeft: '5px', marginTop: '10px' }}
-          >
-            {translate('remove')}
-          </Button>
+          {showDelete ? (
+            <Button
+              onClick={removeItem}
+              type="text"
+              icon={<DeleteOutlined />}
+              size="small"
+              style={{ float: 'right', marginLeft: '5px', marginTop: '10px' }}
+            >
+              {translate('remove')}
+            </Button>
+          ) : null}
           <Button
             onClick={editItem}
             type="text"

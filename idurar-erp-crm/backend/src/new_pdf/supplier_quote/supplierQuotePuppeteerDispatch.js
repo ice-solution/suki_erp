@@ -2,6 +2,7 @@
  * SupplierQuote PDF：S 單（numberPrefix === 'S'）使用 Puppeteer + s.pug；其餘回傳 null 改走 html-pdf。
  */
 const { generateSupplierQuoteSPdfBuffer } = require('./generateSupplierQuoteSPdf');
+const { generateWingShunNoPdfBuffer } = require('./generateWingShunNoPdf');
 
 /**
  * @param {import('mongoose').Document} doc - SupplierQuote
@@ -11,6 +12,9 @@ async function tryGenerateSupplierQuotePdfBufferWithPuppeteer(doc) {
   if (!doc) return null;
   if (doc.numberPrefix === 'S') {
     return generateSupplierQuoteSPdfBuffer(doc);
+  }
+  if (doc.numberPrefix === 'NO') {
+    return generateWingShunNoPdfBuffer(doc);
   }
   return null;
 }

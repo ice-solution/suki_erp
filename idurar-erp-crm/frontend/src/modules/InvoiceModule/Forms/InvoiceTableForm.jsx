@@ -248,11 +248,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               <p>是否要在創建Invoice後自動關聯到此項目？</p>
             </div>
           ),
-          okText: '是，創建後關聯',
-          cancelText: '否，僅創建Invoice',
+          okText: '是，保存後關聯',
+          cancelText: '否，僅保存',
           icon: <LinkOutlined />,
           onOk: () => {
-            message.info('Invoice創建後將自動關聯到項目');
+            message.info('保存後將自動關聯到項目');
             form.setFieldsValue({ shouldLinkToProject: project._id });
           },
           onCancel: () => {

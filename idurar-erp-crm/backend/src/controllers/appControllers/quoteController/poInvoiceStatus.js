@@ -2,10 +2,14 @@ const mongoose = require('mongoose');
 
 const QuoteModel = mongoose.model('Quote');
 const { aggregateInvoicedQtyByQuoteLine } = require('@/helpers/quoteInvoiceFromQuote');
+const {
+  computeSourceDiscountedTotal,
+  detectLockedInvoiceConversionMode,
+  aggregateInvoicedPercentageBySource,
+} = require('@/helpers/quoteInvoiceConversion');
 
 /**
  * GET /quote/po-invoice-status/:id?poNumber=
- * 回傳該 Quote 在指定 P.O 下各行的報價數量、已開票、餘額（供轉發票 Modal）。
  */
 const poInvoiceStatus = async (req, res) => {
   try {
@@ -54,9 +58,20 @@ const poInvoiceStatus = async (req, res) => {
       });
     }
 
+    const lockedMode = await detectLockedInvoiceConversionMode(quote._id, null);
+    const invoicedPercentage = await aggregateInvoicedPercentageBySource(quote._id, null);
+    const quoteDiscountedTotal = computeSourceDiscountedTotal(quote);
+
     return res.status(200).json({
       success: true,
-      result: { poNumber, lines },
+      result: {
+        poNumber,
+        lines,
+        lockedConversionMode: lockedMode,
+        quoteDiscountedTotal,
+        invoicedPercentage,
+        remainingPercentage: Math.max(0, Math.round((100 - invoicedPercentage) * 100) / 100),
+      },
       message: 'OK',
     });
   } catch (error) {

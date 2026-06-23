@@ -1,4 +1,5 @@
 import { request } from '@/request';
+import { isVirtualMaterialWarehouse } from '@/utils/supplierQuoteMaterialWarehouse';
 
 const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D'];
 
@@ -62,7 +63,7 @@ export function computeOutboundMaterialDeltas(oldMaterials, newMaterials) {
 
 export function isRealWarehouseMaterial(material) {
   if (!material?.warehouse) return false;
-  if (material.warehouse === '其他' || material.warehouse === '供應商管理') return false;
+  if (isVirtualMaterialWarehouse(material.warehouse)) return false;
   return WAREHOUSE_KEYS.includes(String(material.warehouse).trim());
 }
 

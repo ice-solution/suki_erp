@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const { catchErrors } = require('../../../handlers/errorHandlers');
+const { warehouseProjectPopulate } = require('../../../helpers/warehouseProjects');
 
 function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -48,9 +49,11 @@ const list = async (req, res) => {
         { description: { $regex: safe, $options: 'i' } },
         { sku: { $regex: safe, $options: 'i' } },
         { location: { $regex: safe, $options: 'i' } },
+        { siteAddress: { $regex: safe, $options: 'i' } },
       ];
       if (projectIds.length > 0) {
         orConditions.push({ project: { $in: projectIds } });
+        orConditions.push({ projects: { $in: projectIds } });
       }
       query.$or = orConditions;
     }
@@ -72,7 +75,14 @@ const list = async (req, res) => {
     }
 
     if (project) {
-      query.project = project;
+      const projectFilter = { $or: [{ project }, { projects: project }] };
+      if (query.$or) {
+        const searchOr = query.$or;
+        delete query.$or;
+        query.$and = [{ $or: searchOr }, projectFilter];
+      } else {
+        Object.assign(query, projectFilter);
+      }
     }
 
     const sort = {};
@@ -88,7 +98,7 @@ const list = async (req, res) => {
     const [inventory, total] = await Promise.all([
       WarehouseInventory.find(query)
         .populate('supplier', 'name')
-        .populate('project', 'name invoiceNumber')
+        .populate(warehouseProjectPopulate)
         .populate('createdBy', 'name')
         .populate('updatedBy', 'name')
         .sort(sort)

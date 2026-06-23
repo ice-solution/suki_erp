@@ -31,6 +31,7 @@ import * as XLSX from 'xlsx';
 import { request } from '@/request';
 import { useSelector } from 'react-redux';
 import { selectWarehouseOptions, selectWarehouseItemCategories } from '@/redux/settings/selectors';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { Option } = Select;
 const { TextArea } = Input;
@@ -48,6 +49,7 @@ const computeDisplayTotal = (quantity, unitPrice) => {
 };
 
 export default function Warehouse() {
+  const showDelete = useCanDeleteRecords();
   const [loading, setLoading] = useState(false);
   const [inventoryList, setInventoryList] = useState([]);
   const [pagination, setPagination] = useState({
@@ -189,7 +191,7 @@ export default function Warehouse() {
     form.setFieldsValue({
       ...record,
       supplier: record.supplier?._id,
-      project: record.project?._id
+      projects: getProjectIdsFromRecord(record),
     });
     setModalVisible(true);
   };
@@ -319,10 +321,35 @@ export default function Warehouse() {
     }
   };
 
+  const getProjectIdsFromRecord = (record) => {
+    if (Array.isArray(record?.projects) && record.projects.length) {
+      return record.projects
+        .map((p) => (p && typeof p === 'object' && p._id != null ? p._id : p))
+        .filter(Boolean);
+    }
+    if (record?.project?._id) return [record.project._id];
+    if (record?.project) return [record.project];
+    return [];
+  };
+
   const getQuoteNumber = (record) => {
-    const p = record?.project;
-    if (!p) return '';
-    return p.invoiceNumber || p.quoteNumber || '';
+    const numbers = [];
+    const addFromProject = (p) => {
+      if (!p || typeof p !== 'object') return;
+      const qn = p.invoiceNumber || p.quoteNumber || '';
+      if (qn && !numbers.includes(qn)) numbers.push(String(qn));
+    };
+    if (Array.isArray(record?.projects) && record.projects.length) {
+      record.projects.forEach(addFromProject);
+    } else {
+      addFromProject(record?.project);
+    }
+    return numbers.join('、');
+  };
+
+  const getProjectLabel = (project) => {
+    if (!project) return '';
+    return project.invoiceNumber ? String(project.invoiceNumber) : project.name || '';
   };
 
   const getWarehouseLabel = (warehouse) => {
@@ -373,6 +400,7 @@ export default function Warehouse() {
         供應商: r.supplier?.name || '',
         重量_KG: r.weight != null && r.weight !== '' ? Number(r.weight) : '',
         報價單編號: getQuoteNumber(r) || '',
+        地盤地址: r.siteAddress || '',
         位置: r.location || '',
         備註: r.notes || '',
       }));
@@ -512,14 +540,22 @@ export default function Warehouse() {
     },
     {
       title: '報價單編號',
-      dataIndex: 'project',
+      dataIndex: 'projects',
       key: 'quoteNumber',
-      width: 140,
+      width: 200,
       ellipsis: true,
       render: (_, record) => {
         const qn = getQuoteNumber(record);
         return qn ? qn : '-';
       },
+    },
+    {
+      title: '地盤地址',
+      dataIndex: 'siteAddress',
+      key: 'siteAddress',
+      width: 160,
+      ellipsis: true,
+      render: (v) => v || '-',
     },
     {
       title: '操作',
@@ -548,20 +584,22 @@ export default function Warehouse() {
               onClick={() => handleTransfer(record)}
             />
           </Tooltip>
-          <Popconfirm
-            title="確定要刪除這個存倉記錄嗎？"
-            onConfirm={() => handleDelete(record._id)}
-            okText="確定"
-            cancelText="取消"
-          >
-            <Tooltip title="刪除">
-              <Button 
-                type="link" 
-                danger 
-                icon={<DeleteOutlined />}
-              />
-            </Tooltip>
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm
+              title="確定要刪除這個存倉記錄嗎？"
+              onConfirm={() => handleDelete(record._id)}
+              okText="確定"
+              cancelText="取消"
+            >
+              <Tooltip title="刪除">
+                <Button 
+                  type="link" 
+                  danger 
+                  icon={<DeleteOutlined />}
+                />
+              </Tooltip>
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },
@@ -587,7 +625,7 @@ export default function Warehouse() {
           </Button>
           <Input.Search
             allowClear
-            placeholder="搜尋貨品名稱、編號、報價單編號"
+            placeholder="搜尋貨品名稱、編號、報價單編號、地盤地址"
             prefix={<SearchOutlined style={{ color: 'rgba(0,0,0,.45)' }} />}
             style={{ width: 320 }}
             value={searchDraft}
@@ -794,34 +832,41 @@ export default function Warehouse() {
           <Row gutter={16}>
             <Col span={12}>
               <Form.Item
-                name="project"
-                label="項目"
+                name="projects"
+                label="項目（報價編號）"
               >
                 <Select
-                  placeholder="請選擇項目"
+                  mode="multiple"
+                  placeholder="請選擇一個或多個項目"
                   allowClear
                   showSearch
                   filterOption={(input, option) =>
-                    option.children.toLowerCase().indexOf(input.toLowerCase()) >= 0
+                    String(option?.children || '')
+                      .toLowerCase()
+                      .indexOf(input.toLowerCase()) >= 0
                   }
                 >
                   {projects.map((project) => (
                     <Option key={project._id} value={project._id}>
-                      {project.invoiceNumber ? String(project.invoiceNumber) : project.name}
+                      {getProjectLabel(project)}
                     </Option>
                   ))}
                 </Select>
               </Form.Item>
-              <Form.Item shouldUpdate={(prev, cur) => prev.project !== cur.project} noStyle>
+              <Form.Item shouldUpdate={(prev, cur) => prev.projects !== cur.projects} noStyle>
                 {({ getFieldValue }) => {
-                  const pid = getFieldValue('project');
-                  if (!pid) return null;
-                  const p = projects.find((x) => String(x._id) === String(pid));
-                  const qn = p?.invoiceNumber || p?.quoteNumber || '';
-                  if (!qn) return null;
+                  const pids = getFieldValue('projects') || [];
+                  if (!pids.length) return null;
+                  const labels = pids
+                    .map((pid) => {
+                      const p = projects.find((x) => String(x._id) === String(pid));
+                      return p?.invoiceNumber || p?.quoteNumber || '';
+                    })
+                    .filter(Boolean);
+                  if (!labels.length) return null;
                   return (
                     <div style={{ marginTop: -8, color: '#666', fontSize: 12 }}>
-                      Quote Number：{qn}
+                      Quote Number：{labels.join('、')}
                     </div>
                   );
                 }}
@@ -846,6 +891,13 @@ export default function Warehouse() {
             label="位置"
           >
             <Input placeholder="請輸入具體位置" />
+          </Form.Item>
+
+          <Form.Item
+            name="siteAddress"
+            label="地盤地址"
+          >
+            <TextArea rows={2} placeholder="請輸入地盤地址" />
           </Form.Item>
 
           <Form.Item

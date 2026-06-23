@@ -4,8 +4,10 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { settingsAction } from '@/redux/settings/actions';
 import { selectWarehouseItemCategories } from '@/redux/settings/selectors';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 export default function WarehouseItemCategorySettings() {
+  const showDelete = useCanDeleteRecords();
   const dispatch = useDispatch();
   const categoriesFromStore = useSelector(selectWarehouseItemCategories);
   const [form] = Form.useForm();
@@ -106,14 +108,16 @@ export default function WarehouseItemCategorySettings() {
             size="small"
             onClick={() => openModal(record.index)}
           />
-          <Popconfirm
-            title="確定要刪除此類別嗎？"
-            onConfirm={() => handleDelete(record.index)}
-            okText="確定"
-            cancelText="取消"
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm
+              title="確定要刪除此類別嗎？"
+              onConfirm={() => handleDelete(record.index)}
+              okText="確定"
+              cancelText="取消"
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },

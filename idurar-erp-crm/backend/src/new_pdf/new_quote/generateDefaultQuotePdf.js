@@ -14,7 +14,8 @@ const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
-const { buildStandardQuoteFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const { buildStandardQuoteFooterTemplate, WING_SHUN_PDF_BOTTOM_MARGIN } = require('../shared/quotePdfFooterTemplate');
+const { getWingShunQuotePdfPugLocals } = require('@/helpers/quotePdfPagination');
 
 function resolveQuoteTemplatePath() {
   const fileNameLower = 'quote.pug';
@@ -75,6 +76,7 @@ async function generateDefaultQuotePdfBuffer(model) {
     formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
+    ...getWingShunQuotePdfPugLocals(model.items || []),
   });
 
   const launchOpts = {
@@ -104,7 +106,7 @@ async function generateDefaultQuotePdfBuffer(model) {
       margin: {
         top: '12mm',
         right: '10mm',
-        bottom: '28mm',
+        bottom: WING_SHUN_PDF_BOTTOM_MARGIN,
         left: '10mm',
       },
     });

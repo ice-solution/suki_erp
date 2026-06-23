@@ -4,6 +4,7 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { settingsAction } from '@/redux/settings/actions';
 import { selectWarehouseSettings } from '@/redux/settings/selectors';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const DEFAULT_WAREHOUSE_LIST = [
   { value: 'A', name: 'A', location: '' },
@@ -13,6 +14,7 @@ const DEFAULT_WAREHOUSE_LIST = [
 ];
 
 export default function WarehouseSettings() {
+  const showDelete = useCanDeleteRecords();
   const dispatch = useDispatch();
   const warehouseSettings = useSelector(selectWarehouseSettings);
   const [form] = Form.useForm();
@@ -99,14 +101,16 @@ export default function WarehouseSettings() {
       render: (_, __, index) => (
         <Space size="small">
           <Button type="text" icon={<EditOutlined />} size="small" onClick={() => openModal(index)} />
-          <Popconfirm
-            title="確定要刪除此倉庫嗎？"
-            onConfirm={() => handleDelete(index)}
-            okText="確定"
-            cancelText="取消"
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm
+              title="確定要刪除此倉庫嗎？"
+              onConfirm={() => handleDelete(index)}
+              okText="確定"
+              cancelText="取消"
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },

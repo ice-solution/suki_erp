@@ -2,6 +2,11 @@ const mongoose = require('mongoose');
 
 const ShipQuoteModel = mongoose.model('ShipQuote');
 const { aggregateInvoicedQtyByShipQuoteLine } = require('@/helpers/quoteInvoiceFromQuote');
+const {
+  computeSourceDiscountedTotal,
+  detectLockedInvoiceConversionMode,
+  aggregateInvoicedPercentageBySource,
+} = require('@/helpers/quoteInvoiceConversion');
 
 /**
  * GET /shipquote/po-invoice-status/:id?poNumber=
@@ -53,9 +58,20 @@ const poInvoiceStatus = async (req, res) => {
       });
     }
 
+    const lockedMode = await detectLockedInvoiceConversionMode(null, shipQuote._id);
+    const invoicedPercentage = await aggregateInvoicedPercentageBySource(null, shipQuote._id);
+    const quoteDiscountedTotal = computeSourceDiscountedTotal(shipQuote);
+
     return res.status(200).json({
       success: true,
-      result: { poNumber, lines },
+      result: {
+        poNumber,
+        lines,
+        lockedConversionMode: lockedMode,
+        quoteDiscountedTotal,
+        invoicedPercentage,
+        remainingPercentage: Math.max(0, Math.round((100 - invoicedPercentage) * 100) / 100),
+      },
       message: 'OK',
     });
   } catch (error) {

@@ -4,8 +4,10 @@ import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { settingsAction } from '@/redux/settings/actions';
 import { selectItemUnits } from '@/redux/settings/selectors';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 export default function ItemUnitSettings() {
+  const showDelete = useCanDeleteRecords();
   const dispatch = useDispatch();
   const itemUnits = useSelector(selectItemUnits);
   const [form] = Form.useForm();
@@ -108,14 +110,16 @@ export default function ItemUnitSettings() {
             size="small"
             onClick={() => openModal(record.index)}
           />
-          <Popconfirm
-            title="確定要刪除此單位嗎？"
-            onConfirm={() => handleDelete(record.index)}
-            okText="確定"
-            cancelText="取消"
-          >
-            <Button type="text" danger icon={<DeleteOutlined />} size="small" />
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm
+              title="確定要刪除此單位嗎？"
+              onConfirm={() => handleDelete(record.index)}
+              okText="確定"
+              cancelText="取消"
+            >
+              <Button type="text" danger icon={<DeleteOutlined />} size="small" />
+            </Popconfirm>
+          ) : null}
         </Space>
       ),
     },

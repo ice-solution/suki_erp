@@ -13,9 +13,11 @@ async function aggregateInvoicedQtyByQuoteLine(quoteId, poNumber) {
   const rows = await InvoiceModel.aggregate([
     {
       $match: {
-        removed: false,
-        'converted.quote': oid,
-        orderFromPoNumber: pn,
+        removed: { $ne: true },
+        $and: [
+          { $or: [{ sourceQuote: oid }, { 'converted.quote': oid }] },
+          { $or: [{ orderFromPoNumber: pn }, { poNumber: pn }] },
+        ],
       },
     },
     { $unwind: { path: '$orderFromQuoteLines', preserveNullAndEmptyArrays: false } },
@@ -46,9 +48,11 @@ async function aggregateInvoicedQtyByShipQuoteLine(shipQuoteId, poNumber) {
   const rows = await InvoiceModel.aggregate([
     {
       $match: {
-        removed: false,
-        'converted.shipQuote': oid,
-        orderFromPoNumber: pn,
+        removed: { $ne: true },
+        $and: [
+          { $or: [{ sourceShipQuote: oid }, { 'converted.shipQuote': oid }] },
+          { $or: [{ orderFromPoNumber: pn }, { poNumber: pn }] },
+        ],
       },
     },
     { $unwind: { path: '$orderFromQuoteLines', preserveNullAndEmptyArrays: false } },

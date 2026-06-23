@@ -50,6 +50,26 @@ export default function WinchForm({ isUpdateForm = false }) {
         }}
       </Form.Item>
 
+      {/* 安裝／拆卸日期 - 使用中時可填 */}
+      <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}>
+        {({ getFieldValue }) => {
+          const statusValue = getFieldValue('status');
+          if (statusValue === 'in_use') {
+            return (
+              <>
+                <Form.Item label="安裝日期" name="installationDate" rules={[{ required: false }]}>
+                  <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                </Form.Item>
+                <Form.Item label="拆卸日期" name="dismantlingDate" rules={[{ required: false }]}>
+                  <DatePicker style={{ width: '100%' }} format="YYYY-MM-DD" />
+                </Form.Item>
+              </>
+            );
+          }
+          return null;
+        }}
+      </Form.Item>
+
       {/* 回廠日期 - 僅在狀態為「待保養」時顯示且必填 */}
       <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.status !== currentValues.status}>
         {({ getFieldValue }) => {

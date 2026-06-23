@@ -4,6 +4,7 @@ const Model = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
 const { increaseBySettingKey } = require('@/middlewares/settings');
+const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
 const schema = require('./schemaValidate');
 
 const create = async (req, res) => {
@@ -84,17 +85,28 @@ const create = async (req, res) => {
       new: true,
     }
   ).exec();
-  // Returning successfull response
 
   increaseBySettingKey({
     settingKey: 'last_invoice_number',
   });
 
-  // Returning successfull response
+  let projectLink = null;
+  const quoteNumber = body.invoiceNumber != null ? String(body.invoiceNumber).trim() : '';
+  if (quoteNumber) {
+    try {
+      projectLink = await syncInvoiceToProjectsByQuoteNumber(updateResult._id, quoteNumber, {
+        preferredProjectId: body.linkToProjectId,
+      });
+    } catch (linkErr) {
+      console.error('Invoice project link failed:', linkErr);
+    }
+  }
+
   return res.status(200).json({
     success: true,
     result: updateResult,
     message: 'Invoice created successfully',
+    ...(projectLink ? { projectLink } : {}),
   });
 };
 

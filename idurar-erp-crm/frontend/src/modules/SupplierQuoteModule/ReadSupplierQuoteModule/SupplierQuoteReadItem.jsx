@@ -21,6 +21,8 @@ import { selectCurrentItem, selectListItems } from '@/redux/erp/selectors';
 import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
 import { DOWNLOAD_BASE_URL, BASE_URL, FILE_BASE_URL } from '@/config/serverApiConfig';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
+import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
 
 /** S 單上傳檔（DN / Invoice）公開 URL：正式環境用 BASE_URL 或 FILE_BASE_URL，勿寫死 localhost */
 function supplierQuoteUploadedFileHref(file) {
@@ -66,9 +68,7 @@ const Item = ({ item, rowNumber }) => {
 };
 
 const MaterialRow = ({ material, moneyFormatter, currency, warehouseOptions }) => {
-  const warehouseLabel = material.warehouse
-    ? (warehouseOptions?.find((o) => o.value === material.warehouse)?.label || `${material.warehouse} / -`)
-    : '-';
+  const warehouseLabel = formatMaterialWarehouseLabel(material.warehouse, warehouseOptions);
   return (
   <Row gutter={[12, 0]}>
     <Col span={4}>{warehouseLabel}</Col>
@@ -83,6 +83,7 @@ const MaterialRow = ({ material, moneyFormatter, currency, warehouseOptions }) =
 };
 
 export default function SupplierQuoteReadItem({ config, selectedItem }) {
+  const showDelete = useCanDeleteRecords();
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
@@ -462,12 +463,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Number')}>{currentErp.number}</Descriptions.Item>
         <Descriptions.Item label="上單日期">{currentErp.date ? dayjs(currentErp.date).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
         <Descriptions.Item label="出貨日期">{currentErp.openDate ? dayjs(currentErp.openDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
-        <Descriptions.Item label="安裝日期">
-          {currentErp.installationDate ? dayjs(currentErp.installationDate).format('YYYY-MM-DD') : '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label="拆卸日期">
-          {currentErp.dismantlingDate ? dayjs(currentErp.dismantlingDate).format('YYYY-MM-DD') : '-'}
-        </Descriptions.Item>
         <Descriptions.Item label={translate('Type')}>{currentErp.type}</Descriptions.Item>
         {currentErp.type === '吊船' && currentErp.shipType && (
           <Descriptions.Item label={translate('Ship Type')}>{currentErp.shipType}</Descriptions.Item>
@@ -490,14 +485,46 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             : '-'}
         </Descriptions.Item>
         {currentErp.ship && (
-          <Descriptions.Item label="船隻">
-            <Tag color="blue">{currentErp.ship.registrationNumber || '—'}</Tag>
-          </Descriptions.Item>
+          <>
+            <Descriptions.Item label="船隻">
+              <Tag color="blue">{currentErp.ship.registrationNumber || '—'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="船隻安裝日期">
+              {currentErp.ship.installationDate
+                ? dayjs(currentErp.ship.installationDate).format('YYYY-MM-DD')
+                : currentErp.installationDate
+                  ? dayjs(currentErp.installationDate).format('YYYY-MM-DD')
+                  : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="船隻拆卸日期">
+              {currentErp.ship.dismantlingDate
+                ? dayjs(currentErp.ship.dismantlingDate).format('YYYY-MM-DD')
+                : currentErp.dismantlingDate
+                  ? dayjs(currentErp.dismantlingDate).format('YYYY-MM-DD')
+                  : '-'}
+            </Descriptions.Item>
+          </>
         )}
         {currentErp.winch && (
-          <Descriptions.Item label="爬纜器">
-            <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
-          </Descriptions.Item>
+          <>
+            <Descriptions.Item label="爬纜器">
+              <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
+            </Descriptions.Item>
+            <Descriptions.Item label="爬纜器安裝日期">
+              {currentErp.winch.installationDate
+                ? dayjs(currentErp.winch.installationDate).format('YYYY-MM-DD')
+                : currentErp.installationDate
+                  ? dayjs(currentErp.installationDate).format('YYYY-MM-DD')
+                  : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label="爬纜器拆卸日期">
+              {currentErp.winch.dismantlingDate
+                ? dayjs(currentErp.winch.dismantlingDate).format('YYYY-MM-DD')
+                : currentErp.dismantlingDate
+                  ? dayjs(currentErp.dismantlingDate).format('YYYY-MM-DD')
+                  : '-'}
+            </Descriptions.Item>
+          </>
         )}
         <Descriptions.Item label="制單人">
           {currentErp.createdBy
@@ -536,14 +563,16 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
                       {decodeFileName(file.name)}
                     </a>
                   </Tag>
-                  <Button 
-                    type="text" 
-                    size="small" 
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDeleteFile(file.id, 'dm', file.name)}
-                    title="刪除文件"
-                  />
+                  {showDelete ? (
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDeleteFile(file.id, 'dm', file.name)}
+                      title="刪除文件"
+                    />
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -561,14 +590,16 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
                       {decodeFileName(file.name)} ({file.fileType?.toUpperCase()})
                     </a>
                   </Tag>
-                  <Button 
-                    type="text" 
-                    size="small" 
-                    danger
-                    icon={<DeleteOutlined />}
-                    onClick={() => handleDeleteFile(file.id, 'invoice', file.name)}
-                    title="刪除文件"
-                  />
+                  {showDelete ? (
+                    <Button 
+                      type="text" 
+                      size="small" 
+                      danger
+                      icon={<DeleteOutlined />}
+                      onClick={() => handleDeleteFile(file.id, 'invoice', file.name)}
+                      title="刪除文件"
+                    />
+                  ) : null}
                 </div>
               ))}
             </div>

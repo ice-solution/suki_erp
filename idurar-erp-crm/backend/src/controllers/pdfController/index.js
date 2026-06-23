@@ -9,6 +9,15 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { getShipQuotePdfPugLocals } = require('@/new_pdf/ship_quote/generateShipQuotePdf');
+const { getWingShunQuotePdfPugLocals } = require('@/helpers/quotePdfPagination');
+
+function getWingShunPdfPugLocalsForTemplate(templateName, result) {
+  const t = (templateName || '').toLowerCase();
+  if (t === 'quote' || t === 'wse') {
+    return getWingShunQuotePdfPugLocals(result?.items || []);
+  }
+  return {};
+}
 
 // 注意：在不同 OS/部署環境下，pdf 模板檔名大小寫敏感度不同。
 // 為避免「只有小寫 pug 檔」時找不到模板，這裡不再以固定清單限制可用模板，
@@ -164,6 +173,7 @@ exports.generatePdf = async (
       moment: moment,
       isPuppeteer: false,
       ...getShipQuotePdfPugLocals(),
+      ...getWingShunPdfPugLocalsForTemplate(templateNameLower, result),
     });
 
     pdf
@@ -261,6 +271,7 @@ exports.generatePdfBuffer = async (
     moment: moment,
     isPuppeteer: false,
     ...getShipQuotePdfPugLocals(),
+    ...getWingShunPdfPugLocalsForTemplate(templateName, result),
   });
 
   return await new Promise((resolve, reject) => {

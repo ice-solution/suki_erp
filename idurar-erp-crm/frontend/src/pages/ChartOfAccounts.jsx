@@ -27,11 +27,13 @@ import {
   CalculatorOutlined
 } from '@ant-design/icons';
 import axios from 'axios';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
 
 const ChartOfAccounts = () => {
+  const showDelete = useCanDeleteRecords();
   const [accounts, setAccounts] = useState([]);
   const [hierarchy, setHierarchy] = useState([]);
   const [summary, setSummary] = useState({});
@@ -256,21 +258,23 @@ const ChartOfAccounts = () => {
           >
             編輯
           </Button>
-          <Button 
-            type="link" 
-            size="small" 
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => {
-              Modal.confirm({
-                title: '確認刪除',
-                content: `確定要刪除科目「${record.accountName}」嗎？`,
-                onOk: () => handleDelete(record._id),
-              });
-            }}
-          >
-            刪除
-          </Button>
+          {showDelete ? (
+            <Button 
+              type="link" 
+              size="small" 
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => {
+                Modal.confirm({
+                  title: '確認刪除',
+                  content: `確定要刪除科目「${record.accountName}」嗎？`,
+                  onOk: () => handleDelete(record._id),
+                });
+              }}
+            >
+              刪除
+            </Button>
+          ) : null}
         </Space>
       ),
     },

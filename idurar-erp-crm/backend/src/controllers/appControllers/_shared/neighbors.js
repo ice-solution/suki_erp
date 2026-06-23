@@ -1,5 +1,10 @@
 const mongoose = require('mongoose');
-const { PREFIX_RANK_SWITCH, NUMBER_NUM_FIELD } = require('../../../helpers/paginatedQuoteSort');
+const {
+  PREFIX_RANK_SWITCH,
+  NUMBER_NUM_FIELD,
+  NUMBER_SUFFIX_FIELD,
+  parseQuoteNumberForSort,
+} = require('../../../helpers/paginatedQuoteSort');
 
 function escapeRegex(str) {
   return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -90,36 +95,46 @@ async function neighborsByYearDescNumberAsc({ Model, baseMatch, currentId }) {
   return { prevId: prevDoc ? String(prevDoc._id) : null, nextId: nextDoc ? String(nextDoc._id) : null };
 }
 
-/** 吊船列表：SML 單號數字由小到大 */
+/** 吊船列表：SML 單號數字由小到大，同數字再比後綴字母 */
 async function neighborsBySmlNumberAsc({ Model, baseMatch, currentId }) {
   const cur = await Model.findOne({ _id: currentId, removed: false })
     .select('_id number')
     .lean();
   if (!cur) return { prevId: null, nextId: null };
 
-  const numberNum = parseInt(cur.number, 10) || 0;
+  const { num: numberNum, suffix: numberSuffix } = parseQuoteNumberForSort(cur.number);
   const match = { ...(baseMatch || {}), removed: false };
 
   const pipelineBase = [
     { $match: match },
-    { $addFields: { _numberNum: NUMBER_NUM_FIELD } },
+    { $addFields: { _numberNum: NUMBER_NUM_FIELD, _numberSuffix: NUMBER_SUFFIX_FIELD } },
   ];
 
-  const prevMatch = { _numberNum: { $lt: numberNum } };
-  const nextMatch = { _numberNum: { $gt: numberNum } };
+  const prevMatch = {
+    $or: [
+      { _numberNum: { $lt: numberNum } },
+      { $and: [{ _numberNum: numberNum }, { _numberSuffix: { $lt: numberSuffix } }] },
+    ],
+  };
+  const nextMatch = {
+    $or: [
+      { _numberNum: { $gt: numberNum } },
+      { $and: [{ _numberNum: numberNum }, { _numberSuffix: { $gt: numberSuffix } }] },
+    ],
+  };
 
   const [prevAgg, nextAgg] = await Promise.all([
     Model.aggregate([
       ...pipelineBase,
       { $match: prevMatch },
-      { $sort: { _numberNum: -1 } },
+      { $sort: { _numberNum: -1, _numberSuffix: -1 } },
       { $limit: 1 },
       { $project: { _id: 1 } },
     ]),
     Model.aggregate([
       ...pipelineBase,
       { $match: nextMatch },
-      { $sort: { _numberNum: 1 } },
+      { $sort: { _numberNum: 1, _numberSuffix: 1 } },
       { $limit: 1 },
       { $project: { _id: 1 } },
     ]),
@@ -140,7 +155,7 @@ async function neighborsForQuoteDefault({ currentId, q }) {
 
   const prefixRank =
     cur.numberPrefix === 'SML' ? 0 : cur.numberPrefix === 'QU' ? 1 : 2;
-  const numberNum = parseInt(cur.number, 10) || 0;
+  const { num: numberNum, suffix: numberSuffix } = parseQuoteNumberForSort(cur.number);
 
   const match = { removed: false };
   if (q && String(q).trim()) {
@@ -169,6 +184,7 @@ async function neighborsForQuoteDefault({ currentId, q }) {
       $addFields: {
         _prefixRank: PREFIX_RANK_SWITCH,
         _numberNum: NUMBER_NUM_FIELD,
+        _numberSuffix: NUMBER_SUFFIX_FIELD,
       },
     },
   ];
@@ -177,12 +193,26 @@ async function neighborsForQuoteDefault({ currentId, q }) {
     $or: [
       { _prefixRank: { $lt: prefixRank } },
       { $and: [{ _prefixRank: prefixRank }, { _numberNum: { $lt: numberNum } }] },
+      {
+        $and: [
+          { _prefixRank: prefixRank },
+          { _numberNum: numberNum },
+          { _numberSuffix: { $lt: numberSuffix } },
+        ],
+      },
     ],
   };
   const nextMatch = {
     $or: [
       { _prefixRank: { $gt: prefixRank } },
       { $and: [{ _prefixRank: prefixRank }, { _numberNum: { $gt: numberNum } }] },
+      {
+        $and: [
+          { _prefixRank: prefixRank },
+          { _numberNum: numberNum },
+          { _numberSuffix: { $gt: numberSuffix } },
+        ],
+      },
     ],
   };
 
@@ -190,14 +220,14 @@ async function neighborsForQuoteDefault({ currentId, q }) {
     Model.aggregate([
       ...pipelineBase,
       { $match: prevMatch },
-      { $sort: { _prefixRank: -1, _numberNum: -1 } },
+      { $sort: { _prefixRank: -1, _numberNum: -1, _numberSuffix: -1 } },
       { $limit: 1 },
       { $project: { _id: 1 } },
     ]),
     Model.aggregate([
       ...pipelineBase,
       { $match: nextMatch },
-      { $sort: { _prefixRank: 1, _numberNum: 1 } },
+      { $sort: { _prefixRank: 1, _numberNum: 1, _numberSuffix: 1 } },
       { $limit: 1 },
       { $project: { _id: 1 } },
     ]),

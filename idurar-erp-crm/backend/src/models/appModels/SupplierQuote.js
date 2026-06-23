@@ -55,16 +55,6 @@ const supplierQuoteSchema = new mongoose.Schema({
     type: Date,
     required: false,
   },
-  /** 安裝日期（選填） */
-  installationDate: {
-    type: Date,
-    required: false,
-  },
-  /** 拆卸日期（選填） */
-  dismantlingDate: {
-    type: Date,
-    required: false,
-  },
   isCompleted: {
     type: Boolean,
     default: false,
@@ -194,7 +184,7 @@ const supplierQuoteSchema = new mongoose.Schema({
       },
       warehouse: {
         type: String,
-        enum: ['A', 'B', 'C', 'D', '供應商管理', '其他'],
+        enum: ['A', 'B', 'C', 'D', '與成廠房', '供應商管理', '其他'],
         required: true,
       },
       itemName: {

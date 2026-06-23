@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import dayjs from 'dayjs';
 
 import { useDispatch, useSelector } from 'react-redux';
 import { crud } from '@/redux/crud/actions';
@@ -25,12 +26,18 @@ export default function CreateForm({ config, formElements, withUpload = false })
       fieldsValue.file = fieldsValue.file[0].originFileObj;
     }
 
-    // const trimmedValues = Object.keys(fieldsValue).reduce((acc, key) => {
-    //   acc[key] = typeof fieldsValue[key] === 'string' ? fieldsValue[key].trim() : fieldsValue[key];
-    //   return acc;
-    // }, {});
+    const payload = { ...fieldsValue };
+    if (['ship', 'winch'].includes(entity)) {
+      ['installationDate', 'dismantlingDate', 'returnDate', 'expiredDate'].forEach((field) => {
+        if (payload[field]) {
+          payload[field] = dayjs(payload[field]).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
+        } else if (Object.prototype.hasOwnProperty.call(payload, field)) {
+          payload[field] = null;
+        }
+      });
+    }
 
-    dispatch(crud.create({ entity, jsonData: fieldsValue, withUpload }));
+    dispatch(crud.create({ entity, jsonData: payload, withUpload }));
   };
 
   useEffect(() => {

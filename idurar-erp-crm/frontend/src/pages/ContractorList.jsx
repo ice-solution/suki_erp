@@ -2,8 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { Table, Button, Popconfirm, message, Modal, Form, Input, Tag, Space } from 'antd';
 import { KeyOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const ContractorList = () => {
+  const showDelete = useCanDeleteRecords();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchName, setSearchName] = useState('');
@@ -138,9 +140,11 @@ const ContractorList = () => {
             設置登入
           </Button>
           <Button type="link" onClick={() => showModal(record)} size="small">編輯</Button>
-          <Popconfirm title="確定要刪除嗎？" onConfirm={() => handleDelete(record._id)}>
-            <Button type="link" danger size="small">刪除</Button>
-          </Popconfirm>
+          {showDelete ? (
+            <Popconfirm title="確定要刪除嗎？" onConfirm={() => handleDelete(record._id)}>
+              <Button type="link" danger size="small">刪除</Button>
+            </Popconfirm>
+          ) : null}
         </div>
       ),
     },

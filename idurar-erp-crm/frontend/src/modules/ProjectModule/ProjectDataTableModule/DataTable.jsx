@@ -16,6 +16,7 @@ import { erp } from '@/redux/erp/actions';
 import { selectListItems } from '@/redux/erp/selectors';
 import { useErpContext } from '@/context/erp';
 import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { request } from '@/request';
 
 function AddNewItem({ config }) {
@@ -34,6 +35,7 @@ function AddNewItem({ config }) {
 
 export default function DataTable({ config, extra = [] }) {
   const translate = useLanguage();
+  const showDelete = useCanDeleteRecords();
   let { entity, dataTableColumns, disableAdd = false, searchConfig } = config;
 
   const { DATATABLE_TITLE } = config;
@@ -100,9 +102,11 @@ export default function DataTable({ config, extra = [] }) {
           <Button type="link" size="small" icon={<EditOutlined />} onClick={() => handleEdit(record)}>
             {translate('edit')}
           </Button>
-          <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
-            {translate('delete')}
-          </Button>
+          {showDelete ? (
+            <Button type="link" size="small" danger icon={<DeleteOutlined />} onClick={() => handleDelete(record)}>
+              {translate('delete')}
+            </Button>
+          ) : null}
         </Space>
       ),
     },

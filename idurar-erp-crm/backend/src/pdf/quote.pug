@@ -50,7 +50,7 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
       .notes-content { white-space: pre-wrap; word-wrap: break-word; }
-      .signature-section { margin-top: 12px; }
+      .signature-section { margin-top: 12px; page-break-inside: avoid; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .signature-table td { vertical-align: top; font-size: 10px; }
       .signature-table .sig-left { width: 50%; padding-right: 24px; text-align: left; }
@@ -62,7 +62,7 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
       .issuer-name-line { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
       .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; margin-top: 4px; }
-      .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
+      .quote-closing-block { page-break-inside: avoid; }
       .footer-section { margin-top: 12px; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
       .footer-line-1 { margin-bottom: 2px; }
       .footer-line-2 { }
@@ -73,6 +73,8 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
     if isPuppeteer
       style.
         html.puppeteer-default-quote .footer-section { display: none !important; }
+        html.puppeteer-default-quote body { padding-bottom: 0; }
+        html.puppeteer-default-quote .quote-page-last .quote-body { padding-bottom: 2mm; }
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const displayName = client.name || ''
@@ -81,55 +83,17 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
     - const docNumber = (model.numberPrefix || 'QU') + pdfNum
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD-MM-YYYY') : ''
     - const itemsOnly = model.items || []
-    -
-      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
-      const S_PDF_CHARS_PER_LINE = 24
-      const S_PDF_SAFETY_FACTOR = 1.25
-      const S_PDF_MAX_LINES_PER_PAGE = 30
-      function buildItemContentText(item) {
-        const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
-        const desc = item.description ? ' ' + item.description : ''
-        return (name + desc).trim() || '-'
-      }
-      function estimateItemContentLines(item) {
-        const text = buildItemContentText(item)
-        let lines = 0
-        const parts = String(text).split(/\r\n|\n|\r/)
-        for (let pi = 0; pi < parts.length; pi++) {
-          const seg = parts[pi]
-          lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
-        }
-        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
-      }
-      const itemChunks = []
-      let curChunk = []
-      let curLines = 0
-      for (let ii = 0; ii < itemsOnly.length; ii++) {
-        const it = itemsOnly[ii]
-        const L = estimateItemContentLines(it)
-        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
-          itemChunks.push(curChunk)
-          curChunk = []
-          curLines = 0
-        }
-        curChunk.push(it)
-        curLines += L
-      }
-      if (curChunk.length > 0) itemChunks.push(curChunk)
-      if (itemChunks.length === 0) itemChunks.push([])
+    - var itemChunks = itemChunks || [[]]
     - const subTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
-    - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
       .quote-page(class=pageIndex === itemChunks.length - 1 ? 'quote-page-last' : '')
         .quote-body
           .header-section
-            .header-top-row
-              .header-page Page #{pageIndex + 1}
             .header-company-wrap
               .company-name-qu 永 順 鐵 器 工 程 公 司
               .company-name-qu-english Wing Shun Metal Eng Co (O/B Super Pioneer Ltd)
@@ -147,8 +111,6 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
 
           .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
           .project-address-line 工程地址：#{model.address || ''}
-          if model.content || model.notes
-            .project-address-line 機號：#{model.content || model.notes || ''}
 
           table.quotation-table
             thead
@@ -159,69 +121,66 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
                 th.col-unit 單價 HKD$
                 th.col-amount 金額 HKD$
             tbody
-              each item, idx in chunk
+              each row, idx in chunk
+                - const item = row.item
+                - const contentText = row.contentText
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                 tr
-                  td.col-no #{serialBase + idx + 1}
-                  td.col-content #{item.itemName || ''}#{item.description ? ' ' + item.description : ''}
-                  td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
-                  td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
+                  td.col-no #{row.showMeta ? row.itemIndex + 1 : ''}
+                  td.col-content #{contentText}
+                  td.col-qty #{row.showMeta && item.quantity != null ? item.quantity : ''}#{row.showMeta ? ' / ' + unitLabel : ''}
+                  td.col-unit.num #{row.showMeta && item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
+                  td.col-amount.num #{row.showMeta && item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (row.showMeta && item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
               if chunk.length === 0
                 tr
                   td(colspan='5' style='text-align:center') 無項目
 
-          - serialBase += chunk.length
-
           if pageIndex === itemChunks.length - 1
-            .summary-wrap
-              .summary-block
-                .summary-row.subtotal
-                  span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                if model.showDiscountPercentOnPdf !== false
-                  .summary-row.underline
-                    span.summary-label 折扣%：
-                    span.summary-value #{formatDiscountPct(discount)}%
-                if model.showDiscountAmountOnPdf !== false
-                  .summary-row.underline
-                    span.summary-label 折扣金額：
-                    span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
-                .summary-row.grand
-                  span.summary-label 總金額：
-                  span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
+            .quote-closing-block
+              .summary-wrap
+                .summary-block
+                  .summary-row.subtotal
+                    span.summary-label 合共港幣：
+                    span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+                  if model.showDiscountPercentOnPdf !== false
+                    .summary-row.underline
+                      span.summary-label 折扣%：
+                      span.summary-value #{formatDiscountPct(discount)}%
+                  if model.showDiscountAmountOnPdf !== false
+                    .summary-row.underline
+                      span.summary-label 折扣金額：
+                      span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+                  .summary-row.grand
+                    span.summary-label 總金額：
+                    span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
 
-            .notes-block
-              .notes-content
-                if model.notes
-                  | #{model.notes}
+              .signature-section
+                .prepared-by-row
+                  span.prepared-by-label 制單人：
+                  if model.updatedBy && model.updatedBy.name
+                    span #{model.updatedBy.name}
+                  else if model.createdBy && model.createdBy.name
+                    span #{model.createdBy.name}
+                  else
+                    span.prepared-by-space
+                table.signature-table
+                  tr
+                    td.sig-left
+                      .issuer-block
+                        .issuer-name-line 核實者
+                        .issuer-name-line 同意及確定
+                        .issuer-stamp
+                        .signature-stamp-label 公司簽署及蓋章
+                    td.sig-right
+                      .issuer-block
+                        .issuer-name-line 發出者
+                        .issuer-name-line 永順鐵器工程公司
+                        .issuer-stamp
+                        .signature-stamp-label 公司簽署及蓋章
 
-            .signature-section
-              .prepared-by-row
-                span.prepared-by-label 制單人：
-                if model.updatedBy && model.updatedBy.name
-                  span #{model.updatedBy.name}
-                else if model.createdBy && model.createdBy.name
-                  span #{model.createdBy.name}
-                else
-                  span.prepared-by-space
-              table.signature-table
-                tr
-                  td.sig-left
-                    .issuer-block
-                      .issuer-name-line 核實者
-                      .issuer-name-line 同意及確定
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
-                  td.sig-right
-                    .issuer-block
-                      .issuer-name-line 發出者
-                      .issuer-name-line 永順鐵器工程公司
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
+              .end-marker End
 
-            .end-marker End
-
-        .footer-section
-          .footer-line-1 新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室 電話: 2776 4793, 2756 7579 傳真: 2776 4796
-          .footer-line-2 Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T. Tel: 2776 4793, 2756 7579 Fax: 2776 4796
+        if !isPuppeteer
+          .footer-section
+            .footer-line-1 新界火炭坳背灣街14-24號金豪工業大廈第2期14樓G&H室 電話: 2776 4793, 2756 7579 傳真: 2776 4796
+            .footer-line-2 Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T. Tel: 2776 4793, 2756 7579 Fax: 2776 4796

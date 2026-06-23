@@ -2,6 +2,10 @@ const WarehouseInventory = require('../../../models/appModels/WarehouseInventory
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
 const { computeTotalValue, roundMoney } = require('../../../helpers/warehouseInventoryPricing');
+const {
+  applyWarehouseProjectsFields,
+  warehouseProjectPopulate,
+} = require('../../../helpers/warehouseProjects');
 
 /**
  * 生成下一個可用的 SKU 編號
@@ -57,9 +61,11 @@ const create = async (req, res) => {
       unitPrice,
       supplier,
       project,
+      projects,
       status = 'available',
       minStockLevel = 0,
       location,
+      siteAddress,
       notes
     } = req.body;
 
@@ -106,13 +112,15 @@ const create = async (req, res) => {
       unitPrice: parsedUnitPrice,
       totalValue: computeTotalValue(parsedQuantity, parsedUnitPrice),
       supplier,
-      project,
       status: parsedQuantity <= 0 ? 'out_of_stock' : status,
       minStockLevel: parseInt(minStockLevel) || 0,
       location,
+      siteAddress: siteAddress != null && String(siteAddress).trim() ? String(siteAddress).trim() : undefined,
       notes,
       createdBy: req.admin._id
     };
+
+    applyWarehouseProjectsFields(inventoryData, projects !== undefined ? projects : project);
 
     const warehouseInventory = new WarehouseInventory(inventoryData);
     await warehouseInventory.save();
@@ -127,7 +135,7 @@ const create = async (req, res) => {
         quantityAfter: parsedQuantity,
         unitPrice: parsedUnitPrice,
         totalValue: computeTotalValue(parsedQuantity, parsedUnitPrice),
-        project,
+        project: inventoryData.project,
         reason: '初始入庫',
         notes: '系統自動建立',
         createdBy: req.admin._id
@@ -138,7 +146,7 @@ const create = async (req, res) => {
     // 重新查詢包含關聯數據的記錄
     const populatedInventory = await WarehouseInventory.findById(warehouseInventory._id)
       .populate('supplier', 'name')
-      .populate('project', 'name invoiceNumber')
+      .populate(warehouseProjectPopulate)
       .populate('createdBy', 'name')
       .lean();
 

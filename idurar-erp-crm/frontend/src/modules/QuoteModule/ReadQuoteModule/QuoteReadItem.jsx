@@ -16,6 +16,7 @@ import {
   Input,
   Table,
   InputNumber,
+  Radio,
 } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
@@ -152,6 +153,10 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [poPreviewLoading, setPoPreviewLoading] = useState(false);
   /** itemIndex -> 本次數量 */
   const [poOrderQtyByIndex, setPoOrderQtyByIndex] = useState({});
+  /** 轉發票：A=按行數量 B=專案佔比 */
+  const [invoiceConversionMode, setInvoiceConversionMode] = useState('A');
+  const [conversionPercentage, setConversionPercentage] = useState(null);
+  const [poInvoiceMeta, setPoInvoiceMeta] = useState(null);
 
   let storedCtx = null;
   try {
@@ -275,9 +280,22 @@ export default function QuoteReadItem({ config, selectedItem }) {
             init[row.itemIndex] = row.remainingQty;
           });
           setPoOrderQtyByIndex(init);
+          if (poModalMode === 'invoice') {
+            setPoInvoiceMeta({
+              lockedConversionMode: data.result.lockedConversionMode || null,
+              quoteDiscountedTotal: data.result.quoteDiscountedTotal,
+              invoicedPercentage: data.result.invoicedPercentage ?? 0,
+              remainingPercentage: data.result.remainingPercentage ?? 100,
+            });
+            const locked = data.result.lockedConversionMode;
+            if (locked === 'A' || locked === 'B') {
+              setInvoiceConversionMode(locked);
+            }
+          }
         } else {
           setPoPreviewLines([]);
           setPoOrderQtyByIndex({});
+          setPoInvoiceMeta(null);
           if (data?.message) {
             message.error(data.message);
           }
@@ -302,6 +320,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
     setPoPreviewLines([]);
     setPoOrderQtyByIndex({});
     setPoPreviewLoading(false);
+    setInvoiceConversionMode('A');
+    setConversionPercentage(null);
+    setPoInvoiceMeta(null);
   };
 
   const openPoModal = (mode) => {
@@ -331,19 +352,37 @@ export default function QuoteReadItem({ config, selectedItem }) {
       message.warning('請選擇 P.O number');
       return;
     }
-    const lines = poPreviewLines
-      .map((row) => ({
-        itemIndex: row.itemIndex,
-        quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
-      }))
-      .filter((l) => l.quantity > 0);
-
-    if (lines.length === 0) {
-      message.warning('請至少一行填寫大於 0 的本次轉發票數量');
-      return;
-    }
 
     const poNumber = selectedPoNumber;
+    const payload = { poNumber, conversionMode: invoiceConversionMode };
+
+    if (invoiceConversionMode === 'B') {
+      const pct = Number(conversionPercentage);
+      if (!Number.isFinite(pct) || pct <= 0) {
+        message.warning('請填寫大於 0 的專案佔比 (%)');
+        return;
+      }
+      const remaining = poInvoiceMeta?.remainingPercentage ?? 100;
+      if (pct > remaining) {
+        message.warning(`專案佔比不可超過剩餘 ${remaining}%`);
+        return;
+      }
+      payload.projectPercentage = pct;
+    } else {
+      const lines = poPreviewLines
+        .map((row) => ({
+          itemIndex: row.itemIndex,
+          quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
+        }))
+        .filter((l) => l.quantity > 0);
+
+      if (lines.length === 0) {
+        message.warning('請至少一行填寫大於 0 的本次轉發票數量');
+        return;
+      }
+      payload.lines = lines;
+    }
+
     closePoModal();
     setConvertLoading(true);
     try {
@@ -353,10 +392,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
       if (auth) {
         axios.defaults.headers.common['Authorization'] = `Bearer ${auth.current.token}`;
       }
-      const response = await axios.post(`quote/convert/${currentErp._id}`, {
-        poNumber,
-        lines,
-      });
+      const response = await axios.post(`quote/convert/${currentErp._id}`, payload);
       if (response?.data?.success) {
         message.success('Quote 已成功轉換成 Invoice！');
         navigate(`/invoice/read/${response.data.result._id}`);
@@ -770,7 +806,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
       <Modal
         title={
           poModalMode === 'invoice'
-            ? '選擇 P.O Number 與本次轉發票數量'
+            ? '選擇 P.O Number 與轉發票方式'
             : '選擇 P.O Number 與本次上單數量'
         }
         open={poModalMode != null}
@@ -783,15 +819,26 @@ export default function QuoteReadItem({ config, selectedItem }) {
           disabled:
             !selectedPoNumber ||
             poPreviewLoading ||
-            !poPreviewLines.some(
-              (row) => row.remainingQty > 0 && Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
-            ),
+            (poModalMode === 'invoice'
+              ? invoiceConversionMode === 'B'
+                ? !(Number(conversionPercentage) > 0 &&
+                    Number(conversionPercentage) <= (poInvoiceMeta?.remainingPercentage ?? 100))
+                : !poPreviewLines.some(
+                    (row) =>
+                      row.remainingQty > 0 &&
+                      Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
+                  )
+              : !poPreviewLines.some(
+                  (row) =>
+                    row.remainingQty > 0 &&
+                    Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
+                )),
         }}
       >
         <div style={{ marginBottom: 16 }}>
           <p>
             {poModalMode === 'invoice'
-              ? '請選擇 P.O Number，將列出該 P.O 的項目、已開票量與餘額；請填寫「本次轉發票」數量（不可超過餘額）。'
+              ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 整單專案佔比（以折扣後總額計算，全數 items 帶去發票）。'
               : '請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。'}
           </p>
           <Select
@@ -802,6 +849,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
               setSelectedPoNumber(v);
               setPoPreviewLines([]);
               setPoOrderQtyByIndex({});
+              setPoInvoiceMeta(null);
+              setConversionPercentage(null);
             }}
           >
             {availablePoNumbers.map((po) => (
@@ -811,7 +860,69 @@ export default function QuoteReadItem({ config, selectedItem }) {
             ))}
           </Select>
         </div>
-        {selectedPoNumber ? (
+        {poModalMode === 'invoice' && selectedPoNumber ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ marginBottom: 8, fontWeight: 500 }}>轉發票方式</div>
+            <Radio.Group
+              value={invoiceConversionMode}
+              onChange={(e) => {
+                setInvoiceConversionMode(e.target.value);
+                setConversionPercentage(null);
+              }}
+            >
+              <Radio value="A" disabled={poInvoiceMeta?.lockedConversionMode === 'B'}>
+                A — 按 P.O 行數量（拆量）
+              </Radio>
+              <Radio value="B" disabled={poInvoiceMeta?.lockedConversionMode === 'A'}>
+                B — 整單專案佔比
+              </Radio>
+            </Radio.Group>
+            {poInvoiceMeta?.lockedConversionMode ? (
+              <div style={{ marginTop: 8, color: '#888', fontSize: 12 }}>
+                此報價已鎖定為方式 {poInvoiceMeta.lockedConversionMode}，不可改用其他方式。
+              </div>
+            ) : null}
+            {invoiceConversionMode === 'B' ? (
+              <div style={{ marginTop: 12, padding: 12, background: '#fafafa', borderRadius: 6 }}>
+                <div style={{ marginBottom: 8 }}>
+                  報價折扣後總額：
+                  {moneyFormatter({
+                    amount: poInvoiceMeta?.quoteDiscountedTotal ?? currentErp.total ?? 0,
+                    currency_code: currentErp.currency,
+                  })}
+                </div>
+                <div style={{ marginBottom: 8 }}>
+                  已轉：{poInvoiceMeta?.invoicedPercentage ?? 0}%　｜　剩餘可轉：
+                  {poInvoiceMeta?.remainingPercentage ?? 100}%
+                </div>
+                <Space>
+                  <span>本次專案佔比 (%)：</span>
+                  <InputNumber
+                    min={0.01}
+                    max={poInvoiceMeta?.remainingPercentage ?? 100}
+                    precision={2}
+                    value={conversionPercentage}
+                    onChange={(v) => setConversionPercentage(v)}
+                  />
+                </Space>
+                {conversionPercentage != null && Number(conversionPercentage) > 0 ? (
+                  <div style={{ marginTop: 8, color: '#666' }}>
+                    預估發票總額：
+                    {moneyFormatter({
+                      amount:
+                        (Number(poInvoiceMeta?.quoteDiscountedTotal ?? currentErp.total ?? 0) *
+                          Number(conversionPercentage)) /
+                        100,
+                      currency_code: currentErp.currency,
+                    })}
+                    （全數 items 帶去發票，數量不變）
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+        {selectedPoNumber && (poModalMode === 'supplier' || invoiceConversionMode === 'A') ? (
           <Table
             size="small"
             loading={poPreviewLoading}
@@ -858,11 +969,16 @@ export default function QuoteReadItem({ config, selectedItem }) {
             ]}
           />
         ) : null}
-        <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
-          ℹ️ 餘額 = 報價數量 − 此 P.O{' '}
-          {poModalMode === 'invoice' ? '已開票' : '已上單'}數量總和。可多次
-          {poModalMode === 'invoice' ? '轉發票' : '上單'}。
-        </p>
+        {selectedPoNumber && poModalMode === 'invoice' && invoiceConversionMode === 'A' ? (
+          <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
+            ℹ️ 餘額 = 報價數量 − 此 P.O 已開票數量總和。可多次轉發票。
+          </p>
+        ) : null}
+        {selectedPoNumber && poModalMode === 'supplier' ? (
+          <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
+            ℹ️ 餘額 = 報價數量 − 此 P.O 已上單數量總和。可多次上單。
+          </p>
+        ) : null}
       </Modal>
     </>
   );

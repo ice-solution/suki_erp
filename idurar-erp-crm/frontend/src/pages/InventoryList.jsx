@@ -1,8 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, Space } from 'antd';
 import axios from 'axios';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const InventoryList = () => {
+  const showDelete = useCanDeleteRecords();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +58,7 @@ const InventoryList = () => {
       render: (_, record) => (
         <Space>
           <Button type="link">編輯</Button>
-          <Button type="link" danger>刪除</Button>
+          {showDelete ? <Button type="link" danger>刪除</Button> : null}
         </Space>
       ),
     },

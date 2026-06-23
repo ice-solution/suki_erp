@@ -28,11 +28,13 @@ import {
 } from '@ant-design/icons';
 import axios from 'axios';
 import dayjs from 'dayjs';
+import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { Option } = Select;
 const { TabPane } = Tabs;
 
 const JournalEntries = () => {
+  const showDelete = useCanDeleteRecords();
   const [entries, setEntries] = useState([]);
   const [accounts, setAccounts] = useState([]);
   const [periods, setPeriods] = useState([]);
@@ -259,21 +261,23 @@ const JournalEntries = () => {
               >
                 過帳
               </Button>
-              <Button 
-                type="link" 
-                size="small" 
-                danger
-                icon={<DeleteOutlined />}
-                onClick={() => {
-                  Modal.confirm({
-                    title: '確認刪除',
-                    content: `確定要刪除分錄「${record.entryNumber}」嗎？`,
-                    onOk: () => handleDelete(record._id),
-                  });
-                }}
-              >
-                刪除
-              </Button>
+              {showDelete ? (
+                <Button 
+                  type="link" 
+                  size="small" 
+                  danger
+                  icon={<DeleteOutlined />}
+                  onClick={() => {
+                    Modal.confirm({
+                      title: '確認刪除',
+                      content: `確定要刪除分錄「${record.entryNumber}」嗎？`,
+                      onOk: () => handleDelete(record._id),
+                    });
+                  }}
+                >
+                  刪除
+                </Button>
+              ) : null}
             </>
           )}
           {record.status === 'posted' && (
