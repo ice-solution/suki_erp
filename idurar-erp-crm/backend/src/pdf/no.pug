@@ -54,10 +54,10 @@ html(class=isPuppeteer ? 'puppeteer-wing-shun-no' : '')
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const displayName = model.receiptDisplayName || client.name || ''
     - const siteAddress = model.address || client.address || ''
-    - const deliveryAddress = model.receiptDisplayName || ''
-    - const consignee = model.receiver || ''
+    - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
+    - const deliveryAddressPdf = (model.receiver != null && String(model.receiver).trim()) ? String(model.receiver).trim() : ''
     - const poNumber = model.poNumber || ''
-    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
+    - const docDate = model.openDate ? moment(model.openDate).utcOffset(480).format('DD/MM/YYYY') : (model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : '')
     - const invoiceNo = (model.numberPrefix || 'NO') + '-' + (model.number || '')
     - const quoteNo = model.invoiceNumber || ''
     - const itemsOnly = model.items || []
@@ -78,15 +78,13 @@ html(class=isPuppeteer ? 'puppeteer-wing-shun-no' : '')
               span(style="visibility:hidden;") #{invoiceNo}
             .header-info-row 報價編號 : #{quoteNo}
             .header-info-row Your P/O NO : #{poNumber}
+            if docDate
+              .header-info-row 日　　期 : #{docDate}
+            .header-info-row 上單編號 : #{invoiceNo}
 
       .sub-info
-        if deliveryAddress
-          .sub-info-row 送貨地址 : #{deliveryAddress}
-        if consignee
-          .sub-info-row 收 貨 人 : #{consignee}
-        if docDate
-          .sub-info-row 日　　期 : #{docDate}
-        .sub-info-row 上單編號 : #{invoiceNo}
+        .sub-info-row 簽收單聯絡人 : #{contactPersonPdf || '-'}
+        .sub-info-row(style='white-space:pre-wrap') 送貨地址 : #{deliveryAddressPdf || '-'}
 
     .doc-title 發收單
 
@@ -109,12 +107,11 @@ html(class=isPuppeteer ? 'puppeteer-wing-shun-no' : '')
 
     .ack-section
       .ack-right
-        .ack-title 發收人：
         .ack-row
           .ack-label 裝箱方式：
           .ack-line
         .ack-row
-          .ack-label 發收人：
+          .ack-label 簽收人：
           .ack-line
         .ack-row
           .ack-label 日　期：
