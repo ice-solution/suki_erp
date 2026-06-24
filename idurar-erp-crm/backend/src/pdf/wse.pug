@@ -62,6 +62,15 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; margin-top: 4px; }
       .quote-closing-block { page-break-inside: avoid; }
+      .quote-closing-summary { flex: 0 0 auto; }
+      .quote-signature-footer { margin-top: auto; page-break-inside: avoid; width: 100%; }
+      .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
+      .quote-page-last .quote-body {
+        display: flex;
+        flex-direction: column;
+        min-height: 253mm;
+      }
+      .quote-page-content { flex: 0 0 auto; }
       .footer-section { margin-top: 12px; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
       .footer-line-1 { margin-bottom: 2px; }
       .footer-line-2 { }
@@ -92,68 +101,71 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
     each chunk, pageIndex in itemChunks
       .quote-page(class=pageIndex === itemChunks.length - 1 ? 'quote-page-last' : '')
         .quote-body
-          .header-section
-            .header-company-wrap
-              .company-name-qu 永 順 鐵 器 工 程 公 司
-              .company-name-qu-english Wing Shun Metal Eng Co (O/B Super Pioneer Ltd)
-            table.header-info-table
-              tr
-                td.info-left
-                  .header-info-row 致：#{displayName}
-                  if client.address
-                    .header-info-row #{client.address}
-                td.info-right
-                  .header-info-row INVOICE NO. : #{invoiceNo}
-                  .header-info-row SML NO. : #{smlNo}
-                  .header-info-row DATE : #{docDate}
-                  .header-info-row P.O No. : #{poNo}
-
-          .doc-title INVOICE
-
-          .project-address-line 工程地址：#{model.address || ''}
-
-          table.quotation-table
-            thead
-              tr
-                th.col-no
-                th.col-content 工程內容
-                th.col-qty 數量 / 單位
-                th.col-unit 單價 HKD$
-                th.col-amount 金額 HKD$
-            tbody
-              each row, idx in chunk
-                - const item = row.item
-                - const contentText = row.contentText
-                - const unitLabel = item.unit ? String(item.unit) : 'JOB'
+          .quote-page-content
+            .header-section
+              .header-company-wrap
+                .company-name-qu 永 順 鐵 器 工 程 公 司
+                .company-name-qu-english Wing Shun Metal Eng Co (O/B Super Pioneer Ltd)
+              table.header-info-table
                 tr
-                  td.col-no #{row.showMeta ? row.itemIndex + 1 : ''}
-                  td.col-content #{contentText}
-                  td.col-qty #{row.showMeta && item.quantity != null ? item.quantity : ''}#{row.showMeta ? ' / ' + unitLabel : ''}
-                  td.col-unit.num #{row.showMeta && item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
-                  td.col-amount.num #{row.showMeta && item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (row.showMeta && item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
-              if chunk.length === 0
+                  td.info-left
+                    .header-info-row 致：#{displayName}
+                    if client.address
+                      .header-info-row #{client.address}
+                  td.info-right
+                    .header-info-row INVOICE NO. : #{invoiceNo}
+                    .header-info-row SML NO. : #{smlNo}
+                    .header-info-row DATE : #{docDate}
+                    .header-info-row P.O No. : #{poNo}
+
+            .doc-title INVOICE
+
+            .project-address-line 工程地址：#{model.address || ''}
+
+            table.quotation-table
+              thead
                 tr
-                  td(colspan='5' style='text-align:center') 無項目
+                  th.col-no
+                  th.col-content 工程內容
+                  th.col-qty 數量 / 單位
+                  th.col-unit 單價 HKD$
+                  th.col-amount 金額 HKD$
+              tbody
+                each row, idx in chunk
+                  - const item = row.item
+                  - const contentText = row.contentText
+                  - const unitLabel = item.unit ? String(item.unit) : 'JOB'
+                  tr
+                    td.col-no #{row.showMeta ? row.itemIndex + 1 : ''}
+                    td.col-content #{contentText}
+                    td.col-qty #{row.showMeta && item.quantity != null ? item.quantity : ''}#{row.showMeta ? ' / ' + unitLabel : ''}
+                    td.col-unit.num #{row.showMeta && item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
+                    td.col-amount.num #{row.showMeta && item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (row.showMeta && item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
+                if chunk.length === 0
+                  tr
+                    td(colspan='5' style='text-align:center') 無項目
+
+            if pageIndex === itemChunks.length - 1
+              .quote-closing-summary
+                .summary-wrap
+                  .summary-block
+                    .summary-row.subtotal
+                      span.summary-label 合共港幣：
+                      span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+                    if model.showDiscountPercentOnPdf !== false
+                      .summary-row.underline
+                        span.summary-label 折扣%：
+                        span.summary-value #{formatDiscountPct(discount)}%
+                    if model.showDiscountAmountOnPdf !== false
+                      .summary-row.underline
+                        span.summary-label 折扣金額：
+                        span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+                    .summary-row.grand
+                      span.summary-label 總金額：
+                      span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
 
           if pageIndex === itemChunks.length - 1
-            .quote-closing-block
-              .summary-wrap
-                .summary-block
-                  .summary-row.subtotal
-                    span.summary-label 合共港幣：
-                    span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                  if model.showDiscountPercentOnPdf !== false
-                    .summary-row.underline
-                      span.summary-label 折扣%：
-                      span.summary-value #{formatDiscountPct(discount)}%
-                  if model.showDiscountAmountOnPdf !== false
-                    .summary-row.underline
-                      span.summary-label 折扣金額：
-                      span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
-                  .summary-row.grand
-                    span.summary-label 總金額：
-                    span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
-
+            .quote-signature-footer
               .signature-section
                 .prepared-by-row
                 table.signature-table
