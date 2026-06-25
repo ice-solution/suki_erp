@@ -332,12 +332,27 @@ export default function Warehouse() {
     return [];
   };
 
+  const formatProjectQuoteLabel = (project) => {
+    if (!project) return '';
+    const qn =
+      project.invoiceNumber != null && String(project.invoiceNumber).trim()
+        ? String(project.invoiceNumber).trim()
+        : project.quoteNumber != null && String(project.quoteNumber).trim()
+          ? String(project.quoteNumber).trim()
+          : project.name
+            ? String(project.name).trim()
+            : '';
+    const addr = project.address != null ? String(project.address).trim() : '';
+    if (qn && addr) return `${qn} — ${addr}`;
+    return qn || addr;
+  };
+
   const getQuoteNumber = (record) => {
     const numbers = [];
     const addFromProject = (p) => {
       if (!p || typeof p !== 'object') return;
-      const qn = p.invoiceNumber || p.quoteNumber || '';
-      if (qn && !numbers.includes(qn)) numbers.push(String(qn));
+      const label = formatProjectQuoteLabel(p);
+      if (label && !numbers.includes(label)) numbers.push(label);
     };
     if (Array.isArray(record?.projects) && record.projects.length) {
       record.projects.forEach(addFromProject);
@@ -347,10 +362,7 @@ export default function Warehouse() {
     return numbers.join('、');
   };
 
-  const getProjectLabel = (project) => {
-    if (!project) return '';
-    return project.invoiceNumber ? String(project.invoiceNumber) : project.name || '';
-  };
+  const getProjectLabel = (project) => formatProjectQuoteLabel(project);
 
   const getWarehouseLabel = (warehouse) => {
     const opt = warehouseOptions.find((o) => o.value === warehouse);
@@ -860,7 +872,7 @@ export default function Warehouse() {
                   const labels = pids
                     .map((pid) => {
                       const p = projects.find((x) => String(x._id) === String(pid));
-                      return p?.invoiceNumber || p?.quoteNumber || '';
+                      return getProjectLabel(p);
                     })
                     .filter(Boolean);
                   if (!labels.length) return null;

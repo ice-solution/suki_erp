@@ -146,6 +146,35 @@ const supplierQuoteSchema = new mongoose.Schema({
     ref: 'Winch',
     autopopulate: true,
   },
+  /** 多筆船隻指派（含已拆卸記錄） */
+  shipAssignments: [
+    {
+      ship: { type: mongoose.Schema.ObjectId, ref: 'Ship', default: null },
+      installationDate: { type: Date, default: null },
+      expiredDate: { type: Date, default: null },
+      dismantlingDate: { type: Date, default: null },
+    },
+  ],
+  /** 多筆爬纜器指派（含已拆卸記錄） */
+  winchAssignments: [
+    {
+      winch: { type: mongoose.Schema.ObjectId, ref: 'Winch', default: null },
+      installationDate: { type: Date, default: null },
+      expiredDate: { type: Date, default: null },
+      dismantlingDate: { type: Date, default: null },
+    },
+  ],
+  /** @deprecated 舊版配對格式，新資料改用 shipAssignments / winchAssignments */
+  assetAssignments: [
+    {
+      ship: { type: mongoose.Schema.ObjectId, ref: 'Ship', default: null },
+      winch: { type: mongoose.Schema.ObjectId, ref: 'Winch', default: null },
+      shipInstallationDate: { type: Date, default: null },
+      shipDismantlingDate: { type: Date, default: null },
+      winchInstallationDate: { type: Date, default: null },
+      winchDismantlingDate: { type: Date, default: null },
+    },
+  ],
   items: [
     {
       itemName: {

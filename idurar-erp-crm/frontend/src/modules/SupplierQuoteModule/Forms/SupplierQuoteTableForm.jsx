@@ -26,6 +26,7 @@ import {
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
 import { filterAssignableAssets } from '@/utils/assignableAssetStatus';
+import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
 import {
   getMaxOutboundQuantityForLine,
   isRealWarehouseMaterial,
@@ -112,11 +113,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const [warehouseSelectList, setWarehouseSelectList] = useState([]);
   const [materialsLoading, setMaterialsLoading] = useState(false);
   
-  // Ships and Winches form states
-  const [selectedShip, setSelectedShip] = useState(null); // Stores the selected ship ID
-  const [selectedShipName, setSelectedShipName] = useState(null); // Stores the selected ship name
-  const [selectedWinch, setSelectedWinch] = useState(null); // Stores the selected winch ID
-  const [selectedWinchName, setSelectedWinchName] = useState(null); // Stores the selected winch name
+  // 多筆船隻／多筆爬纜器（各自獨立，非組別配對）
+  const [shipRows, setShipRows] = useState([]);
+  const [winchRows, setWinchRows] = useState([]);
   const [ships, setShips] = useState([]);
   const [winches, setWinches] = useState([]);
   const [shipsLoading, setShipsLoading] = useState(false);
@@ -131,6 +130,178 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const watchedSupplierPrefix = Form.useWatch('numberPrefix', form) || 'S';
   const numberManuallyEditedRef = useRef(false);
   const prevPrefixRef = useRef(watchedSupplierPrefix);
+
+  const syncAssetRowsToForm = (ships, winches) => {
+    form.setFieldsValue({ shipAssignments: ships, winchAssignments: winches });
+    const primaryShip = ships.find((row) => row.ship && !row.dismantlingDate);
+    const primaryWinch = winches.find((row) => row.winch && !row.dismantlingDate);
+    form.setFieldsValue({
+      ship: primaryShip?.ship || null,
+      winch: primaryWinch?.winch || null,
+    });
+  };
+
+  const mapShipRowFromApi = (row, index) => ({
+    key: `ship-${index}-${row.ship || index}`,
+    ship: row.ship?._id || row.ship || null,
+    installationDate: row.installationDate ? dayjs(row.installationDate) : null,
+    expiredDate: row.expiredDate ? dayjs(row.expiredDate) : null,
+    dismantlingDate: row.dismantlingDate ? dayjs(row.dismantlingDate) : null,
+  });
+
+  const mapWinchRowFromApi = (row, index) => ({
+    key: `winch-${index}-${row.winch || index}`,
+    winch: row.winch?._id || row.winch || null,
+    installationDate: row.installationDate ? dayjs(row.installationDate) : null,
+    expiredDate: row.expiredDate ? dayjs(row.expiredDate) : null,
+    dismantlingDate: row.dismantlingDate ? dayjs(row.dismantlingDate) : null,
+  });
+
+  const buildAssetRowsFromCurrent = (record) => {
+    if (record?.shipAssignments?.length || record?.winchAssignments?.length) {
+      return {
+        ships: (record.shipAssignments || []).map(mapShipRowFromApi),
+        winches: (record.winchAssignments || []).map(mapWinchRowFromApi),
+      };
+    }
+    if (record?.assetAssignments?.length) {
+      const ships = [];
+      const winches = [];
+      record.assetAssignments.forEach((row, index) => {
+        if (row.ship) {
+          ships.push(
+            mapShipRowFromApi(
+              {
+                ship: row.ship,
+                installationDate: row.shipInstallationDate,
+                expiredDate: row.shipExpiredDate,
+                dismantlingDate: row.shipDismantlingDate,
+              },
+              index
+            )
+          );
+        }
+        if (row.winch) {
+          winches.push(
+            mapWinchRowFromApi(
+              {
+                winch: row.winch,
+                installationDate: row.winchInstallationDate,
+                expiredDate: row.winchExpiredDate,
+                dismantlingDate: row.winchDismantlingDate,
+              },
+              index
+            )
+          );
+        }
+      });
+      return { ships, winches };
+    }
+    const shipId = record?.ship?._id || record?.ship || null;
+    const winchId = record?.winch?._id || record?.winch || null;
+    const shipObj = typeof record?.ship === 'object' ? record.ship : null;
+    const winchObj = typeof record?.winch === 'object' ? record.winch : null;
+    return {
+      ships: shipId
+        ? [
+            mapShipRowFromApi(
+              {
+                ship: shipId,
+                installationDate: shipObj?.installationDate,
+                expiredDate: shipObj?.expiredDate,
+                dismantlingDate: shipObj?.dismantlingDate,
+              },
+              0
+            ),
+          ]
+        : [],
+      winches: winchId
+        ? [
+            mapWinchRowFromApi(
+              {
+                winch: winchId,
+                installationDate: winchObj?.installationDate,
+                expiredDate: winchObj?.expiredDate,
+                dismantlingDate: winchObj?.dismantlingDate,
+              },
+              0
+            ),
+          ]
+        : [],
+    };
+  };
+
+  const updateShipRow = (rowKey, patch) => {
+    setShipRows((prev) => {
+      const next = prev.map((row) => (row.key === rowKey ? { ...row, ...patch } : row));
+      syncAssetRowsToForm(next, winchRows);
+      return next;
+    });
+  };
+
+  const updateWinchRow = (rowKey, patch) => {
+    setWinchRows((prev) => {
+      const next = prev.map((row) => (row.key === rowKey ? { ...row, ...patch } : row));
+      syncAssetRowsToForm(shipRows, next);
+      return next;
+    });
+  };
+
+  const addShipRow = () => {
+    setShipRows((prev) => {
+      const next = [
+        ...prev,
+        {
+          key: `ship-${Date.now()}`,
+          ship: null,
+          installationDate: null,
+          expiredDate: null,
+          dismantlingDate: null,
+        },
+      ];
+      syncAssetRowsToForm(next, winchRows);
+      return next;
+    });
+  };
+
+  const addWinchRow = () => {
+    setWinchRows((prev) => {
+      const next = [
+        ...prev,
+        {
+          key: `winch-${Date.now()}`,
+          winch: null,
+          installationDate: null,
+          expiredDate: null,
+          dismantlingDate: null,
+        },
+      ];
+      syncAssetRowsToForm(shipRows, next);
+      return next;
+    });
+  };
+
+  const removeShipRow = (rowKey) => {
+    setShipRows((prev) => {
+      const next = prev.filter((row) => row.key !== rowKey);
+      syncAssetRowsToForm(next, winchRows);
+      return next;
+    });
+  };
+
+  const removeWinchRow = (rowKey) => {
+    setWinchRows((prev) => {
+      const next = prev.filter((row) => row.key !== rowKey);
+      syncAssetRowsToForm(shipRows, next);
+      return next;
+    });
+  };
+
+  const collectAssignedShipIds = (rows = shipRows) =>
+    rows.map((row) => row.ship).filter(Boolean);
+
+  const collectAssignedWinchIds = (rows = winchRows) =>
+    rows.map((row) => row.winch).filter(Boolean);
 
   const applySuggestedNumber = (prefix = watchedSupplierPrefix || 'S') => {
     const next = getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) + 1;
@@ -274,8 +445,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   }, []);
 
   useEffect(() => {
-    fetchShips();
-    fetchWinches();
+    const { ships, winches } = buildAssetRowsFromCurrent(current);
+    setShipRows(ships);
+    setWinchRows(winches);
+    syncAssetRowsToForm(ships, winches);
+    fetchShips(collectAssignedShipIds(ships));
+    fetchWinches(collectAssignedWinchIds(winches));
   }, [current?._id]);
 
   const fetchClients = async () => {
@@ -470,24 +645,20 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  // 獲取狀態為「香港倉」的船隻列表（非「正常」；編輯時保留本單已指派船隻）
-  const fetchShips = async () => {
+  // 獲取狀態為「香港倉」的船隻列表（編輯時保留本單已指派船隻）
+  const fetchShips = async (assignedShipIds = []) => {
     try {
       setShipsLoading(true);
       const response = await request.listAll({ entity: 'ship' });
       if (response.success && Array.isArray(response.result)) {
-        const assignedId = current?.ship
-          ? typeof current.ship === 'object'
-            ? current.ship._id
-            : current.ship
-          : null;
-        const hkWarehouseShips = filterAssignableAssets(response.result, assignedId);
-        const shipOptions = hkWarehouseShips.map((ship) => ({
-          value: ship._id,
-          label: ship.registrationNumber || '—',
-          ...ship,
-        }));
-        setShips(shipOptions);
+        const hkWarehouseShips = filterAssignableAssets(response.result, assignedShipIds);
+        setShips(
+          hkWarehouseShips.map((ship) => ({
+            value: ship._id,
+            label: ship.registrationNumber || '—',
+            ...ship,
+          }))
+        );
       }
     } catch (error) {
       console.error('獲取船隻列表失敗:', error);
@@ -497,24 +668,20 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   };
 
-  // 獲取狀態為「香港倉」的爬纜器列表（非「正常」；編輯時保留本單已指派爬纜器）
-  const fetchWinches = async () => {
+  // 獲取狀態為「香港倉」的爬纜器列表（編輯時保留本單已指派爬纜器）
+  const fetchWinches = async (assignedWinchIds = []) => {
     try {
       setWinchesLoading(true);
       const response = await request.listAll({ entity: 'winch' });
       if (response.success && Array.isArray(response.result)) {
-        const assignedId = current?.winch
-          ? typeof current.winch === 'object'
-            ? current.winch._id
-            : current.winch
-          : null;
-        const hkWarehouseWinches = filterAssignableAssets(response.result, assignedId);
-        const winchOptions = hkWarehouseWinches.map((winch) => ({
-          value: winch._id,
-          label: winch.serialNumber || '—',
-          ...winch,
-        }));
-        setWinches(winchOptions);
+        const hkWarehouseWinches = filterAssignableAssets(response.result, assignedWinchIds);
+        setWinches(
+          hkWarehouseWinches.map((winch) => ({
+            value: winch._id,
+            label: winch.serialNumber || '—',
+            ...winch,
+          }))
+        );
       }
     } catch (error) {
       console.error('獲取爬纜器列表失敗:', error);
@@ -681,7 +848,6 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         const supplierId = current.supplier?._id || current.supplier || undefined;
         const dateVal = current.date ? dayjs(current.date) : undefined;
         const openDateVal = current.openDate ? dayjs(current.openDate) : undefined;
-        const expiredVal = current.expiredDate ? dayjs(current.expiredDate) : undefined;
         form.setFieldsValue({
           items: currentItems,
           materials: currentMaterials,
@@ -689,12 +855,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           supplier: supplierId,
           type: type,
           shipType: shipType,
-          ship: currentShip ? (currentShip._id || currentShip) : null,
-          winch: currentWinch ? (currentWinch._id || currentWinch) : null,
           renewalQuoteNumber: current?.renewalQuoteNumber,
           date: dateVal,
           openDate: openDateVal,
-          expiredDate: expiredVal,
           subTotal: subVal,
           total: totalVal,
           discount: discount != null && discount !== '' ? discount : 0,
@@ -708,63 +871,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
   }, [current, form, clients]);
 
-  // 處理船隻和爬纜器數據，確保在ships和winches加載完成後設置
   useEffect(() => {
-    if (current && current._id) {
-      // 只在current確實存在且有_id時才處理（表示這是一個已存在的記錄）
-      const { ship: currentShip, winch: currentWinch } = current;
-      
-      // 處理船隻數據 - 以登記號碼顯示
-      if (currentShip) {
-        const shipId = typeof currentShip === 'object' ? currentShip._id : currentShip;
-        const shipRegNo = typeof currentShip === 'object' ? currentShip.registrationNumber : null;
-        setSelectedShip(shipId);
-        if (shipRegNo) {
-          setSelectedShipName(shipRegNo);
-        } else if (ships.length > 0) {
-          const foundShip = ships.find(s => s.value === shipId);
-          if (foundShip) setSelectedShipName(foundShip.label);
-        }
-      } else if (currentShip === null) {
-        setSelectedShip(null);
-        setSelectedShipName(null);
-      }
-      // 處理爬纜器數據 - 以序列號顯示
-      if (currentWinch) {
-        const winchId = typeof currentWinch === 'object' ? currentWinch._id : currentWinch;
-        const winchSerial = typeof currentWinch === 'object' ? currentWinch.serialNumber : null;
-        setSelectedWinch(winchId);
-        if (winchSerial) {
-          setSelectedWinchName(winchSerial);
-        } else if (winches.length > 0) {
-          const foundWinch = winches.find(w => w.value === winchId);
-          if (foundWinch) setSelectedWinchName(foundWinch.label);
-        }
-      } else if (currentWinch === null) {
-        setSelectedWinch(null);
-        setSelectedWinchName(null);
-      }
-
-      const datePatch = {};
-      if (currentShip) {
-        const shipObj = typeof currentShip === 'object' ? currentShip : null;
-        const shipInst = shipObj?.installationDate || current.installationDate;
-        const shipDism = shipObj?.dismantlingDate || current.dismantlingDate;
-        if (shipInst) datePatch.shipInstallationDate = dayjs(shipInst);
-        if (shipDism) datePatch.shipDismantlingDate = dayjs(shipDism);
-      }
-      if (currentWinch) {
-        const winchObj = typeof currentWinch === 'object' ? currentWinch : null;
-        const winchInst = winchObj?.installationDate || current.installationDate;
-        const winchDism = winchObj?.dismantlingDate || current.dismantlingDate;
-        if (winchInst) datePatch.winchInstallationDate = dayjs(winchInst);
-        if (winchDism) datePatch.winchDismantlingDate = dayjs(winchDism);
-      }
-      if (Object.keys(datePatch).length > 0) {
-        form.setFieldsValue(datePatch);
-      }
-    }
-  }, [current, ships, winches, form]);
+    syncAssetRowsToForm(shipRows, winchRows);
+  }, [shipRows, winchRows, form]);
 
   // 計算subTotal當materials或items改變時（計算 materials 和 items）
   useEffect(() => {
@@ -1560,19 +1669,6 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               </Form.Item>
             </Col>
             <Col className="gutter-row" span={6}>
-              <Form.Item
-                name="expiredDate"
-                label="租賃到期日"
-                rules={[{ required: false }]}
-              >
-                <DatePicker
-                  style={{ width: '100%' }}
-                  format={dateFormat}
-                  placeholder="租賃到期日（選填）"
-                />
-              </Form.Item>
-            </Col>
-            <Col className="gutter-row" span={6}>
               <Form.Item name="renewalQuoteNumber" label="續租報價編號" rules={[{ required: false }]}>
                 <Input placeholder="續租報價編號" />
               </Form.Item>
@@ -1580,7 +1676,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           </>
         ) : (
           <>
-            <Col className="gutter-row" span={8}>
+            <Col className="gutter-row" span={12}>
               <Form.Item
                 name="date"
                 label="上單日期"
@@ -1595,7 +1691,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 <DatePicker style={{ width: '100%' }} format={dateFormat} />
               </Form.Item>
             </Col>
-            <Col className="gutter-row" span={8}>
+            <Col className="gutter-row" span={12}>
               <Form.Item
                 name="openDate"
                 label="出貨日期"
@@ -1606,19 +1702,6 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 initialValue={current?.openDate ? dayjs(current.openDate) : undefined}
               >
                 <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="請選擇出貨日期" />
-              </Form.Item>
-            </Col>
-            <Col className="gutter-row" span={8}>
-              <Form.Item
-                name="expiredDate"
-                label={translate('Expire Date')}
-                rules={[{ required: false }]}
-              >
-                <DatePicker
-                  style={{ width: '100%' }}
-                  format={dateFormat}
-                  placeholder={translate('Expire Date') + '（選填）'}
-                />
               </Form.Item>
             </Col>
           </>
@@ -2011,146 +2094,240 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         locale={{ emptyText: '未添加材料' }}
       />
 
-      <Divider orientation="left">船隻爬纜器管理</Divider>
+      <Divider orientation="left">船隻管理</Divider>
 
-      {/* Ships and Winches Selection */}
-      <Row gutter={[12, 12]} style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
-        <Col span={12}>
-          <h4>選擇船隻</h4>
-          <Select
-            placeholder="選擇船隻（只顯示狀態為「香港倉」的）"
-            value={selectedShip}
-            onChange={(value, option) => {
-              setSelectedShip(value);
-              setSelectedShipName(option?.label || null);
-              form.setFieldsValue({ ship: value });
-            }}
-            style={{ width: '100%' }}
-            loading={shipsLoading}
-            showSearch
-            filterOption={(input, option) =>
-              (option?.label || '').toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }
-            options={ships}
-            allowClear
-          />
-        </Col>
-        <Col span={12}>
-          <h4>選擇爬纜器</h4>
-          <Select
-            placeholder="選擇爬纜器（只顯示狀態為「香港倉」的）"
-            value={selectedWinch}
-            onChange={(value, option) => {
-              setSelectedWinch(value);
-              setSelectedWinchName(option?.label || null);
-              form.setFieldsValue({ winch: value });
-            }}
-            style={{ width: '100%' }}
-            loading={winchesLoading}
-            showSearch
-            filterOption={(input, option) =>
-              (option?.label || '').toLowerCase().indexOf(input.toLowerCase()) >= 0
-            }
-            options={winches}
-            allowClear
-          />
+      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+        <Col span={24}>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addShipRow}>
+            添加船隻
+          </Button>
         </Col>
       </Row>
 
-      {/* Ships and Winches Display Table */}
-      {(selectedShip || selectedWinch) && (
-        <Table
-          dataSource={[
-            ...(selectedShip ? [{
-              key: 'ship',
-              type: '船隻',
-              name: selectedShipName || ships.find(s => s.value === selectedShip)?.label || selectedShip,
-              id: selectedShip
-            }] : []),
-            ...(selectedWinch ? [{
-              key: 'winch',
-              type: '爬纜器',
-              name: selectedWinchName || winches.find(w => w.value === selectedWinch)?.label || selectedWinch,
-              id: selectedWinch
-            }] : [])
-          ]}
-          columns={[
-            {
-              title: '類型',
-              dataIndex: 'type',
-              key: 'type',
-              width: '10%',
-            },
-            {
-              title: '登記號碼 / 序列號',
-              dataIndex: 'name',
-              key: 'name',
-              width: '25%',
-            },
-            {
-              title: '安裝日期',
-              key: 'installationDate',
-              width: '20%',
-              render: (_, record) => (
-                <Form.Item
-                  name={record.key === 'ship' ? 'shipInstallationDate' : 'winchInstallationDate'}
-                  noStyle
-                >
-                  <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="安裝日期" />
-                </Form.Item>
-              ),
-            },
-            {
-              title: '拆卸日期',
-              key: 'dismantlingDate',
-              width: '20%',
-              render: (_, record) => (
-                <Form.Item
-                  name={record.key === 'ship' ? 'shipDismantlingDate' : 'winchDismantlingDate'}
-                  noStyle
-                >
-                  <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="拆卸日期" />
-                </Form.Item>
-              ),
-            },
-            {
-              title: '操作',
-              key: 'action',
-              width: '10%',
-              render: (_, record) => (
-                <Button
-                  type="link"
-                  danger
-                  icon={<DeleteOutlined />}
-                  onClick={() => {
-                    if (record.type === '船隻') {
-                      setSelectedShip(null);
-                      setSelectedShipName(null);
-                      form.setFieldsValue({
-                        ship: null,
-                        shipInstallationDate: null,
-                        shipDismantlingDate: null,
-                      });
-                    } else if (record.type === '爬纜器') {
-                      setSelectedWinch(null);
-                      setSelectedWinchName(null);
-                      form.setFieldsValue({
-                        winch: null,
-                        winchInstallationDate: null,
-                        winchDismantlingDate: null,
-                      });
-                    }
-                  }}
-                >
-                  刪除
-                </Button>
-              ),
-            },
-          ]}
-          pagination={false}
-          size="small"
-          locale={{ emptyText: '未選擇船隻或爬纜器' }}
-        />
+      <Table
+        dataSource={shipRows}
+        pagination={false}
+        size="small"
+        rowKey="key"
+        locale={{ emptyText: '未添加船隻' }}
+        style={{ marginBottom: 24 }}
+        columns={[
+          {
+            title: '船隻',
+            key: 'ship',
+            width: '18%',
+            render: (_, record) => (
+              <Select
+                placeholder="選擇船隻"
+                value={record.ship || undefined}
+                disabled={!!record.dismantlingDate}
+                style={{ width: '100%' }}
+                loading={shipsLoading}
+                showSearch
+                allowClear
+                filterOption={(input, option) =>
+                  (option?.label || '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={ships.filter(
+                  (opt) =>
+                    String(opt.value) === String(record.ship) ||
+                    !shipRows.some(
+                      (row) =>
+                        row.key !== record.key &&
+                        !row.dismantlingDate &&
+                        String(row.ship) === String(opt.value)
+                    )
+                )}
+                onChange={(value) => updateShipRow(record.key, { ship: value || null })}
+              />
+            ),
+          },
+          {
+            title: '安裝日期',
+            key: 'installationDate',
+            width: '16%',
+            render: (_, record) => (
+              <DatePicker
+                style={{ width: '100%' }}
+                format={dateFormat}
+                placeholder="安裝日期"
+                value={record.installationDate}
+                disabled={!record.ship}
+                onChange={(value) => updateShipRow(record.key, { installationDate: value || null })}
+              />
+            ),
+          },
+          {
+            title: '租賃到期日',
+            key: 'expiredDate',
+            width: '16%',
+            render: (_, record) => (
+              <DatePicker
+                style={{ width: '100%' }}
+                format={dateFormat}
+                placeholder="租賃到期日"
+                value={record.expiredDate}
+                disabled={!record.ship}
+                onChange={(value) => updateShipRow(record.key, { expiredDate: value || null })}
+              />
+            ),
+          },
+          {
+            title: '拆卸日期',
+            key: 'dismantlingDate',
+            width: '16%',
+            render: (_, record) => (
+              <DatePicker
+                style={{ width: '100%' }}
+                format={dateFormat}
+                placeholder="拆卸日期"
+                value={record.dismantlingDate}
+                disabled={!record.ship}
+                onChange={(value) => updateShipRow(record.key, { dismantlingDate: value || null })}
+              />
+            ),
+          },
+          {
+            title: '超租天數',
+            key: 'overage',
+            width: '12%',
+            render: (_, record) =>
+              record.ship
+                ? calcRentalOverageLabel(record.installationDate, record.dismantlingDate)
+                : '—',
+          },
+          {
+            title: '操作',
+            key: 'action',
+            width: '10%',
+            render: (_, record) => (
+              <Button type="link" danger icon={<DeleteOutlined />} onClick={() => removeShipRow(record.key)}>
+                刪除
+              </Button>
+            ),
+          },
+        ]}
+      />
+
+      <Divider orientation="left">爬纜器管理</Divider>
+
+      <Row gutter={[12, 12]} style={{ marginBottom: 12 }}>
+        <Col span={24}>
+          <Button type="dashed" icon={<PlusOutlined />} onClick={addWinchRow}>
+            添加爬纜器
+          </Button>
+        </Col>
+      </Row>
+
+      <Table
+        dataSource={winchRows}
+        pagination={false}
+        size="small"
+        rowKey="key"
+        locale={{ emptyText: '未添加爬纜器' }}
+        style={{ marginBottom: 12 }}
+        columns={[
+          {
+            title: '爬纜器',
+            key: 'winch',
+            width: '18%',
+            render: (_, record) => (
+              <Select
+                placeholder="選擇爬纜器"
+                value={record.winch || undefined}
+                disabled={!!record.dismantlingDate}
+                style={{ width: '100%' }}
+                loading={winchesLoading}
+                showSearch
+                allowClear
+                filterOption={(input, option) =>
+                  (option?.label || '').toLowerCase().includes(input.toLowerCase())
+                }
+                options={winches.filter(
+                  (opt) =>
+                    String(opt.value) === String(record.winch) ||
+                    !winchRows.some(
+                      (row) =>
+                        row.key !== record.key &&
+                        !row.dismantlingDate &&
+                        String(row.winch) === String(opt.value)
+                    )
+                )}
+                onChange={(value) => updateWinchRow(record.key, { winch: value || null })}
+              />
+            ),
+          },
+          {
+            title: '安裝日期',
+            key: 'installationDate',
+            width: '16%',
+            render: (_, record) => (
+              <DatePicker
+                style={{ width: '100%' }}
+                format={dateFormat}
+                placeholder="安裝日期"
+                value={record.installationDate}
+                disabled={!record.winch}
+                onChange={(value) => updateWinchRow(record.key, { installationDate: value || null })}
+              />
+            ),
+          },
+          {
+            title: '租賃到期日',
+            key: 'expiredDate',
+            width: '16%',
+            render: (_, record) => (
+              <DatePicker
+                style={{ width: '100%' }}
+                format={dateFormat}
+                placeholder="租賃到期日"
+                value={record.expiredDate}
+                disabled={!record.winch}
+                onChange={(value) => updateWinchRow(record.key, { expiredDate: value || null })}
+              />
+            ),
+          },
+          {
+            title: '拆卸日期',
+            key: 'dismantlingDate',
+            width: '16%',
+            render: (_, record) => (
+              <DatePicker
+                style={{ width: '100%' }}
+                format={dateFormat}
+                placeholder="拆卸日期"
+                value={record.dismantlingDate}
+                disabled={!record.winch}
+                onChange={(value) => updateWinchRow(record.key, { dismantlingDate: value || null })}
+              />
+            ),
+          },
+          {
+            title: '超租天數',
+            key: 'overage',
+            width: '12%',
+            render: (_, record) =>
+              record.winch
+                ? calcRentalOverageLabel(record.installationDate, record.dismantlingDate)
+                : '—',
+          },
+          {
+            title: '操作',
+            key: 'action',
+            width: '10%',
+            render: (_, record) => (
+              <Button type="link" danger icon={<DeleteOutlined />} onClick={() => removeWinchRow(record.key)}>
+                刪除
+              </Button>
+            ),
+          },
+        ]}
+      />
+
+      {(shipRows.some((row) => row.dismantlingDate) || winchRows.some((row) => row.dismantlingDate)) && (
+        <div style={{ marginBottom: 16, fontSize: 12, color: '#888' }}>
+          填寫拆卸日期後，對應船隻／爬纜器將斷開連接並轉為「待回廠」，S 單仍保留此筆記錄；已拆卸的項目不可更換資產，但安裝／租賃到期／拆卸日期仍可修改。
+        </div>
       )}
 
       {/* Hidden Form Items for submission */}
@@ -2192,16 +2369,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       <Form.Item name="winch" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
-      <Form.Item name="shipInstallationDate" style={{ display: 'none' }}>
+      <Form.Item name="shipAssignments" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
-      <Form.Item name="shipDismantlingDate" style={{ display: 'none' }}>
-        <Input />
-      </Form.Item>
-      <Form.Item name="winchInstallationDate" style={{ display: 'none' }}>
-        <Input />
-      </Form.Item>
-      <Form.Item name="winchDismantlingDate" style={{ display: 'none' }}>
+      <Form.Item name="winchAssignments" style={{ display: 'none' }}>
         <Input />
       </Form.Item>
 

@@ -98,7 +98,7 @@ export default function UpdateItem({ config, UpdateForm }) {
         dataToUpdate.date = dayjs(fieldsValue.date).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
       }
       // expiredDate 僅對 Quote、吊船Quote、S單：不傳給 Invoice
-      const entitiesWithExpiredDate = ['quote', 'shipquote', 'supplierquote'];
+      const entitiesWithExpiredDate = ['quote', 'shipquote'];
       if (entitiesWithExpiredDate.includes((entity || '').toLowerCase())) {
         if (fieldsValue.expiredDate) {
           dataToUpdate.expiredDate = dayjs(fieldsValue.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
@@ -109,6 +109,7 @@ export default function UpdateItem({ config, UpdateForm }) {
 
       // S單（supplierquote）：出貨／安裝／拆卸日期需序列化；否則可能把 dayjs 物件整粒序列化壞掉
       if ((entity || '').toLowerCase() === 'supplierquote') {
+        dataToUpdate.expiredDate = null;
         if (fieldsValue.openDate) {
           dataToUpdate.openDate = dayjs(fieldsValue.openDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
         } else {
@@ -116,13 +117,38 @@ export default function UpdateItem({ config, UpdateForm }) {
         }
         ['shipInstallationDate', 'shipDismantlingDate', 'winchInstallationDate', 'winchDismantlingDate'].forEach(
           (field) => {
-            if (fieldsValue[field]) {
-              dataToUpdate[field] = dayjs(fieldsValue[field]).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-            } else {
-              dataToUpdate[field] = null;
-            }
+            delete dataToUpdate[field];
           }
         );
+        if (Array.isArray(fieldsValue.shipAssignments)) {
+          dataToUpdate.shipAssignments = fieldsValue.shipAssignments.map((row) => ({
+            ship: row.ship || null,
+            installationDate: row.installationDate
+              ? dayjs(row.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            expiredDate: row.expiredDate
+              ? dayjs(row.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            dismantlingDate: row.dismantlingDate
+              ? dayjs(row.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+          }));
+        }
+        if (Array.isArray(fieldsValue.winchAssignments)) {
+          dataToUpdate.winchAssignments = fieldsValue.winchAssignments.map((row) => ({
+            winch: row.winch || null,
+            installationDate: row.installationDate
+              ? dayjs(row.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            expiredDate: row.expiredDate
+              ? dayjs(row.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            dismantlingDate: row.dismantlingDate
+              ? dayjs(row.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+          }));
+        }
+        delete dataToUpdate.assetAssignments;
       }
       
       // Handle Invoice-specific date fields
@@ -252,8 +278,10 @@ export default function UpdateItem({ config, UpdateForm }) {
       if (formData.date) {
         formData.date = dayjs(formData.date);
       }
-      if (formData.expiredDate) {
+      if (formData.expiredDate && (entity || '').toLowerCase() !== 'supplierquote') {
         formData.expiredDate = dayjs(formData.expiredDate);
+      } else {
+        delete formData.expiredDate;
       }
       
       // Handle Invoice-specific date fields

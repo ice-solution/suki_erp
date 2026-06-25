@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 
 const Model = mongoose.model('SupplierQuote');
-const Ship = mongoose.model('Ship');
-const Winch = mongoose.model('Winch');
-const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 
 const custom = require('@/controllers/pdfController');
 const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
@@ -13,16 +10,16 @@ const {
   revertAppliedSupplierQuoteStockChanges,
 } = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
 const {
-  assertAssetAssignableForSupplierQuote,
-} = require('@/helpers/assignableAssetStatus');
-const {
   assertSupplierQuoteMaterialsStock,
 } = require('@/helpers/validateSupplierQuoteMaterialsStock');
 const {
-  getAssetDatePayload,
   stripSupplierQuoteAssetDateFields,
-  clearedAssetDateFields,
 } = require('@/helpers/supplierQuoteAssetDates');
+const {
+  parseShipWinchAssignmentsInput,
+  syncSupplierQuoteAssetAssignments,
+  stripLegacyAssetFieldsFromBody,
+} = require('@/helpers/supplierQuoteAssetAssignments');
 
 const create = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -128,6 +125,7 @@ const create = async (req, res) => {
   body['items'] = items;
   body['materials'] = materials;
   body['createdBy'] = req.admin._id;
+  body.expiredDate = null;
 
   // Handle file uploads using express-fileupload
   if (req.files) {
@@ -225,34 +223,15 @@ const create = async (req, res) => {
     });
   }
 
-  try {
-    if (body.ship) {
-      const shipId = typeof body.ship === 'object' ? body.ship._id : body.ship;
-      const shipDoc = await Ship.findById(shipId).select('status registrationNumber').lean();
-      assertAssetAssignableForSupplierQuote(
-        shipDoc,
-        `船隻「${shipDoc?.registrationNumber || shipId}」`
-      );
-    }
-    if (body.winch) {
-      const winchId = typeof body.winch === 'object' ? body.winch._id : body.winch;
-      const winchDoc = await Winch.findById(winchId).select('status serialNumber').lean();
-      assertAssetAssignableForSupplierQuote(
-        winchDoc,
-        `爬纜器「${winchDoc?.serialNumber || winchId}」`
-      );
-    }
-  } catch (assetErr) {
-    return res.status(assetErr.statusCode || 400).json({
-      success: false,
-      result: null,
-      message: assetErr.message || '船隻／爬纜器狀態不符合指派條件',
-    });
-  }
-
-  const shipAssetDates = getAssetDatePayload(body, 'ship');
-  const winchAssetDates = getAssetDatePayload(body, 'winch');
+  const { shipAssignments, winchAssignments } = parseShipWinchAssignmentsInput(body);
+  body.shipAssignments = shipAssignments;
+  body.winchAssignments = winchAssignments;
+  stripLegacyAssetFieldsFromBody(body);
   stripSupplierQuoteAssetDateFields(body);
+  const primaryActive = shipAssignments.find((row) => row.ship && !row.dismantlingDate);
+  const primaryWinch = winchAssignments.find((row) => row.winch && !row.dismantlingDate);
+  body.ship = primaryActive?.ship || null;
+  body.winch = primaryWinch?.winch || null;
 
   // Creating a new document in the collection
   const result = await new Model(body).save();
@@ -304,59 +283,29 @@ const create = async (req, res) => {
     });
   }
 
-  // 如果有船隻或爬纜器，更新它們的status、supplierNumber和expiredDate
-  const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
-  const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
-  const quoteNumber = result.invoiceNumber || '';
-
-  if (body.ship) {
-    const shipId = typeof body.ship === 'object' ? body.ship._id : body.ship;
-    await Ship.findByIdAndUpdate(shipId, {
-      status: 'in_use',
-      supplierNumber: supplierQuoteNumber,
-      expiredDate: expiredDate,
-      ...shipAssetDates,
-      updated: new Date(),
+  try {
+    await syncSupplierQuoteAssetAssignments({
+      supplierQuote: updateResult || result,
+      body,
+      existingQuote: null,
+      adminId: req.admin && req.admin._id,
     });
-
-    // 記錄：這次 S單綁定到船隻
+  } catch (assetErr) {
     try {
-      await SupplierQuoteAssetBinding.create({
-        assetType: 'ship',
-        ship: shipId,
-        supplierQuote: result._id,
-        supplierQuoteNumber,
-        quoteNumber,
-        createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
-      });
-    } catch (bindingErr) {
-      console.error('新增 SupplierQuoteAssetBinding（ship）失敗:', bindingErr);
+      await revertAppliedSupplierQuoteStockChanges(
+        warehouseApplied,
+        result._id,
+        req.admin && req.admin._id
+      );
+    } catch (revertErr) {
+      console.error('S單資產同步失敗且庫存回滾失敗:', revertErr);
     }
-  }
-
-  if (body.winch) {
-    const winchId = typeof body.winch === 'object' ? body.winch._id : body.winch;
-    await Winch.findByIdAndUpdate(winchId, {
-      status: 'in_use',
-      supplierNumber: supplierQuoteNumber,
-      expiredDate: expiredDate,
-      ...winchAssetDates,
-      updated: new Date(),
+    await Model.findByIdAndDelete(result._id);
+    return res.status(assetErr.statusCode || 400).json({
+      success: false,
+      result: null,
+      message: assetErr.message || '船隻／爬纜器同步失敗',
     });
-
-    // 記錄：這次 S單綁定到爬纜器
-    try {
-      await SupplierQuoteAssetBinding.create({
-        assetType: 'winch',
-        winch: winchId,
-        supplierQuote: result._id,
-        supplierQuoteNumber,
-        quoteNumber,
-        createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
-      });
-    } catch (bindingErr) {
-      console.error('新增 SupplierQuoteAssetBinding（winch）失敗:', bindingErr);
-    }
   }
 
   increaseSupplierQuoteLastNumberByPrefix(result.numberPrefix || 'S');

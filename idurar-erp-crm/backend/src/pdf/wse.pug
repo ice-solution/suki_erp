@@ -4,6 +4,9 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
     meta(charset="utf-8")
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
+    include _partials/pdf-pagination
+    +pdfPaginationStyles()
+    +pdfPaginationLastPageStyles('puppeteer-invoice', '164mm')
     style.
       .sheet { margin: 0; width: 100%; min-height: 297mm; box-sizing: border-box; }
       body { width: 100%; max-width: 100%; margin: 0; padding: 6px 16px 10px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
@@ -61,38 +64,16 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .issuer-name-line { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
       .issuer-stamp { border-bottom: 1px solid #222; width: 180px; height: 40px; margin-top: 4px; }
       .signature-stamp-label { font-size: 9px; margin-top: 4px; }
-      .quote-closing-block { page-break-inside: avoid; }
-      .quote-closing-summary { flex: 0 0 auto; }
+      .quote-closing-summary { page-break-inside: avoid; break-inside: avoid; flex: 0 0 auto; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
       .footer-section { margin-top: 12px; padding-top: 6px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
       .footer-line-1 { margin-bottom: 2px; }
       .footer-line-2 { }
-      .quote-page { display: block; page-break-inside: auto; }
-      .quote-page + .quote-page { page-break-before: always; }
-      .quote-body { display: block; }
     if isPuppeteer
       style.
         html.puppeteer-invoice .footer-section,
         html.puppeteer-invoice footer.footer-invoice { display: none !important; }
         html.puppeteer-invoice body { padding-bottom: 0; }
-        html.puppeteer-invoice .quote-page-last {
-          position: relative;
-          min-height: 196mm;
-        }
-        html.puppeteer-invoice .quote-page-last .quote-page-content {
-          padding-bottom: 98mm;
-        }
-        html.puppeteer-invoice .quote-page-last .quote-signature-footer {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          width: 100%;
-        }
-        html.puppeteer-invoice .quote-page-last .signature-section {
-          page-break-inside: avoid;
-          break-inside: avoid;
-        }
   body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const displayName = client.name || ''
@@ -109,7 +90,8 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
     - const currency = model.currency || 'HKD'
 
     each chunk, pageIndex in itemChunks
-      .quote-page(class=pageIndex === itemChunks.length - 1 ? 'quote-page-last' : '')
+      - const isLastPage = pageIndex === itemChunks.length - 1
+      .pdf-page(class=isLastPage ? 'pdf-page-last' : '')
         .quote-body
           .quote-page-content
             .header-section
@@ -155,7 +137,7 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
                   tr
                     td(colspan='5' style='text-align:center') 無項目
 
-            if pageIndex === itemChunks.length - 1
+            if isLastPage
               .quote-closing-summary
                 .summary-wrap
                   .summary-block
@@ -173,18 +155,15 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
                     .summary-row.grand
                       span.summary-label 總金額：
                       span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
-
-          if pageIndex === itemChunks.length - 1
-            .quote-signature-footer
-              .signature-section
-                .prepared-by-row
-                table.signature-table
-                  tr
-                    td.sig-right(colspan='2')
-                      .issuer-block
-                        .issuer-name-line ISSUED BY
-
-              .end-marker End
+              .pdf-signature-footer
+                .signature-section
+                  .prepared-by-row
+                  table.signature-table
+                    tr
+                      td.sig-right(colspan='2')
+                        .issuer-block
+                          .issuer-name-line ISSUED BY
+                .end-marker End
 
         if !isPuppeteer
           .footer-section

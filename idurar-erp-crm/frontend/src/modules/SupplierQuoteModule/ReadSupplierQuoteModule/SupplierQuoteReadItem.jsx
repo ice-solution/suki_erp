@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Divider } from 'antd';
 import dayjs from 'dayjs';
 
-import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Input, Space } from 'antd';
+import { Button, Row, Col, Descriptions, Statistic, Tag, Modal, message, Input, Space, Table } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 import {
   EditOutlined,
@@ -23,6 +23,7 @@ import { selectWarehouseOptions } from '@/redux/settings/selectors';
 import { DOWNLOAD_BASE_URL, BASE_URL, FILE_BASE_URL } from '@/config/serverApiConfig';
 import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
+import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
 
 /** S 單上傳檔（DN / Invoice）公開 URL：正式環境用 BASE_URL 或 FILE_BASE_URL，勿寫死 localhost */
 function supplierQuoteUploadedFileHref(file) {
@@ -81,6 +82,97 @@ const MaterialRow = ({ material, moneyFormatter, currency, warehouseOptions }) =
   </Row>
   );
 };
+
+function buildReadShipRows(erp) {
+  if (erp?.shipAssignments?.length > 0) return erp.shipAssignments;
+  if (erp?.assetAssignments?.length > 0) {
+    return erp.assetAssignments
+      .filter((row) => row.ship)
+      .map((row) => ({
+        ship: row.ship,
+        installationDate: row.shipInstallationDate,
+        expiredDate: row.shipExpiredDate,
+        dismantlingDate: row.shipDismantlingDate,
+      }));
+  }
+  if (erp?.ship) {
+    return [
+      {
+        ship: erp.ship,
+        installationDate: erp.ship.installationDate,
+        expiredDate: erp.ship.expiredDate,
+        dismantlingDate: erp.ship.dismantlingDate,
+      },
+    ];
+  }
+  return [];
+}
+
+function buildReadWinchRows(erp) {
+  if (erp?.winchAssignments?.length > 0) return erp.winchAssignments;
+  if (erp?.assetAssignments?.length > 0) {
+    return erp.assetAssignments
+      .filter((row) => row.winch)
+      .map((row) => ({
+        winch: row.winch,
+        installationDate: row.winchInstallationDate,
+        expiredDate: row.winchExpiredDate,
+        dismantlingDate: row.winchDismantlingDate,
+      }));
+  }
+  if (erp?.winch) {
+    return [
+      {
+        winch: erp.winch,
+        installationDate: erp.winch.installationDate,
+        expiredDate: erp.winch.expiredDate,
+        dismantlingDate: erp.winch.dismantlingDate,
+      },
+    ];
+  }
+  return [];
+}
+
+function readAssetTableColumns(assetKey) {
+  return [
+    {
+      title: assetKey === 'ship' ? '登記號碼' : '序列號',
+      key: 'name',
+      width: '18%',
+      render: (_, row) => {
+        const asset = row[assetKey];
+        if (typeof asset === 'object' && asset) {
+          return assetKey === 'ship' ? asset.registrationNumber || '—' : asset.serialNumber || '—';
+        }
+        return asset ? String(asset) : '—';
+      },
+    },
+    {
+      title: '安裝日期',
+      dataIndex: 'installationDate',
+      width: '18%',
+      render: (val) => (val ? dayjs(val).format('YYYY-MM-DD') : '—'),
+    },
+    {
+      title: '租賃到期日',
+      dataIndex: 'expiredDate',
+      width: '18%',
+      render: (val) => (val ? dayjs(val).format('YYYY-MM-DD') : '—'),
+    },
+    {
+      title: '拆卸日期',
+      dataIndex: 'dismantlingDate',
+      width: '18%',
+      render: (val) => (val ? dayjs(val).format('YYYY-MM-DD') : '—'),
+    },
+    {
+      title: '超租天數',
+      key: 'overage',
+      width: '14%',
+      render: (_, row) => calcRentalOverageLabel(row.installationDate, row.dismantlingDate),
+    },
+  ];
+}
 
 export default function SupplierQuoteReadItem({ config, selectedItem }) {
   const showDelete = useCanDeleteRecords();
@@ -285,6 +377,9 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
     });
   };
 
+  const readShipRows = buildReadShipRows(currentErp);
+  const readWinchRows = buildReadWinchRows(currentErp);
+
   return (
     <>
       <div
@@ -484,48 +579,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `${currentErp.warehouse} / -`)
             : '-'}
         </Descriptions.Item>
-        {currentErp.ship && (
-          <>
-            <Descriptions.Item label="船隻">
-              <Tag color="blue">{currentErp.ship.registrationNumber || '—'}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="船隻安裝日期">
-              {currentErp.ship.installationDate
-                ? dayjs(currentErp.ship.installationDate).format('YYYY-MM-DD')
-                : currentErp.installationDate
-                  ? dayjs(currentErp.installationDate).format('YYYY-MM-DD')
-                  : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="船隻拆卸日期">
-              {currentErp.ship.dismantlingDate
-                ? dayjs(currentErp.ship.dismantlingDate).format('YYYY-MM-DD')
-                : currentErp.dismantlingDate
-                  ? dayjs(currentErp.dismantlingDate).format('YYYY-MM-DD')
-                  : '-'}
-            </Descriptions.Item>
-          </>
-        )}
-        {currentErp.winch && (
-          <>
-            <Descriptions.Item label="爬纜器">
-              <Tag color="green">{currentErp.winch.serialNumber || '—'}</Tag>
-            </Descriptions.Item>
-            <Descriptions.Item label="爬纜器安裝日期">
-              {currentErp.winch.installationDate
-                ? dayjs(currentErp.winch.installationDate).format('YYYY-MM-DD')
-                : currentErp.installationDate
-                  ? dayjs(currentErp.installationDate).format('YYYY-MM-DD')
-                  : '-'}
-            </Descriptions.Item>
-            <Descriptions.Item label="爬纜器拆卸日期">
-              {currentErp.winch.dismantlingDate
-                ? dayjs(currentErp.winch.dismantlingDate).format('YYYY-MM-DD')
-                : currentErp.dismantlingDate
-                  ? dayjs(currentErp.dismantlingDate).format('YYYY-MM-DD')
-                  : '-'}
-            </Descriptions.Item>
-          </>
-        )}
         <Descriptions.Item label="制單人">
           {currentErp.createdBy
             ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
@@ -536,6 +589,38 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>
+
+      {readShipRows.length > 0 && (
+        <div style={{ marginTop: 8, marginBottom: 24 }}>
+          <Divider orientation="left" orientationMargin={0}>
+            船隻
+          </Divider>
+          <Table
+            size="small"
+            pagination={false}
+            bordered
+            rowKey={(_, index) => `read-ship-${index}`}
+            dataSource={readShipRows}
+            columns={readAssetTableColumns('ship')}
+          />
+        </div>
+      )}
+
+      {readWinchRows.length > 0 && (
+        <div style={{ marginBottom: 24 }}>
+          <Divider orientation="left" orientationMargin={0}>
+            爬纜器
+          </Divider>
+          <Table
+            size="small"
+            pagination={false}
+            bordered
+            rowKey={(_, index) => `read-winch-${index}`}
+            dataSource={readWinchRows}
+            columns={readAssetTableColumns('winch')}
+          />
+        </div>
+      )}
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>
         <Col span={12}>

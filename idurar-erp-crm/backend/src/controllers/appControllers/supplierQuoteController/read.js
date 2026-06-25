@@ -10,8 +10,12 @@ const read = async (req, res) => {
   })
     .populate('createdBy', 'name surname email')
     .populate('updatedBy', 'name surname email')
-    .populate('ship', 'registrationNumber status supplierNumber')
-    .populate('winch', 'serialNumber status supplierNumber')
+    .populate('ship', 'registrationNumber status supplierNumber installationDate dismantlingDate')
+    .populate('winch', 'serialNumber status supplierNumber installationDate dismantlingDate')
+    .populate('shipAssignments.ship', 'registrationNumber status supplierNumber installationDate dismantlingDate expiredDate')
+    .populate('winchAssignments.winch', 'serialNumber status supplierNumber installationDate dismantlingDate expiredDate')
+    .populate('assetAssignments.ship', 'registrationNumber status supplierNumber installationDate dismantlingDate expiredDate')
+    .populate('assetAssignments.winch', 'serialNumber status supplierNumber installationDate dismantlingDate expiredDate')
     .populate('supplier', 'name')
     .exec();
   // If no results found, return document not found

@@ -8,15 +8,15 @@ const { getData } = require('@/middlewares/serverData');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
-const { getShipQuotePdfPugLocals } = require('@/new_pdf/ship_quote/generateShipQuotePdf');
-const { getWingShunQuotePdfPugLocals } = require('@/helpers/quotePdfPagination');
+const { getPdfPaginationPugLocalsForTemplate, getShipQuoteRentalPdfPugLocals } = require('@/helpers/pdfPagination');
 
-function getWingShunPdfPugLocalsForTemplate(templateName, result) {
-  const t = (templateName || '').toLowerCase();
-  if (t === 'quote' || t === 'wse') {
-    return getWingShunQuotePdfPugLocals(result?.items || []);
+function getPdfPugLocalsForTemplate(templateName, result) {
+  const t = String(templateName || '').toLowerCase();
+  if (t === 'shipquote-rental') {
+    const moment = require('moment');
+    return getShipQuoteRentalPdfPugLocals(result, moment);
   }
-  return {};
+  return getPdfPaginationPugLocalsForTemplate(templateName, result);
 }
 
 // 注意：在不同 OS/部署環境下，pdf 模板檔名大小寫敏感度不同。
@@ -172,8 +172,7 @@ exports.generatePdf = async (
       formatDiscountMoneyForPdf,
       moment: moment,
       isPuppeteer: false,
-      ...getShipQuotePdfPugLocals(),
-      ...getWingShunPdfPugLocalsForTemplate(templateNameLower, result),
+      ...getPdfPugLocalsForTemplate(templateNameLower, result),
     });
 
     pdf
@@ -270,8 +269,7 @@ exports.generatePdfBuffer = async (
     formatDiscountMoneyForPdf,
     moment: moment,
     isPuppeteer: false,
-    ...getShipQuotePdfPugLocals(),
-    ...getWingShunPdfPugLocalsForTemplate(templateName, result),
+    ...getPdfPugLocalsForTemplate(templateName, result),
   });
 
   return await new Promise((resolve, reject) => {

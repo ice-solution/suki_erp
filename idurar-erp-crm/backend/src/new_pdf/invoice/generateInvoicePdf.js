@@ -20,7 +20,7 @@ const {
   buildSuperMaxImageFooterTemplate,
   WING_SHUN_PDF_BOTTOM_MARGIN,
 } = require('../shared/quotePdfFooterTemplate');
-const { getWingShunQuotePdfPugLocals } = require('@/helpers/quotePdfPagination');
+const { getPdfPaginationPugLocalsForTemplate } = require('@/helpers/pdfPagination');
 
 /** 與 pdfController 內 Invoice 模板選擇一致 */
 function resolveInvoiceTemplateBasename(model) {
@@ -92,7 +92,7 @@ async function generateInvoicePdfBuffer(model) {
     formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
-    ...(templateBasename === 'wse' ? getWingShunQuotePdfPugLocals(model.items || []) : {}),
+    ...(templateBasename === 'wse' ? getPdfPaginationPugLocalsForTemplate('wse', model) : {}),
   });
 
   const launchOpts = {

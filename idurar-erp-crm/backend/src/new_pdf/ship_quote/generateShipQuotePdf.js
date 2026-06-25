@@ -1,6 +1,6 @@
 /**
  * 使用 Puppeteer 將 shipquote-rental.pug / shipquote-renewal.pug（吊船 Quote）渲染為 PDF。
- * 與 pdfController：租賃 → rental + company_logo_s；續租 → renewal + company_logo_sml。
+ * 與 pdfController：租賃 → rental；續租 → renewal。SML 版面均為超越工程（Supermax footer）。
  *
  * @module new_pdf/ship_quote/generateShipQuotePdf
  */
@@ -16,6 +16,10 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const {
+  getPdfPaginationPugLocalsForTemplate,
+  getShipQuoteRentalPdfPugLocals,
+} = require('@/helpers/pdfPagination');
 
 /** 與 pdfController.resolveLogoSettingKey('shipquote', …) 一致 */
 function resolveLogoSettingKeyForShipQuote(model) {
@@ -45,16 +49,6 @@ function resolveShipQuoteTemplatePath(model) {
     throw new Error(`${fileNameLower} not found. Tried: ${candidates.join(', ')}`);
   }
   return found;
-}
-
-/** 正整數時覆寫 pug 內 tbody 行數上限（預設由模板內公式推算） */
-function getShipQuotePdfPugLocals() {
-  const raw = process.env.SHIPQUOTE_PDF_BODY_LINE_CAP;
-  if (raw == null || String(raw).trim() === '') {
-    return { shipPdfBodyLineCap: null };
-  }
-  const n = parseInt(String(raw).trim(), 10);
-  return { shipPdfBodyLineCap: Number.isFinite(n) && n > 0 ? n : null };
 }
 
 /**
@@ -95,6 +89,8 @@ async function generateShipQuotePdfBuffer(model) {
   }
 
   const templatePath = resolveShipQuoteTemplatePath(model);
+  const isRental = model.shipType === '租賃';
+
   const htmlContent = pug.renderFile(templatePath, {
     model,
     settings,
@@ -105,7 +101,9 @@ async function generateShipQuotePdfBuffer(model) {
     formatDiscountMoneyForPdf,
     moment,
     isPuppeteer: true,
-    ...getShipQuotePdfPugLocals(),
+    ...(isRental
+      ? getShipQuoteRentalPdfPugLocals(model, moment)
+      : getPdfPaginationPugLocalsForTemplate('shipquote-renewal', model)),
   });
 
   const launchOpts = {
@@ -147,5 +145,4 @@ async function generateShipQuotePdfBuffer(model) {
 
 module.exports = {
   generateShipQuotePdfBuffer,
-  getShipQuotePdfPugLocals,
 };

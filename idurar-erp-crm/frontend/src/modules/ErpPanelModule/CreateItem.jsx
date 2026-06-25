@@ -152,11 +152,7 @@ export default function CreateItem({ config, CreateForm }) {
         if (dataToSubmit.date) {
           dataToSubmit.date = dayjs(dataToSubmit.date).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
         }
-        if (dataToSubmit.expiredDate) {
-          dataToSubmit.expiredDate = dayjs(dataToSubmit.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-        } else {
-          dataToSubmit.expiredDate = null;
-        }
+        dataToSubmit.expiredDate = null;
         if (dataToSubmit.openDate) {
           dataToSubmit.openDate = dayjs(dataToSubmit.openDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
         } else {
@@ -164,13 +160,38 @@ export default function CreateItem({ config, CreateForm }) {
         }
         ['shipInstallationDate', 'shipDismantlingDate', 'winchInstallationDate', 'winchDismantlingDate'].forEach(
           (field) => {
-            if (dataToSubmit[field]) {
-              dataToSubmit[field] = dayjs(dataToSubmit[field]).format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-            } else {
-              dataToSubmit[field] = null;
-            }
+            delete dataToSubmit[field];
           }
         );
+        if (Array.isArray(dataToSubmit.shipAssignments)) {
+          dataToSubmit.shipAssignments = dataToSubmit.shipAssignments.map((row) => ({
+            ship: row.ship || null,
+            installationDate: row.installationDate
+              ? dayjs(row.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            expiredDate: row.expiredDate
+              ? dayjs(row.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            dismantlingDate: row.dismantlingDate
+              ? dayjs(row.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+          }));
+        }
+        if (Array.isArray(dataToSubmit.winchAssignments)) {
+          dataToSubmit.winchAssignments = dataToSubmit.winchAssignments.map((row) => ({
+            winch: row.winch || null,
+            installationDate: row.installationDate
+              ? dayjs(row.installationDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            expiredDate: row.expiredDate
+              ? dayjs(row.expiredDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+            dismantlingDate: row.dismantlingDate
+              ? dayjs(row.dismantlingDate).format('YYYY-MM-DDTHH:mm:ss.SSSZ')
+              : null,
+          }));
+        }
+        delete dataToSubmit.assetAssignments;
       }
       
       // Check if this is a supplierquote with actual file objects (not just empty arrays)

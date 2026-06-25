@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
+const { computeInvoiceTotals } = require('@/helpers/invoiceTotals');
 const { increaseBySettingKey } = require('@/middlewares/settings');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
 const schema = require('./schemaValidate');
@@ -38,9 +39,13 @@ const create = async (req, res) => {
     item['total'] = total;
     subTotal = calculate.add(subTotal, total);
   });
-  discountTotal = calculate.multiply(subTotal, discount / 100);
-  total = calculate.sub(subTotal, discountTotal);
-  total = calculate.multiply(total, projectPct / 100);
+  const totals = computeInvoiceTotals({
+    subTotal,
+    discount,
+    projectPercentage: projectPct,
+  });
+  discountTotal = totals.discountTotal;
+  total = totals.total;
 
   body['subTotal'] = subTotal;
   body['discountTotal'] = discountTotal;

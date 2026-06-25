@@ -25,8 +25,8 @@ function applyWarehouseProjectsFields(target, projectsInput) {
 }
 
 const warehouseProjectPopulate = [
-  { path: 'project', select: 'name invoiceNumber' },
-  { path: 'projects', select: 'name invoiceNumber' },
+  { path: 'project', select: 'name invoiceNumber address' },
+  { path: 'projects', select: 'name invoiceNumber address' },
 ];
 
 module.exports = {

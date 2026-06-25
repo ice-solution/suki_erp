@@ -6,15 +6,22 @@ export function isAssignableAsset(record) {
 }
 
 /**
- * 可選列表：香港倉；編輯時保留本單已指派的資產（可能為使用中）
+ * 可選列表：香港倉；編輯時保留本單已指派的資產（可能為使用中／待回廠）
+ * @param {string|string[]|null|undefined} assignedIds
  */
-export function filterAssignableAssets(list, assignedId) {
+export function filterAssignableAssets(list, assignedIds) {
   if (!Array.isArray(list)) return [];
+  const ids = new Set(
+    (Array.isArray(assignedIds) ? assignedIds : assignedIds ? [assignedIds] : [])
+      .filter(Boolean)
+      .map(String)
+  );
   const pool = list.filter((row) => isAssignableAsset(row));
-  if (!assignedId) return pool;
-  const assigned = list.find((row) => String(row._id) === String(assignedId));
-  if (assigned && !pool.some((row) => String(row._id) === String(assignedId))) {
-    return [...pool, assigned];
-  }
+  ids.forEach((id) => {
+    const assigned = list.find((row) => String(row._id) === id);
+    if (assigned && !pool.some((row) => String(row._id) === id)) {
+      pool.push(assigned);
+    }
+  });
   return pool;
 }

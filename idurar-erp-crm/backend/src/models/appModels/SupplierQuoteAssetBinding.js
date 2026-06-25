@@ -45,6 +45,8 @@ const supplierQuoteAssetBindingSchema = new mongoose.Schema({
 
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin' },
   created: { type: Date, default: Date.now },
+  installationDate: { type: Date, default: null },
+  dismantlingDate: { type: Date, default: null },
   // 當資產改為待回廠/香港倉時記錄回廠日期
   returnDate: { type: Date, default: null },
 });

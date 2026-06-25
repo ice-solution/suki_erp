@@ -5,6 +5,7 @@ const Model = mongoose.model('Invoice');
 const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
+const { computeInvoiceTotals } = require('@/helpers/invoiceTotals');
 const {
   syncInvoiceNumberAcrossDocuments,
   syncProjectInvoiceNumberIfMatched,
@@ -63,9 +64,13 @@ const update = async (req, res) => {
     item['total'] = total;
     subTotal = calculate.add(subTotal, total);
   });
-  discountTotal = calculate.multiply(subTotal, discount / 100);
-  total = calculate.sub(subTotal, discountTotal);
-  total = calculate.multiply(total, projectPct / 100);
+  const totals = computeInvoiceTotals({
+    subTotal,
+    discount,
+    projectPercentage: projectPct,
+  });
+  discountTotal = totals.discountTotal;
+  total = totals.total;
 
   body['subTotal'] = subTotal;
   body['discountTotal'] = discountTotal;

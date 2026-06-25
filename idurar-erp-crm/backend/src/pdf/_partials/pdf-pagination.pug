@@ -1,0 +1,25 @@
+//- 統一 PDF 分頁樣式：JS chunk 之間換頁；末頁簽署區用 flex 貼底（唔用 absolute）
+mixin pdfPaginationStyles()
+  style.
+    .pdf-page { display: block; }
+    .pdf-page + .pdf-page { page-break-before: always; break-before: page; }
+    .pdf-closing-summary { page-break-inside: avoid; break-inside: avoid; }
+    .pdf-signature-footer { page-break-inside: avoid; break-inside: avoid; }
+
+mixin pdfPaginationLastPageStyles(puppeteerClass, pageMinHeight)
+  if isPuppeteer
+    - var _pageMinHeight = pageMinHeight || '168mm'
+    style.
+      html.#{puppeteerClass} .pdf-page-last .quote-body {
+        display: flex;
+        flex-direction: column;
+        min-height: #{_pageMinHeight};
+      }
+      html.#{puppeteerClass} .pdf-page-last .quote-page-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+      html.#{puppeteerClass} .pdf-page-last .pdf-signature-footer {
+        margin-top: auto;
+      }

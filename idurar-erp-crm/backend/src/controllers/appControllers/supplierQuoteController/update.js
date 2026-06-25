@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 
 const Model = mongoose.model('SupplierQuote');
-const Ship = mongoose.model('Ship');
-const Winch = mongoose.model('Winch');
-const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
 
 const custom = require('@/controllers/pdfController');
 
@@ -14,16 +11,16 @@ const {
   revertAppliedSupplierQuoteStockChanges,
 } = require('@/helpers/supplierQuoteMaterialsWarehouseSync');
 const {
-  assertAssetAssignableForSupplierQuote,
-} = require('@/helpers/assignableAssetStatus');
-const {
   assertSupplierQuoteMaterialsStock,
 } = require('@/helpers/validateSupplierQuoteMaterialsStock');
 const {
-  getAssetDatePayload,
   stripSupplierQuoteAssetDateFields,
-  clearedAssetDateFields,
 } = require('@/helpers/supplierQuoteAssetDates');
+const {
+  parseShipWinchAssignmentsInput,
+  syncSupplierQuoteAssetAssignments,
+  stripLegacyAssetFieldsFromBody,
+} = require('@/helpers/supplierQuoteAssetAssignments');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -133,9 +130,20 @@ const update = async (req, res) => {
   body['materials'] = materials;
   body['pdf'] = 'supplier-quote-' + req.params.id + '.pdf';
 
-  const shipAssetDates = getAssetDatePayload(body, 'ship');
-  const winchAssetDates = getAssetDatePayload(body, 'winch');
+  const { shipAssignments, winchAssignments } = parseShipWinchAssignmentsInput(body);
+  body.shipAssignments = shipAssignments;
+  body.winchAssignments = winchAssignments;
+  stripLegacyAssetFieldsFromBody(body);
   stripSupplierQuoteAssetDateFields(body);
+  const primaryActive = shipAssignments.find((row) => row.ship && !row.dismantlingDate);
+  const primaryWinch = winchAssignments.find((row) => row.winch && !row.dismantlingDate);
+  if (Object.prototype.hasOwnProperty.call(body, 'ship') || shipAssignments.length) {
+    body.ship = primaryActive?.ship || null;
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'winch') || winchAssignments.length) {
+    body.winch = primaryWinch?.winch || null;
+  }
+  body.expiredDate = null;
 
   // Handle file uploads using express-fileupload
   if (req.files) {
@@ -381,140 +389,20 @@ const update = async (req, res) => {
     });
   }
 
-  const normalizeRefId = (ref) => {
-    if (ref == null || ref === '') return null;
-    if (typeof ref === 'object' && ref._id != null) return ref._id.toString();
-    return ref.toString();
-  };
-
-  // body 未帶 ship／winch 時，勿當成「已移除綁定」；以更新後文件為準（避免誤設為香港倉）
-  const newShipId = Object.prototype.hasOwnProperty.call(body, 'ship')
-    ? normalizeRefId(body.ship)
-    : normalizeRefId(result.ship);
-  const newWinchId = Object.prototype.hasOwnProperty.call(body, 'winch')
-    ? normalizeRefId(body.winch)
-    : normalizeRefId(result.winch);
-
-  // 如果有船隻或爬纜器，更新它們的status、supplierNumber和expiredDate
-  const supplierQuoteNumber = `${result.numberPrefix || 'S'}-${result.number}`;
-  const expiredDate = body.expiredDate ? new Date(body.expiredDate) : null;
-  const quoteNumber = result.invoiceNumber || '';
-
-  const oldShipId = existingQuote?.ship
-    ? typeof existingQuote.ship === 'object'
-      ? existingQuote.ship._id.toString()
-      : existingQuote.ship.toString()
-    : null;
-  const shouldCreateShipBinding = !!newShipId && oldShipId !== newShipId;
-
-  const oldWinchId = existingQuote?.winch
-    ? typeof existingQuote.winch === 'object'
-      ? existingQuote.winch._id.toString()
-      : existingQuote.winch.toString()
-    : null;
-  const shouldCreateWinchBinding = !!newWinchId && oldWinchId !== newWinchId;
-
   try {
-    if (newShipId && String(newShipId) !== String(oldShipId || '')) {
-      const shipDoc = await Ship.findById(newShipId).select('status registrationNumber').lean();
-      assertAssetAssignableForSupplierQuote(
-        shipDoc,
-        `船隻「${shipDoc?.registrationNumber || newShipId}」`
-      );
-    }
-    if (newWinchId && String(newWinchId) !== String(oldWinchId || '')) {
-      const winchDoc = await Winch.findById(newWinchId).select('status serialNumber').lean();
-      assertAssetAssignableForSupplierQuote(
-        winchDoc,
-        `爬纜器「${winchDoc?.serialNumber || newWinchId}」`
-      );
-    }
+    await syncSupplierQuoteAssetAssignments({
+      supplierQuote: result,
+      body,
+      existingQuote,
+      adminId: req.admin && req.admin._id,
+    });
+    result = await Model.findById(result._id).exec();
   } catch (assetErr) {
     return res.status(assetErr.statusCode || 400).json({
       success: false,
       result: null,
-      message: assetErr.message || '船隻／爬纜器狀態不符合指派條件',
+      message: assetErr.message || '船隻／爬纜器同步失敗',
     });
-  }
-
-  // 處理船隻：如果之前有ship但現在沒有，將之前的ship狀態改為回倉
-  if (oldShipId) {
-    // ship 被移除（現在沒有）或換了新的 ship
-    if (!newShipId || oldShipId !== newShipId) {
-      await Ship.findByIdAndUpdate(oldShipId, {
-        status: 'returned_warehouse_hk',
-        supplierNumber: null,
-        expiredDate: null,
-        ...clearedAssetDateFields(),
-        updated: new Date(),
-      });
-    }
-  }
-
-  // 處理爬纜器：如果之前有winch但現在沒有，將之前的winch狀態改為回倉
-  if (oldWinchId) {
-    // winch 被移除（現在沒有）或換了新的 winch
-    if (!newWinchId || oldWinchId !== newWinchId) {
-      await Winch.findByIdAndUpdate(oldWinchId, {
-        status: 'returned_warehouse_hk',
-        supplierNumber: null,
-        expiredDate: null,
-        ...clearedAssetDateFields(),
-        updated: new Date(),
-      });
-    }
-  }
-
-  // 更新新的船隻
-  if (newShipId) {
-    await Ship.findByIdAndUpdate(newShipId, {
-      status: 'in_use',
-      supplierNumber: supplierQuoteNumber,
-      expiredDate: expiredDate,
-      ...shipAssetDates,
-      updated: new Date(),
-    });
-
-    if (shouldCreateShipBinding) {
-      try {
-        await SupplierQuoteAssetBinding.create({
-          assetType: 'ship',
-          ship: newShipId,
-          supplierQuote: result._id,
-          supplierQuoteNumber,
-          quoteNumber,
-          createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
-        });
-      } catch (bindingErr) {
-        console.error('新增 SupplierQuoteAssetBinding（ship）失敗:', bindingErr);
-      }
-    }
-  }
-
-  // 更新新的爬纜器
-  if (newWinchId) {
-    await Winch.findByIdAndUpdate(newWinchId, {
-      status: 'in_use',
-      supplierNumber: supplierQuoteNumber,
-      expiredDate: expiredDate,
-      ...winchAssetDates,
-      updated: new Date(),
-    });
-
-    if (shouldCreateWinchBinding) {
-      try {
-        await SupplierQuoteAssetBinding.create({
-          assetType: 'winch',
-          winch: newWinchId,
-          supplierQuote: result._id,
-          supplierQuoteNumber,
-          quoteNumber,
-          createdBy: req.admin && req.admin._id ? req.admin._id : undefined,
-        });
-      } catch (bindingErr) {
-        console.error('新增 SupplierQuoteAssetBinding（winch）失敗:', bindingErr);
-      }
-    }
   }
 
   console.log('📤 Returning result with files:');

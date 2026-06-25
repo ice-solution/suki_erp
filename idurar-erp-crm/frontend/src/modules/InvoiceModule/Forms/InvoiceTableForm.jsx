@@ -15,6 +15,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
+import { computeInvoiceTotals, safeProjectPct } from '@/utils/invoiceTotals';
 import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
@@ -212,12 +213,14 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     form.setFieldValue('discount', v);
   };
 
-  /** 手動輸入折扣金額：回推折扣%（與報價單 QuoteTableForm 一致） */
+  /** 手動輸入折扣金額：依專案佔比後金額回推折扣% */
   const handleDiscountAmountChange = (value) => {
     const raw = value == null || value === '' ? 0 : Number(value);
-    const cap = subTotal > 0 ? Math.min(Math.max(0, raw), subTotal) : Math.max(0, raw);
-    const pct = subTotal > 0 ? (cap / subTotal) * 100 : 0;
-    const pctRounded = Number(pct.toFixed(6));
+    const pct = safeProjectPct(projectPercentageWatch);
+    const splitSubTotal = calculate.multiply(subTotal, pct / 100);
+    const cap = splitSubTotal > 0 ? Math.min(Math.max(0, raw), splitSubTotal) : Math.max(0, raw);
+    const discPct = splitSubTotal > 0 ? (cap / splitSubTotal) * 100 : 0;
+    const pctRounded = Number(discPct.toFixed(6));
     setDiscount(pctRounded);
     form.setFieldsValue({
       discount: pctRounded,
@@ -535,23 +538,23 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     form.setFieldsValue({ items: items });
   }, [items, form]);
 
-  // 依小計、折扣%、專案佔比更新折扣金額與總計（手改金額會先回推 %，再由此同步金額）
+  // 依小計、專案佔比、折扣% 更新折扣金額與總計（先佔比、後折扣）
   useEffect(() => {
-    const pct =
-      projectPercentageWatch == null || projectPercentageWatch === ''
-        ? 100
-        : Number(projectPercentageWatch);
-    const safePct = Number.isFinite(pct) ? Math.min(100, Math.max(0, pct)) : 100;
-    const safeDiscount = Number.isFinite(Number(discount))
-      ? Math.min(100, Math.max(0, Number(discount)))
-      : 0;
-    const discountAmount = calculate.multiply(subTotal, safeDiscount / 100);
+    const { discountTotal: discountAmount, total: currentTotal } = computeInvoiceTotals({
+      subTotal,
+      discount,
+      projectPercentage: projectPercentageWatch,
+    });
     const rounded = Number.parseFloat(Number(discountAmount).toFixed(cent_precision ?? 2));
     form.setFieldValue('discountTotal', rounded);
-    const afterDiscount = calculate.sub(subTotal, rounded);
-    const currentTotal = calculate.multiply(afterDiscount, safePct / 100);
     setTotal(Number.parseFloat(Number(currentTotal).toFixed(cent_precision ?? 2)));
   }, [subTotal, discount, projectPercentageWatch, form, cent_precision]);
+
+  const splitSubTotalForDiscount = computeInvoiceTotals({
+    subTotal,
+    discount: 0,
+    projectPercentage: projectPercentageWatch,
+  }).splitSubTotal;
 
   // 處理項目選擇
   const handleItemSelect = (value, option) => {
@@ -1330,7 +1333,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             >
               <InputNumber
                 min={0}
-                max={subTotal > 0 ? subTotal : undefined}
+                max={splitSubTotalForDiscount > 0 ? splitSubTotalForDiscount : undefined}
                 precision={cent_precision ?? 2}
                 style={{ width: '100%' }}
                 controls={false}
