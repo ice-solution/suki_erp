@@ -25,7 +25,7 @@ import {
   discountPdfFieldsFromRecord,
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
-import { filterAssignableAssets } from '@/utils/assignableAssetStatus';
+import { filterAssignableAssets, isAssignableAsset } from '@/utils/assignableAssetStatus';
 import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
 import {
   getMaxOutboundQuantityForLine,
@@ -302,6 +302,23 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   const collectAssignedWinchIds = (rows = winchRows) =>
     rows.map((row) => row.winch).filter(Boolean);
+
+  /** 本 S 單下拉：已出現過的資產不可再選；新列僅可選香港倉 */
+  const isShipOptionSelectableForRow = (opt, record, rows) => {
+    if (String(opt.value) === String(record.ship)) return true;
+    if (rows.some((row) => row.key !== record.key && row.ship && String(row.ship) === String(opt.value))) {
+      return false;
+    }
+    return isAssignableAsset(opt);
+  };
+
+  const isWinchOptionSelectableForRow = (opt, record, rows) => {
+    if (String(opt.value) === String(record.winch)) return true;
+    if (rows.some((row) => row.key !== record.key && row.winch && String(row.winch) === String(opt.value))) {
+      return false;
+    }
+    return isAssignableAsset(opt);
+  };
 
   const applySuggestedNumber = (prefix = watchedSupplierPrefix || 'S') => {
     const next = getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) + 1;
@@ -2128,16 +2145,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 filterOption={(input, option) =>
                   (option?.label || '').toLowerCase().includes(input.toLowerCase())
                 }
-                options={ships.filter(
-                  (opt) =>
-                    String(opt.value) === String(record.ship) ||
-                    !shipRows.some(
-                      (row) =>
-                        row.key !== record.key &&
-                        !row.dismantlingDate &&
-                        String(row.ship) === String(opt.value)
-                    )
-                )}
+                options={ships.filter((opt) => isShipOptionSelectableForRow(opt, record, shipRows))}
                 onChange={(value) => updateShipRow(record.key, { ship: value || null })}
               />
             ),
@@ -2243,16 +2251,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 filterOption={(input, option) =>
                   (option?.label || '').toLowerCase().includes(input.toLowerCase())
                 }
-                options={winches.filter(
-                  (opt) =>
-                    String(opt.value) === String(record.winch) ||
-                    !winchRows.some(
-                      (row) =>
-                        row.key !== record.key &&
-                        !row.dismantlingDate &&
-                        String(row.winch) === String(opt.value)
-                    )
-                )}
+                options={winches.filter((opt) => isWinchOptionSelectableForRow(opt, record, winchRows))}
                 onChange={(value) => updateWinchRow(record.key, { winch: value || null })}
               />
             ),

@@ -169,13 +169,16 @@ async function closeBinding({ supplierQuoteId, assetType, assetId, installationD
   );
 }
 
-async function releaseAssetToPendingReturn(Model, assetId, { installationDate, expiredDate, dismantlingDate }) {
+async function releaseAssetToPendingReturn(Model, assetId, { dismantlingDate }) {
+  const parsedReturn = dismantlingDate ? new Date(dismantlingDate) : new Date();
+  const returnDate = !Number.isNaN(parsedReturn.getTime()) ? parsedReturn : new Date();
   await Model.findByIdAndUpdate(assetId, {
     status: PENDING_RETURN_STATUS,
     supplierNumber: null,
-    installationDate: installationDate || null,
-    expiredDate: expiredDate || null,
-    dismantlingDate: dismantlingDate || null,
+    installationDate: null,
+    expiredDate: null,
+    dismantlingDate: null,
+    returnDate,
     updated: new Date(),
   });
 }
@@ -291,7 +294,7 @@ async function processAssetSide({
           dismantlingDate,
         });
       }
-      await releaseAssetToPendingReturn(Model, assetId, { installationDate, expiredDate, dismantlingDate });
+      await releaseAssetToPendingReturn(Model, assetId, { dismantlingDate });
     }
     return;
   }

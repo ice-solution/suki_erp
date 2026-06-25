@@ -232,8 +232,8 @@ export default function ShipList() {
       title: translate('expired Date') || '到期日',
       dataIndex: 'expiredDate',
       key: 'expiredDate',
-      render: (date) => {
-        if (!date) return '-';
+      render: (date, record) => {
+        if (record.status !== 'in_use' || !date) return '-';
         const d = dayjs(date);
         const today = dayjs().startOf('day');
         const diffDays = d.diff(today, 'day');
