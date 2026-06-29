@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
 const Model = mongoose.model('Quote');
+const { syncConvertedInvoicesOnSourceDoc } = require('@/helpers/syncSourceConvertedInvoices');
 
 const read = async (req, res) => {
   // Find document by id
-  const result = await Model.findOne({
+  let result = await Model.findOne({
     _id: req.params.id,
     removed: false,
   })
@@ -18,14 +19,15 @@ const read = async (req, res) => {
       result: null,
       message: 'No document found ',
     });
-  } else {
-    // Return success resposne
-    return res.status(200).json({
-      success: true,
-      result,
-      message: 'we found this document ',
-    });
   }
+
+  result = await syncConvertedInvoicesOnSourceDoc(Model, result);
+
+  return res.status(200).json({
+    success: true,
+    result,
+    message: 'we found this document ',
+  });
 };
 
 module.exports = read;

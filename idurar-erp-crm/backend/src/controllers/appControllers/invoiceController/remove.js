@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('Invoice');
 const ModelPayment = mongoose.model('Payment');
 const { pullDocumentFromProjectArrays } = require('@/helpers/pullDocumentFromProjectArrays');
+const { syncConvertedInvoicesForDeletedInvoice } = require('@/helpers/syncSourceConvertedInvoices');
 
 const remove = async (req, res) => {
   const existing = await Model.findOne({
@@ -39,6 +40,9 @@ const remove = async (req, res) => {
     { invoice: deletedInvoice._id },
     { $set: { removed: true } }
   );
+
+  await syncConvertedInvoicesForDeletedInvoice(existing);
+
   return res.status(200).json({
     success: true,
     result: deletedInvoice,
