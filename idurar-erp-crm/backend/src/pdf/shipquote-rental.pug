@@ -6,7 +6,6 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
     meta(name="viewport" content="width=device-width, initial-scale=1")
     include _partials/pdf-pagination
     +pdfPaginationStyles()
-    +pdfPaginationLastPageStyles('puppeteer-ship-quote-rental')
     style.
       body { width: 100%; max-width: 100%; margin: 0; padding: 20px 16px 10px; background: #fff; font-family: Arial, sans-serif; font-size: 10px; color: #222; box-sizing: border-box; }
       *, *:before, *:after { box-sizing: border-box; color: #222; }
@@ -54,15 +53,11 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .extra-table .col-desc { width: auto; white-space: pre-wrap; word-break: break-word; }
       .extra-table .col-price { text-align: right; width: 160px; white-space: nowrap; }
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
-      .terms-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; }
-      .terms-table caption.terms-section-caption { caption-side: top; text-align: left; font-weight: bold; margin: 0 0 4px; padding: 0; }
-      .terms-table th, .terms-table td { border: none; padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; vertical-align: top; }
-      .terms-table th { background: transparent; font-weight: bold; }
-      .terms-table .col-no { width: 6%; text-align: center; white-space: nowrap; }
-      .terms-table .col-desc { width: auto; white-space: pre-wrap; word-break: break-word; }
-      .terms-table tbody tr.terms-row-continuation td { border-bottom: none; }
-      .terms-line { white-space: pre-wrap; word-break: break-word; margin: 0 0 4px; border: none; padding: 0; }
+      .terms-section h4 { margin: 8px 0 4px; font-size: 10px; font-weight: bold; }
+      .terms-line { white-space: pre-wrap; word-break: break-word; margin: 0 0 4px; }
+      .terms-line-continuation { padding-left: 1.35em; }
       .terms-closing-block { margin-top: 8px; page-break-inside: avoid; break-inside: avoid; }
+      .terms-last-page-footer { page-break-inside: avoid; break-inside: avoid; }
       .signature-section { margin-top: 12px; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .signature-table td { vertical-align: top; font-size: 10px; }
@@ -207,59 +202,50 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
 
     each termsChunk, termsPageIndex in termsChunks
       - const isLastTermsPage = termsPageIndex === termsChunks.length - 1
-      .pdf-page(class=isLastTermsPage ? 'pdf-page-last' : '')
+      .pdf-page
         .quote-body.rental-page-body
           .quote-page-content
             +rentalPageHeader()
             .terms-section
-              table.terms-table
-                if termsPageIndex === 0
-                  caption.terms-section-caption 租賃說明
-                thead
-                  tr
-                    th.col-no
-                    th.col-desc 說明
-                tbody
-                  each line, termIdx in termsChunk
-                    - const nextLine = termsChunk[termIdx + 1]
-                    - const isLastSegmentOfTerm = !nextLine || nextLine.lineNumber !== line.lineNumber
-                    tr(class=!isLastSegmentOfTerm ? 'terms-row-continuation' : undefined)
-                      td.col-no
-                        if line.showNumber !== false
-                          | #{line.lineNumber}
-                      td.col-desc #{line.contentText}
-
-            if isLastTermsPage && rentalTermsClosing
-              .terms-closing-block
-                p.terms-line 付款方法：#{rentalTermsClosing.paymentText}
-                p.terms-line 報價有效期：#{rentalTermsClosing.validityText}
+              if termsPageIndex === 0
+                h4 租賃說明
+              each line in termsChunk
+                p.terms-line(class=line.showNumber === false ? 'terms-line-continuation' : undefined)
+                  if line.showNumber !== false
+                    | #{line.lineNumber}. 
+                  | #{line.contentText}
 
             if isLastTermsPage
-              .pdf-signature-footer
-                .signature-section
-                  .prepared-by-row
-                    span.prepared-by-label 制單人：
-                    if model.updatedBy && model.updatedBy.name
-                      span #{model.updatedBy.name}
-                    else if model.createdBy && model.createdBy.name
-                      span #{model.createdBy.name}
-                    else
-                      span.prepared-by-space
-                  table.signature-table
-                    tr
-                      td.sig-left
-                        .issuer-block
-                          .issuer-name-line 核實者
-                          .issuer-name-line 同意及確定
-                          .issuer-stamp
-                          .signature-stamp-label 公司簽署及蓋章
-                      td.sig-right
-                        .issuer-block
-                          .issuer-name-line 發出者
-                          .issuer-name-line 超越工程公司
-                          .issuer-stamp
-                          .signature-stamp-label 公司簽署及蓋章
-                .end-marker End
+              .terms-last-page-footer
+                if rentalTermsClosing
+                  .terms-closing-block
+                    p.terms-line 付款方法：#{rentalTermsClosing.paymentText}
+                    p.terms-line 報價有效期：#{rentalTermsClosing.validityText}
+                .pdf-signature-footer
+                  .signature-section
+                    .prepared-by-row
+                      span.prepared-by-label 制單人：
+                      if model.updatedBy && model.updatedBy.name
+                        span #{model.updatedBy.name}
+                      else if model.createdBy && model.createdBy.name
+                        span #{model.createdBy.name}
+                      else
+                        span.prepared-by-space
+                    table.signature-table
+                      tr
+                        td.sig-left
+                          .issuer-block
+                            .issuer-name-line 核實者
+                            .issuer-name-line 同意及確定
+                            .issuer-stamp
+                            .signature-stamp-label 公司簽署及蓋章
+                        td.sig-right
+                          .issuer-block
+                            .issuer-name-line 發出者
+                            .issuer-name-line 超越工程公司
+                            .issuer-stamp
+                            .signature-stamp-label 公司簽署及蓋章
+                  .end-marker End
           if !isPuppeteer
             .footer-section
               img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
