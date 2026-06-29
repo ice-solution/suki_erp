@@ -25,8 +25,6 @@ import {
   discountPdfFieldsFromRecord,
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
-import { applyDefaultQuoteSupplierOnCreate } from '@/utils/defaultQuoteSupplier';
-
 export default function QuoteTableForm({ subTotal = 0, current = null }) {
   const { last_quote_number } = useSelector(selectFinanceSettings);
 
@@ -68,7 +66,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [clientRecords, setClientRecords] = useState([]);
-  const [suppliers, setSuppliers] = useState([]);
   const [loading, setLoading] = useState(false);
   
   const form = Form.useFormInstance();
@@ -183,7 +180,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   useEffect(() => {
     fetchProjectItems();
     fetchClients();
-    fetchSuppliers();
   }, []);
 
   const fetchClients = async () => {
@@ -210,23 +206,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
       console.error('獲取客戶列表失敗:', error);
       setClients([]);
       setClientRecords([]);
-    }
-  };
-
-  const fetchSuppliers = async () => {
-    try {
-      const response = await request.listAll({ entity: 'supplier' });
-      const data = response?.result;
-      if (Array.isArray(data)) {
-        const options = data.map((s) => ({ value: s._id, label: s.name }));
-        setSuppliers(options);
-        applyDefaultQuoteSupplierOnCreate(form, options, { current, financeSettings });
-      } else {
-        setSuppliers([]);
-      }
-    } catch (error) {
-      console.error('獲取供應商列表失敗:', error);
-      setSuppliers([]);
     }
   };
 
@@ -410,13 +389,11 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         }
       }
       
-      const supplierId = current.supplier?._id || current.supplier || undefined;
       // 使用setTimeout確保在下一個事件循環中設置表單值
       setTimeout(() => {
         form.setFieldsValue({ 
           items: currentItems,
           clients: clientIds,
-          supplier: supplierId,
           type: type,
           shipType: shipType,
           subcontractorCount: subcontractorCount,
@@ -672,25 +649,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
               style={{ width: '100%' }}
               loading={loading}
               notFoundContent="No clients found"
-            />
-          </Form.Item>
-        </Col>
-        <Col className="gutter-row" span={6}>
-          <Form.Item
-            name="supplier"
-            label={translate('suppliers')}
-            rules={[{ required: true, message: '請選擇供應商' }]}
-          >
-            <Select
-              placeholder={translate('suppliers')}
-              showSearch
-              filterOption={(input, option) =>
-                option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
-              }
-              options={suppliers}
-              style={{ width: '100%' }}
-              loading={loading}
-              notFoundContent="No suppliers found"
             />
           </Form.Item>
         </Col>

@@ -661,7 +661,6 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
             currentErp.client?.name || '-'
           )}
         </Descriptions.Item>
-        <Descriptions.Item label={translate('suppliers')}>{currentErp.supplier?.name || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Address')}>{client.address}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Email')}>{client.email}</Descriptions.Item>
         <Descriptions.Item label={translate('Primary Contact Phone')}>{client.phone}</Descriptions.Item>

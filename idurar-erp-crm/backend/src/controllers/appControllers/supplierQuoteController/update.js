@@ -285,6 +285,19 @@ const update = async (req, res) => {
     });
   }
 
+  const resolvedSupplier =
+    body.supplier !== undefined && body.supplier !== null && body.supplier !== ''
+      ? body.supplier
+      : existingQuote.supplier;
+  if (!resolvedSupplier) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: '請選擇供應商',
+    });
+  }
+  body.supplier = resolvedSupplier;
+
   // 仍關聯報價單／吊船報價時：items 數量變更須寫回 orderFromQuoteLines，來源「已上單／餘額」才會正確
   try {
     await syncSupplierQuoteOrderFromSourceOnUpdate({ existingQuote, body, items });

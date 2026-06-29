@@ -26,6 +26,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .quotation-table th, .quotation-table td { border: none; padding: 6px 8px; vertical-align: top; }
       .quotation-table thead tr { border-top: 1px solid #222; border-bottom: 1px solid #222; }
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
+      .quotation-table tbody tr.item-row-continuation { border-bottom: none; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
       .quotation-table .col-content { width: 44%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
@@ -55,6 +56,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
       .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
       .terms-line { white-space: pre-wrap; word-break: break-word; margin: 0 0 4px; }
+      .terms-closing-block { margin-top: 8px; page-break-inside: avoid; break-inside: avoid; }
       .signature-section { margin-top: 12px; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
       .signature-table td { vertical-align: top; font-size: 10px; }
@@ -128,7 +130,9 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   - const item = row.item
                   - const contentText = row.contentText
                   - const unitLabel = item.unit ? String(item.unit) : 'JOB'
-                  tr
+                  - const nextRow = chunk[idx + 1]
+                  - const isLastSegmentOfItem = !nextRow || nextRow.itemIndex !== row.itemIndex
+                  tr(class=!isLastSegmentOfItem ? 'item-row-continuation' : undefined)
                     td.col-no #{row.showMeta ? row.itemIndex + 1 : ''}
                     td.col-content #{contentText}
                     td.col-qty #{row.showMeta && item.quantity != null ? item.quantity : ''}#{row.showMeta ? ' / ' + unitLabel : ''}
@@ -179,14 +183,15 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   tbody
                     each row, extraIdx in extraChunk
                       - const desc = row.contentText || row.description || ''
-                      - const unitLabel = (row && row.unit) ? String(row.unit) : ''
-                      - const up = row && row.unitPrice
+                      - const unitLabel = (row && row.unit) ? String(row.unit).trim() : ''
+                      - const upRaw = row && (row.unitPrice != null ? row.unitPrice : row.price)
+                      - const up = upRaw != null && upRaw !== '' && !isNaN(Number(upRaw)) ? Number(upRaw) : null
                       tr
                         td.col-no #{extraSerialBase + extraIdx + 1}
                         td.col-desc #{desc}
                         td.col-price.num
-                          if up != null && up !== '' && !isNaN(Number(up))
-                            | #{moneyFormatter({ amount: Number(up), currency_code: currency })}/#{unitLabel || '-'}
+                          if up != null
+                            | #{moneyFormatter({ amount: up, currency_code: currency })}#{unitLabel ? '/' + unitLabel : ''}
                           else
                             | -
             - extraSerialBase += extraChunk.length
@@ -205,6 +210,11 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                 h4 租賃說明
               each line in termsChunk
                 p.terms-line #{line.contentText}
+
+            if isLastTermsPage && rentalTermsClosing
+              .terms-closing-block
+                p.terms-line 付款方法：#{rentalTermsClosing.paymentText}
+                p.terms-line 報價有效期：#{rentalTermsClosing.validityText}
 
             if isLastTermsPage
               .pdf-signature-footer

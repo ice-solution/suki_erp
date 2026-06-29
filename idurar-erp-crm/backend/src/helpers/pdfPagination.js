@@ -100,6 +100,10 @@ function packRowsIntoPages(rows, midPageCap, lastPageBodyCap, charsPerLine, rowS
   const sumLines = (list) => sumRowLines(list, charsPerLine, rowSafetyFactor);
 
   const totalLines = sumLines(rows);
+  // 全部 items 估計行數仍在一頁正文容量內：整段放同一 chunk（摘要／合計由模板接在同一 item 末頁）
+  if (totalLines <= midPageCap) {
+    return [rows];
+  }
   if (totalLines <= lastPageBodyCap) {
     return [rows];
   }
@@ -159,7 +163,8 @@ function expandItemsToDisplayRows(items, midPageCap, lastPageBodyCap, charsPerLi
       totalLines <= splitCap ? [fullText] : splitTextByLineBudget(fullText, midPageCap, charsPerLine);
 
     const lastSeg = segments[segments.length - 1];
-    if (lastSeg && estimateTextLines(lastSeg, charsPerLine) > lastPageBodyCap) {
+    // 僅在 item 已因超長而拆段時，才再按末頁容量細分最後一段（避免整項被誤拆成多列）
+    if (segments.length > 1 && lastSeg && estimateTextLines(lastSeg, charsPerLine) > lastPageBodyCap) {
       segments = segments.slice(0, -1);
       segments.push(...splitTextByLineBudget(lastSeg, lastPageBodyCap, charsPerLine));
     }
@@ -330,6 +335,7 @@ const DEFAULT_RENTAL_EXTRA_ITEMS = [
   { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: null },
   { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: null },
   { description: '三角足場續租(每14日)', unitPrice: null },
+  { description: '三角足場裝設及拆卸費用', unitPrice: null },
 ];
 
 const DEFAULT_RENTAL_TERMS_LINES = [
@@ -346,35 +352,46 @@ const DEFAULT_RENTAL_TERMS_LINES = [
   '租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。',
 ];
 
+function plainRentalExtraRow(row) {
+  if (!row) return null;
+  const plain = typeof row.toObject === 'function' ? row.toObject() : row;
+  const unitPrice =
+    plain.unitPrice != null && plain.unitPrice !== '' && Number.isFinite(Number(plain.unitPrice))
+      ? Number(plain.unitPrice)
+      : plain.price != null && plain.price !== '' && Number.isFinite(Number(plain.price))
+        ? Number(plain.price)
+        : undefined;
+  return {
+    description: plain.description != null ? String(plain.description) : '',
+    unit: plain.unit != null ? String(plain.unit) : '',
+    unitPrice,
+    sortOrder: plain.sortOrder ?? 0,
+  };
+}
+
 function buildRentalExtraPageChunks(model) {
   const rentalRowsRaw =
     model?.rentalExtraItems?.length > 0 ? model.rentalExtraItems : DEFAULT_RENTAL_EXTRA_ITEMS;
-  const rentalRows = rentalRowsRaw.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-  const textChunks = buildTextLinePageChunks(
-    rentalRows.map((r) => (r?.description ? String(r.description) : '')),
-    getPresetOptions('shipQuoteRentalExtra')
-  );
+  const rentalRows = rentalRowsRaw
+    .map(plainRentalExtraRow)
+    .filter((row) => row && row.description)
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
 
-  let offset = 0;
-  return textChunks.map((chunk) => {
-    const rows = chunk.map((row, i) => ({
-      ...rentalRows[offset + i],
-      contentText: row.contentText,
-    }));
-    offset += rows.length;
-    return rows;
-  });
+  const opts = getPresetOptions('shipQuoteRentalExtra');
+  const rowsPerPage = Math.max(4, opts.pageBodyLines - opts.pageHeaderLines - 2);
+  const chunks = [];
+  for (let i = 0; i < rentalRows.length; i += rowsPerPage) {
+    chunks.push(
+      rentalRows.slice(i, i + rowsPerPage).map((row) => ({
+        ...row,
+        contentText: row.description,
+      }))
+    );
+  }
+  return chunks.length ? chunks : [[]];
 }
 
-function buildRentalTermsPageChunks(model, moment) {
-  const custom = model?.rentalDescription && String(model.rentalDescription).trim();
-  let termLines = [];
-  if (custom) {
-    termLines = String(custom).split(/\r\n|\n|\r/).filter((l) => l.trim());
-  } else {
-    termLines = DEFAULT_RENTAL_TERMS_LINES.slice();
-  }
-
+function buildRentalTermsClosing(model, moment) {
   const defaultPayment = '租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。';
   const paymentText =
     model?.pdfPaymentMethod != null && String(model.pdfPaymentMethod).trim()
@@ -387,14 +404,24 @@ function buildRentalTermsPageChunks(model, moment) {
     model?.pdfQuoteValidity != null && String(model.pdfQuoteValidity).trim()
       ? String(model.pdfQuoteValidity).trim()
       : defaultValidity;
+  return { paymentText, validityText };
+}
 
-  termLines.push(`付款方法：${paymentText}`);
-  termLines.push(`報價有效期：${validityText}`);
+function buildRentalTermsPageChunks(model, moment) {
+  const custom = model?.rentalDescription && String(model.rentalDescription).trim();
+  let termLines = [];
+  if (custom) {
+    termLines = String(custom).split(/\r\n|\n|\r/).filter((l) => l.trim());
+  } else {
+    termLines = DEFAULT_RENTAL_TERMS_LINES.slice();
+  }
 
-  return buildTextLinePageChunks(termLines, {
-    ...getPresetOptions('shipQuoteRentalTerms'),
-    reserveClosingOnLastPage: true,
-  });
+  const termsChunks = buildTextLinePageChunks(termLines, getPresetOptions('shipQuoteRentalTerms'));
+
+  return {
+    termsChunks,
+    rentalTermsClosing: buildRentalTermsClosing(model, moment),
+  };
 }
 
 function getShipQuoteRentalPdfPugLocals(model, moment) {
@@ -402,11 +429,13 @@ function getShipQuoteRentalPdfPugLocals(model, moment) {
   const itemLocals = getPdfPaginationPugLocals('supermaxShipRental', model?.items || [], {
     extraClosingLines: notesExtra,
   });
+  const { termsChunks, rentalTermsClosing } = buildRentalTermsPageChunks(model, moment);
 
   return {
     ...itemLocals,
     extraChunks: buildRentalExtraPageChunks(model),
-    termsChunks: buildRentalTermsPageChunks(model, moment),
+    termsChunks,
+    rentalTermsClosing,
   };
 }
 

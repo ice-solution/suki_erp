@@ -100,6 +100,14 @@ const create = async (req, res) => {
     });
   }
 
+  if (!body.supplier) {
+    return res.status(400).json({
+      success: false,
+      result: null,
+      message: '請選擇供應商',
+    });
+  }
+
   // 若前端有送 subTotal / total（手動編輯），則採用並據此計算 discountTotal
   const bodySubTotal = req.body.subTotal !== undefined && req.body.subTotal !== null && req.body.subTotal !== ''
     ? Number(req.body.subTotal)
