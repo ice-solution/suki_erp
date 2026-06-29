@@ -264,6 +264,9 @@ async function processAssetSide({
   const rowHasDismantling = !!dismantlingDate;
   const wasOnQuoteBefore = (previousRows || []).some((row) => String(row[assetIdField]) === String(assetId));
   const isNewAssignment = !wasOnQuoteBefore;
+  const previousRow = (previousRows || []).find((row) => String(row[assetIdField]) === String(assetId));
+  const hadDismantlingBefore = !!previousRow?.dismantlingDate;
+  const isNewDismantling = rowHasDismantling && !hadDismantlingBefore;
 
   if (rowHasDismantling) {
     if (assetDoc) {
@@ -294,7 +297,9 @@ async function processAssetSide({
           dismantlingDate,
         });
       }
-      await releaseAssetToPendingReturn(Model, assetId, { dismantlingDate });
+      if (isNewDismantling) {
+        await releaseAssetToPendingReturn(Model, assetId, { dismantlingDate });
+      }
     }
     return;
   }
