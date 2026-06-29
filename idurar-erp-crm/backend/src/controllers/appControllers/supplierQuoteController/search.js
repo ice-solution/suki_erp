@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { fetchPaginatedBySupplierQuoteNumberSort } = require('../../../helpers/paginatedQuoteSort');
 
 const Model = mongoose.model('SupplierQuote');
 
@@ -128,14 +129,16 @@ const search = async (req, res) => {
       fields.$or.push({ counterpartyInvoiceNumber: { $regex: regex } });
     }
 
-    let results = await Model.find(fields)
-      .where({ removed: false })
-      .sort({ created: -1 })
-      .limit(50)
-      .populate('createdBy', 'name')
-      .populate('clients', 'name')
-      .populate('client', 'name')
-      .populate('supplier', 'name');
+    const matchQuery = { removed: false, ...fields };
+
+    const results = await fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, 0, 50, {
+      populate: [
+        { path: 'createdBy', select: 'name' },
+        { path: 'clients', select: 'name' },
+        { path: 'client', select: 'name' },
+        { path: 'supplier', select: 'name' },
+      ],
+    });
 
     if (results.length >= 1) {
       return res.status(200).json({

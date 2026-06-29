@@ -93,6 +93,19 @@ const PREFIX_RANK_SWITCH = {
   },
 };
 
+/** S單列表：S → NO → SWP → Y，其餘 prefix 排後 */
+const SUPPLIER_QUOTE_PREFIX_RANK_SWITCH = {
+  $switch: {
+    branches: [
+      { case: { $eq: ['$numberPrefix', 'S'] }, then: 0 },
+      { case: { $eq: ['$numberPrefix', 'NO'] }, then: 1 },
+      { case: { $eq: ['$numberPrefix', 'SWP'] }, then: 2 },
+      { case: { $eq: ['$numberPrefix', 'Y'] }, then: 3 },
+    ],
+    default: 4,
+  },
+};
+
 const NUMBER_NUM_FIELD = {
   $let: {
     vars: {
@@ -142,7 +155,14 @@ const NUMBER_RAW_FIELD = {
   $toLower: { $toString: { $ifNull: ['$number', ''] } },
 };
 
-function sortAddFields(includePrefixRank) {
+function sortAddFields(options = {}) {
+  const includePrefixRank =
+    typeof options === 'boolean' ? options : options.includePrefixRank !== false;
+  const prefixRankSwitch =
+    typeof options === 'object' && options.prefixRankSwitch
+      ? options.prefixRankSwitch
+      : PREFIX_RANK_SWITCH;
+
   const numberFields = {
     _numberNum: NUMBER_NUM_FIELD,
     _numberSuffix: NUMBER_SUFFIX_FIELD,
@@ -150,7 +170,7 @@ function sortAddFields(includePrefixRank) {
   };
   if (includePrefixRank) {
     return {
-      _prefixRank: PREFIX_RANK_SWITCH,
+      _prefixRank: prefixRankSwitch,
       ...numberFields,
     };
   }
@@ -163,11 +183,15 @@ function defaultSortObj(includePrefixRank) {
 }
 
 async function fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, options = {}) {
-  const { includePrefixRank = true, populate = [] } = options;
+  const {
+    includePrefixRank = true,
+    prefixRankSwitch = PREFIX_RANK_SWITCH,
+    populate = [],
+  } = options;
 
   const orderedIds = await Model.aggregate([
     { $match: matchQuery },
-    { $addFields: sortAddFields(includePrefixRank) },
+    { $addFields: sortAddFields({ includePrefixRank, prefixRankSwitch }) },
     { $sort: defaultSortObj(includePrefixRank) },
     { $skip: skip },
     { $limit: limit },
@@ -189,8 +213,17 @@ async function fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, o
   return [...docs].sort((a, b) => orderMap.get(a._id.toString()) - orderMap.get(b._id.toString()));
 }
 
+async function fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, skip, limit, options = {}) {
+  return fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, {
+    ...options,
+    includePrefixRank: true,
+    prefixRankSwitch: SUPPLIER_QUOTE_PREFIX_RANK_SWITCH,
+  });
+}
+
 module.exports = {
   PREFIX_RANK_SWITCH,
+  SUPPLIER_QUOTE_PREFIX_RANK_SWITCH,
   NUMBER_NUM_FIELD,
   NUMBER_SUFFIX_FIELD,
   NUMBER_RAW_FIELD,
@@ -199,4 +232,5 @@ module.exports = {
   defaultSortObj,
   buildQuoteNumberSearchMatch,
   fetchPaginatedByQuoteNumberSort,
+  fetchPaginatedBySupplierQuoteNumberSort,
 };

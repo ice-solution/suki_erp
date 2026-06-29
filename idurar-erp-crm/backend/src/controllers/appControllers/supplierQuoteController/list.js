@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { fetchPaginatedBySupplierQuoteNumberSort } = require('../../../helpers/paginatedQuoteSort');
 
 const Model = mongoose.model('SupplierQuote');
 
@@ -7,27 +8,19 @@ const list = async (req, res) => {
   const limit = parseInt(req.query.items) || 10;
   const skip = page * limit - limit;
 
-  //  Query the database for a list of all results
-  // 按 year 降序，然後按 number 升序排序
-  const resultsPromise = Model.find({
-    removed: false,
-  })
-    .skip(skip)
-    .limit(limit)
-    .sort({ year: -1, number: 1 })
-    .populate('createdBy', 'name');
+  const matchQuery = { removed: false };
 
-  // Counting the total documents
-  const countPromise = Model.countDocuments({ removed: false });
+  const result = await fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, skip, limit, {
+    populate: [
+      { path: 'createdBy', select: 'name surname email' },
+      { path: 'supplier', select: 'name' },
+    ],
+  });
 
-  // Resolving both promises
-  const [result, count] = await Promise.all([resultsPromise, countPromise]);
-
-  // Calculating total pages
+  const count = await Model.countDocuments(matchQuery);
   const pages = Math.ceil(count / limit);
-
-  // Getting Pagination Object
   const pagination = { page, pages, count };
+
   if (count > 0) {
     return res.status(200).json({
       success: true,
@@ -35,14 +28,14 @@ const list = async (req, res) => {
       pagination,
       message: 'Successfully found all documents',
     });
-  } else {
-    return res.status(203).json({
-      success: false,
-      result: { items: [] },
-      pagination,
-      message: 'Collection is Empty',
-    });
   }
+
+  return res.status(203).json({
+    success: false,
+    result: { items: [] },
+    pagination,
+    message: 'Collection is Empty',
+  });
 };
 
 module.exports = list;

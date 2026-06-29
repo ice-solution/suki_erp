@@ -3,6 +3,8 @@ html(class=isPuppeteer ? 'puppeteer-sml-quote' : '')
   head
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
+    include _partials/pdf-pagination
+    +pdfPaginationStyles()
     style.
       /* 讓整頁內容更貼頂，避免上方空白過多（同時避免 Logo 被負 margin 裁切） */
       @page { margin: 0; }
@@ -215,6 +217,20 @@ html(class=isPuppeteer ? 'puppeteer-sml-quote' : '')
       style.
         /* Puppeteer：頁尾改由 page.pdf 的 footerTemplate 繪製，避免流式排版斷頁 */
         html.puppeteer-sml-quote .footer-section { display: none !important; }
+        /* 末頁：制單人／簽名貼 footer 上方（bottom margin 28mm 實測 tune） */
+        html.puppeteer-sml-quote .sml-page-last .sml-page-body {
+          display: flex;
+          flex-direction: column;
+          min-height: 164mm;
+        }
+        html.puppeteer-sml-quote .sml-page-last .sml-page-content {
+          flex: 1;
+          display: flex;
+          flex-direction: column;
+        }
+        html.puppeteer-sml-quote .sml-page-last .pdf-signature-footer {
+          margin-top: auto;
+        }
 
 body
     - const client = model.client || (model.clients && model.clients[0]) || {}
@@ -271,95 +287,99 @@ body
     - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
-      .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
+      - const isLastPage = pageIndex === itemChunks.length - 1
+      .sml-page(class=isLastPage ? 'sml-page-last' : '')
         .sml-page-body
-          .supermax-header-banner
-            img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
-          table.info-table-ship
-            tr
-              td.info-left
-                .info-row TO : #{clientName}
-                .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
-                if !model.shipType && model.address
-              td.info-right
-                .info-row 報價編號 : #{docNumber}
-                .info-row 日期 : #{docDate}
-            if model.shipType
+          .sml-page-content
+            .supermax-header-banner
+              img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+            table.info-table-ship
               tr
                 td.info-left
-                  .info-row 送貨地址: #{deliveryAddress || '-'}
-                  .info-row 收貨人: #{consigneeLine || '-'}
+                  .info-row TO : #{clientName}
+                  .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
+                  if !model.shipType && model.address
                 td.info-right
-          .doc-title 報價單
-          .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
-          if model.address
-            .project-address-line 工程地址：#{model.address || ''}
-          table.quotation-table
-            thead
-              tr
-                th.col-no
-                th.col-content 工程內容
-                th.col-qty 數量 / 單位
-                th.col-unit 單價 HKD$
-                th.col-amount 金額 HKD$
-            tbody
-              each item, idx in chunk
-                - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
-                - const unitLabel = item.unit ? String(item.unit) : 'JOB'
+                  .info-row 報價編號 : #{docNumber}
+                  .info-row 日期 : #{docDate}
+              if model.shipType
                 tr
-                  td.col-no #{serialBase + idx + 1}
-                  td.col-content #{contentText}
-                  td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
-                  td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
-              if chunk.length === 0
+                  td.info-left
+                    .info-row 送貨地址: #{deliveryAddress || '-'}
+                    .info-row 收貨人: #{consigneeLine || '-'}
+                  td.info-right
+            .doc-title 報價單
+            .project-contact-line 聯絡人：#{(model.contactPerson && String(model.contactPerson).trim()) || ''}
+            if model.address
+              .project-address-line 工程地址：#{model.address || ''}
+            table.quotation-table
+              thead
                 tr
-                  td(colspan='5' style='text-align:center') 無項目
-          - serialBase += chunk.length
-          if pageIndex === itemChunks.length - 1
-            .summary-wrap
-              .summary-block
-                .summary-row.subtotal
-                  span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                if model.showDiscountPercentOnPdf !== false
-                  .summary-row.underline
-                    span.summary-label 折扣%：
-                    span.summary-value #{formatDiscountPct(discount)}%
-                if model.showDiscountAmountOnPdf !== false
-                  .summary-row.underline
-                    span.summary-label 折扣金額：
-                    span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
-                .summary-row.grand
-                  span.summary-label 總金額：
-                  span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
-            .notes-block
-              .notes-content
+                  th.col-no
+                  th.col-content 工程內容
+                  th.col-qty 數量 / 單位
+                  th.col-unit 單價 HKD$
+                  th.col-amount 金額 HKD$
+              tbody
+                each item, idx in chunk
+                  - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
+                  - const unitLabel = item.unit ? String(item.unit) : 'JOB'
+                  tr
+                    td.col-no #{serialBase + idx + 1}
+                    td.col-content #{contentText}
+                    td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
+                    td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
+                    td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
+                if chunk.length === 0
+                  tr
+                    td(colspan='5' style='text-align:center') 無項目
+            - serialBase += chunk.length
+            if isLastPage
+              .sml-closing-summary
+                .summary-wrap
+                  .summary-block
+                    .summary-row.subtotal
+                      span.summary-label 合共港幣：
+                      span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+                    if model.showDiscountPercentOnPdf !== false
+                      .summary-row.underline
+                        span.summary-label 折扣%：
+                        span.summary-value #{formatDiscountPct(discount)}%
+                    if model.showDiscountAmountOnPdf !== false
+                      .summary-row.underline
+                        span.summary-label 折扣金額：
+                        span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
+                    .summary-row.grand
+                      span.summary-label 總金額：
+                      span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
                 if model.notes
-                  | #{model.notes}
-            .signature-section
-              .prepared-by-row
-                span.prepared-by-label 制單人：
-                if model.updatedBy && model.updatedBy.name
-                  span #{model.updatedBy.name}
-                else if model.createdBy && model.createdBy.name
-                  span #{model.createdBy.name}
-                else
-                  span.prepared-by-space
-              table.signature-table
-                tr
-                  td.sig-left
-                    .issuer-block
-                      .issuer-name-line 核實者
-                      .issuer-name-line 同意及確定
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
-                  td.sig-right
-                    .issuer-block
-                      .issuer-name-line 發出者
-                      .issuer-name-line 超越工程公司
-                      .issuer-stamp
-                      .signature-stamp-label 公司簽署及蓋章
-            .end-marker End
+                  .notes-block
+                    .notes-content #{model.notes}
+          if isLastPage
+            .pdf-signature-footer
+              .signature-section
+                .prepared-by-row
+                  span.prepared-by-label 制單人：
+                  if model.updatedBy && model.updatedBy.name
+                    span #{model.updatedBy.name}
+                  else if model.createdBy && model.createdBy.name
+                    span #{model.createdBy.name}
+                  else
+                    span.prepared-by-space
+                table.signature-table
+                  tr
+                    td.sig-left
+                      .issuer-block
+                        .issuer-name-line 核實者
+                        .issuer-name-line 同意及確定
+                        .issuer-stamp
+                        .signature-stamp-label 公司簽署及蓋章
+                    td.sig-right
+                      .issuer-block
+                        .issuer-name-line 發出者
+                        .issuer-name-line 超越工程公司
+                        .issuer-stamp
+                        .signature-stamp-label 公司簽署及蓋章
+              .end-marker End
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
