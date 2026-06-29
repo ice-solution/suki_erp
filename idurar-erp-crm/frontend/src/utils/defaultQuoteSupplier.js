@@ -38,13 +38,16 @@ export function findDefaultQuoteSupplierId(supplierOptions, { preferredId, prefe
 }
 
 /**
- * 僅在「建立」且表單尚未選供應商時寫入預設值。
+ * 僅在表單尚未選供應商時寫入預設值（從供應商列表依設定名稱比對，非硬編 ID）。
  * @param {import('antd').FormInstance} form
  * @param {object} [financeSettings] redux finance_settings（可含 default_quote_supplier_name / default_quote_supplier_id）
  */
 export function applyDefaultQuoteSupplierOnCreate(form, supplierOptions, { current, financeSettings } = {}) {
-  if (current || !form) return;
-  if (form.getFieldValue('supplier')) return;
+  if (!form) return;
+
+  const existingSupplier =
+    current?.supplier?._id || current?.supplier || form.getFieldValue('supplier');
+  if (existingSupplier) return;
 
   const id = findDefaultQuoteSupplierId(supplierOptions, {
     preferredId: financeSettings?.default_quote_supplier_id,

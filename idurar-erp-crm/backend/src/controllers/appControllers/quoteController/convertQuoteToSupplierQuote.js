@@ -6,6 +6,7 @@ const ProjectModel = mongoose.model('Project');
 
 const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 const { aggregateOrderedQtyByQuoteLine } = require('@/helpers/quoteSupplierOrderFromQuote');
+const { resolveDefaultSupplierId } = require('@/helpers/resolveDefaultSupplierId');
 
 function normalizeQty(n) {
   const v = Math.floor(Number(n));
@@ -179,6 +180,11 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       status: 'accepted',
       createdBy: req.admin._id,
     };
+
+    const defaultSupplierId = await resolveDefaultSupplierId();
+    if (defaultSupplierId) {
+      supplierQuoteData.supplier = defaultSupplierId;
+    }
 
     const supplierQuote = await new SupplierQuoteModel(supplierQuoteData).save();
 

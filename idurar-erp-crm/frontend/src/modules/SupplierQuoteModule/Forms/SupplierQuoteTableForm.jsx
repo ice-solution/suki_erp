@@ -37,6 +37,7 @@ import {
   isVirtualMaterialWarehouse,
   formatMaterialWarehouseLabel,
 } from '@/utils/supplierQuoteMaterialWarehouse';
+import { applyDefaultQuoteSupplierOnCreate } from '@/utils/defaultQuoteSupplier';
 
 function getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) {
   const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
@@ -460,6 +461,14 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     fetchSuppliers();
     fetchWarehouseItems();
   }, []);
+
+  useEffect(() => {
+    if (!suppliers.length) return;
+    const timer = setTimeout(() => {
+      applyDefaultQuoteSupplierOnCreate(form, suppliers, { current, financeSettings });
+    }, 150);
+    return () => clearTimeout(timer);
+  }, [suppliers, current, financeSettings, form]);
 
   useEffect(() => {
     const { ships, winches } = buildAssetRowsFromCurrent(current);
