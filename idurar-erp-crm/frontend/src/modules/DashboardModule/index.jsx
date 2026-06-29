@@ -147,7 +147,7 @@ export default function DashboardModule() {
           />
           <SummaryCard
             title={translate('Unpaid')}
-            prefix={translate('Not Paid')}
+            prefix={translate('This month')}
             isLoading={invoiceLoading}
             data={invoiceResult?.total_undue}
           />

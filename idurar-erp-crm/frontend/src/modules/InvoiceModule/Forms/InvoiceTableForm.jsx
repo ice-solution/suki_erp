@@ -130,6 +130,68 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     syncPaymentDueDatesFromDateAndTerms();
   };
 
+  const buildAutoPaymentEntryRow = (credit) => {
+    const dateVal = form.getFieldValue('date');
+    const firstEntry = (form.getFieldValue('paymentEntries') || [])[0];
+    const terms = firstEntry?.paymentTerms || '30日';
+    const due =
+      firstEntry?.paymentDueDate != null
+        ? toDayjsOrNull(firstEntry.paymentDueDate)
+        : getPaymentDueDate(dateVal, terms);
+    return {
+      paymentStatus: 'paid',
+      paymentDueDate: due,
+      paymentTerms: terms,
+      credit: Number(Number(credit).toFixed(cent_precision ?? 2)),
+      paidDate: dayjs(),
+    };
+  };
+
+  const applyRemainingPaymentOnFullPaid = () => {
+    const invoiceTotal = Number(total) || 0;
+    if (invoiceTotal <= 0) {
+      message.warning('發票總額為 0，無需填寫付款');
+      return;
+    }
+
+    const entries = [...(form.getFieldValue('paymentEntries') || [])];
+    const paidSum = entries.reduce((sum, row) => {
+      const v = row?.credit != null && row.credit !== '' ? Number(row.credit) : 0;
+      return calculate.add(sum, Math.max(0, Number.isFinite(v) ? v : 0));
+    }, 0);
+
+    const remaining = Number.parseFloat(
+      Number(calculate.sub(invoiceTotal, paidSum)).toFixed(cent_precision ?? 2)
+    );
+    if (remaining <= 0) return;
+
+    const emptyIdx = entries.findIndex(
+      (row) => row?.credit == null || row.credit === '' || Number(row.credit) === 0
+    );
+
+    if (emptyIdx >= 0) {
+      const next = entries.map((row, idx) => {
+        if (idx !== emptyIdx) return row;
+        return {
+          ...row,
+          credit: remaining,
+          paidDate: row.paidDate ? toDayjsOrNull(row.paidDate) : dayjs(),
+          paymentStatus: 'paid',
+        };
+      });
+      form.setFieldsValue({ paymentEntries: next });
+    } else {
+      form.setFieldsValue({
+        paymentEntries: [...entries, buildAutoPaymentEntryRow(remaining)],
+      });
+    }
+  };
+
+  const handleFullPaidChange = (checked) => {
+    form.setFieldsValue({ fullPaid: checked });
+    if (checked) applyRemainingPaymentOnFullPaid();
+  };
+
   // 新增發票時依預設 date + 第一筆 paymentTerms 自動帶出 Payment due date
   useEffect(() => {
     if (current) return;
@@ -1113,7 +1175,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={6}>
           <Form.Item label="Full paid" name="fullPaid" valuePropName="checked" initialValue={false}>
-            <Switch checkedChildren="Y" unCheckedChildren="N" />
+            <Switch checkedChildren="Y" unCheckedChildren="N" onChange={handleFullPaidChange} />
           </Form.Item>
         </Col>
       </Row>
