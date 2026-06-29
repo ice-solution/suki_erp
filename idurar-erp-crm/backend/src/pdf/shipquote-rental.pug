@@ -54,8 +54,14 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
       .extra-table .col-desc { width: auto; white-space: pre-wrap; word-break: break-word; }
       .extra-table .col-price { text-align: right; width: 160px; white-space: nowrap; }
       .terms-section { margin: 12px 0; font-size: 10px; line-height: 1.6; }
-      .terms-section h4 { margin: 8px 0 4px; font-size: 10px; }
-      .terms-line { white-space: pre-wrap; word-break: break-word; margin: 0 0 4px; }
+      .terms-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10px; }
+      .terms-table caption.terms-section-caption { caption-side: top; text-align: left; font-weight: bold; margin: 0 0 4px; padding: 0; }
+      .terms-table th, .terms-table td { border: none; padding: 4px 8px; text-align: left; border-bottom: 1px solid #ddd; vertical-align: top; }
+      .terms-table th { background: transparent; font-weight: bold; }
+      .terms-table .col-no { width: 6%; text-align: center; white-space: nowrap; }
+      .terms-table .col-desc { width: auto; white-space: pre-wrap; word-break: break-word; }
+      .terms-table tbody tr.terms-row-continuation td { border-bottom: none; }
+      .terms-line { white-space: pre-wrap; word-break: break-word; margin: 0 0 4px; border: none; padding: 0; }
       .terms-closing-block { margin-top: 8px; page-break-inside: avoid; break-inside: avoid; }
       .signature-section { margin-top: 12px; }
       .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
@@ -206,10 +212,22 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
           .quote-page-content
             +rentalPageHeader()
             .terms-section
-              if termsPageIndex === 0
-                h4 租賃說明
-              each line in termsChunk
-                p.terms-line #{line.contentText}
+              table.terms-table
+                if termsPageIndex === 0
+                  caption.terms-section-caption 租賃說明
+                thead
+                  tr
+                    th.col-no
+                    th.col-desc 說明
+                tbody
+                  each line, termIdx in termsChunk
+                    - const nextLine = termsChunk[termIdx + 1]
+                    - const isLastSegmentOfTerm = !nextLine || nextLine.lineNumber !== line.lineNumber
+                    tr(class=!isLastSegmentOfTerm ? 'terms-row-continuation' : undefined)
+                      td.col-no
+                        if line.showNumber !== false
+                          | #{line.lineNumber}
+                      td.col-desc #{line.contentText}
 
             if isLastTermsPage && rentalTermsClosing
               .terms-closing-block

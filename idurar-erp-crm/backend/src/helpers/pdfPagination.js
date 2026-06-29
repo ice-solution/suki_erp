@@ -407,16 +407,60 @@ function buildRentalTermsClosing(model, moment) {
   return { paymentText, validityText };
 }
 
-function buildRentalTermsPageChunks(model, moment) {
+/** 解析租賃說明：每行一條；去掉行首既有編號後再按序編 1、2、3… */
+function parseRentalTermLines(model) {
   const custom = model?.rentalDescription && String(model.rentalDescription).trim();
-  let termLines = [];
-  if (custom) {
-    termLines = String(custom).split(/\r\n|\n|\r/).filter((l) => l.trim());
-  } else {
-    termLines = DEFAULT_RENTAL_TERMS_LINES.slice();
-  }
+  const rawLines = custom
+    ? String(custom).split(/\r\n|\n|\r/).filter((l) => String(l).trim())
+    : DEFAULT_RENTAL_TERMS_LINES.slice();
 
-  const termsChunks = buildTextLinePageChunks(termLines, getPresetOptions('shipQuoteRentalTerms'));
+  return rawLines.map((line, index) => ({
+    lineNumber: index + 1,
+    contentText: stripLeadingItemIndex(String(line).trim()),
+  }));
+}
+
+function expandRentalTermDisplayRows(termRows, opts) {
+  const midPageCap = Math.max(6, opts.pageBodyLines - opts.pageHeaderLines);
+  const displayRows = [];
+
+  termRows.forEach((row) => {
+    const totalLines = estimateTextLines(row.contentText, opts.charsPerLine, opts.rowSafetyFactor ?? 1.05);
+    if (totalLines <= midPageCap) {
+      displayRows.push({ ...row, showNumber: true });
+      return;
+    }
+    const segments = splitTextByLineBudget(row.contentText, midPageCap, opts.charsPerLine);
+    segments.forEach((seg, segIdx) => {
+      displayRows.push({
+        lineNumber: row.lineNumber,
+        contentText: seg,
+        showNumber: segIdx === 0,
+      });
+    });
+  });
+
+  return displayRows;
+}
+
+function buildRentalTermsPageChunks(model, moment) {
+  const opts = getPresetOptions('shipQuoteRentalTerms');
+  const termRows = parseRentalTermLines(model);
+  const displayRows = expandRentalTermDisplayRows(termRows, opts);
+  const closingOnLast = opts.closingBlockLines;
+  const midPageCap = Math.max(6, opts.pageBodyLines - opts.pageHeaderLines);
+  const lastPageBodyCap = Math.max(
+    3,
+    opts.pageBodyLines - opts.pageHeaderLines - closingOnLast
+  );
+
+  const termsChunks = packRowsIntoPages(
+    displayRows,
+    midPageCap,
+    lastPageBodyCap,
+    opts.charsPerLine,
+    opts.rowSafetyFactor ?? 1.05
+  );
 
   return {
     termsChunks,

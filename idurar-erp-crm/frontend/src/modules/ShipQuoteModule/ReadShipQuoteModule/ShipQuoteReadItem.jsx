@@ -28,6 +28,8 @@ import storePersist from '@/redux/storePersist';
 import {
   DEFAULT_SHIP_RENTAL_EXTRA_ITEMS,
   DEFAULT_SHIP_PDF_PAYMENT_METHOD,
+  DEFAULT_SHIP_RENTAL_TERM_LINES,
+  formatNumberedRentalTerms,
   parseRentalExtraItems,
 } from '@/modules/ShipQuoteModule/Forms/ShipQuoteTableForm';
 
@@ -750,8 +752,10 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
               {String(currentErp.rentalDescription).trim()}
             </p>
           ) : (
-            <p style={{ color: '#888', fontSize: 13, marginBottom: 16 }}>
-              （未自訂：PDF 使用與系統預設相同之租賃說明條款）
+            <p style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word', marginBottom: 16, color: '#888', fontSize: 13 }}>
+              （未自訂：PDF 使用以下預設條款）
+              {'\n'}
+              {formatNumberedRentalTerms(DEFAULT_SHIP_RENTAL_TERM_LINES)}
             </p>
           )}
           <Divider orientation="left">付款方法、報價有效期（PDF）</Divider>

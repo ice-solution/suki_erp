@@ -55,8 +55,8 @@ export function parseRentalExtraItems(savedItems) {
     }));
 }
 
-/** 租賃說明預設內容（與 shipquote-rental.pug 內建條款一致；可於表單自由修改） */
-export const DEFAULT_SHIP_RENTAL_DESCRIPTION = [
+/** 租賃說明預設條款（與 backend pdfPagination DEFAULT_RENTAL_TERMS_LINES 一致） */
+export const DEFAULT_SHIP_RENTAL_TERM_LINES = [
   '租用價格包括吊船交機及來回運輸費用(不包括離島地區)。',
   '由確定收到租金起計, 90天後送貨。',
   '價格第二及三項為消耗品, 恕不提供租用服務。',
@@ -68,7 +68,14 @@ export const DEFAULT_SHIP_RENTAL_DESCRIPTION = [
   '租用者必須安全正確方法操作, 不應超載負荷或改裝, 否則本公司有權禁止使用。',
   '所有地盤使用人員及第三者保險由租用者負責。',
   '租用者須維持租用吊船原樣及完整, 如有遺失及損壞, 照價賠償。',
-].join('\n');
+];
+
+export function formatNumberedRentalTerms(lines = DEFAULT_SHIP_RENTAL_TERM_LINES) {
+  return lines.map((line, index) => `${index + 1}. ${line}`).join('\n');
+}
+
+/** 租賃說明預設內容（含編號；可於表單自由修改） */
+export const DEFAULT_SHIP_RENTAL_DESCRIPTION = formatNumberedRentalTerms();
 
 /** 租賃 PDF「付款方法」預設句（與 shipquote-rental.pug 後備一致） */
 export const DEFAULT_SHIP_PDF_PAYMENT_METHOD =
@@ -1057,11 +1064,11 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           <Form.Item
             name="rentalDescription"
             label="租賃說明"
-            extra="可自訂條款內容（支援換行）。若留空，PDF 會顯示與系統預設相同之條款列表。"
+            extra="可自訂條款內容（支援換行，每行一條；PDF 會自動加上 1. 2. 3. 編號）。若留空，PDF 會顯示與系統預設相同之條款列表。"
           >
             <Input.TextArea
               rows={8}
-              placeholder="請輸入租賃說明"
+              placeholder={DEFAULT_SHIP_RENTAL_DESCRIPTION}
               autoSize={{ minRows: 6, maxRows: 28 }}
             />
           </Form.Item>
