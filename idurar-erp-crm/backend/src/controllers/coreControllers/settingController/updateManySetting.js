@@ -29,8 +29,6 @@ const updateManySetting = async (req, res) => {
     }
     const { isLastNumberSettingKey, LAST_NUMBER_CATEGORY } = require('@/helpers/lastNumberSettings');
     if (isLastNumberSettingKey(settingKey)) {
-      setOnInsert.settingCategory = LAST_NUMBER_CATEGORY;
-      setOnInsert.valueType = 'number';
       setFields.settingCategory = LAST_NUMBER_CATEGORY;
       setFields.valueType = 'number';
     }
