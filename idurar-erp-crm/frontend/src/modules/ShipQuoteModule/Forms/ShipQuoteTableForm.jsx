@@ -10,7 +10,8 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { selectLastNumberSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -82,9 +83,9 @@ export const DEFAULT_SHIP_PDF_PAYMENT_METHOD =
   '租賃合約確定須先付全數租金, 其他配件及費用裝設完成付款。';
 
 export default function ShipQuoteTableForm({ subTotal = 0, current = null }) {
-  const { last_quote_number } = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
 
-  if (last_quote_number === undefined) {
+  if (lastNumberSettings?.last_sml_number === undefined && lastNumberSettings?.last_qu_number === undefined) {
     return <></>;
   }
 
@@ -95,10 +96,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
-  const financeSettings = useSelector(selectFinanceSettings);
-  const { last_quote_number } = financeSettings;
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
-  const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
+  const [lastNumber, setLastNumber] = useState(1);
   const navigate = useNavigate();
 
   const [subTotal, setSubTotal] = useState(0);
@@ -131,6 +131,13 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const [searchLoading, setSearchLoading] = useState(false);
   const poNumbers = Form.useWatch('poNumbers', form) || [];
   // 吊船報價的 Quote Type 固定為 SML（移除不需要的 QU/XX）
+
+  useEffect(() => {
+    if (current) return;
+    const next = getSuggestedNextNumber(lastNumberSettings, 'SML', 'quote');
+    setLastNumber(next);
+    form.setFieldsValue({ number: String(next) });
+  }, [lastNumberSettings, current, form]);
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 

@@ -3,6 +3,7 @@ const moment = require('moment');
 
 const Model = mongoose.model('Quote');
 const { loadSettings } = require('@/middlewares/settings');
+const { hongKongPeriodRange } = require('@/helpers/hongKongMoment');
 
 const summary = async (req, res) => {
   let defaultType = 'month';
@@ -23,9 +24,7 @@ const summary = async (req, res) => {
     }
   }
 
-  const currentDate = moment();
-  let startDate = currentDate.clone().startOf(defaultType);
-  let endDate = currentDate.clone().endOf(defaultType);
+  const { startDate, endDate } = hongKongPeriodRange(defaultType);
 
   const statuses = ['draft', 'pending', 'sent', 'expired', 'declined', 'accepted'];
 

@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings, selectWarehouseOptions, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { selectFinanceSettings, selectLastNumberSettings, selectWarehouseOptions, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -39,19 +39,12 @@ import {
 } from '@/utils/supplierQuoteMaterialWarehouse';
 import { applyDefaultQuoteSupplierOnCreate } from '@/utils/defaultQuoteSupplier';
 
-function getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) {
+function getLastSupplierQuoteSeqForPrefix(lastNumberSettings, prefix) {
   const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
-  const v = financeSettings?.[k];
+  const v = lastNumberSettings?.[k];
   if (v !== undefined && v !== null && v !== '') {
     const n = Number(v);
     return Number.isNaN(n) ? 0 : n;
-  }
-  if (String(prefix || 'S').toUpperCase() === 'S') {
-    const legacy = supplierQuoteSettings?.last_supplier_quote_number;
-    if (legacy !== undefined && legacy !== null && legacy !== '') {
-      const n = Number(legacy);
-      return Number.isNaN(n) ? 0 : n;
-    }
   }
   return 0;
 }
@@ -66,6 +59,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const { dateFormat } = useDate();
   const { moneyFormatter, amountFormatter, currency_symbol, currency_position, cent_precision, currency_code } = useMoney();
   const financeSettings = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
   const supplierQuoteSettings = useSelector((state) => state.settings?.result?.supplier_quote_settings ?? {});
   const warehouseOptions = useSelector(selectWarehouseOptions);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
@@ -322,7 +316,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   };
 
   const applySuggestedNumber = (prefix = watchedSupplierPrefix || 'S') => {
-    const next = getLastSupplierQuoteSeqForPrefix(financeSettings, supplierQuoteSettings, prefix) + 1;
+    const next = getLastSupplierQuoteSeqForPrefix(lastNumberSettings, prefix) + 1;
     setLastNumber(next);
     form.setFieldsValue({ number: String(next) });
     numberManuallyEditedRef.current = false;
@@ -341,7 +335,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     if (numberManuallyEditedRef.current) return;
 
     applySuggestedNumber(prefix);
-  }, [financeSettings, supplierQuoteSettings, watchedSupplierPrefix, current, form]);
+  }, [lastNumberSettings, watchedSupplierPrefix, current, form]);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 

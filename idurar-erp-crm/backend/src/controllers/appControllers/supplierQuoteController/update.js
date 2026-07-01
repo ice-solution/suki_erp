@@ -21,6 +21,8 @@ const {
   syncSupplierQuoteAssetAssignments,
   stripLegacyAssetFieldsFromBody,
 } = require('@/helpers/supplierQuoteAssetAssignments');
+const assertSupplierQuoteNumber = require('@/helpers/assertSupplierQuoteNumber');
+const { syncSupplierQuoteLastNumberAfterUse } = require('@/helpers/lastNumberSettings');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -358,6 +360,28 @@ const update = async (req, res) => {
     });
   }
 
+  const nextPrefix =
+    body.numberPrefix != null ? String(body.numberPrefix).trim().toUpperCase() : existingQuote.numberPrefix;
+  const nextNumber = body.number != null ? String(body.number).trim() : String(existingQuote.number || '');
+  const numberIdentityChanged =
+    nextPrefix !== String(existingQuote.numberPrefix || '') ||
+    nextNumber !== String(existingQuote.number || '');
+
+  if (numberIdentityChanged) {
+    try {
+      await assertSupplierQuoteNumber(
+        { numberPrefix: nextPrefix, number: nextNumber },
+        existingQuote._id
+      );
+    } catch (numErr) {
+      return res.status(numErr.statusCode || 400).json({
+        success: false,
+        result: null,
+        message: numErr.message || 'S 單編號無效',
+      });
+    }
+  }
+
   const now = new Date();
   body.modified_at = now;
   body.updated = now;
@@ -416,6 +440,10 @@ const update = async (req, res) => {
       result: null,
       message: assetErr.message || '船隻／爬纜器同步失敗',
     });
+  }
+
+  if (numberIdentityChanged && result) {
+    await syncSupplierQuoteLastNumberAfterUse(result.numberPrefix || 'S', result.number);
   }
 
   console.log('📤 Returning result with files:');

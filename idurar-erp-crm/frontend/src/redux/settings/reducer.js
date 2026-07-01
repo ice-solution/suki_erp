@@ -3,6 +3,7 @@ import * as actionTypes from './types';
 const INITIAL_SETTINGS_STATE = {
   crm_settings: {},
   finance_settings: {},
+  last_number_settings: {},
   company_settings: {},
   app_settings: {},
   money_format_settings: {},

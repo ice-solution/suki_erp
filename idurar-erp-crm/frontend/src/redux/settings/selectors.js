@@ -1,4 +1,5 @@
 import { createSelector } from 'reselect';
+import { mergeLastNumberSettings } from '@/utils/lastNumberSettings';
 
 export const selectSettings = (state) => state.settings;
 
@@ -58,6 +59,16 @@ export const selectWarehouseItemCategoryOptions = createSelector(
 export const selectFinanceSettings = createSelector(
   [selectCurrentSettings],
   (settings) => settings.finance_settings
+);
+
+export const selectLastNumberSettings = createSelector(
+  [selectCurrentSettings],
+  (settings) =>
+    mergeLastNumberSettings({
+      lastNumberSettings: settings?.last_number_settings,
+      financeSettings: settings?.finance_settings,
+      supplierQuoteSettings: settings?.supplier_quote_settings,
+    })
 );
 
 export const selectCrmSettings = createSelector(

@@ -1,0 +1,56 @@
+[
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_sml_number",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_qu_number",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_quote_number",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_supplier_quote_number_no",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_supplier_quote_number_po",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_supplier_quote_number_s",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_supplier_quote_number_swp",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_supplier_quote_number_e",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_supplier_quote_number_y",
+    "settingValue": 0,
+    "valueType": "number"
+  }
+]

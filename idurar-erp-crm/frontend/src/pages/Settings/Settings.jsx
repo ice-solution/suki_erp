@@ -7,6 +7,7 @@ import {
   BuildOutlined,
   InboxOutlined,
   UserOutlined,
+  NumberOutlined,
 } from '@ant-design/icons';
 
 import TabsContent from '@/components/TabsContent/TabsContent';
@@ -16,6 +17,7 @@ import CompanyLogoByTypeSettings from './CompanyLogoByTypeSettings';
 import GeneralSettings from './GeneralSettings';
 import CompanySettings from './CompanySettings';
 import FinanceSettings from './FinanceSettings';
+import LastNumberSettings from './LastNumberSettings';
 import MoneyFormatSettings from './MoneyFormatSettings';
 import ProjectItemSettings from './ProjectItemSettings';
 import WarehouseSettings from './WarehouseSettings';
@@ -65,6 +67,12 @@ export default function Settings() {
       label: translate('Finance Settings'),
       icon: <CreditCardOutlined />,
       children: <FinanceSettings />,
+    },
+    {
+      key: 'last_number_settings',
+      label: '最後號碼',
+      icon: <NumberOutlined />,
+      children: <LastNumberSettings />,
     },
     {
       key: 'project_items',

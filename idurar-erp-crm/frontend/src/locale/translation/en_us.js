@@ -317,6 +317,8 @@ const lang = {
   update_company_finance_settings: 'Update Company Finance Settings',
   last_invoice_number: 'Last Invoice Number',
   last_quote_number: 'Last Quote Number',
+  last_sml_number: 'Last SML Number',
+  last_qu_number: 'Last QU Number',
   default_quote_supplier_name: 'Default quote supplier name',
   last_offer_number: 'Last Offer Number',
   last_payment_number: 'Last Payment Number',

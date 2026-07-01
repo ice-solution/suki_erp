@@ -3,24 +3,13 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('ShipQuote');
 
 const custom = require('@/controllers/pdfController');
-const { increaseBySettingKey } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
+const { syncQuoteLastNumberAfterUse } = require('@/helpers/lastNumberSettings');
 const { normalizeShipQuoteRentalExtraItems } = require('@/helpers/normalizeShipQuoteRentalExtras');
-const assertQuoteSupplierRequired = require('@/helpers/assertQuoteSupplierRequired');
 const { assertSharedQuoteNumberUnique } = require('@/helpers/assertSharedQuoteNumberUnique');
 
 const create = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
-
-  try {
-    assertQuoteSupplierRequired(req.body);
-  } catch (err) {
-    return res.status(err.statusCode || 400).json({
-      success: false,
-      result: null,
-      message: err.message,
-    });
-  }
 
   // default
   let subTotal = 0;
@@ -85,11 +74,8 @@ const create = async (req, res) => {
   ).exec();
   // Returning successfull response
 
-  increaseBySettingKey({
-    settingKey: 'last_quote_number',
-  });
+  await syncQuoteLastNumberAfterUse(body.numberPrefix, body.number);
 
-  // Returning successfull response
   return res.status(200).json({
     success: true,
     result: updateResult,

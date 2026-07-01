@@ -4,9 +4,9 @@ const QuoteModel = mongoose.model('Quote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const ProjectModel = mongoose.model('Project');
 
-const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 const { aggregateOrderedQtyByQuoteLine } = require('@/helpers/quoteSupplierOrderFromQuote');
 const { resolveDefaultSupplierId } = require('@/helpers/resolveDefaultSupplierId');
+const { resolveSupplierQuoteNumberForCreate } = require('@/helpers/lastNumberSettings');
 
 function normalizeQty(n) {
   const v = Math.floor(Number(n));
@@ -132,21 +132,30 @@ const convertQuoteToSupplierQuote = async (req, res) => {
     });
 
     let supplierQuotePrefix = 'S';
-    if (quote.numberPrefix) {
-      if (quote.numberPrefix === 'SML') {
-        supplierQuotePrefix = 'S';
-      } else {
-        supplierQuotePrefix = 'S';
-      }
+    if (isPost && req.body?.numberPrefix) {
+      supplierQuotePrefix = String(req.body.numberPrefix).trim().toUpperCase() || 'S';
     }
 
-    const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix(supplierQuotePrefix);
-    const supplierQuoteNumber = supplierQuoteNumberResult ? supplierQuoteNumberResult.settingValue : 1;
+    let supplierQuoteNumber;
+    try {
+      const resolved = await resolveSupplierQuoteNumberForCreate({
+        numberPrefix: isPost ? req.body?.numberPrefix : undefined,
+        number: isPost ? req.body?.number : undefined,
+      });
+      supplierQuotePrefix = resolved.numberPrefix;
+      supplierQuoteNumber = resolved.number;
+    } catch (numErr) {
+      return res.status(numErr.statusCode || 400).json({
+        success: false,
+        result: null,
+        message: numErr.message || 'S 單編號無效',
+      });
+    }
 
     const supplierQuoteData = {
       converted: false,
       numberPrefix: supplierQuotePrefix,
-      number: supplierQuoteNumber.toString(),
+      number: supplierQuoteNumber,
       year: new Date().getFullYear(),
       type: quote.type,
       shipType: quote.shipType,

@@ -4,9 +4,9 @@ const ShipQuoteModel = mongoose.model('ShipQuote');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const ProjectModel = mongoose.model('Project');
 
-const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 const { aggregateOrderedQtyByShipQuoteLine } = require('@/helpers/quoteSupplierOrderFromQuote');
 const { resolveDefaultSupplierId } = require('@/helpers/resolveDefaultSupplierId');
+const { resolveSupplierQuoteNumberForCreate } = require('@/helpers/lastNumberSettings');
 
 function normalizeQty(n) {
   const v = Math.floor(Number(n));
@@ -139,13 +139,27 @@ const convertToSupplierQuote = async (req, res) => {
       };
     });
 
-    const supplierQuoteNumberResult = await increaseSupplierQuoteLastNumberByPrefix('S');
-    const supplierQuoteNumber = supplierQuoteNumberResult ? supplierQuoteNumberResult.settingValue : 1;
+    let supplierQuotePrefix = 'S';
+    let supplierQuoteNumber;
+    try {
+      const resolved = await resolveSupplierQuoteNumberForCreate({
+        numberPrefix: isPost ? req.body?.numberPrefix : undefined,
+        number: isPost ? req.body?.number : undefined,
+      });
+      supplierQuotePrefix = resolved.numberPrefix;
+      supplierQuoteNumber = resolved.number;
+    } catch (numErr) {
+      return res.status(numErr.statusCode || 400).json({
+        success: false,
+        result: null,
+        message: numErr.message || 'S 單編號無效',
+      });
+    }
 
     const supplierQuoteData = {
       converted: false,
-      numberPrefix: 'S',
-      number: supplierQuoteNumber.toString(),
+      numberPrefix: supplierQuotePrefix,
+      number: supplierQuoteNumber,
       year: new Date().getFullYear(),
       type: shipQuote.type || '吊船',
       shipType: shipQuote.shipType,

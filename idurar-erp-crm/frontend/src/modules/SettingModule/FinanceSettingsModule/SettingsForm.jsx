@@ -2,24 +2,10 @@ import { Form, Input, InputNumber, Select, Switch } from 'antd';
 import { CloseOutlined, CheckOutlined } from '@ant-design/icons';
 import useLanguage from '@/locale/useLanguage';
 
-const supplierTypeLastNumberItems = [
-  { label: 'supplier_last_number_no', settingKey: 'last_supplier_quote_number_no' },
-  { label: 'supplier_last_number_po', settingKey: 'last_supplier_quote_number_po' },
-  { label: 'supplier_last_number_s', settingKey: 'last_supplier_quote_number_s' },
-  { label: 'supplier_last_number_swp', settingKey: 'last_supplier_quote_number_swp' },
-  { label: 'supplier_last_number_e', settingKey: 'last_supplier_quote_number_e' },
-  { label: 'supplier_last_number_y', settingKey: 'last_supplier_quote_number_y' },
-];
-
 const formItems = [
   {
     label: 'last_invoice_number',
     settingKey: 'last_invoice_number',
-    valueType: 'number',
-  },
-  {
-    label: 'last_quote_number',
-    settingKey: 'last_quote_number',
     valueType: 'number',
   },
   {
@@ -32,11 +18,6 @@ const formItems = [
     settingKey: 'default_quote_supplier_name',
     valueType: 'string',
   },
-  ...supplierTypeLastNumberItems.map((item) => ({
-    label: item.label,
-    settingKey: item.settingKey,
-    valueType: 'number',
-  })),
 ];
 
 export default function SettingForm() {

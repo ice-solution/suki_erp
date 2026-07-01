@@ -42,6 +42,9 @@ import { request } from '@/request';
 import { multilineStyle } from '@/utils/renderMultilineText';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
+import { selectLastNumberSettings } from '@/redux/settings/selectors';
+import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
+import SupplierOrderNumberFields from '@/components/SupplierOrderNumberFields';
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -157,6 +160,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [invoiceConversionMode, setInvoiceConversionMode] = useState('A');
   const [poLinePctByIndex, setPoLinePctByIndex] = useState({});
   const [poInvoiceMeta, setPoInvoiceMeta] = useState(null);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
+  const [supplierOrderPrefix, setSupplierOrderPrefix] = useState('S');
+  const [supplierOrderNumber, setSupplierOrderNumber] = useState('');
 
   let storedCtx = null;
   try {
@@ -311,6 +317,12 @@ export default function QuoteReadItem({ config, selectedItem }) {
     };
   }, [poModalMode, selectedPoNumber, currentErp?._id, entity]);
 
+  useEffect(() => {
+    if (poModalMode !== 'supplier') return;
+    const suggested = getSuggestedNextNumber(lastNumberSettings, supplierOrderPrefix, 'supplier');
+    setSupplierOrderNumber(String(suggested));
+  }, [poModalMode, supplierOrderPrefix, lastNumberSettings]);
+
   const closePoModal = () => {
     setPoModalMode(null);
     setSelectedPoNumber(null);
@@ -320,6 +332,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
     setInvoiceConversionMode('A');
     setPoLinePctByIndex({});
     setPoInvoiceMeta(null);
+    setSupplierOrderPrefix('S');
+    setSupplierOrderNumber('');
   };
 
   const openPoModal = (mode) => {
@@ -458,6 +472,11 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
 
+    if (!String(supplierOrderNumber || '').trim()) {
+      message.warning('請填寫 S 單編號');
+      return;
+    }
+
     const poNumber = selectedPoNumber;
     closePoModal();
     setConvertToSupplierQuoteLoading(true);
@@ -472,6 +491,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
       const response = await axios.post(`${entity}/convertToSupplierQuote/${currentErp._id}`, {
         poNumber,
         lines,
+        numberPrefix: supplierOrderPrefix,
+        number: String(supplierOrderNumber).trim(),
       });
       if (response && response.data && response.data.success) {
         message.success('Quote 已成功上單（Supplier Quote）！');
@@ -825,6 +846,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
           disabled:
             !selectedPoNumber ||
             poPreviewLoading ||
+            (poModalMode === 'supplier' && !String(supplierOrderNumber || '').trim()) ||
             (poModalMode === 'invoice'
               ? invoiceConversionMode === 'B'
                 ? !poPreviewLines.some((row) => {
@@ -849,6 +871,15 @@ export default function QuoteReadItem({ config, selectedItem }) {
               ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 逐項專案佔比（全數 items 帶去發票，請自行填寫每行 %）。'
               : '請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。'}
           </p>
+          {poModalMode === 'supplier' ? (
+            <SupplierOrderNumberFields
+              prefix={supplierOrderPrefix}
+              number={supplierOrderNumber}
+              onPrefixChange={setSupplierOrderPrefix}
+              onNumberChange={setSupplierOrderNumber}
+              mergedLastNumbers={lastNumberSettings}
+            />
+          ) : null}
           <Select
             style={{ width: '100%' }}
             placeholder="選擇 P.O Number"

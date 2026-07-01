@@ -17,6 +17,7 @@ const updateManySetting = async (req, res) => {
     const { settingKey, settingValue } = setting;
 
     const setOnInsert = {};
+    const setFields = { settingValue };
     // 為新插入的設定補上 settingCategory，避免前端依 category 讀取不到
     if (settingKey === 'warehouse_list') {
       setOnInsert.settingCategory = 'warehouse_settings';
@@ -26,14 +27,19 @@ const updateManySetting = async (req, res) => {
       setOnInsert.settingCategory = 'app_settings';
       setOnInsert.valueType = 'array';
     }
+    const { isLastNumberSettingKey, LAST_NUMBER_CATEGORY } = require('@/helpers/lastNumberSettings');
+    if (isLastNumberSettingKey(settingKey)) {
+      setOnInsert.settingCategory = LAST_NUMBER_CATEGORY;
+      setOnInsert.valueType = 'number';
+      setFields.settingCategory = LAST_NUMBER_CATEGORY;
+      setFields.valueType = 'number';
+    }
 
     updateDataArray.push({
       updateOne: {
         filter: { settingKey: settingKey },
         update: {
-          $set: {
-            settingValue: settingValue,
-          },
+          $set: setFields,
           ...(Object.keys(setOnInsert).length ? { $setOnInsert: setOnInsert } : {}),
         },
         upsert: true,

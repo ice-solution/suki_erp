@@ -10,7 +10,8 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { selectLastNumberSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -26,9 +27,9 @@ import {
 } from '@/components/DiscountPdfCheckbox';
 import { renderMultilineText } from '@/utils/renderMultilineText';
 export default function QuoteTableForm({ subTotal = 0, current = null }) {
-  const { last_quote_number } = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
 
-  if (last_quote_number === undefined) {
+  if (lastNumberSettings?.last_sml_number === undefined && lastNumberSettings?.last_qu_number === undefined) {
     return <></>;
   }
 
@@ -39,10 +40,9 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter, currency_symbol, currency_position, cent_precision } = useMoney();
-  const financeSettings = useSelector(selectFinanceSettings);
-  const { last_quote_number } = financeSettings;
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
-  const [lastNumber, setLastNumber] = useState(() => last_quote_number + 1);
+  const [lastNumber, setLastNumber] = useState(1);
   const navigate = useNavigate();
 
   const [subTotal, setSubTotal] = useState(0);
@@ -75,6 +75,14 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const watchedClients = Form.useWatch('clients', form) || [];
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
+
+  useEffect(() => {
+    if (current) return;
+    const prefix = quoteTypeValue || 'SML';
+    const next = getSuggestedNextNumber(lastNumberSettings, prefix, 'quote');
+    setLastNumber(next);
+    form.setFieldsValue({ number: String(next) });
+  }, [lastNumberSettings, quoteTypeValue, current, form]);
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 

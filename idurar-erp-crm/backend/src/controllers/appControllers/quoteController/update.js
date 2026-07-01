@@ -6,21 +6,12 @@ const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
 const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
-const assertQuoteSupplierRequired = require('@/helpers/assertQuoteSupplierRequired');
 
 const update = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
 
-  if (Object.prototype.hasOwnProperty.call(req.body, 'supplier')) {
-    try {
-      assertQuoteSupplierRequired(req.body);
-    } catch (err) {
-      return res.status(err.statusCode || 400).json({
-        success: false,
-        result: null,
-        message: err.message,
-      });
-    }
+  if (Object.prototype.hasOwnProperty.call(req.body, 'supplier') && !req.body.supplier) {
+    req.body.supplier = null;
   }
 
   if (items.length === 0) {

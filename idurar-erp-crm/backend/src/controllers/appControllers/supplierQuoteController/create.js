@@ -3,8 +3,9 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('SupplierQuote');
 
 const custom = require('@/controllers/pdfController');
-const { increaseSupplierQuoteLastNumberByPrefix } = require('@/middlewares/settings');
 const { calculate } = require('@/helpers');
+const assertSupplierQuoteNumber = require('@/helpers/assertSupplierQuoteNumber');
+const { syncSupplierQuoteLastNumberAfterUse } = require('@/helpers/lastNumberSettings');
 const {
   applySupplierQuoteMaterialsWarehouseSync,
   revertAppliedSupplierQuoteStockChanges,
@@ -241,6 +242,16 @@ const create = async (req, res) => {
   body.ship = primaryActive?.ship || null;
   body.winch = primaryWinch?.winch || null;
 
+  try {
+    await assertSupplierQuoteNumber(body);
+  } catch (numErr) {
+    return res.status(numErr.statusCode || 400).json({
+      success: false,
+      result: null,
+      message: numErr.message || 'S 單編號無效',
+    });
+  }
+
   // Creating a new document in the collection
   const result = await new Model(body).save();
 
@@ -316,7 +327,7 @@ const create = async (req, res) => {
     });
   }
 
-  increaseSupplierQuoteLastNumberByPrefix(result.numberPrefix || 'S');
+  await syncSupplierQuoteLastNumberAfterUse(result.numberPrefix || 'S', result.number);
 
   // Returning successfull response
   return res.status(200).json({
