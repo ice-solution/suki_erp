@@ -1,5 +1,5 @@
 doctype html
-html(class=isPuppeteer ? 'puppeteer-invoice' : '')
+html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
   head
     link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
     meta(name="viewport" content="width=device-width, initial-scale=1")
@@ -161,8 +161,6 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .sml-page { display: block; page-break-inside: auto; }
       .sml-page + .sml-page { page-break-before: always; }
       .sml-page-body { display: block; position: relative; padding-bottom: 18px; }
-      /* PDF 內第二頁開始不會繼承 body padding-top，需補回避免貼頂 */
-      .sml-page + .sml-page .sml-page-body { padding-top: 20px; }
       .supermax-header-banner { width: 100%; margin-bottom: 6px; }
       .supermax-header-banner img { width: 100%; height: auto; display: block; }
       /* 頁碼移至右下角（每頁） */
@@ -173,6 +171,7 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
       .info-row { margin-bottom: 2px; }
       .info-row-indent { margin-left: 20px; }
+      .info-row-receiver-address { margin-left: 20px; white-space: pre-wrap; word-break: break-word; }
       .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
       .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
       .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
@@ -182,19 +181,9 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .quotation-table tbody tr { border-bottom: 1px solid #222; }
       .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
       .quotation-table .col-no { width: 6%; text-align: center; }
-      .quotation-table .col-content { width: 44%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
+      .quotation-table .col-content { width: 78%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
       .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
-      .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
-      .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
       .quotation-table td.num { text-align: right; }
-      .summary-wrap { margin-top: 8px; display: flex; justify-content: flex-end; }
-      .summary-block { text-align: right; font-size: 10px; }
-      .summary-row { margin-bottom: 4px; }
-      .summary-label { font-weight: bold; display: inline-block; min-width: 90px; text-align: right; padding-right: 8px; }
-      .summary-value { display: inline-block; min-width: 100px; text-align: right; }
-      .summary-row.subtotal .summary-value { text-decoration: underline; }
-      .summary-row.underline .summary-value { text-decoration: underline; }
-      .summary-row.grand .summary-value { font-weight: bold; text-decoration: underline; }
       .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
       .notes-title { font-weight: bold; margin-bottom: 2px; }
       .signature-section { margin-top: 12px; }
@@ -207,40 +196,36 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .prepared-by-space { display: inline-block; min-width: 120px; height: 20px; vertical-align: middle; }
       .issuer-block { display: inline-block; text-align: left; }
       .issuer-name-line { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
-      .signature-stamp-label { font-size: 9px; }
-      /* PDF 引擎常不完整支援 flex；用 inline-block + vertical-align 讓文字與底線同一列 */
-      .issuer-stamp-row { text-align: right; margin-top: 4px; white-space: nowrap; }
-      .issuer-stamp-row .signature-stamp-label { display: inline-block; vertical-align: bottom; line-height: 1; margin-right: 8px; }
-      .issuer-stamp { display: inline-block; vertical-align: bottom; border-bottom: 1px solid #222; width: 180px; height: 36px; box-sizing: border-box; }
+      .issuer-stamp { border-bottom: none; width: 180px; height: 40px; margin-top: 4px; }
+      .signature-stamp-label { font-size: 9px; font-weight: bold; margin-top: 4px; }
+      .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
+      .sig-label { display: inline-block; width: 54px; }
       .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
     if isPuppeteer
       style.
-        html.puppeteer-invoice .footer-section,
-        html.puppeteer-invoice footer.footer-invoice { display: none !important; }
+        html.puppeteer-supplier-s .footer-section { display: none !important; }
 
 body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
-    - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
-    - const invoiceType = model.numberPrefix || 'S'
-    - const docNumber = invoiceType + '-' + (model.number || '')
+    - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
+    - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
+    - const receiverPdfRaw = (model.receiver != null && String(model.receiver).trim()) ? String(model.receiver) : ''
     - const quoteNumber = model.invoiceNumber || ''
-    - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD/MM/YYYY') : ''
-    - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
-    - const deliveryAddress = model.address || clientAddress || ''
+    - const docDate = model.openDate ? moment(model.openDate).utcOffset(480).format('DD/MM/YYYY') : '-'
     - const itemsOnly = model.items || []
     -
-      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
-      const S_PDF_CHARS_PER_LINE = 24
+      // 行數估算分頁（取代固定 8 筆）：與 tbody 內 contentText 邏輯一致；保守係數避免 overlay
+      const S_PDF_CHARS_PER_LINE = 26
       const S_PDF_SAFETY_FACTOR = 1.25
       const S_PDF_MAX_LINES_PER_PAGE = 30
-      function buildItemContentText(item) {
+      function buildSItemContentText(item) {
         const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
         const desc = item.description ? ' ' + item.description : ''
         return (name + desc).trim() || '-'
       }
       function estimateItemContentLines(item) {
-        const text = buildItemContentText(item)
+        const text = buildSItemContentText(item)
         let lines = 0
         const parts = String(text).split(/\r\n|\n|\r/)
         for (let pi = 0; pi < parts.length; pi++) {
@@ -252,27 +237,38 @@ body
       const itemChunks = []
       let curChunk = []
       let curLines = 0
+      const chunkMeta = []
       for (let ii = 0; ii < itemsOnly.length; ii++) {
         const it = itemsOnly[ii]
         const L = estimateItemContentLines(it)
         if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
           itemChunks.push(curChunk)
+          chunkMeta.push({ items: curChunk.length, lineSum: curLines })
           curChunk = []
           curLines = 0
         }
         curChunk.push(it)
         curLines += L
       }
-      if (curChunk.length > 0) itemChunks.push(curChunk)
+      if (curChunk.length > 0) {
+        itemChunks.push(curChunk)
+        chunkMeta.push({ items: curChunk.length, lineSum: curLines })
+      }
       if (itemChunks.length === 0) itemChunks.push([])
-    - const fullSubTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
-    - const discount = model.discount != null ? model.discount : 0
-    - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
-    - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? Math.min(100, Math.max(0, projectPercentage)) : 100
-    - const subTotal = fullSubTotal * projectPctForCalc / 100
-    - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
-    - const projectPercentageLabel = model.projectPercentageLabel != null && String(model.projectPercentageLabel).trim() ? String(model.projectPercentageLabel).trim() : '專案佔比 (%)'
-    - const total = model.total != null ? model.total : (subTotal - discountTotal)
+      const paginationDebugSummary = JSON.stringify({
+        note: 'Puppeteer page.pdf({ format: A4, scale: 1.3 }) — 實際折行與 CHARS_PER_LINE 有關，可調 S_PDF_CHARS_PER_LINE / S_PDF_MAX_LINES_PER_PAGE',
+        S_PDF_CHARS_PER_LINE,
+        S_PDF_SAFETY_FACTOR,
+        S_PDF_MAX_LINES_PER_PAGE,
+        itemCount: itemsOnly.length,
+        chunkCount: itemChunks.length,
+        chunkMeta,
+        perItem: itemsOnly.map((it, i) => ({
+          n: i + 1,
+          estLines: estimateItemContentLines(it),
+          preview: buildSItemContentText(it).slice(0, 120),
+        })),
+      }, null, 2)
     - const currency = model.currency || 'HKD'
     - var serialBase = 0
 
@@ -285,93 +281,70 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
-                if !model.shipType && model.address
+                .info-row.info-row-indent #{projectAddressPdf || '-'}
+                
               td.info-right
                 .info-row 報價編號 : #{quoteNumber}
-                .info-row INVOICE NO: #{docNumber}
-                .info-row 日期 : #{docDate}
+                .info-row 出貨日期 : #{docDate}
+                .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
                 .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
-            if model.shipType
-              tr
-                td.info-left
-                  .info-row 送貨地址: #{deliveryAddress || '-'}
-                  .info-row 收貨人: #{consigneeLine || '-'}
-                td.info-right
-          .doc-title INVOICE
-          if model.address
-            .project-address-line 工程地址：#{model.address || ''}
+                .info-row INVOICE: 
+                  span(style='display:inline-block; min-width:75px') &nbsp;
+          .doc-title 完工單
+          .info-row 簽收單聯絡人：#{contactPersonPdf || '-'}
+          .project-address-line(style='white-space:pre-wrap') 簽收單送貨地址：#{receiverPdfRaw || '-'}
           table.quotation-table
             thead
               tr
                 th.col-no
                 th.col-content 工程內容
                 th.col-qty 數量 / 單位
-                th.col-unit 單價 HKD$
-                th.col-amount 金額 HKD$
             tbody
               each item, idx in chunk
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
-                - const lineBase = item.total != null ? item.total : ((item.price != null && item.quantity != null) ? item.price * item.quantity : 0)
-                - const lineAmount = lineBase * projectPctForCalc / 100
                 tr
                   td.col-no #{serialBase + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
-                  td.col-amount.num #{moneyFormatter({ amount: lineAmount, currency_code: currency })}
               if chunk.length === 0
                 tr
-                  td(colspan='5' style='text-align:center') 無項目
+                  td(colspan='3' style='text-align:center') 無項目
           - serialBase += chunk.length
           if pageIndex === itemChunks.length - 1
-            .summary-wrap
-              .summary-block
-                .summary-row.subtotal
-                  span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
-                if model.showDiscountPercentOnPdf !== false
-                  .summary-row.underline
-                    span.summary-label 折扣%：
-                    span.summary-value #{formatDiscountPct(discount)}%
-                if model.showDiscountAmountOnPdf !== false
-                  .summary-row.underline
-                    span.summary-label 折扣金額：
-                    span.summary-value #{formatDiscountMoneyForPdf(discountTotal, settings)}
-                .summary-row
-                  span.summary-label #{projectPercentageLabel}：
-                  span.summary-value #{projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage + '%' : '—'}
-                .summary-row.grand
-                  span.summary-label 總金額：
-                  span.summary-value #{moneyFormatter({ amount: total, currency_code: currency })}
             .notes-block
+              .notes-title
               .notes-content
                 if model.notes
+                  br
                   | #{model.notes}
             .signature-section
               .prepared-by-row
-                span.prepared-by-label 制單人：
-                if model.updatedBy && model.updatedBy.name
-                  span #{model.updatedBy.name}
-                else if model.createdBy && model.createdBy.name
-                  span #{model.createdBy.name}
-                else
-                  span.prepared-by-space
+                //- 刪除「制單人」文字，但保留相同高度/空間避免簽署區上移
+                span.prepared-by-space
               table.signature-table
                 tr
                   td.sig-left
                     .issuer-block
-                      .issuer-name-line 
-                      .issuer-name-line 
-                      .signature-stamp-label 
+                      //- 保留空間，避免右欄位往左/往上擠
+                      .issuer-name-line &nbsp;
+                      .issuer-name-line &nbsp;
+                      .issuer-stamp
+                      .signature-stamp-label &nbsp;
                   td.sig-right
                     .issuer-block
-                      .issuer-name-line 
-                      .issuer-name-line 
-                      .issuer-stamp-row
-                        span.signature-stamp-label ISSUED BY
-                        .issuer-stamp
+                      .issuer-name-line
+                        span.sig-label 簽收人:
+                        span.fill-line
+                      .issuer-name-line
+                        span.sig-label 日期
+                        span.fill-line
             .end-marker End
         .footer-section
           img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    if typeof paginationDebug !== 'undefined' && paginationDebug
+      .sml-page.sml-page-pagination-debug
+        .sml-page-body
+          p(style='font-size:10px;font-weight:bold;margin:0 0 6px') S 單分頁估算（S_PDF_PAGINATION_DEBUG=1）
+          pre(style='font-size:8px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;border:1px solid #ccc;background:#fafafa;text-align:left') #{paginationDebugSummary}

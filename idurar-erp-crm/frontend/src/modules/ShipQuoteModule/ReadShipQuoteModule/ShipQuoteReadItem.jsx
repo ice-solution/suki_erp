@@ -10,6 +10,7 @@ import {
   CloseCircleOutlined,
   RetweetOutlined,
   ArrowUpOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -28,6 +29,7 @@ import storePersist from '@/redux/storePersist';
 import { selectLastNumberSettings } from '@/redux/settings/selectors';
 import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
 import SupplierOrderNumberFields from '@/components/SupplierOrderNumberFields';
+import PoNumberSyncModal from '@/components/PoNumberSyncModal';
 import {
   DEFAULT_SHIP_RENTAL_EXTRA_ITEMS,
   DEFAULT_SHIP_PDF_PAYMENT_METHOD,
@@ -145,6 +147,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
   const lastNumberSettings = useSelector(selectLastNumberSettings);
   const [supplierOrderPrefix, setSupplierOrderPrefix] = useState('S');
   const [supplierOrderNumber, setSupplierOrderNumber] = useState('');
+  const [poSyncOpen, setPoSyncOpen] = useState(false);
 
   let storedCtx = null;
   try {
@@ -594,6 +597,19 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
               </Button>
             </Space>
             <Space wrap size="small">
+              <Button
+                key="sq-sync-po"
+                onClick={() => {
+                  if (shipQuotePoLines.length === 0) {
+                    message.warning('沒有 P.O number：請在單頭或項目填寫 P.O 後再操作');
+                    return;
+                  }
+                  setPoSyncOpen(true);
+                }}
+                icon={<SyncOutlined />}
+              >
+                同步更新 P.O
+              </Button>
               <Button
                 key="sq-to-s"
                 onClick={handleConvertShipQuoteToS}
@@ -1067,6 +1083,15 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
           </p>
         ) : null}
       </Modal>
+
+      <PoNumberSyncModal
+        open={poSyncOpen}
+        onClose={() => setPoSyncOpen(false)}
+        entity={entity}
+        documentId={currentErp?._id}
+        poOptions={shipQuotePoLines}
+        onSuccess={() => dispatch(erp.read({ entity, id: currentErp._id }))}
+      />
     </>
   );
 }

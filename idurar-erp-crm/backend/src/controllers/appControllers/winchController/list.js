@@ -1,9 +1,6 @@
 const mongoose = require('mongoose');
 const { catchErrors } = require('@/handlers/errorHandlers');
-const {
-  escapeRegex,
-  supplierQuoteNumbersMatchingAssetSearchQuery,
-} = require('../_shared/supplierQuoteNumbersForAssetListSearch');
+const buildAssetListMatch = require('../_shared/buildAssetListMatch');
 
 const Model = mongoose.model('Winch');
 
@@ -12,32 +9,7 @@ const list = catchErrors(async (req, res) => {
   const page = parseInt(req.query.page, 10) || 1;
   const limit = parseInt(req.query.items, 10) || 10;
   const skip = (page - 1) * limit;
-  const { filter, equal, q, fields: fieldsParam } = req.query;
-
-  const match = { removed: false };
-  if (filter && equal !== undefined) match[filter] = equal;
-
-  if (q && fieldsParam) {
-    const fieldsArray = fieldsParam.split(',').map((f) => f.trim()).filter(Boolean);
-    const qTrim = String(q).trim();
-    const rx = new RegExp(escapeRegex(qTrim), 'i');
-    const winchFieldClauses = fieldsArray.map((f) => ({ [f]: { $regex: rx } }));
-
-    let quoteSupplierNumbers = [];
-    try {
-      quoteSupplierNumbers = await supplierQuoteNumbersMatchingAssetSearchQuery(qTrim);
-    } catch (e) {
-      quoteSupplierNumbers = [];
-    }
-
-    const clauses = [...winchFieldClauses];
-    if (quoteSupplierNumbers.length > 0) {
-      clauses.push({ supplierNumber: { $in: quoteSupplierNumbers } });
-    }
-    if (clauses.length > 0) {
-      match.$or = clauses;
-    }
-  }
+  const match = await buildAssetListMatch(req);
 
   const pipeline = [
     { $match: match },

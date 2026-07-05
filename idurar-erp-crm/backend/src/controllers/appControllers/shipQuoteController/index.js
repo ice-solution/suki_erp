@@ -15,6 +15,7 @@ const poOrderStatus = require('./poOrderStatus');
 const poInvoiceStatus = require('./poInvoiceStatus');
 const convertShipQuoteToInvoice = require('./convertShipQuoteToInvoice');
 const neighbors = require('./neighbors');
+const poSyncHandlers = require('./poSync');
 
 methods.list = paginatedList;
 methods.read = read;
@@ -28,6 +29,8 @@ methods.convertToSupplierQuote = convertToSupplierQuote;
 methods.poOrderStatus = poOrderStatus;
 methods.poInvoiceStatus = poInvoiceStatus;
 methods.convert = convertShipQuoteToInvoice;
+methods.poSyncPreview = poSyncHandlers.poSyncPreview;
+methods.poSyncExecute = poSyncHandlers.poSyncExecute;
 
 module.exports = methods;
 

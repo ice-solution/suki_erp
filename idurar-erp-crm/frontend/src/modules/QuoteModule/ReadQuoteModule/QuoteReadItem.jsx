@@ -25,6 +25,7 @@ import {
   CloseCircleOutlined,
   RetweetOutlined,
   ArrowUpOutlined,
+  SyncOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -45,6 +46,7 @@ import storePersist from '@/redux/storePersist';
 import { selectLastNumberSettings } from '@/redux/settings/selectors';
 import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
 import SupplierOrderNumberFields from '@/components/SupplierOrderNumberFields';
+import PoNumberSyncModal from '@/components/PoNumberSyncModal';
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -163,6 +165,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const lastNumberSettings = useSelector(selectLastNumberSettings);
   const [supplierOrderPrefix, setSupplierOrderPrefix] = useState('S');
   const [supplierOrderNumber, setSupplierOrderNumber] = useState('');
+  const [poSyncOpen, setPoSyncOpen] = useState(false);
 
   let storedCtx = null;
   try {
@@ -615,6 +618,19 @@ export default function QuoteReadItem({ config, selectedItem }) {
             </Space>
             <Space wrap size="small">
               <Button
+                key="quote-sync-po"
+                onClick={() => {
+                  if (quotePoLines.length === 0) {
+                    message.warning('沒有 P.O number：請在單頭或項目填寫 P.O 後再操作');
+                    return;
+                  }
+                  setPoSyncOpen(true);
+                }}
+                icon={<SyncOutlined />}
+              >
+                同步更新 P.O
+              </Button>
+              <Button
                 key="quote-upload-s"
                 onClick={handleConvertToSupplierQuote}
                 loading={convertToSupplierQuoteLoading}
@@ -1029,6 +1045,15 @@ export default function QuoteReadItem({ config, selectedItem }) {
           </p>
         ) : null}
       </Modal>
+
+      <PoNumberSyncModal
+        open={poSyncOpen}
+        onClose={() => setPoSyncOpen(false)}
+        entity={entity}
+        documentId={currentErp?._id}
+        poOptions={quotePoLines}
+        onSuccess={() => dispatch(erp.read({ entity, id: currentErp._id }))}
+      />
     </>
   );
 }

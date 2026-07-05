@@ -10,38 +10,50 @@ const STATUS_ROWS = [
   { key: 'in_use', title: '使用中總數' },
 ];
 
+const emptyCounts = () => STATUS_ROWS.reduce((acc, { key }) => ({ ...acc, [key]: 0 }), {});
+
 /**
- * 爬纜器／船隻列表頂部：依 status 彙總全庫筆數（listAll，不受表格分頁／搜尋影響）
+ * 爬纜器／船隻列表頂部：依 status 彙總（與列表相同搜尋條件；列表更新時同步刷新）
  * @param {string} entity - 'winch' | 'ship'
- * @param {number} refreshKey - 變更時重新拉取（例如使用者按「重新整理」）
+ * @param {number} refreshKey - 變更時重新拉取
+ * @param {string} searchQuery - 與 DataTable 搜尋框相同
+ * @param {string} searchFields - 搜尋欄位（逗號分隔）
  */
-export default function AssetStatusSummary({ entity, refreshKey = 0 }) {
+export default function AssetStatusSummary({
+  entity,
+  refreshKey = 0,
+  searchQuery = '',
+  searchFields = '',
+}) {
   const [loading, setLoading] = useState(true);
-  const [counts, setCounts] = useState(() =>
-    STATUS_ROWS.reduce((acc, { key }) => ({ ...acc, [key]: 0 }), {})
-  );
+  const [counts, setCounts] = useState(emptyCounts);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       setLoading(true);
       try {
-        const res = await request.listAll({ entity });
-        if (cancelled) return;
-        const raw = res?.result;
-        const items = Array.isArray(raw) ? raw : raw?.items || [];
-        const next = STATUS_ROWS.reduce((acc, { key }) => ({ ...acc, [key]: 0 }), {});
-        items.forEach((row) => {
-          const s = row?.status;
-          if (s && Object.prototype.hasOwnProperty.call(next, s)) {
-            next[s] += 1;
-          }
+        const q = String(searchQuery || '').trim();
+        const params = {};
+        if (q && searchFields) {
+          params.q = q;
+          params.fields = searchFields;
+        }
+        const res = await request.get({
+          entity: `${entity}/statusSummary`,
+          params,
         });
+        if (cancelled) return;
+        const next = emptyCounts();
+        const raw = res?.result;
+        if (raw && typeof raw === 'object') {
+          STATUS_ROWS.forEach(({ key }) => {
+            if (typeof raw[key] === 'number') next[key] = raw[key];
+          });
+        }
         setCounts(next);
       } catch {
-        if (!cancelled) {
-          setCounts(STATUS_ROWS.reduce((acc, { key }) => ({ ...acc, [key]: 0 }), {}));
-        }
+        if (!cancelled) setCounts(emptyCounts());
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -49,7 +61,7 @@ export default function AssetStatusSummary({ entity, refreshKey = 0 }) {
     return () => {
       cancelled = true;
     };
-  }, [entity, refreshKey]);
+  }, [entity, refreshKey, searchQuery, searchFields]);
 
   return (
     <Card size="small" bordered style={{ marginBottom: 16 }} bodyStyle={{ padding: '12px 16px' }}>

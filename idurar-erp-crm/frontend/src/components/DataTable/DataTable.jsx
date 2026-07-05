@@ -139,29 +139,37 @@ export default function DataTable({ config, extra = [] }) {
 
   const dispatch = useDispatch();
   const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [listSearchOptions, setListSearchOptions] = useState({});
 
   const handelDataTableLoad = useCallback((pagination) => {
-    const options = { page: pagination.current || 1, items: pagination.pageSize || 10 };
+    const options = {
+      page: pagination.current || 1,
+      items: pagination.pageSize || 10,
+      ...listSearchOptions,
+    };
     dispatch(crud.list({ entity, options }));
-  }, [entity, dispatch]);
+  }, [entity, dispatch, listSearchOptions]);
 
   const filterTable = (e) => {
     const value = e.target.value;
+    setSearchQuery(value);
     const options = { q: value, fields: searchConfig?.searchFields || '' };
+    setListSearchOptions(options);
     dispatch(crud.list({ entity, options }));
   };
 
-  const dispatcher = useCallback(() => {
+  useEffect(() => {
+    setSearchQuery('');
+    setListSearchOptions({});
     dispatch(crud.list({ entity }));
   }, [entity, dispatch]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    dispatcher();
-    return () => {
-      controller.abort();
-    };
-  }, [dispatcher]);
+    if (!listIsLoading) {
+      setSummaryRefreshKey((k) => k + 1);
+    }
+  }, [listIsLoading, pagination?.total, entity]);
 
   return (
     <>
@@ -196,7 +204,11 @@ export default function DataTable({ config, extra = [] }) {
       ></PageHeader>
 
       {listSummary && isValidElement(listSummary)
-        ? cloneElement(listSummary, { refreshKey: summaryRefreshKey })
+        ? cloneElement(listSummary, {
+            refreshKey: summaryRefreshKey,
+            searchQuery,
+            searchFields: searchConfig?.searchFields || '',
+          })
         : null}
 
       <Table

@@ -25,6 +25,8 @@ import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
 import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
 
+const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y']);
+
 /** S 單上傳檔（DN / Invoice）公開 URL：正式環境用 BASE_URL 或 FILE_BASE_URL，勿寫死 localhost */
 function supplierQuoteUploadedFileHref(file) {
   const name = file?.fileName || (file?.path && String(file.path).split('/').pop());
@@ -477,6 +479,25 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
               >
                 {translate('Download PDF')}
               </Button>,
+              ...(FINISH_PDF_PREFIXES.has(String(currentErp?.numberPrefix || '').toUpperCase())
+                ? [
+                  <Button
+                    key={`${uniqueId()}`}
+                    onClick={() => {
+                      const v = encodeURIComponent(
+                        String(currentErp?.modified_at || currentErp?.updated || Date.now())
+                      );
+                      window.open(
+                        `${DOWNLOAD_BASE_URL}${entity}/${entity}-finish-${currentErp._id}.pdf?v=${v}`,
+                        '_blank'
+                      );
+                    }}
+                    icon={<FilePdfOutlined />}
+                  >
+                    下載完工單
+                  </Button>,
+                ]
+                : []),
             ]),
 
           <Button

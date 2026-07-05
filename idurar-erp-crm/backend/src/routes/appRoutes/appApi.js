@@ -52,6 +52,8 @@ const routerApp = (entity, controller) => {
     router
       .route(`/${entity}/operational-report`)
       .get(catchErrors(controller['getQuoteInvoiceOperationalReport']));
+    router.route(`/${entity}/po-sync-preview/:id`).get(catchErrors(controller['poSyncPreview']));
+    router.route(`/${entity}/po-sync/:id`).post(catchErrors(controller['poSyncExecute']));
   }
 
   if (entity === 'shipquote') {
@@ -66,6 +68,8 @@ const routerApp = (entity, controller) => {
       .post(catchErrors(controller['convertToSupplierQuote']));
     router.route(`/${entity}/po-order-status/:id`).get(catchErrors(controller['poOrderStatus']));
     router.route(`/${entity}/po-invoice-status/:id`).get(catchErrors(controller['poInvoiceStatus']));
+    router.route(`/${entity}/po-sync-preview/:id`).get(catchErrors(controller['poSyncPreview']));
+    router.route(`/${entity}/po-sync/:id`).post(catchErrors(controller['poSyncExecute']));
   }
 
   if (entity === 'project') {
@@ -93,10 +97,12 @@ const routerApp = (entity, controller) => {
 
   if (entity === 'ship') {
     router.route(`/${entity}/bindings`).get(catchErrors(controller['bindings']));
+    router.route(`/${entity}/statusSummary`).get(catchErrors(controller['statusSummary']));
   }
 
   if (entity === 'winch') {
     router.route(`/${entity}/bindings`).get(catchErrors(controller['bindings']));
+    router.route(`/${entity}/statusSummary`).get(catchErrors(controller['statusSummary']));
   }
 
   if (entity === 'workprogress') {

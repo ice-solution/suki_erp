@@ -4,7 +4,8 @@ const {
   readSupplierQuoteLastNumber,
 } = require('@/helpers/lastNumberSettings');
 
-async function assertSupplierQuoteNumber(body, excludeMongoId) {
+async function assertSupplierQuoteNumber(body, excludeMongoId, options = {}) {
+  const { enforceLastNumber = true } = options;
   const prefix = String(body?.numberPrefix || 'S').trim().toUpperCase();
   const number = body?.number != null ? String(body.number).trim() : '';
 
@@ -33,7 +34,7 @@ async function assertSupplierQuoteNumber(body, excludeMongoId) {
   }
 
   const last = await readSupplierQuoteLastNumber(prefix);
-  if (numVal <= last) {
+  if (enforceLastNumber && numVal <= last) {
     const err = new Error(
       `S 單編號須大於最後號碼（${prefix}：${last}），建議使用 ${last + 1}`
     );

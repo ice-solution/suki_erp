@@ -371,7 +371,8 @@ const update = async (req, res) => {
     try {
       await assertSupplierQuoteNumber(
         { numberPrefix: nextPrefix, number: nextNumber },
-        existingQuote._id
+        existingQuote._id,
+        { enforceLastNumber: false }
       );
     } catch (numErr) {
       return res.status(numErr.statusCode || 400).json({

@@ -8,7 +8,7 @@ const { RangePicker } = DatePicker;
 
 // 與 xero_bill_sample.csv 一致（PO/bill 格式）
 const XERO_BILL_CSV_HEADER =
-  'ContactName,EmailAddress,POAddressLine1,POAddressLine2,POAddressLine3,POAddressLine4,POCity,PORegion,POPostalCode,POCountry,InvoiceNumber,InvoiceDate,DueDate,Total,InventoryItemCode,Invoice No,Quantity,UnitAmount,AccountCode,TaxType,TaxAmount,TrackingName1,TrackingOption1,TrackingName2,TrackingOption2,Currency';
+  'ContactName,EmailAddress,POAddressLine1,POAddressLine2,POAddressLine3,POAddressLine4,POCity,PORegion,POPostalCode,POCountry,InvoiceNumber,InvoiceDate,DueDate,Total,InventoryItemCode,Description,Quantity,UnitAmount,AccountCode,TaxType,TaxAmount,TrackingName1,TrackingOption1,TrackingName2,TrackingOption2,Currency';
 
 function escapeCsvCell(val) {
   if (val == null || val === '') return '';
@@ -170,7 +170,7 @@ export default function XeroEOExport() {
     { title: 'InvoiceDate', dataIndex: 'invoiceDate', key: 'invoiceDate', width: 110 },
     { title: 'DueDate', dataIndex: 'dueDate', key: 'dueDate', width: 110 },
     { title: 'AccountCode', dataIndex: 'accountCode', key: 'accountCode', width: 110 },
-    { title: 'Invoice No', dataIndex: 'description', key: 'description', ellipsis: true, width: 220 },
+    { title: 'Description', dataIndex: 'description', key: 'description', ellipsis: true, width: 220 },
     { title: 'Quantity', dataIndex: 'quantity', key: 'quantity', width: 90 },
     { title: 'UnitAmount', dataIndex: 'unitAmount', key: 'unitAmount', width: 110 },
   ];
@@ -213,7 +213,7 @@ export default function XeroEOExport() {
         </div>
 
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          ContactName 為承辦商名稱；原 Description 欄位改為輸出該筆判頭費之 Invoice No（Project › usedContractorFees.invoiceNo）。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。
+          ContactName 為承辦商名稱；Description 欄位輸出該筆判頭費之 Invoice No（Project › usedContractorFees.invoiceNo）。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。
         </p>
 
         {previewRows.length > 0 && (

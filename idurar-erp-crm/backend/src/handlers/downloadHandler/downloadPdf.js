@@ -10,6 +10,10 @@ const {
 const {
   tryGenerateInvoicePdfBufferWithPuppeteer,
 } = require('@/new_pdf/invoice/invoicePuppeteerDispatch');
+const {
+  generateSupplierQuoteFinishPdfBuffer,
+  isFinishPdfPrefix,
+} = require('@/new_pdf/supplier_quote/generateSupplierQuoteFinishPdf');
 
 /** 動態 PDF：固定 URL 會被 CDN／瀏覽器快取，導致內容更新後仍下載舊檔 */
 function setDynamicPdfCacheHeaders(res) {
@@ -46,14 +50,16 @@ function sanitizeFilenamePart(input) {
  * 下載檔名：以 type-number 命名（不影響既有 URL）
  * 例：Quote => SML-0499962.pdf；Invoice => SMI-123.pdf
  */
-function buildDownloadFilename(modelName, result) {
+function buildDownloadFilename(modelName, result, options = {}) {
+  const { variant } = options;
   const name = String(modelName || '').toLowerCase();
   const prefix = sanitizeFilenamePart(result?.numberPrefix || '');
   const number = sanitizeFilenamePart(result?.number || '');
+  const suffix = variant === 'finish' ? '-finish' : '';
 
   // 主要單據類型：優先用 numberPrefix-number
   if (prefix && number) {
-    return `${prefix}-${number}.pdf`;
+    return `${prefix}-${number}${suffix}.pdf`;
   }
 
   // 向後相容：部分資料可能用 invoiceNumber 作為顯示單號
@@ -68,7 +74,7 @@ function buildDownloadFilename(modelName, result) {
   return `${name || 'document'}.pdf`;
 }
 
-module.exports = downloadPdf = async (req, res, { directory, id }) => {
+module.exports = downloadPdf = async (req, res, { directory, id, variant } = {}) => {
   try {
     // 處理特殊模型名稱映射
     const modelNameMap = {
@@ -139,9 +145,23 @@ module.exports = downloadPdf = async (req, res, { directory, id }) => {
       setDynamicPdfCacheHeaders(res);
 
       const fileId = modelName.toLowerCase() + '-' + result._id + '.pdf';
-      const downloadFilename = buildDownloadFilename(modelName, result);
+      const downloadFilename = buildDownloadFilename(modelName, result, { variant });
       const folderPath = modelName.toLowerCase();
       const targetLocation = `src/public/download/${folderPath}/${fileId}`;
+
+      if (modelName === 'SupplierQuote' && variant === 'finish') {
+        if (!isFinishPdfPrefix(result.numberPrefix)) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: '此 Supplier type 不支援下載完工單',
+          });
+        }
+        const finishBuffer = await generateSupplierQuoteFinishPdfBuffer(result);
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+        return res.send(finishBuffer);
+      }
 
       if (modelName === 'Quote') {
         const puppeteerBuffer = await tryGenerateQuotePdfBufferWithPuppeteer(result);
