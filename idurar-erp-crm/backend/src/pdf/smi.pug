@@ -285,7 +285,7 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row.info-row-indent #{ model.address || ''}
+                .info-row.info-row-indent #{clientAddress || ''}
                 if !model.shipType && model.address
               td.info-right
                 .info-row 報價編號 : #{quoteNumber}
