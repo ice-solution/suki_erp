@@ -285,19 +285,13 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
+                .info-row.info-row-indent #{ model.address || ''}
                 if !model.shipType && model.address
               td.info-right
                 .info-row 報價編號 : #{quoteNumber}
                 .info-row INVOICE NO: #{docNumber}
                 .info-row 日期 : #{docDate}
                 .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
-            if model.shipType
-              tr
-                td.info-left
-                  .info-row 送貨地址: #{deliveryAddress || '-'}
-                  .info-row 收貨人: #{consigneeLine || '-'}
-                td.info-right
           .doc-title INVOICE
           if model.address
             .project-address-line 工程地址：#{model.address || ''}
