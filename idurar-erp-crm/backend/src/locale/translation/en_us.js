@@ -309,7 +309,6 @@ module.exports = {
   last_invoice_number: 'Last Invoice Number',
   last_quote_number: 'Last Quote Number',
   last_offer_number: 'Last Offer Number',
-  last_payment_number: 'Last Payment Number',
   client_list: 'Client List',
   add_new_client: 'Add New Client',
   delete: 'Delete',

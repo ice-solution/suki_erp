@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings, selectLastNumberSettings, selectWarehouseOptions, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { selectDefaultQuoteSupplierSettings, selectLastNumberSettings, selectWarehouseOptions, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -58,7 +58,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter, amountFormatter, currency_symbol, currency_position, cent_precision, currency_code } = useMoney();
-  const financeSettings = useSelector(selectFinanceSettings);
+  const defaultQuoteSupplierSettings = useSelector(selectDefaultQuoteSupplierSettings);
   const lastNumberSettings = useSelector(selectLastNumberSettings);
   const supplierQuoteSettings = useSelector((state) => state.settings?.result?.supplier_quote_settings ?? {});
   const warehouseOptions = useSelector(selectWarehouseOptions);
@@ -459,10 +459,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   useEffect(() => {
     if (!suppliers.length) return;
     const timer = setTimeout(() => {
-      applyDefaultQuoteSupplierOnCreate(form, suppliers, { current, financeSettings });
+      applyDefaultQuoteSupplierOnCreate(form, suppliers, { current, financeSettings: defaultQuoteSupplierSettings });
     }, 150);
     return () => clearTimeout(timer);
-  }, [suppliers, current, financeSettings, form]);
+  }, [suppliers, current, defaultQuoteSupplierSettings, form]);
 
   useEffect(() => {
     const { ships, winches } = buildAssetRowsFromCurrent(current);

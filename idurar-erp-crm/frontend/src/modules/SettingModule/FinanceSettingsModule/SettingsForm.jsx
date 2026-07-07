@@ -9,11 +9,6 @@ const formItems = [
     valueType: 'number',
   },
   {
-    label: 'last_payment_number',
-    settingKey: 'last_payment_number',
-    valueType: 'number',
-  },
-  {
     label: 'default_quote_supplier_name',
     settingKey: 'default_quote_supplier_name',
     valueType: 'string',

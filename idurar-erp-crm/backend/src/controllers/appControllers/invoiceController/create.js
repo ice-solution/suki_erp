@@ -4,7 +4,7 @@ const Model = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
 const { computeInvoiceTotals } = require('@/helpers/invoiceTotals');
-const { increaseBySettingKey } = require('@/middlewares/settings');
+const { increaseInvoiceLastNumberByPrefix } = require('@/helpers/lastNumberSettings');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
 const schema = require('./schemaValidate');
 
@@ -91,9 +91,8 @@ const create = async (req, res) => {
     }
   ).exec();
 
-  increaseBySettingKey({
-    settingKey: 'last_invoice_number',
-  });
+  const invoicePrefix = String(body.numberPrefix || 'SMI').trim().toUpperCase();
+  await increaseInvoiceLastNumberByPrefix(invoicePrefix);
 
   let projectLink = null;
   const quoteNumber = body.invoiceNumber != null ? String(body.invoiceNumber).trim() : '';

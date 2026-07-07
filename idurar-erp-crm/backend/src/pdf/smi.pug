@@ -288,8 +288,8 @@ body
                 .info-row.info-row-indent #{clientAddress || ''}
                 if !model.shipType && model.address
               td.info-right
-                .info-row 報價編號 : #{quoteNumber}
                 .info-row INVOICE NO: #{docNumber}
+                .info-row 報價編號 : #{quoteNumber}
                 .info-row 日期 : #{docDate}
                 .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
           .doc-title INVOICE

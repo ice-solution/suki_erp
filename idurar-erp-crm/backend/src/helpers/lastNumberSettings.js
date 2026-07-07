@@ -18,6 +18,10 @@ const SUPPLIER_LAST_NUMBER_KEYS = [
 
 const QUOTE_LAST_NUMBER_KEYS = ['last_sml_number', 'last_qu_number', 'last_quote_number'];
 
+const INVOICE_LAST_NUMBER_KEYS = ['last_smi_number', 'last_wse_number'];
+
+const LAST_NUMBER_STRING_KEYS = ['default_quote_supplier_id'];
+
 function parseDocNumber(value) {
   const digits = String(value ?? '').replace(/\D/g, '');
   if (!digits) return NaN;
@@ -87,6 +91,63 @@ async function syncSupplierQuoteLastNumberAfterUse(prefix, usedNumber) {
   return syncLastNumberAfterUse(supplierQuoteLastNumberSettingKey(prefix), usedNumber);
 }
 
+function invoiceLastNumberSettingKey(prefix) {
+  const p = String(prefix || 'SMI').trim().toUpperCase();
+  if (p === 'SMI') return 'last_smi_number';
+  if (p === 'WSE') return 'last_wse_number';
+  return null;
+}
+
+async function readInvoiceLastNumber(prefix) {
+  const key = invoiceLastNumberSettingKey(prefix);
+  if (!key) return 0;
+  const primary = await readSettingNumber(key, NaN);
+  if (Number.isFinite(primary)) return primary;
+  if (String(prefix || 'SMI').trim().toUpperCase() === 'SMI') {
+    return readSettingNumber('last_invoice_number', 0);
+  }
+  return 0;
+}
+
+async function increaseInvoiceLastNumberByPrefix(prefix) {
+  const key = invoiceLastNumberSettingKey(prefix);
+  if (!key) return null;
+  const last = await readInvoiceLastNumber(prefix);
+  const next = last + 1;
+  await upsertSettingNumber(key, next);
+  return { settingKey: key, settingValue: next };
+}
+
+async function syncInvoiceLastNumberAfterUse(prefix, usedNumber) {
+  const key = invoiceLastNumberSettingKey(prefix);
+  if (!key) return null;
+  return syncLastNumberAfterUse(key, usedNumber);
+}
+
+async function readSmiLastNumber() {
+  return readInvoiceLastNumber('SMI');
+}
+
+async function increaseSmiLastNumber() {
+  return increaseInvoiceLastNumberByPrefix('SMI');
+}
+
+async function syncSmiLastNumberAfterUse(usedNumber) {
+  return syncInvoiceLastNumberAfterUse('SMI', usedNumber);
+}
+
+async function readWseLastNumber() {
+  return readInvoiceLastNumber('WSE');
+}
+
+async function increaseWseLastNumber() {
+  return increaseInvoiceLastNumberByPrefix('WSE');
+}
+
+async function syncWseLastNumberAfterUse(usedNumber) {
+  return syncInvoiceLastNumberAfterUse('WSE', usedNumber);
+}
+
 async function increaseSupplierQuoteLastNumberByPrefix(prefix) {
   const settingKey = supplierQuoteLastNumberSettingKey(prefix);
   const last = await readSupplierQuoteLastNumber(prefix);
@@ -119,8 +180,15 @@ function isLastNumberSettingKey(settingKey) {
   return (
     SUPPLIER_LAST_NUMBER_KEYS.includes(settingKey) ||
     QUOTE_LAST_NUMBER_KEYS.includes(settingKey) ||
+    INVOICE_LAST_NUMBER_KEYS.includes(settingKey) ||
     settingKey === 'last_supplier_quote_number'
   );
+}
+
+function isLastNumberPageSettingKey(settingKey) {
+  if (isLastNumberSettingKey(settingKey)) return 'number';
+  if (LAST_NUMBER_STRING_KEYS.includes(settingKey)) return 'string';
+  return null;
 }
 
 module.exports = {
@@ -130,6 +198,19 @@ module.exports = {
   parseDocNumber,
   quoteLastNumberSettingKey,
   readSettingNumber,
+  INVOICE_LAST_NUMBER_KEYS,
+  LAST_NUMBER_STRING_KEYS,
+  invoiceLastNumberSettingKey,
+  readInvoiceLastNumber,
+  increaseInvoiceLastNumberByPrefix,
+  syncInvoiceLastNumberAfterUse,
+  readSmiLastNumber,
+  increaseSmiLastNumber,
+  syncSmiLastNumberAfterUse,
+  readWseLastNumber,
+  increaseWseLastNumber,
+  syncWseLastNumberAfterUse,
+  isLastNumberPageSettingKey,
   readQuoteLastNumber,
   readSupplierQuoteLastNumber,
   upsertSettingNumber,

@@ -52,5 +52,23 @@
     "settingKey": "last_supplier_quote_number_y",
     "settingValue": 0,
     "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_smi_number",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "last_wse_number",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
+    "settingKey": "default_quote_supplier_id",
+    "settingValue": "",
+    "valueType": "string"
   }
 ]

@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const InvoiceModel = mongoose.model('Invoice');
 const ProjectModel = mongoose.model('Project');
 
-const { increaseBySettingKey } = require('@/middlewares/settings');
+const { increaseSmiLastNumber } = require('@/helpers/lastNumberSettings');
 const { calculate } = require('@/helpers');
 const {
   aggregateInvoicedQtyByQuoteLine,
@@ -152,7 +152,7 @@ async function convertSourceDocumentToInvoice({
     : null;
   const linkedProjectId = linkedProject?._id || sourceDoc.project || null;
 
-  const invoiceNumberResult = await increaseBySettingKey({ settingKey: 'last_invoice_number' });
+  const invoiceNumberResult = await increaseSmiLastNumber();
   const invoiceNumber = invoiceNumberResult ? invoiceNumberResult.settingValue : 1;
 
   const discount = sourceDoc.discount != null ? Number(sourceDoc.discount) : 0;

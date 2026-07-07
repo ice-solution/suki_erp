@@ -71,6 +71,18 @@ export const selectLastNumberSettings = createSelector(
     })
 );
 
+export const selectDefaultQuoteSupplierSettings = createSelector(
+  [selectCurrentSettings],
+  (settings) => {
+    const ln = settings?.last_number_settings ?? {};
+    const fin = settings?.finance_settings ?? {};
+    return {
+      default_quote_supplier_id: ln.default_quote_supplier_id ?? fin.default_quote_supplier_id,
+      default_quote_supplier_name: fin.default_quote_supplier_name,
+    };
+  }
+);
+
 export const selectCrmSettings = createSelector(
   [selectCurrentSettings],
   (settings) => settings.crm_settings

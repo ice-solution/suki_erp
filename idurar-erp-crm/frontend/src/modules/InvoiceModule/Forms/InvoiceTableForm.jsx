@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { selectLastNumberSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -25,12 +25,13 @@ import {
   DiscountPercentPdfCheckboxCol,
   discountPdfFieldsFromRecord,
 } from '@/components/DiscountPdfCheckbox';
+import { getSuggestedNextInvoiceNumber } from '@/utils/lastNumberSettings';
 import { renderMultilineText } from '@/utils/renderMultilineText';
 
 export default function InvoiceTableForm({ subTotal = 0, current = null }) {
-  const { last_invoice_number } = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
 
-  if (last_invoice_number === undefined) {
+  if (lastNumberSettings?.last_smi_number === undefined) {
     return <></>;
   }
 
@@ -48,6 +49,32 @@ const PAYMENT_TERMS_SELECT_OPTIONS = [
   { value: '即時付款', label: '即時付款' },
 ];
 
+function normalizeSelectOptions(list, { valueKey = 'value', labelKey = 'label' } = {}) {
+  const seen = new Set();
+  return (list || [])
+    .map((item) => {
+      const value = item?.[valueKey];
+      if (value == null || value === '') return null;
+      const key = String(value);
+      if (seen.has(key)) return null;
+      seen.add(key);
+      return {
+        key,
+        value: key,
+        label: item?.[labelKey] || key,
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeClientIds(values) {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map((c) => (c && typeof c === 'object' ? c._id : c))
+    .filter((id) => id != null && id !== '')
+    .map(String);
+}
+
 function normalizeLegacyInvoicePaymentTerms(terms) {
   const t = terms == null || terms === '' ? '30日' : String(terms);
   if (t === '一個月') return '30日';
@@ -60,9 +87,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const { moneyFormatter, currency_symbol, currency_position, cent_precision } = useMoney();
-  const { last_invoice_number } = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
-  const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
+  const [lastNumber, setLastNumber] = useState(() =>
+    getSuggestedNextInvoiceNumber(lastNumberSettings, 'SMI')
+  );
   const navigate = useNavigate();
 
   const [subTotal, setSubTotal] = useState(0);
@@ -100,6 +129,26 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     current?.numberPrefix && INVOICE_NUMBER_PREFIXES.includes(current.numberPrefix)
       ? current.numberPrefix
       : 'SMI';
+
+  useEffect(() => {
+    if (!current?._id) return;
+    const rawClients = form.getFieldValue('clients');
+    if (Array.isArray(rawClients) && rawClients.some((c) => c && typeof c === 'object')) {
+      form.setFieldValue('clients', normalizeClientIds(rawClients));
+    }
+    const supplier = form.getFieldValue('supplier');
+    if (supplier && typeof supplier === 'object') {
+      form.setFieldValue('supplier', supplier._id);
+    }
+  }, [current?._id, form]);
+
+  useEffect(() => {
+    if (current?._id) return;
+    const prefix = quoteTypeValue || 'SMI';
+    const next = getSuggestedNextInvoiceNumber(lastNumberSettings, prefix);
+    setLastNumber(next);
+    form.setFieldsValue({ number: String(next) });
+  }, [quoteTypeValue, lastNumberSettings, current?._id, form]);
 
   // 發票日 + 付款條款 → 到期日（自訂：不計算，由用戶手選）
   const getPaymentDueDate = (dateVal, terms) => {
@@ -345,10 +394,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       const clientData = response?.result;
       if (Array.isArray(clientData)) {
         setClientRecords(clientData);
-        const clientOptions = clientData.map(client => ({
-          value: client._id,
-          label: client.name,
-        }));
+        const clientOptions = normalizeSelectOptions(
+          clientData.map((client) => ({
+            value: client._id,
+            label: client.name,
+          }))
+        );
         setClients(clientOptions);
       } else {
         setClients([]);
@@ -366,7 +417,14 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       const response = await request.listAll({ entity: 'supplier' });
       const data = response?.result;
       if (Array.isArray(data)) {
-        setSuppliers(data.map(s => ({ value: s._id, label: s.name })));
+        setSuppliers(
+          normalizeSelectOptions(
+            data.map((s) => ({
+              value: s._id,
+              label: s.name,
+            }))
+          )
+        );
       } else {
         setSuppliers([]);
       }
@@ -469,11 +527,17 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       
       // 如果有需要添加的客戶選項，合併到現有選項中
       if (clientsToAdd.length > 0) {
-        setClients(prevClients => {
-          const existingIds = prevClients.map(c => c.value);
-          const newClients = clientsToAdd.filter(c => !existingIds.includes(c.value));
-          return [...prevClients, ...newClients];
-        });
+        setClients((prevClients) =>
+          normalizeSelectOptions([...prevClients, ...clientsToAdd])
+        );
+      }
+
+      if (current.supplier?._id) {
+        const supplierOption = {
+          value: current.supplier._id,
+          label: current.supplier.name || String(current.supplier._id),
+        };
+        setSuppliers((prev) => normalizeSelectOptions([...prev, supplierOption]));
       }
     }
   }, [current]);
@@ -537,11 +601,9 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       let clientIds = [];
       
       if (currentClients && Array.isArray(currentClients) && currentClients.length > 0) {
-        // 新格式：clients數組
-        clientIds = currentClients.map(client => client._id || client);
+        clientIds = normalizeClientIds(currentClients);
       } else if (current.client) {
-        // 舊格式：單個client字段
-        clientIds = [current.client._id || current.client];
+        clientIds = normalizeClientIds([current.client]);
       }
       
       const supplierId = current.supplier?._id || current.supplier || undefined;
@@ -827,6 +889,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               mode="multiple"
               placeholder="Select clients"
               showSearch
+              optionFilterProp="label"
               filterOption={(input, option) =>
                 option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
@@ -846,6 +909,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               placeholder={translate('suppliers')}
               showSearch
               allowClear
+              optionFilterProp="label"
               filterOption={(input, option) =>
                 option?.label?.toLowerCase().indexOf(input.toLowerCase()) >= 0
               }
@@ -995,7 +1059,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col className="gutter-row" span={5}>
           <Form.Item label={translate('Contact Person')} name="contactPerson">
             <ContactPersonAutoComplete
-              clientIds={watchedClients}
+              clientIds={normalizeClientIds(watchedClients)}
               clientRecords={clientRecords}
               placeholder={translate('contact_person')}
             />

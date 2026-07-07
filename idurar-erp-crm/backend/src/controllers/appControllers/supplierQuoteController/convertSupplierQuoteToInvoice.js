@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const InvoiceModel = mongoose.model('Invoice');
 
-const { increaseBySettingKey } = require('@/middlewares/settings');
+const { increaseInvoiceLastNumberByPrefix } = require('@/helpers/lastNumberSettings');
 
 const INVOICE_PREFIXES = new Set(['SMI', 'WSE', 'SP']);
 
@@ -65,10 +65,7 @@ const convert = async (req, res) => {
       converted: true,
     });
 
-    // Increase invoice number
-    increaseBySettingKey({
-      settingKey: 'last_invoice_number',
-    });
+    await increaseInvoiceLastNumberByPrefix(invoiceNumberPrefix);
 
     return res.status(200).json({
       success: true,

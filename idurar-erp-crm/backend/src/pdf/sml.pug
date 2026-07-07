@@ -235,7 +235,7 @@ html(class=isPuppeteer ? 'puppeteer-sml-quote' : '')
 body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
-    - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
+    - const clientAddress = (client.address || '').replace(/\n/g, ' ')
     //- 報價編號：numberPrefix（報價單類型前綴）+ number，不使用 invoiceNumber 關聯單號
     - var pdfNum = model.number != null ? String(model.number).trim() : ''
     - const docNumber = (model.numberPrefix || 'S') + '-' + pdfNum
@@ -297,8 +297,7 @@ body
               tr
                 td.info-left
                   .info-row TO : #{clientName}
-                  .info-row.info-row-indent #{model.shipType ? (model.address || clientAddress || '') : (clientAddress || '')}
-                  if !model.shipType && model.address
+                  .info-row.info-row-indent #{clientAddress}
                 td.info-right
                   .info-row 報價編號 : #{docNumber}
                   .info-row 日期 : #{docDate}

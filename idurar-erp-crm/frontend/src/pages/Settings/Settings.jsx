@@ -1,6 +1,5 @@
 import {
   SettingOutlined,
-  CreditCardOutlined,
   DollarOutlined,
   FileImageOutlined,
   TrophyOutlined,
@@ -16,7 +15,6 @@ import CompanyLogoSettings from './CompanyLogoSettings';
 import CompanyLogoByTypeSettings from './CompanyLogoByTypeSettings';
 import GeneralSettings from './GeneralSettings';
 import CompanySettings from './CompanySettings';
-import FinanceSettings from './FinanceSettings';
 import LastNumberSettings from './LastNumberSettings';
 import MoneyFormatSettings from './MoneyFormatSettings';
 import ProjectItemSettings from './ProjectItemSettings';
@@ -61,12 +59,6 @@ export default function Settings() {
       label: translate('Currency Settings'),
       icon: <DollarOutlined />,
       children: <MoneyFormatSettings />,
-    },
-    {
-      key: 'finance_settings',
-      label: translate('Finance Settings'),
-      icon: <CreditCardOutlined />,
-      children: <FinanceSettings />,
     },
     {
       key: 'last_number_settings',

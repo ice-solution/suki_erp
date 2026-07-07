@@ -11,7 +11,7 @@ import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import ItemRow from '@/modules/ErpPanelModule/ItemRow';
 
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectFinanceSettings } from '@/redux/settings/selectors';
+import { selectLastNumberSettings } from '@/redux/settings/selectors';
 import { useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -20,9 +20,9 @@ import { useSelector } from 'react-redux';
 import SelectAsync from '@/components/SelectAsync';
 
 export default function InvoiceForm({ subTotal = 0, current = null }) {
-  const { last_invoice_number } = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
 
-  if (last_invoice_number === undefined) {
+  if (lastNumberSettings?.last_smi_number === undefined) {
     return <></>;
   }
 
@@ -32,12 +32,12 @@ export default function InvoiceForm({ subTotal = 0, current = null }) {
 function LoadInvoiceForm({ subTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
-  const { last_invoice_number } = useSelector(selectFinanceSettings);
+  const lastNumberSettings = useSelector(selectLastNumberSettings);
   const [total, setTotal] = useState(0);
   const [taxRate, setTaxRate] = useState(0);
   const [taxTotal, setTaxTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
-  const [lastNumber, setLastNumber] = useState(() => last_invoice_number + 1);
+  const [lastNumber, setLastNumber] = useState(() => (lastNumberSettings?.last_smi_number ?? 0) + 1);
 
   const handelTaxChange = (value) => {
     setTaxRate(value / 100);

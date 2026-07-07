@@ -30,7 +30,32 @@ export function mergeLastNumberSettings({
     last_supplier_quote_number_swp: pick('last_supplier_quote_number_swp', fin.last_supplier_quote_number_swp),
     last_supplier_quote_number_e: pick('last_supplier_quote_number_e', fin.last_supplier_quote_number_e),
     last_supplier_quote_number_y: pick('last_supplier_quote_number_y', fin.last_supplier_quote_number_y),
+    last_smi_number: pick('last_smi_number', fin.last_invoice_number),
+    last_wse_number: pick('last_wse_number'),
+    default_quote_supplier_id: (() => {
+      const raw = ln.default_quote_supplier_id ?? fin.default_quote_supplier_id;
+      if (raw == null || raw === '') return undefined;
+      return String(raw);
+    })(),
   };
+}
+
+export function getSuggestedNextSmiNumber(mergedSettings) {
+  return getSuggestedNextInvoiceNumber(mergedSettings, 'SMI');
+}
+
+export function invoiceLastNumberSettingKey(prefix) {
+  const p = String(prefix || 'SMI').trim().toUpperCase();
+  if (p === 'SMI') return 'last_smi_number';
+  if (p === 'WSE') return 'last_wse_number';
+  return null;
+}
+
+export function getSuggestedNextInvoiceNumber(mergedSettings, prefix) {
+  const key = invoiceLastNumberSettingKey(prefix);
+  if (!key) return 1;
+  const last = Number(mergedSettings?.[key]) || 0;
+  return last + 1;
 }
 
 export function quoteLastNumberSettingKey(prefix) {

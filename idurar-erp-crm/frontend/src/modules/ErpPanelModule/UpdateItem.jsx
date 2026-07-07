@@ -29,6 +29,34 @@ function normalizePickerDate(val) {
   return d.isValid() ? d : undefined;
 }
 
+function normalizeInvoiceFormData(formData) {
+  const next = { ...formData };
+
+  if (Array.isArray(next.clients)) {
+    next.clients = next.clients
+      .map((c) => (c && typeof c === 'object' ? c._id : c))
+      .filter((id) => id != null && id !== '');
+  } else if (next.client) {
+    const clientId = next.client._id || next.client;
+    next.clients = clientId ? [clientId] : [];
+    delete next.client;
+  }
+
+  if (next.supplier && typeof next.supplier === 'object') {
+    next.supplier = next.supplier._id;
+  }
+
+  if (Array.isArray(next.paymentEntries)) {
+    next.paymentEntries = next.paymentEntries.map((p) => ({
+      ...p,
+      paymentDueDate: normalizePickerDate(p?.paymentDueDate) ?? null,
+      paidDate: normalizePickerDate(p?.paidDate) ?? null,
+    }));
+  }
+
+  return next;
+}
+
 function SaveForm({ form, translate }) {
   const handelClick = () => {
     form.submit();
@@ -310,6 +338,10 @@ export default function UpdateItem({ config, UpdateForm }) {
 
       if (!formData.taxRate) {
         formData.taxRate = 0;
+      }
+
+      if ((entity || '').toLowerCase() === 'invoice') {
+        formData = normalizeInvoiceFormData(formData);
       }
 
       const { subTotal } = formData;

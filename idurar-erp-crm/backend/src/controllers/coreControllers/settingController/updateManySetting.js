@@ -27,10 +27,14 @@ const updateManySetting = async (req, res) => {
       setOnInsert.settingCategory = 'app_settings';
       setOnInsert.valueType = 'array';
     }
-    const { isLastNumberSettingKey, LAST_NUMBER_CATEGORY } = require('@/helpers/lastNumberSettings');
-    if (isLastNumberSettingKey(settingKey)) {
+    const {
+      isLastNumberPageSettingKey,
+      LAST_NUMBER_CATEGORY,
+    } = require('@/helpers/lastNumberSettings');
+    const pageValueType = isLastNumberPageSettingKey(settingKey);
+    if (pageValueType) {
       setFields.settingCategory = LAST_NUMBER_CATEGORY;
-      setFields.valueType = 'number';
+      setFields.valueType = pageValueType;
     }
 
     updateDataArray.push({
