@@ -1,6 +1,6 @@
 /**
  * 使用 Puppeteer 將發票模板（smi / wse / invoice）渲染為 PDF。
- * 與 pdfController：SMI→smi、WSE→wse、其餘（含 SP）→invoice；Logo 用預設 company_logo。
+ * 與 pdfController：SMI、SP→smi、WSE→wse、其餘→invoice；Logo 用預設 company_logo。
  *
  * @module new_pdf/invoice/generateInvoicePdf
  */
@@ -24,10 +24,11 @@ const { getPdfPaginationPugLocalsForTemplate } = require('@/helpers/pdfPaginatio
 
 /** 與 pdfController 內 Invoice 模板選擇一致 */
 function resolveInvoiceTemplateBasename(model) {
-  if (model && model.numberPrefix === 'SMI') {
+  const prefix = String(model?.numberPrefix || '').toUpperCase();
+  if (prefix === 'SMI' || prefix === 'SP') {
     return 'smi';
   }
-  if (model && model.numberPrefix === 'WSE') {
+  if (prefix === 'WSE') {
     return 'wse';
   }
   return 'invoice';

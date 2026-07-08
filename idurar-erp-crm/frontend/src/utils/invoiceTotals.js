@@ -28,6 +28,14 @@ export function computeInvoiceProjectPercentage(invoiceTotal, projectTotal) {
   return roundHalfUp2((inv / proj) * 100);
 }
 
+export function resolveWholeProjectPercentage(invoice, projectTotal) {
+  if (invoice?.wholeProjectPercentage != null && invoice.wholeProjectPercentage !== '') {
+    const stored = roundHalfUp2(Number(invoice.wholeProjectPercentage));
+    if (stored != null) return stored;
+  }
+  return computeInvoiceProjectPercentage(Number(invoice?.total) || 0, projectTotal);
+}
+
 export function resolveProjectTotalAmount(project) {
   if (project) {
     const projectPrice = Number(project.projectPrice);

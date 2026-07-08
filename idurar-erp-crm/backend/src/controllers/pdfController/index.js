@@ -114,9 +114,10 @@ exports.generatePdf = async (
 
     // 如果是 Invoice，根據 numberPrefix 選擇模板
     if ((modelName.toLowerCase() === 'invoice' || modelName === 'Invoice') && result.numberPrefix) {
-      if (result.numberPrefix === 'SMI') {
+      const invPrefix = String(result.numberPrefix).toUpperCase();
+      if (invPrefix === 'SMI' || invPrefix === 'SP') {
         templateName = 'smi';
-      } else if (result.numberPrefix === 'WSE') {
+      } else if (invPrefix === 'WSE') {
         templateName = 'wse';
       } else {
         templateName = 'invoice';
@@ -235,8 +236,9 @@ exports.generatePdfBuffer = async (
     templateName = result.numberPrefix === 'SML' ? 'sml' : 'quote';
   }
   if ((modelName.toLowerCase() === 'invoice' || modelName === 'Invoice') && result.numberPrefix) {
-    if (result.numberPrefix === 'SMI') templateName = 'smi';
-    else if (result.numberPrefix === 'WSE') templateName = 'wse';
+    const invPrefix = String(result.numberPrefix).toUpperCase();
+    if (invPrefix === 'SMI' || invPrefix === 'SP') templateName = 'smi';
+    else if (invPrefix === 'WSE') templateName = 'wse';
     else templateName = 'invoice';
   }
   if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {

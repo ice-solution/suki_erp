@@ -96,6 +96,12 @@ const invoiceSchema = new mongoose.Schema({
   projectPercentageLabel: {
     type: String,
   },
+  /** Project Management「整個佔比%」：手動輸入，與發票定價用 projectPercentage 分開 */
+  wholeProjectPercentage: {
+    type: Number,
+    min: 0,
+    max: 100,
+  },
 
   // Quote轉換信息
   converted: {

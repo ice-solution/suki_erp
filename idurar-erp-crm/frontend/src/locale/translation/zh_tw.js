@@ -138,6 +138,7 @@ const lang = {
   last_invoice_number: '發票最後編號',
   last_smi_number: 'SMI 最後編號',
   last_wse_number: 'WSE 最後編號',
+  last_sp_number: 'SP 最後編號',
   last_quote_number: '報價單最後編號',
   last_sml_number: 'SML 最後編號',
   last_qu_number: 'QU 最後編號',

@@ -67,6 +67,12 @@
   },
   {
     "settingCategory": "last_number_settings",
+    "settingKey": "last_sp_number",
+    "settingValue": 0,
+    "valueType": "number"
+  },
+  {
+    "settingCategory": "last_number_settings",
     "settingKey": "default_quote_supplier_id",
     "settingValue": "",
     "valueType": "string"

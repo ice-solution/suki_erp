@@ -34,6 +34,9 @@ const routerApp = (entity, controller) => {
   
   if (entity === 'invoice') {
     router.route(`/${entity}/linkProject/:id`).patch(catchErrors(controller['linkProject']));
+    router
+      .route(`/${entity}/whole-project-percentage/:id`)
+      .patch(catchErrors(controller['updateWholeProjectPercentage']));
     router.route(`/${entity}/export-xero`).get(catchErrors(controller['exportXero']));
   }
 

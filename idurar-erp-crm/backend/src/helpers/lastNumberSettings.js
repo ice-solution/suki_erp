@@ -18,7 +18,7 @@ const SUPPLIER_LAST_NUMBER_KEYS = [
 
 const QUOTE_LAST_NUMBER_KEYS = ['last_sml_number', 'last_qu_number', 'last_quote_number'];
 
-const INVOICE_LAST_NUMBER_KEYS = ['last_smi_number', 'last_wse_number'];
+const INVOICE_LAST_NUMBER_KEYS = ['last_smi_number', 'last_wse_number', 'last_sp_number'];
 
 const LAST_NUMBER_STRING_KEYS = ['default_quote_supplier_id'];
 
@@ -95,6 +95,7 @@ function invoiceLastNumberSettingKey(prefix) {
   const p = String(prefix || 'SMI').trim().toUpperCase();
   if (p === 'SMI') return 'last_smi_number';
   if (p === 'WSE') return 'last_wse_number';
+  if (p === 'SP') return 'last_sp_number';
   return null;
 }
 

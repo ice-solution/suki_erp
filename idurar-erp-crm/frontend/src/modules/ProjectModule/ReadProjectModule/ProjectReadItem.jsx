@@ -22,7 +22,7 @@ import { generate as uniqueId } from 'shortid';
 import { selectCurrentItem } from '@/redux/erp/selectors';
 
 import { useMoney, useDate } from '@/settings';
-import { computeInvoiceProjectPercentage, resolveProjectTotalAmount, roundHalfUp2 } from '@/utils/invoiceTotals';
+import { resolveWholeProjectPercentage, resolveProjectTotalAmount, roundHalfUp2 } from '@/utils/invoiceTotals';
 import { useNavigate } from 'react-router-dom';
 import {
   allocateUsedByLineId,
@@ -77,8 +77,61 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
   const [contractorFeesForm] = Form.useForm();
   const [nextEoPreview, setNextEoPreview] = useState('');
   const [nextEoLoading, setNextEoLoading] = useState(false);
+  const [invoiceWholePctById, setInvoiceWholePctById] = useState({});
+  const [savingWholePctId, setSavingWholePctId] = useState(null);
   
   const contractorFeeLineOptions = buildContractorFeeLineOptions(currentProject.contractorFees);
+  const projectTotalAmount = resolveProjectTotalAmount(currentProject);
+
+  useEffect(() => {
+    const next = {};
+    (currentProject.invoices || []).forEach((inv) => {
+      if (!inv?._id) return;
+      const pct = resolveWholeProjectPercentage(inv, projectTotalAmount);
+      if (pct != null) next[inv._id] = pct;
+    });
+    setInvoiceWholePctById(next);
+  }, [currentProject.invoices, projectTotalAmount]);
+
+  const handleInvoiceWholePctChange = (invoiceId, value) => {
+    const n = value == null || value === '' ? null : Number(value);
+    setInvoiceWholePctById((prev) => ({
+      ...prev,
+      [invoiceId]: Number.isFinite(n) ? n : null,
+    }));
+  };
+
+  const handleInvoiceWholePctSave = async (invoiceId) => {
+    const raw = invoiceWholePctById[invoiceId];
+    if (raw == null || raw === '' || !Number.isFinite(Number(raw))) {
+      message.warning('請輸入 0 至 100 之間的整個佔比%');
+      return;
+    }
+    const pct = Math.min(100, Math.max(0, Number(raw)));
+    setSavingWholePctId(invoiceId);
+    try {
+      const res = await request.updateInvoiceWholeProjectPercentage({
+        id: invoiceId,
+        wholeProjectPercentage: pct,
+      });
+      if (!res?.success) {
+        message.error(res?.message || '儲存整個佔比% 失敗');
+        return;
+      }
+      const saved = res.result?.wholeProjectPercentage ?? pct;
+      setInvoiceWholePctById((prev) => ({ ...prev, [invoiceId]: saved }));
+      setCurrentProject((prev) => ({
+        ...prev,
+        invoices: (prev.invoices || []).map((inv) =>
+          inv._id === invoiceId ? { ...inv, wholeProjectPercentage: saved } : inv
+        ),
+      }));
+    } catch {
+      message.error('儲存整個佔比% 失敗');
+    } finally {
+      setSavingWholePctId(null);
+    }
+  };
 
   useEffect(() => {
     const controller = new AbortController();
@@ -549,23 +602,36 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     },
     {
       title: '整個佔比%',
-      key: 'projectPercentage',
-      width: 96,
+      key: 'wholeProjectPercentage',
+      width: 120,
       align: 'center',
       render: (_, record) => {
-        const projectTotal = resolveProjectTotalAmount(currentProject);
-        const invoiceTotal = Number(record.total) || 0;
-        const pct = computeInvoiceProjectPercentage(invoiceTotal, projectTotal);
-        if (pct == null) return '-';
-        return `${pct}%`;
+        const invoiceId = record._id;
+        const displayValue =
+          invoiceWholePctById[invoiceId] ??
+          resolveWholeProjectPercentage(record, projectTotalAmount);
+        return (
+          <InputNumber
+            min={0}
+            max={100}
+            precision={2}
+            style={{ width: '100%' }}
+            value={displayValue}
+            disabled={savingWholePctId === invoiceId}
+            addonAfter="%"
+            onChange={(v) => handleInvoiceWholePctChange(invoiceId, v)}
+            onBlur={() => handleInvoiceWholePctSave(invoiceId)}
+            onPressEnter={() => handleInvoiceWholePctSave(invoiceId)}
+          />
+        );
       },
     },
   ];
 
-  const projectTotalAmount = resolveProjectTotalAmount(currentProject);
   const invoicePercentageTotal = roundHalfUp2(
     (currentProject.invoices || []).reduce((sum, inv) => {
-      const pct = computeInvoiceProjectPercentage(Number(inv.total) || 0, projectTotalAmount);
+      const pct =
+        invoiceWholePctById[inv._id] ?? resolveWholeProjectPercentage(inv, projectTotalAmount);
       return sum + (pct ?? 0);
     }, 0)
   );

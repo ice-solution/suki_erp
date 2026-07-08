@@ -318,6 +318,7 @@ const lang = {
   last_invoice_number: 'Last Invoice Number',
   last_smi_number: 'Last SMI Number',
   last_wse_number: 'Last WSE Number',
+  last_sp_number: 'Last SP Number',
   last_quote_number: 'Last Quote Number',
   last_sml_number: 'Last SML Number',
   last_qu_number: 'Last QU Number',

@@ -13,6 +13,7 @@ const quoteNumberItems = [
 const invoiceNumberItems = [
   { label: 'last_smi_number', settingKey: 'last_smi_number' },
   { label: 'last_wse_number', settingKey: 'last_wse_number' },
+  { label: 'last_sp_number', settingKey: 'last_sp_number' },
 ];
 
 const supplierNumberItems = [

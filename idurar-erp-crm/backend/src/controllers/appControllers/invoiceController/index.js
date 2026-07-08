@@ -12,6 +12,7 @@ const linkProject = require('./linkProject');
 const search = require('./search');
 const exportXero = require('./exportXero');
 const neighbors = require('./neighbors');
+const updateWholeProjectPercentage = require('./updateWholeProjectPercentage');
 
 methods.mail = sendMail;
 methods.exportXero = exportXero;
@@ -24,5 +25,6 @@ methods.read = read;
 methods.linkProject = linkProject;
 methods.search = search;
 methods.neighbors = neighbors;
+methods.updateWholeProjectPercentage = updateWholeProjectPercentage;
 
 module.exports = methods;

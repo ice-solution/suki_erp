@@ -262,6 +262,17 @@ const request = {
       return errorHandler(error);
     }
   },
+  updateInvoiceWholeProjectPercentage: async ({ id, wholeProjectPercentage }) => {
+    try {
+      includeToken();
+      const response = await axios.patch(`invoice/whole-project-percentage/${id}`, {
+        wholeProjectPercentage,
+      });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
 
   createWithFiles: async ({ entity, jsonData }) => {
     try {
