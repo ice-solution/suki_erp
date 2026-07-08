@@ -17,7 +17,7 @@ const checkByInvoiceNumber = async (req, res) => {
     const project = await Model.findOne({
       invoiceNumber,
       removed: false,
-    }).select('_id invoiceNumber description status costBy');
+    }).select('_id invoiceNumber description status costBy costPrice projectPrice');
 
     if (project) {
       return res.status(200).json({

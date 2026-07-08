@@ -334,9 +334,27 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
     setPoOrderQtyByIndex({});
   };
 
-  const handleConvertToInvoice = () => {
+  const handleConvertToInvoice = async () => {
     if (!currentErp.items || currentErp.items.length === 0) {
       message.warning('此 Quote 沒有項目，無法轉換');
+      return;
+    }
+    const quoteNumber =
+      currentErp.numberPrefix && currentErp.number
+        ? `${currentErp.numberPrefix}-${currentErp.number}`
+        : currentErp.invoiceNumber;
+    if (!quoteNumber) {
+      message.warning('無法取得 Quote 編號');
+      return;
+    }
+    try {
+      const checkResult = await request.checkProject({ invoiceNumber: quoteNumber });
+      if (!checkResult?.success || !checkResult?.result) {
+        message.error('請先在 Project Management 建立此 Quote Number 的項目，方可開發票');
+        return;
+      }
+    } catch {
+      message.error('請先在 Project Management 建立此 Quote Number 的項目，方可開發票');
       return;
     }
     openPoModal('invoice');
@@ -921,7 +939,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
         <div style={{ marginBottom: 16 }}>
           <p>
             {poModalMode === 'invoice'
-              ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 逐項專案佔比（全數 items 帶去發票，請自行填寫每行 %）。'
+              ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 逐項專案佔比（全數 items 帶去發票，請自行填寫每行 %）。Project 列表的整個佔比% 將依發票總額÷專案總額自動顯示。'
               : '請選擇 P.O Number；將列出該 P.O 的項目、已上單量與餘額。'}
           </p>
           {poModalMode === 'supplier' ? (
@@ -1074,7 +1092,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
         ) : null}
         {selectedPoNumber && poModalMode === 'invoice' && invoiceConversionMode === 'B' ? (
           <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
-            ℹ️ B 模式：每行自行填寫專案佔比 (%)，數量不變；餘額 % = 100 − 該行已轉 % 總和。可多次轉發票。
+            ℹ️ B 模式：每行填寫專案佔比 (%)，數量不變；餘額 % = 100 − 該行已轉 % 總和，不可超過餘額。Project「整個佔比%」= 發票總額 ÷ 專案總額。
           </p>
         ) : null}
         {selectedPoNumber && poModalMode === 'supplier' ? (

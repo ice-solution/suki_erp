@@ -5,7 +5,7 @@ import { request } from '@/request';
 const { Text } = Typography;
 
 /**
- * 報價單／吊船報價 Read 頁：同步更新 P.O number 至報價、S 單、Invoice
+ * 報價單／吊船報價 Read 頁：同步更新 P.O number 至 Project Management、報價、S 單、Invoice
  */
 export default function PoNumberSyncModal({
   open,
@@ -20,6 +20,7 @@ export default function PoNumberSyncModal({
   const [preview, setPreview] = useState(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [syncProjects, setSyncProjects] = useState(true);
   const [syncQuote, setSyncQuote] = useState(true);
   const [syncSupplierQuotes, setSyncSupplierQuotes] = useState(true);
   const [syncInvoices, setSyncInvoices] = useState(true);
@@ -28,6 +29,7 @@ export default function PoNumberSyncModal({
     setOldPoNumber(null);
     setNewPoNumber('');
     setPreview(null);
+    setSyncProjects(true);
     setSyncQuote(true);
     setSyncSupplierQuotes(true);
     setSyncInvoices(true);
@@ -85,7 +87,7 @@ export default function PoNumberSyncModal({
       message.warning('新 P.O number 不可與舊 P.O 相同');
       return;
     }
-    if (!syncQuote && !syncSupplierQuotes && !syncInvoices) {
+    if (!syncProjects && !syncQuote && !syncSupplierQuotes && !syncInvoices) {
       message.warning('請至少選擇一項要同步更新的範圍');
       return;
     }
@@ -97,6 +99,7 @@ export default function PoNumberSyncModal({
         jsonData: {
           oldPoNumber: oldPo,
           newPoNumber: newPo,
+          syncProjects,
           syncQuote,
           syncSupplierQuotes,
           syncInvoices,
@@ -117,6 +120,7 @@ export default function PoNumberSyncModal({
   };
 
   const quoteImpact = preview?.quote;
+  const projectRows = preview?.projects || [];
   const supplierRows = preview?.supplierQuotes || [];
   const invoiceRows = preview?.invoices || [];
 
@@ -175,11 +179,30 @@ export default function PoNumberSyncModal({
                     報價單表頭／行項目：{quoteImpact?.headerMatches ? '表頭有匹配' : '表頭無匹配'}
                     {quoteImpact?.lineCount > 0 ? `，${quoteImpact.lineCount} 個行項目` : ''}
                   </li>
+                  <li>Project Management：{projectRows.length} 個項目</li>
                   <li>S 單：{supplierRows.length} 張</li>
                   <li>Invoice：{invoiceRows.length} 張</li>
                 </ul>
               }
             />
+
+            {projectRows.length > 0 ? (
+              <div>
+                <Text strong>將更新的 Project Management</Text>
+                <Table
+                  size="small"
+                  rowKey="_id"
+                  pagination={false}
+                  dataSource={projectRows}
+                  columns={[
+                    { title: '項目名稱', dataIndex: 'name', key: 'name' },
+                    { title: '關聯單號', dataIndex: 'invoiceNumber', key: 'inv' },
+                    { title: 'P.O', dataIndex: 'poNumber', key: 'po' },
+                  ]}
+                  style={{ marginTop: 8 }}
+                />
+              </div>
+            ) : null}
 
             {supplierRows.length > 0 ? (
               <div>
@@ -224,6 +247,11 @@ export default function PoNumberSyncModal({
         <div>
           <Text strong>同步範圍</Text>
           <div style={{ marginTop: 8 }}>
+            <Checkbox checked={syncProjects} onChange={(e) => setSyncProjects(e.target.checked)}>
+              更新 Project Management P.O number
+            </Checkbox>
+          </div>
+          <div>
             <Checkbox checked={syncQuote} onChange={(e) => setSyncQuote(e.target.checked)}>
               更新報價單 P.O number
             </Checkbox>

@@ -268,10 +268,9 @@ body
     - const fullSubTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
     - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
-    - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? Math.min(100, Math.max(0, projectPercentage)) : 100
-    - const subTotal = fullSubTotal * projectPctForCalc / 100
+    - const subTotal = fullSubTotal
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
-    - const projectPercentageLabel = model.projectPercentageLabel != null && String(model.projectPercentageLabel).trim() ? String(model.projectPercentageLabel).trim() : '專案佔比 (%)'
+    - const projectPercentageLabel = model.projectPercentageLabel != null && String(model.projectPercentageLabel).trim() ? String(model.projectPercentageLabel).trim() : '整個佔比 (%)'
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
     - var serialBase = 0

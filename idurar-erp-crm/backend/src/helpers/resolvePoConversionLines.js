@@ -86,6 +86,10 @@ function normalizePct(n) {
   return Number.isFinite(v) ? v : 0;
 }
 
+function roundRemainingPct(n) {
+  return Math.round(Math.max(0, Number(n)) * 100) / 100;
+}
+
 /**
  * B 模式：解析逐項專案佔比 lines（POST）。
  * @returns {{ ok: true, lines: { itemIndex: number, percentage: number }[] } | { ok: false, status: number, message: string }}
@@ -124,7 +128,7 @@ function resolvePoPercentageLines({ items, headerPo, poNumber, pctByLineMap, raw
       };
     }
     const already = Math.max(0, normalizePct(pctByLineMap[itemIndex] || 0));
-    const remaining = Math.max(0, 100 - already);
+    const remaining = Math.max(0, roundRemainingPct(100 - already));
     if (pct > remaining + 0.0001) {
       return {
         ok: false,

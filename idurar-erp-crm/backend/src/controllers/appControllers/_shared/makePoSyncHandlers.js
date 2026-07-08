@@ -29,6 +29,7 @@ function makePoSyncHandlers(sourceType) {
       const {
         oldPoNumber,
         newPoNumber,
+        syncProjects = true,
         syncQuote = true,
         syncSupplierQuotes = true,
         syncInvoices = true,
@@ -39,6 +40,7 @@ function makePoSyncHandlers(sourceType) {
         sourceId: req.params.id,
         oldPoNumber,
         newPoNumber,
+        syncProjects: !!syncProjects,
         syncQuote: !!syncQuote,
         syncSupplierQuotes: !!syncSupplierQuotes,
         syncInvoices: !!syncInvoices,

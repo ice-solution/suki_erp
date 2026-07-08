@@ -22,6 +22,7 @@ import { generate as uniqueId } from 'shortid';
 import { selectCurrentItem } from '@/redux/erp/selectors';
 
 import { useMoney, useDate } from '@/settings';
+import { computeInvoiceProjectPercentage, resolveProjectTotalAmount, roundHalfUp2 } from '@/utils/invoiceTotals';
 import { useNavigate } from 'react-router-dom';
 import {
   allocateUsedByLineId,
@@ -547,17 +548,27 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       },
     },
     {
-      title: translate('project_percentage_short'),
+      title: '整個佔比%',
       key: 'projectPercentage',
       width: 96,
       align: 'center',
       render: (_, record) => {
-        const v = record.projectPercentage;
-        if (v == null || v === '') return '-';
-        return `${Number(v)}%`;
+        const projectTotal = resolveProjectTotalAmount(currentProject);
+        const invoiceTotal = Number(record.total) || 0;
+        const pct = computeInvoiceProjectPercentage(invoiceTotal, projectTotal);
+        if (pct == null) return '-';
+        return `${pct}%`;
       },
     },
   ];
+
+  const projectTotalAmount = resolveProjectTotalAmount(currentProject);
+  const invoicePercentageTotal = roundHalfUp2(
+    (currentProject.invoices || []).reduce((sum, inv) => {
+      const pct = computeInvoiceProjectPercentage(Number(inv.total) || 0, projectTotalAmount);
+      return sum + (pct ?? 0);
+    }, 0)
+  );
 
   // 使用判頭費表格列（固定欄寬 + 金額 nowrap；Remark 限高可捲動，避免撐爆版面）
   const contractorFeesColumns = [
@@ -1086,6 +1097,26 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
               size="small"
               rowKey="_id"
               locale={{ emptyText: 'No invoices linked' }}
+              summary={() => {
+                if (!currentProject.invoices?.length || invoicePercentageTotal == null) return null;
+                return (
+                  <Table.Summary>
+                    <Table.Summary.Row>
+                      {invoiceColumns.map((col, index) => (
+                        <Table.Summary.Cell
+                          key={col.key || index}
+                          index={index}
+                          align={index === invoiceColumns.length - 1 ? 'center' : undefined}
+                        >
+                          {index === invoiceColumns.length - 1 ? (
+                            <Text strong>總 {invoicePercentageTotal}%</Text>
+                          ) : null}
+                        </Table.Summary.Cell>
+                      ))}
+                    </Table.Summary.Row>
+                  </Table.Summary>
+                );
+              }}
             />
           </Card>
         </Col>

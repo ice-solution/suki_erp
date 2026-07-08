@@ -81,6 +81,7 @@ const update = async (req, res) => {
     delete body.currency;
   }
 
+  // 所有關聯專案的發票：B 模式更新時驗證行級餘額（不覆寫專案佔比%）
   try {
     if (inferInvoiceConversionMode(previousInvoice) !== 'B') {
       await syncInvoiceOrderFromSourceOnUpdate({ existingInvoice: previousInvoice, body, items });

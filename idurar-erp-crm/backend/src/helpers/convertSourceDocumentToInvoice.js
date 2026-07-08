@@ -149,8 +149,17 @@ async function convertSourceDocumentToInvoice({
       : sourceDoc.invoiceNumber;
   const linkedProject = quoteNumberLink
     ? await ProjectModel.findOne({ invoiceNumber: quoteNumberLink, removed: false })
+        .select('projectPrice costPrice')
+        .lean()
     : null;
-  const linkedProjectId = linkedProject?._id || sourceDoc.project || null;
+  if (!linkedProject) {
+    return {
+      ok: false,
+      status: 400,
+      message: '請先在 Project Management 建立此 Quote Number 的項目，方可開發票',
+    };
+  }
+  const linkedProjectId = linkedProject._id || sourceDoc.project || null;
 
   const invoiceNumberResult = await increaseSmiLastNumber();
   const invoiceNumber = invoiceNumberResult ? invoiceNumberResult.settingValue : 1;
@@ -199,6 +208,7 @@ async function convertSourceDocumentToInvoice({
     discount: sourceDoc.discount,
     showDiscountPercentOnPdf: sourceDoc.showDiscountPercentOnPdf,
     showDiscountAmountOnPdf: sourceDoc.showDiscountAmountOnPdf,
+    projectPercentage: 100,
     status: 'sent',
     paymentStatus: 'unpaid',
     isOverdue: false,

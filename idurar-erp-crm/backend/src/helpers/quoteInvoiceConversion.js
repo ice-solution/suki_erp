@@ -224,7 +224,7 @@ async function lockSourceInvoiceConversionMode(sourceQuoteId, sourceShipQuoteId,
 }
 
 /**
- * B 模式發票更新 projectPercentage 時：驗證來源報價剩餘佔比。
+ * B 模式發票更新時：依發票總額與專案總額重算整個佔比%（不驗證累計上限）。
  */
 async function syncInvoicePercentageModeOnUpdate({ existingInvoice, body }) {
   const mode = inferInvoiceConversionMode(existingInvoice);
@@ -249,23 +249,6 @@ async function syncInvoicePercentageModeOnUpdate({ existingInvoice, body }) {
         existingInvoice._id
       );
     }
-    return body;
-  }
-
-  const rawPct =
-    body.projectPercentage !== undefined ? body.projectPercentage : existingInvoice.projectPercentage;
-  const newPct =
-    rawPct != null && rawPct !== '' ? Math.min(100, Math.max(0, Number(rawPct))) : 100;
-
-  await assertPercentageWithinRemaining(
-    sourceQuoteId,
-    sourceShipQuoteId,
-    newPct,
-    existingInvoice._id
-  );
-
-  if (body.projectPercentage !== undefined) {
-    body.projectPercentage = newPct;
   }
   return body;
 }

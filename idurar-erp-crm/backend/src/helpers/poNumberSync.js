@@ -4,6 +4,7 @@ const QuoteModel = () => mongoose.model('Quote');
 const ShipQuoteModel = () => mongoose.model('ShipQuote');
 const SupplierQuoteModel = () => mongoose.model('SupplierQuote');
 const InvoiceModel = () => mongoose.model('Invoice');
+const ProjectModel = () => mongoose.model('Project');
 
 function normalizePo(value) {
   return String(value ?? '').trim();
@@ -134,6 +135,70 @@ function applyPoRenameOnSourceDoc(doc, oldPo, newPo) {
   return { changed, setFields };
 }
 
+function projectPoMatches(doc, oldPo) {
+  const old = normalizePo(oldPo);
+  if (!old) return false;
+  const raw = String(doc?.poNumber ?? '').trim();
+  if (!raw) return false;
+  if (raw.includes(',')) {
+    return splitHeaderPoList(raw).includes(old);
+  }
+  return normalizePo(raw) === old;
+}
+
+function applyPoRenameOnProjectPoNumber(poNumber, oldPo, newPo) {
+  const old = normalizePo(oldPo);
+  const neu = normalizePo(newPo);
+  if (!old || !neu || old === neu) {
+    return { changed: false, poNumber: String(poNumber ?? '').trim() };
+  }
+  const raw = String(poNumber ?? '').trim();
+  if (!raw) return { changed: false, poNumber: raw };
+  if (raw.includes(',')) {
+    const next = replacePoInCommaHeader(raw, old, neu);
+    return { changed: next !== raw, poNumber: next };
+  }
+  if (normalizePo(raw) === old) {
+    return { changed: true, poNumber: neu };
+  }
+  return { changed: false, poNumber: raw };
+}
+
+function formatProjectRow(row) {
+  return {
+    _id: row._id,
+    name: row.name || '',
+    invoiceNumber: row.invoiceNumber || '',
+    poNumber: row.poNumber || '',
+  };
+}
+
+async function findProjectsForPoSync(quoteNumber, oldPo) {
+  const qn = String(quoteNumber || '').trim();
+  const old = normalizePo(oldPo);
+  if (!qn || !old) return [];
+  const projects = await ProjectModel()
+    .find({ invoiceNumber: qn, removed: false })
+    .select('name invoiceNumber poNumber')
+    .lean();
+  return projects.filter((p) => projectPoMatches(p, old));
+}
+
+async function applyProjectPoUpdates(quoteNumber, oldPo, newPo) {
+  const projects = await findProjectsForPoSync(quoteNumber, oldPo);
+  let modifiedCount = 0;
+  for (const project of projects) {
+    const { changed, poNumber } = applyPoRenameOnProjectPoNumber(project.poNumber, oldPo, newPo);
+    if (!changed) continue;
+    await ProjectModel().updateOne(
+      { _id: project._id },
+      { $set: { poNumber, updated: new Date(), modified_at: new Date() } }
+    );
+    modifiedCount += 1;
+  }
+  return modifiedCount;
+}
+
 function summarizeQuotePoImpact(doc, oldPo) {
   const old = normalizePo(oldPo);
   const headerParts = headerPoListFromDoc(doc);
@@ -204,10 +269,13 @@ async function previewPoNumberSync({ sourceType, sourceId, oldPoNumber }) {
   const quoteNumber =
     doc.numberPrefix && doc.number ? `${doc.numberPrefix}-${doc.number}` : doc.invoiceNumber || '';
 
+  const projects = await findProjectsForPoSync(quoteNumber, old);
+
   return {
     oldPoNumber: old,
     quoteNumber,
     quote: quoteImpact,
+    projects: projects.map(formatProjectRow),
     supplierQuotes: supplierQuotes.map(formatSupplierQuoteRow),
     invoices: invoices.map(formatInvoiceRow),
   };
@@ -236,6 +304,7 @@ async function executePoNumberSync({
   sourceId,
   oldPoNumber,
   newPoNumber,
+  syncProjects = true,
   syncQuote = true,
   syncSupplierQuotes = true,
   syncInvoices = true,
@@ -247,13 +316,20 @@ async function executePoNumberSync({
   if (old === neu) throw new Error('新 P.O number 不可與舊 P.O 相同');
 
   const doc = await loadSourceDoc(sourceType, sourceId);
+  const quoteNumber =
+    doc.numberPrefix && doc.number ? `${doc.numberPrefix}-${doc.number}` : doc.invoiceNumber || '';
   const result = {
     oldPoNumber: old,
     newPoNumber: neu,
+    projectsUpdated: 0,
     quoteUpdated: false,
     supplierQuotesUpdated: 0,
     invoicesUpdated: 0,
   };
+
+  if (syncProjects) {
+    result.projectsUpdated = await applyProjectPoUpdates(quoteNumber, old, neu);
+  }
 
   if (syncQuote) {
     const { changed, setFields } = applyPoRenameOnSourceDoc(doc, old, neu);

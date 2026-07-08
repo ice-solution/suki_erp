@@ -119,9 +119,9 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   
   const form = Form.useFormInstance();
   const watchedClients = Form.useWatch('clients', form) || [];
+  const projectPercentageWatch = Form.useWatch('projectPercentage', form);
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
-  const projectPercentageWatch = Form.useWatch('projectPercentage', form);
   const [quoteOptions, setQuoteOptions] = useState([]);
   const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
 
