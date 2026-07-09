@@ -267,6 +267,10 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
         html.puppeteer-invoice footer.footer-invoice { display: none !important; }
  
   body
+    - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
+    - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage : 100
+    - const rawSubTotal = model.subTotal != null ? model.subTotal : (model.items || []).reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
+    - const displaySubTotal = rawSubTotal * projectPctForCalc / 100
     
       header.clearfix
         .top-area
@@ -314,6 +318,8 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
               th #{translate('TOTAL')}
           tbody
             each item in model.items
+              - const lineBase = item.total != null ? item.total : ((item.price != null && item.quantity != null) ? item.price * item.quantity : 0)
+              - const lineAmount = lineBase * projectPctForCalc / 100
               tr
                 td.service
                   | #{item.itemName}
@@ -321,10 +327,10 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
                     span.item-desc-preline #{item.description}
                 td.qty #{item.quantity}  
                 td.unit  #{moneyFormatter({amount:item.price})}
-                td.total #{moneyFormatter({amount:item.total})}
+                td.total #{moneyFormatter({amount:lineAmount})}
             tr
               td(colspan='3') #{translate('SUB TOTAL')}
-              td.total #{moneyFormatter({amount:model.subTotal})}
+              td.total #{moneyFormatter({amount:displaySubTotal})}
             tr
               td(colspan='3') #{translate('TAX')} #{model.taxRate} %
               td.total #{moneyFormatter({amount:model.taxTotal})}

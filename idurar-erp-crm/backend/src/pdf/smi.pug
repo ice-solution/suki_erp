@@ -269,7 +269,7 @@ body
     - const discount = model.discount != null ? model.discount : 0
     - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
     - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage : 100
-    - const subTotal = fullSubTotal
+    - const subTotal = fullSubTotal * projectPctForCalc / 100
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
     - const projectPercentageLabel = model.projectPercentageLabel != null && String(model.projectPercentageLabel).trim() ? String(model.projectPercentageLabel).trim() : '整個佔比 (%)'
     - const total = model.total != null ? model.total : (subTotal - discountTotal)

@@ -83,8 +83,11 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
     - const docDate = model.date ? moment(model.date).utcOffset(480).format('DD-MM-YYYY') : ''
     - const itemsOnly = model.items || []
     - var itemChunks = itemChunks || [[]]
-    - const subTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
+    - const fullSubTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
+    - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
+    - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage : 100
+    - const subTotal = fullSubTotal * projectPctForCalc / 100
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
@@ -127,12 +130,14 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
                   - const item = row.item
                   - const contentText = row.contentText
                   - const unitLabel = item.unit ? String(item.unit) : 'JOB'
+                  - const lineBase = item.total != null ? item.total : ((item.price != null && item.quantity != null) ? item.price * item.quantity : 0)
+                  - const lineAmount = lineBase * projectPctForCalc / 100
                   tr
                     td.col-no #{row.showMeta ? row.itemIndex + 1 : ''}
                     td.col-content #{contentText}
                     td.col-qty #{row.showMeta && item.quantity != null ? item.quantity : ''}#{row.showMeta ? ' / ' + unitLabel : ''}
                     td.col-unit.num #{row.showMeta && item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
-                    td.col-amount.num #{row.showMeta && item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (row.showMeta && item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
+                    td.col-amount.num #{row.showMeta ? moneyFormatter({ amount: lineAmount, currency_code: currency }) : ''}
                 if chunk.length === 0
                   tr
                     td(colspan='5' style='text-align:center') 無項目
