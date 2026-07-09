@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const InvoiceModel = mongoose.model('Invoice');
 const ProjectModel = mongoose.model('Project');
 
-const { increaseSmiLastNumber } = require('@/helpers/lastNumberSettings');
+const { resolveInvoiceNumberForCreate } = require('@/helpers/lastNumberSettings');
 const { calculate } = require('@/helpers');
 const {
   aggregateInvoicedQtyByQuoteLine,
@@ -161,8 +161,18 @@ async function convertSourceDocumentToInvoice({
   }
   const linkedProjectId = linkedProject._id || sourceDoc.project || null;
 
-  const invoiceNumberResult = await increaseSmiLastNumber();
-  const invoiceNumber = invoiceNumberResult ? invoiceNumberResult.settingValue : 1;
+  let invoicePrefix;
+  let invoiceNumber;
+  try {
+    const resolved = await resolveInvoiceNumberForCreate({
+      numberPrefix: req.body?.numberPrefix,
+      number: req.body?.number,
+    });
+    invoicePrefix = resolved.numberPrefix;
+    invoiceNumber = resolved.number;
+  } catch (err) {
+    return { ok: false, status: err.statusCode || 400, message: err.message };
+  }
 
   const discount = sourceDoc.discount != null ? Number(sourceDoc.discount) : 0;
   const totals = computeInvoiceTotalsFromItems(selectedItems, discount);
@@ -182,8 +192,8 @@ async function convertSourceDocumentToInvoice({
     invoiceConversionMode: conversionMode,
     orderFromPoNumber: poNumberForInvoice,
     orderFromQuoteLines,
-    numberPrefix: 'SMI',
-    number: invoiceNumber.toString(),
+    numberPrefix: invoicePrefix,
+    number: String(invoiceNumber),
     year: new Date().getFullYear(),
     type: sourceDoc.type,
     shipType: sourceDoc.shipType,

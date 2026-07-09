@@ -177,6 +177,28 @@ async function resolveSupplierQuoteNumberForCreate(input = {}) {
   return { numberPrefix: prefix, number: String(inc.settingValue) };
 }
 
+const VALID_INVOICE_PREFIXES = new Set(['SMI', 'WSE', 'SP']);
+
+/**
+ * 轉發票／建立發票：可指定 numberPrefix + number，否則自動遞增。
+ * @param {{ numberPrefix?: string, number?: string }} input
+ */
+async function resolveInvoiceNumberForCreate(input = {}) {
+  const assertInvoiceNumber = require('@/helpers/assertInvoiceNumber');
+  const userPrefix = input.numberPrefix ? String(input.numberPrefix).trim().toUpperCase() : '';
+  const userNumber = input.number != null ? String(input.number).trim() : '';
+
+  if (userPrefix && userNumber) {
+    await assertInvoiceNumber({ numberPrefix: userPrefix, number: userNumber });
+    await syncInvoiceLastNumberAfterUse(userPrefix, userNumber);
+    return { numberPrefix: userPrefix, number: userNumber };
+  }
+
+  const prefix = userPrefix && VALID_INVOICE_PREFIXES.has(userPrefix) ? userPrefix : 'SMI';
+  const inc = await increaseInvoiceLastNumberByPrefix(prefix);
+  return { numberPrefix: prefix, number: String(inc.settingValue) };
+}
+
 function isLastNumberSettingKey(settingKey) {
   return (
     SUPPLIER_LAST_NUMBER_KEYS.includes(settingKey) ||
@@ -220,5 +242,6 @@ module.exports = {
   syncSupplierQuoteLastNumberAfterUse,
   increaseSupplierQuoteLastNumberByPrefix,
   resolveSupplierQuoteNumberForCreate,
+  resolveInvoiceNumberForCreate,
   isLastNumberSettingKey,
 };

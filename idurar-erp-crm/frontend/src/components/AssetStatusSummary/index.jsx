@@ -18,12 +18,16 @@ const emptyCounts = () => STATUS_ROWS.reduce((acc, { key }) => ({ ...acc, [key]:
  * @param {number} refreshKey - 變更時重新拉取
  * @param {string} searchQuery - 與 DataTable 搜尋框相同
  * @param {string} searchFields - 搜尋欄位（逗號分隔）
+ * @param {string} statusFilter - 狀態篩選值
+ * @param {string} statusFilterField - 狀態篩選欄位名（預設 status）
  */
 export default function AssetStatusSummary({
   entity,
   refreshKey = 0,
   searchQuery = '',
   searchFields = '',
+  statusFilter = '',
+  statusFilterField = 'status',
 }) {
   const [loading, setLoading] = useState(true);
   const [counts, setCounts] = useState(emptyCounts);
@@ -38,6 +42,10 @@ export default function AssetStatusSummary({
         if (q && searchFields) {
           params.q = q;
           params.fields = searchFields;
+        }
+        if (statusFilter) {
+          params.filter = statusFilterField;
+          params.equal = statusFilter;
         }
         const res = await request.get({
           entity: `${entity}/statusSummary`,
@@ -61,7 +69,7 @@ export default function AssetStatusSummary({
     return () => {
       cancelled = true;
     };
-  }, [entity, refreshKey, searchQuery, searchFields]);
+  }, [entity, refreshKey, searchQuery, searchFields, statusFilter, statusFilterField]);
 
   return (
     <Card size="small" bordered style={{ marginBottom: 16 }} bodyStyle={{ padding: '12px 16px' }}>

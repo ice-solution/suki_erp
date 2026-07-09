@@ -46,6 +46,11 @@ export default function ShipList() {
   const searchConfig = {
     displayLabels: ['registrationNumber'],
     searchFields: 'registrationNumber,supplierNumber,name,description',
+    statusFilter: {
+      field: 'status',
+      placeholder: '狀態',
+      options: fields.status.options,
+    },
   };
   const deleteModalLabels = ['registrationNumber'];
 

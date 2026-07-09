@@ -46,6 +46,11 @@ export default function WinchList() {
   const searchConfig = {
     displayLabels: ['serialNumber'],
     searchFields: 'serialNumber,supplierNumber,name,description',
+    statusFilter: {
+      field: 'status',
+      placeholder: '狀態',
+      options: fields.status.options,
+    },
   };
   const deleteModalLabels = ['serialNumber'];
 

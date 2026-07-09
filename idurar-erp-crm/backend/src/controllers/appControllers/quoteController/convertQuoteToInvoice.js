@@ -4,7 +4,7 @@ const QuoteModel = mongoose.model('Quote');
 const { convertSourceDocumentToInvoice } = require('@/helpers/convertSourceDocumentToInvoice');
 
 /**
- * POST：body { poNumber, conversionMode: 'A'|'B', lines?: [{ itemIndex, quantity|percentage }] }
+ * POST：body { poNumber, conversionMode: 'A'|'B', numberPrefix?, number?, lines?: [...] }
  */
 const convertQuoteToInvoice = async (req, res) => {
   try {

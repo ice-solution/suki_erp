@@ -44,8 +44,9 @@ import { multilineStyle } from '@/utils/renderMultilineText';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
 import { selectLastNumberSettings } from '@/redux/settings/selectors';
-import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
+import { getSuggestedNextNumber, getSuggestedNextInvoiceNumber } from '@/utils/lastNumberSettings';
 import SupplierOrderNumberFields from '@/components/SupplierOrderNumberFields';
+import InvoiceOrderNumberFields from '@/components/InvoiceOrderNumberFields';
 import PoNumberSyncModal from '@/components/PoNumberSyncModal';
 
 const Item = ({ item, currentErp }) => {
@@ -165,6 +166,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const lastNumberSettings = useSelector(selectLastNumberSettings);
   const [supplierOrderPrefix, setSupplierOrderPrefix] = useState('S');
   const [supplierOrderNumber, setSupplierOrderNumber] = useState('');
+  const [invoiceOrderPrefix, setInvoiceOrderPrefix] = useState('SMI');
+  const [invoiceOrderNumber, setInvoiceOrderNumber] = useState('');
   const [poSyncOpen, setPoSyncOpen] = useState(false);
 
   let storedCtx = null;
@@ -326,6 +329,12 @@ export default function QuoteReadItem({ config, selectedItem }) {
     setSupplierOrderNumber(String(suggested));
   }, [poModalMode, supplierOrderPrefix, lastNumberSettings]);
 
+  useEffect(() => {
+    if (poModalMode !== 'invoice') return;
+    const suggested = getSuggestedNextInvoiceNumber(lastNumberSettings, invoiceOrderPrefix);
+    setInvoiceOrderNumber(String(suggested));
+  }, [poModalMode, invoiceOrderPrefix, lastNumberSettings]);
+
   const closePoModal = () => {
     setPoModalMode(null);
     setSelectedPoNumber(null);
@@ -337,6 +346,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
     setPoInvoiceMeta(null);
     setSupplierOrderPrefix('S');
     setSupplierOrderNumber('');
+    setInvoiceOrderPrefix('SMI');
+    setInvoiceOrderNumber('');
   };
 
   const openPoModal = (mode) => {
@@ -424,6 +435,14 @@ export default function QuoteReadItem({ config, selectedItem }) {
       }
       payload.lines = lines;
     }
+
+    if (!String(invoiceOrderNumber || '').trim()) {
+      message.warning('請填寫發票編號');
+      return;
+    }
+
+    payload.numberPrefix = invoiceOrderPrefix;
+    payload.number = String(invoiceOrderNumber).trim();
 
     closePoModal();
     setConvertLoading(true);
@@ -881,6 +900,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
             !selectedPoNumber ||
             poPreviewLoading ||
             (poModalMode === 'supplier' && !String(supplierOrderNumber || '').trim()) ||
+            (poModalMode === 'invoice' && !String(invoiceOrderNumber || '').trim()) ||
             (poModalMode === 'invoice'
               ? invoiceConversionMode === 'B'
                 ? !poPreviewLines.some((row) => {
@@ -911,6 +931,15 @@ export default function QuoteReadItem({ config, selectedItem }) {
               number={supplierOrderNumber}
               onPrefixChange={setSupplierOrderPrefix}
               onNumberChange={setSupplierOrderNumber}
+              mergedLastNumbers={lastNumberSettings}
+            />
+          ) : null}
+          {poModalMode === 'invoice' ? (
+            <InvoiceOrderNumberFields
+              prefix={invoiceOrderPrefix}
+              number={invoiceOrderNumber}
+              onPrefixChange={setInvoiceOrderPrefix}
+              onNumberChange={setInvoiceOrderNumber}
               mergedLastNumbers={lastNumberSettings}
             />
           ) : null}

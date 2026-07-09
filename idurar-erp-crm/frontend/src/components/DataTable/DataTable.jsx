@@ -8,7 +8,7 @@ import {
   ArrowRightOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { Table, Button, Input, Space } from 'antd';
+import { Table, Button, Input, Space, Select } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -140,7 +140,35 @@ export default function DataTable({ config, extra = [] }) {
   const dispatch = useDispatch();
   const [summaryRefreshKey, setSummaryRefreshKey] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState(undefined);
   const [listSearchOptions, setListSearchOptions] = useState({});
+
+  const buildListOptions = useCallback(
+    (q, status) => {
+      const options = {};
+      const trimmed = String(q || '').trim();
+      if (trimmed) {
+        options.q = trimmed;
+        options.fields = searchConfig?.searchFields || '';
+      }
+      const statusField = searchConfig?.statusFilter?.field || 'status';
+      if (status) {
+        options.filter = statusField;
+        options.equal = status;
+      }
+      return options;
+    },
+    [searchConfig]
+  );
+
+  const applyListFilters = useCallback(
+    (q, status) => {
+      const options = buildListOptions(q, status);
+      setListSearchOptions(options);
+      dispatch(crud.list({ entity, options }));
+    },
+    [entity, dispatch, buildListOptions]
+  );
 
   const handelDataTableLoad = useCallback((pagination) => {
     const options = {
@@ -154,13 +182,20 @@ export default function DataTable({ config, extra = [] }) {
   const filterTable = (e) => {
     const value = e.target.value;
     setSearchQuery(value);
-    const options = { q: value, fields: searchConfig?.searchFields || '' };
-    setListSearchOptions(options);
-    dispatch(crud.list({ entity, options }));
+    applyListFilters(value, statusFilter);
+  };
+
+  const STATUS_FILTER_ALL = '__all__';
+
+  const handleStatusFilterChange = (value) => {
+    const next = value && value !== STATUS_FILTER_ALL ? value : undefined;
+    setStatusFilter(next);
+    applyListFilters(searchQuery, next);
   };
 
   useEffect(() => {
     setSearchQuery('');
+    setStatusFilter(undefined);
     setListSearchOptions({});
     dispatch(crud.list({ entity }));
   }, [entity, dispatch]);
@@ -184,7 +219,25 @@ export default function DataTable({ config, extra = [] }) {
             onChange={filterTable}
             placeholder={translate('search')}
             allowClear
+            value={searchQuery}
+            style={{ width: 200 }}
           />,
+          searchConfig?.statusFilter?.options?.length ? (
+            <Select
+              key="statusFilterDataTable"
+              placeholder={searchConfig.statusFilter.placeholder || translate('status')}
+              value={statusFilter ?? STATUS_FILTER_ALL}
+              onChange={handleStatusFilterChange}
+              style={{ width: 140 }}
+              options={[
+                { value: STATUS_FILTER_ALL, label: '全部' },
+                ...searchConfig.statusFilter.options.map((opt) => ({
+                  value: opt.value,
+                  label: opt.label,
+                })),
+              ]}
+            />
+          ) : null,
           <Button
             onClick={() => {
               handelDataTableLoad(pagination);
@@ -208,6 +261,8 @@ export default function DataTable({ config, extra = [] }) {
             refreshKey: summaryRefreshKey,
             searchQuery,
             searchFields: searchConfig?.searchFields || '',
+            statusFilter,
+            statusFilterField: searchConfig?.statusFilter?.field || 'status',
           })
         : null}
 

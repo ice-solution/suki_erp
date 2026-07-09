@@ -78,6 +78,12 @@ export function getSuggestedNextNumber(mergedSettings, prefix, kind = 'supplier'
   return last + 1;
 }
 
+export const INVOICE_PREFIX_OPTIONS = [
+  { value: 'SMI', label: 'SMI' },
+  { value: 'WSE', label: 'WSE' },
+  { value: 'SP', label: 'SP' },
+];
+
 export const SUPPLIER_QUOTE_PREFIX_OPTIONS = [
   { value: 'NO', label: 'NO' },
   { value: 'PO', label: 'PO' },
