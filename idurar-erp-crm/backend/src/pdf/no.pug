@@ -40,6 +40,7 @@ html(class=isPuppeteer ? 'puppeteer-wing-shun-no' : '')
       .ack-row { display: flex; gap: 10px; align-items: flex-end; margin-bottom: 10px; }
       .ack-label { min-width: 70px; font-weight: bold; }
       .ack-line { flex: 1; border-bottom: 1px solid #222; height: 18px; }
+      .ack-value { flex: 1; min-height: 18px; word-break: break-word; }
 
       .end-marker { text-align: center; font-weight: bold; margin: 14px 0 6px; font-size: 10px; }
       .footer-section { margin-top: 16px; padding-top: 8px; border-top: 1px solid #ddd; text-align: center; font-size: 9px; color: #666; line-height: 1.5; }
@@ -109,7 +110,10 @@ html(class=isPuppeteer ? 'puppeteer-wing-shun-no' : '')
       .ack-right
         .ack-row
           .ack-label 裝箱方式：
-          .ack-line
+          if model.packingMethod
+            .ack-value #{model.packingMethod}
+          else
+            .ack-line
         .ack-row
           .ack-label 簽收人：
           .ack-line

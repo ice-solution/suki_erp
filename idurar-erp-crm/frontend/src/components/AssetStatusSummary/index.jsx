@@ -8,6 +8,7 @@ const STATUS_ROWS = [
   { key: 'returned_warehouse_cn', title: '待回廠總數' },
   { key: 'returned_warehouse_hk', title: '香港倉總數' },
   { key: 'in_use', title: '使用中總數' },
+  { key: 'unavailable', title: '不可用總數' },
 ];
 
 const emptyCounts = () => STATUS_ROWS.reduce((acc, { key }) => ({ ...acc, [key]: 0 }), {});

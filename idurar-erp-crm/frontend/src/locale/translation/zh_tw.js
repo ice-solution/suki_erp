@@ -156,6 +156,7 @@ const lang = {
   supplier_last_number_swp: 'Supplier 編號 (SWP) 最後號碼',
   supplier_last_number_e: 'Supplier 編號 (E) 最後號碼',
   supplier_last_number_y: 'Supplier 編號 (Y) 最後號碼',
+  supplier_last_number_ip: 'Supplier 編號 (IP) 最後號碼',
 };
 
 export default lang; 

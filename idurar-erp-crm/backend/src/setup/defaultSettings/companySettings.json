@@ -49,6 +49,12 @@
   },
   {
     "settingCategory": "company_settings",
+    "settingKey": "company_logo_ip",
+    "settingValue": "public/uploads/setting/company-logo.png",
+    "valueType": "image"
+  },
+  {
+    "settingCategory": "company_settings",
     "settingKey": "company_logo_sml",
     "settingValue": "public/uploads/setting/company-logo.png",
     "valueType": "image"

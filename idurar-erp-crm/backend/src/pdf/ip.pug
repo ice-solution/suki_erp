@@ -1,0 +1,358 @@
+doctype html
+html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
+  head
+    link(rel="shortcut icon" type="image/png" href="/images/icons/favicon.png")
+    meta(name="viewport" content="width=device-width, initial-scale=1")
+    style.
+      /* 讓整頁內容更貼頂，避免上方空白過多 */
+      @page { margin: 0; }
+      .sheet {
+        margin: 0;
+        width: 100%; 
+        height: 297mm;
+      }
+
+      body {
+        width: 100%;
+        max-width: 100%;
+        margin: 0;
+        padding: 20px 16px 10px;
+        background: #fff;
+        font-family: Arial, sans-serif;
+        font-size: 10px;
+        color: #222;
+        box-sizing: border-box;
+      }
+      *, *:before, *:after {
+        box-sizing: inherit;
+        color:#222
+      }
+
+      .clearfix {
+        display: block; }
+      .left{
+        float:left;
+      }
+      .right{
+        float:right;
+      }
+      .top-area {    
+        display: block;
+        width:100%;
+        
+      }
+      alignRight :{
+        text-align: right !important;
+      }
+      alignLeft :{
+        text-align: left;
+      }
+      .logo {
+        width: 150px;
+      }
+      .company-info{
+        text-align: right;
+        font-size:12px;
+      }
+      h1.invoice{
+        font-size:32px;
+        color:#52008c;
+        margin-top:0;
+      }
+      p.strong{
+        font-weight:700;
+      }
+      .billTo p {
+        text-align: left !important;
+        display:block;
+        font-size:12px;
+        width:100%;
+        margin-top:0;
+        margin-bottom:10px;
+        
+      }
+
+      .tableHeader{
+        color:#52008c;
+      }
+      .clearfix {
+        display: block; }
+      .col {
+        float:left;
+      }
+      .col-1 {
+        width: 4.16667%; }
+
+      .col-2 {
+        width: 8.33333%; }
+
+      .col-3 {
+        width: 12.5%; }
+
+      .col-4 {
+        width: 16.66667%; }
+
+      .col-5 {
+        width: 20.83333%; }
+
+      .col-6 {
+        width: 25%; }
+
+      .col-7 {
+        width: 29.16667%; }
+
+      .col-8 {
+        width: 33.33333%; }
+
+      .col-9 {
+        width: 37.5%; }
+
+      .col-10 {
+        width: 41.66667%; }
+
+      .col-11 {
+        width: 45.83333%; }
+
+      .col-12 {
+        width: 50%; }
+
+      .col-13 {
+        width: 54.16667%; }
+
+      .col-14 {
+        width: 58.33333%; }
+
+      .col-15 {
+        width: 62.5%; }
+
+      .col-16 {
+        width: 66.66667%; }
+
+      .col-17 {
+        width: 70.83333%; }
+
+      .col-18 {
+        width: 75%; }
+
+      .col-19 {
+        width: 79.16667%; }
+
+      .col-20 {
+        width: 83.33333%; }
+
+      .col-21 {
+        width: 87.5%; }
+
+      .col-22 {
+        width: 91.66667%; }
+
+      .col-23 {
+        width: 95.83333%; }
+
+      .col-24 {
+        width: 100%; }
+      .space {
+        margin-top: 30px;
+        margin-bottom: 40px;
+        width:100%;
+      }
+      .footer-section { margin-top: 12px; padding: 0; border-top: none; text-align: center; box-sizing: border-box; transform: translateY(-20px); }
+      .footer-section img { width: 70%; max-width: 70%; height: auto; display: block; margin: 0 auto; }
+      .sml-page { display: block; page-break-inside: auto; }
+      .sml-page + .sml-page { page-break-before: always; }
+      .sml-page-body { display: block; position: relative; padding-bottom: 18px; }
+      .supermax-header-banner { width: 100%; margin-bottom: 6px; }
+      .supermax-header-banner img { width: 100%; height: auto; display: block; }
+      /* 頁碼移至右下角（每頁） */
+      .page-number-bottom { position: absolute; right: 0; bottom: 0; font-size: 8px; color: #666; }
+      .info-table-ship { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 6px; font-size: 10px; }
+      .info-table-ship td { vertical-align: top; }
+      .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
+      .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .info-row { margin-bottom: 2px; }
+      .info-row-indent { margin-left: 20px; }
+      .info-row-receiver-address { margin-left: 20px; white-space: pre-wrap; word-break: break-word; }
+      .doc-title { text-align: center; font-size: 13px; font-weight: bold; margin: 4px 0 4px; color: #222; }
+      .project-contact-line { margin-bottom: 2px; font-size: 10px; text-align: left; }
+      .project-address-line { margin-bottom: 4px; font-size: 10px; text-align: left; }
+      .quotation-table { width: 100%; border-collapse: collapse; margin: 6px 0; font-size: 10px; table-layout: fixed; }
+      .quotation-table th, .quotation-table td { border: none; padding: 6px 8px; vertical-align: top; }
+      .quotation-table thead tr { border-top: 1px solid #222; border-bottom: 1px solid #222; }
+      .quotation-table tbody tr { border-bottom: 1px solid #222; }
+      .quotation-table th { background: transparent; font-weight: bold; font-size: 10px; text-align: center; }
+      .quotation-table .col-no { width: 6%; text-align: center; }
+      .quotation-table .col-content { width: 78%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
+      .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
+      .quotation-table td.num { text-align: right; }
+      .notes-block { margin-top: 8px; font-size: 10px; line-height: 1.5; }
+      .notes-title { font-weight: bold; margin-bottom: 2px; }
+      .signature-section { margin-top: 12px; }
+      .signature-table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+      .signature-table td { vertical-align: top; font-size: 10px; }
+      .signature-table .sig-left { width: 50%; padding-right: 24px; text-align: left; }
+      .signature-table .sig-right { width: 50%; padding-left: 24px; text-align: right; }
+      .prepared-by-row { margin-bottom: 10px; font-size: 10px; }
+      .prepared-by-label { font-weight: bold; display: inline-block; margin-right: 8px; }
+      .prepared-by-space { display: inline-block; min-width: 120px; height: 20px; vertical-align: middle; }
+      .issuer-block { display: inline-block; text-align: left; }
+      .issuer-name-line { font-size: 9px; font-weight: bold; margin-bottom: 4px; }
+      .issuer-stamp { border-bottom: none; width: 180px; height: 40px; margin-top: 4px; }
+      .signature-stamp-label { font-size: 9px; font-weight: bold; margin-top: 4px; }
+      .fill-line { display: inline-block; border-bottom: 1px solid #222; width: 86px; margin-left: 6px; transform: translateY(-2px); }
+      .fill-line-packing { display: inline-block; border-bottom: 1px solid #222; min-width: 160px; margin-left: 6px; transform: translateY(-2px); }
+      .packing-value { display: inline-block; margin-left: 6px; max-width: 220px; white-space: normal; word-break: break-word; vertical-align: bottom; font-size: 9px; }
+      .sig-label { display: inline-block; width: 54px; }
+      .end-marker { text-align: center; font-weight: bold; margin: 8px 0 4px; font-size: 10px; }
+    if isPuppeteer
+      style.
+        html.puppeteer-supplier-s .footer-section { display: none !important; }
+
+body
+    - const client = model.client || (model.clients && model.clients[0]) || {}
+    - const clientName = client.name || ''
+    - const projectAddressPdf = (model.address || '').replace(/\r\n|\n|\r/g, ' ').trim()
+    - const contactPersonPdf = (model.contactPerson != null && String(model.contactPerson).trim()) ? String(model.contactPerson).trim() : ''
+    - const receiverPdfRaw = (model.receiver != null && String(model.receiver).trim()) ? String(model.receiver) : ''
+    - const quoteNumber = model.invoiceNumber || ''
+    - const docDate = model.openDate ? moment(model.openDate).utcOffset(480).format('DD/MM/YYYY') : '-'
+    - const itemsOnly = model.items || []
+    -
+      // 行數估算分頁（取代固定 8 筆）：與 tbody 內 contentText 邏輯一致；保守係數避免 overlay
+      const S_PDF_CHARS_PER_LINE = 26
+      const S_PDF_SAFETY_FACTOR = 1.25
+      const S_PDF_MAX_LINES_PER_PAGE = 30
+      function buildSItemContentText(item) {
+        const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
+        const desc = item.description ? ' ' + item.description : ''
+        return (name + desc).trim() || '-'
+      }
+      function estimateItemContentLines(item) {
+        const text = buildSItemContentText(item)
+        let lines = 0
+        const parts = String(text).split(/\r\n|\n|\r/)
+        for (let pi = 0; pi < parts.length; pi++) {
+          const seg = parts[pi]
+          lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
+        }
+        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
+      }
+      const itemChunks = []
+      let curChunk = []
+      let curLines = 0
+      const chunkMeta = []
+      for (let ii = 0; ii < itemsOnly.length; ii++) {
+        const it = itemsOnly[ii]
+        const L = estimateItemContentLines(it)
+        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
+          itemChunks.push(curChunk)
+          chunkMeta.push({ items: curChunk.length, lineSum: curLines })
+          curChunk = []
+          curLines = 0
+        }
+        curChunk.push(it)
+        curLines += L
+      }
+      if (curChunk.length > 0) {
+        itemChunks.push(curChunk)
+        chunkMeta.push({ items: curChunk.length, lineSum: curLines })
+      }
+      if (itemChunks.length === 0) itemChunks.push([])
+      const paginationDebugSummary = JSON.stringify({
+        note: 'Puppeteer page.pdf({ format: A4, scale: 1.3 }) — 實際折行與 CHARS_PER_LINE 有關，可調 S_PDF_CHARS_PER_LINE / S_PDF_MAX_LINES_PER_PAGE',
+        S_PDF_CHARS_PER_LINE,
+        S_PDF_SAFETY_FACTOR,
+        S_PDF_MAX_LINES_PER_PAGE,
+        itemCount: itemsOnly.length,
+        chunkCount: itemChunks.length,
+        chunkMeta,
+        perItem: itemsOnly.map((it, i) => ({
+          n: i + 1,
+          estLines: estimateItemContentLines(it),
+          preview: buildSItemContentText(it).slice(0, 120),
+        })),
+      }, null, 2)
+    - const currency = model.currency || 'HKD'
+    - var serialBase = 0
+
+    each chunk, pageIndex in itemChunks
+      .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
+        .sml-page-body
+          .supermax-header-banner
+            img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+          table.info-table-ship
+            tr
+              td.info-left
+                .info-row TO : #{clientName}
+                .info-row.info-row-indent #{projectAddressPdf || '-'}
+                
+              td.info-right
+                .info-row 報價編號 : #{quoteNumber}
+                .info-row 出貨日期 : #{docDate}
+                .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
+                .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
+                .info-row INVOICE: 
+                  span(style='display:inline-block; min-width:75px') &nbsp;
+          .doc-title 簽收單
+          .info-row 簽收單聯絡人：#{contactPersonPdf || '-'}
+          .project-address-line(style='white-space:pre-wrap') 簽收單送貨地址：#{receiverPdfRaw || '-'}
+          table.quotation-table
+            thead
+              tr
+                th.col-no
+                th.col-content 工程內容
+                th.col-qty 數量 / 單位
+            tbody
+              each item, idx in chunk
+                - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
+                - const unitLabel = item.unit ? String(item.unit) : 'JOB'
+                tr
+                  td.col-no #{serialBase + idx + 1}
+                  td.col-content #{contentText}
+                  td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
+              if chunk.length === 0
+                tr
+                  td(colspan='3' style='text-align:center') 無項目
+          - serialBase += chunk.length
+          if pageIndex === itemChunks.length - 1
+            .notes-block
+              .notes-title
+              .notes-content
+                if model.notes
+                  br
+                  | #{model.notes}
+            .signature-section
+              .prepared-by-row
+                //- 刪除「制單人」文字，但保留相同高度/空間避免簽署區上移
+                span.prepared-by-space
+              table.signature-table
+                tr
+                  td.sig-left
+                    .issuer-block
+                      //- 保留空間，避免右欄位往左/往上擠
+                      .issuer-name-line &nbsp;
+                      .issuer-name-line &nbsp;
+                      .issuer-stamp
+                      .signature-stamp-label &nbsp;
+                  td.sig-right
+                    .issuer-block
+                      .issuer-name-line
+                        span.sig-label 裝箱方式:
+                        if model.packingMethod
+                          span.packing-value #{model.packingMethod}
+                        else
+                          span.fill-line-packing
+                      .issuer-name-line
+                        span.sig-label 簽收人:
+                        span.fill-line
+                      .issuer-name-line
+                        span.sig-label 日期
+                        span.fill-line
+            .end-marker End
+        .footer-section
+          img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+
+    if typeof paginationDebug !== 'undefined' && paginationDebug
+      .sml-page.sml-page-pagination-debug
+        .sml-page-body
+          p(style='font-size:10px;font-weight:bold;margin:0 0 6px') S 單分頁估算（S_PDF_PAGINATION_DEBUG=1）
+          pre(style='font-size:8px;line-height:1.35;white-space:pre-wrap;word-break:break-word;margin:0;padding:8px;border:1px solid #ccc;background:#fafafa;text-align:left') #{paginationDebugSummary}

@@ -14,6 +14,7 @@ const SUPPLIER_LAST_NUMBER_KEYS = [
   'last_supplier_quote_number_swp',
   'last_supplier_quote_number_e',
   'last_supplier_quote_number_y',
+  'last_supplier_quote_number_ip',
 ];
 
 const QUOTE_LAST_NUMBER_KEYS = ['last_sml_number', 'last_qu_number', 'last_quote_number'];
@@ -168,7 +169,6 @@ async function resolveSupplierQuoteNumberForCreate(input = {}) {
 
   if (userPrefix && userNumber) {
     await assertSupplierQuoteNumber({ numberPrefix: userPrefix, number: userNumber });
-    await syncSupplierQuoteLastNumberAfterUse(userPrefix, userNumber);
     return { numberPrefix: userPrefix, number: userNumber };
   }
 

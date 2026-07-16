@@ -25,7 +25,7 @@ import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
 import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
 
-const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y']);
+const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP']);
 
 /** S 單上傳檔（DN / Invoice）公開 URL：正式環境用 BASE_URL 或 FILE_BASE_URL，勿寫死 localhost */
 function supplierQuoteUploadedFileHref(file) {
@@ -171,7 +171,7 @@ function readAssetTableColumns(assetKey) {
       title: '超租天數',
       key: 'overage',
       width: '14%',
-      render: (_, row) => calcRentalOverageLabel(row.installationDate, row.dismantlingDate),
+      render: (_, row) => calcRentalOverageLabel(row.expiredDate, row.dismantlingDate),
     },
   ];
 }

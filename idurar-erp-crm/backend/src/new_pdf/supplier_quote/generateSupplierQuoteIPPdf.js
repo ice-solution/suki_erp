@@ -1,8 +1,7 @@
 /**
- * 使用 Puppeteer 將 finish.pug（SupplierQuote 完工單，版面同 s.pug）渲染為 PDF。
- * 適用 numberPrefix：S、NO、SWP、Y
+ * 使用 Puppeteer 將 ip.pug（SupplierQuote IP 單，版面同 s.pug）渲染為 PDF。
  *
- * @module new_pdf/supplier_quote/generateSupplierQuoteFinishPdf
+ * @module new_pdf/supplier_quote/generateSupplierQuoteIPPdf
  */
 
 const fs = require('fs');
@@ -16,18 +15,15 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 
-const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP']);
-
-function resolveLogoSettingKeyForFinish(result) {
-  const prefix = String(result?.numberPrefix || '').toLowerCase();
-  if (['s', 'no', 'swp', 'y', 'ip'].includes(prefix)) {
-    return `company_logo_${prefix}`;
+function resolveLogoSettingKeyForSupplierQuoteIP(result) {
+  if (result && String(result.numberPrefix || '').toLowerCase() === 'ip') {
+    return 'company_logo_ip';
   }
   return null;
 }
 
-function resolveFinishTemplatePath() {
-  const fileNameLower = 'finish.pug';
+function resolveIPTemplatePath() {
+  const fileNameLower = 'ip.pug';
   const candidates = [
     path.join(__dirname, '../../pdf', fileNameLower),
     path.join(process.cwd(), 'src', 'pdf', fileNameLower),
@@ -35,24 +31,16 @@ function resolveFinishTemplatePath() {
   ];
   const found = candidates.find((p) => fs.existsSync(p));
   if (!found) {
-    throw new Error(`finish.pug not found. Tried: ${candidates.join(', ')}`);
+    throw new Error(`ip.pug not found. Tried: ${candidates.join(', ')}`);
   }
   return found;
 }
 
-function isFinishPdfPrefix(numberPrefix) {
-  return FINISH_PDF_PREFIXES.has(String(numberPrefix || '').trim().toUpperCase());
-}
-
 /**
- * @param {object} model - SupplierQuote 文件
+ * @param {object} model - SupplierQuote 文件（已 populate 與 pdf 所需欄位）
  * @returns {Promise<Buffer>}
  */
-async function generateSupplierQuoteFinishPdfBuffer(model) {
-  if (!isFinishPdfPrefix(model?.numberPrefix)) {
-    throw new Error('此 Supplier type 不支援完工單 PDF');
-  }
-
+async function generateSupplierQuoteIPPdfBuffer(model) {
   const settings = await loadSettings();
   const selectedLang = settings['idurar_app_language'];
   const translate = useLanguage({ selectedLang });
@@ -80,12 +68,12 @@ async function generateSupplierQuoteFinishPdfBuffer(model) {
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
 
-  const logoKey = resolveLogoSettingKeyForFinish(model);
+  const logoKey = resolveLogoSettingKeyForSupplierQuoteIP(model);
   if (logoKey && settings[logoKey]) {
     settings.company_logo = settings[logoKey];
   }
 
-  const templatePath = resolveFinishTemplatePath();
+  const templatePath = resolveIPTemplatePath();
   const htmlContent = pug.renderFile(templatePath, {
     model,
     settings,
@@ -135,6 +123,5 @@ async function generateSupplierQuoteFinishPdfBuffer(model) {
 }
 
 module.exports = {
-  generateSupplierQuoteFinishPdfBuffer,
-  isFinishPdfPrefix,
+  generateSupplierQuoteIPPdfBuffer,
 };

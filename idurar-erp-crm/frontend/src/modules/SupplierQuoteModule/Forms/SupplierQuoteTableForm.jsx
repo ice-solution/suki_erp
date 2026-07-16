@@ -1530,6 +1530,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 { value: 'SWP', label: 'SWP' },
                 { value: 'E', label: 'E' },
                 { value: 'Y', label: 'Y' },
+                { value: 'IP', label: 'IP' },
               ].filter(option => option.value !== 'XX')}
             />
           </Form.Item>
@@ -2204,7 +2205,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             width: '12%',
             render: (_, record) =>
               record.ship
-                ? calcRentalOverageLabel(record.installationDate, record.dismantlingDate)
+                ? calcRentalOverageLabel(record.expiredDate, record.dismantlingDate)
                 : '—',
           },
           {
@@ -2310,7 +2311,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             width: '12%',
             render: (_, record) =>
               record.winch
-                ? calcRentalOverageLabel(record.installationDate, record.dismantlingDate)
+                ? calcRentalOverageLabel(record.expiredDate, record.dismantlingDate)
                 : '—',
           },
           {

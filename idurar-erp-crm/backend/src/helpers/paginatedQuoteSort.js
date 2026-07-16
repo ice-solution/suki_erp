@@ -98,6 +98,7 @@ const SUPPLIER_QUOTE_PREFIX_RANK_SWITCH = {
   $switch: {
     branches: [
       { case: { $eq: ['$numberPrefix', 'S'] }, then: 0 },
+      { case: { $eq: ['$numberPrefix', 'IP'] }, then: 0 },
       { case: { $eq: ['$numberPrefix', 'NO'] }, then: 1 },
       { case: { $eq: ['$numberPrefix', 'SWP'] }, then: 2 },
       { case: { $eq: ['$numberPrefix', 'Y'] }, then: 3 },

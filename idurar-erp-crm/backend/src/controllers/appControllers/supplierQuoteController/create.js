@@ -5,7 +5,6 @@ const Model = mongoose.model('SupplierQuote');
 const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
 const assertSupplierQuoteNumber = require('@/helpers/assertSupplierQuoteNumber');
-const { syncSupplierQuoteLastNumberAfterUse } = require('@/helpers/lastNumberSettings');
 const {
   applySupplierQuoteMaterialsWarehouseSync,
   revertAppliedSupplierQuoteStockChanges,
@@ -326,8 +325,6 @@ const create = async (req, res) => {
       message: assetErr.message || '船隻／爬纜器同步失敗',
     });
   }
-
-  await syncSupplierQuoteLastNumberAfterUse(result.numberPrefix || 'S', result.number);
 
   // Returning successfull response
   return res.status(200).json({

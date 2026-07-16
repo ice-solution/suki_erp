@@ -1,21 +1,19 @@
 import dayjs from 'dayjs';
 
-/** 租賃基準天數：拆卸日 − 安裝日 ≤ 此值則顯示 0 */
-export const RENTAL_BASE_DAYS = 60;
-
 /**
- * @param {import('dayjs').Dayjs|string|Date|null|undefined} installDate
- * @param {import('dayjs').Dayjs|string|Date|null|undefined} dismantleDate
+ * 超租天數 = 拆卸日期 − 租賃到期日（大於 0 才顯示超過 N 天）
+ * @param {import('dayjs').Dayjs|string|Date|null|undefined} expiredDate 租賃到期日
+ * @param {import('dayjs').Dayjs|string|Date|null|undefined} dismantleDate 拆卸日期
  * @returns {string} '0' | '超過N天' | '—'
  */
-export function calcRentalOverageLabel(installDate, dismantleDate) {
-  if (installDate == null || dismantleDate == null || installDate === '' || dismantleDate === '') {
+export function calcRentalOverageLabel(expiredDate, dismantleDate) {
+  if (expiredDate == null || dismantleDate == null || expiredDate === '' || dismantleDate === '') {
     return '—';
   }
-  const install = dayjs(installDate).startOf('day');
+  const expiry = dayjs(expiredDate).startOf('day');
   const dismantle = dayjs(dismantleDate).startOf('day');
-  if (!install.isValid() || !dismantle.isValid()) return '—';
-  const days = dismantle.diff(install, 'day');
-  if (days <= RENTAL_BASE_DAYS) return '0';
-  return `超過${days - RENTAL_BASE_DAYS}天`;
+  if (!expiry.isValid() || !dismantle.isValid()) return '—';
+  const days = dismantle.diff(expiry, 'day');
+  if (days <= 0) return '0';
+  return `超過${days}天`;
 }

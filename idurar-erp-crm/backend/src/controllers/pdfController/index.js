@@ -32,7 +32,7 @@ function resolveLogoSettingKey(modelName, result) {
   const name = (modelName || '').toLowerCase();
   if (name === 'supplierquote' && result && result.numberPrefix) {
     const prefix = (result.numberPrefix || '').toLowerCase();
-    if (['no', 'po', 's', 'swp', 'e', 'y'].includes(prefix)) {
+    if (['no', 'po', 's', 'swp', 'e', 'y', 'ip'].includes(prefix)) {
       return `company_logo_${prefix}`;
     }
   }
@@ -132,7 +132,8 @@ exports.generatePdf = async (
         'SWP': 'swp',
         'S': 's',
         'E': 'e',
-        'Y': 'y'
+        'Y': 'y',
+        'IP': 'ip'
       };
       templateName = prefixMap[result.numberPrefix] || 's';
     }
@@ -242,7 +243,7 @@ exports.generatePdfBuffer = async (
     else templateName = 'invoice';
   }
   if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
-    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 'y' };
+    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 'y', IP: 'ip' };
     templateName = prefixMap[result.numberPrefix] || 's';
   }
   if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {

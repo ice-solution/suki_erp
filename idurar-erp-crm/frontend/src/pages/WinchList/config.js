@@ -16,6 +16,7 @@ export const fields = {
       { value: 'returned_warehouse_cn', label: '待回廠', color: 'orange' },
       { value: 'returned_warehouse_hk', label: '香港倉', color: 'orange' },
       { value: 'in_use', label: '使用中', color: 'blue' },
+      { value: 'unavailable', label: '不可用', color: 'red' },
     ],
   },
   supplierNumber: {

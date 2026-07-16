@@ -5,7 +5,7 @@ const {
 } = require('@/helpers/lastNumberSettings');
 
 async function assertSupplierQuoteNumber(body, excludeMongoId, options = {}) {
-  const { enforceLastNumber = true } = options;
+  const { enforceLastNumber = false } = options;
   const prefix = String(body?.numberPrefix || 'S').trim().toUpperCase();
   const number = body?.number != null ? String(body.number).trim() : '';
 

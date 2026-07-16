@@ -19,7 +19,7 @@ const schema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending_maintenance', 'normal', 'returned_warehouse_cn', 'returned_warehouse_hk', 'in_use'],
+    enum: ['pending_maintenance', 'normal', 'returned_warehouse_cn', 'returned_warehouse_hk', 'in_use', 'unavailable'],
     default: 'normal',
   },
   supplierNumber: {

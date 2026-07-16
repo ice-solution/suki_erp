@@ -337,6 +337,7 @@ const lang = {
   supplier_last_number_swp: 'Supplier last number (SWP)',
   supplier_last_number_e: 'Supplier last number (E)',
   supplier_last_number_y: 'Supplier last number (Y)',
+  supplier_last_number_ip: 'Supplier last number (IP)',
   client_list: 'Client List',
   add_new_client: 'Add New Client',
   supplier: 'Supplier',

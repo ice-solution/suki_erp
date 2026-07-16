@@ -7,6 +7,7 @@ const STATUS_KEYS = [
   'returned_warehouse_cn',
   'returned_warehouse_hk',
   'in_use',
+  'unavailable',
 ];
 
 function emptyStatusCounts() {

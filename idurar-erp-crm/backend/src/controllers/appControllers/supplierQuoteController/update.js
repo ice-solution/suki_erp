@@ -22,7 +22,6 @@ const {
   stripLegacyAssetFieldsFromBody,
 } = require('@/helpers/supplierQuoteAssetAssignments');
 const assertSupplierQuoteNumber = require('@/helpers/assertSupplierQuoteNumber');
-const { syncSupplierQuoteLastNumberAfterUse } = require('@/helpers/lastNumberSettings');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -441,10 +440,6 @@ const update = async (req, res) => {
       result: null,
       message: assetErr.message || '船隻／爬纜器同步失敗',
     });
-  }
-
-  if (numberIdentityChanged && result) {
-    await syncSupplierQuoteLastNumberAfterUse(result.numberPrefix || 'S', result.number);
   }
 
   console.log('📤 Returning result with files:');
