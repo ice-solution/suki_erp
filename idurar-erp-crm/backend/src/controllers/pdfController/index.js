@@ -132,7 +132,7 @@ exports.generatePdf = async (
         'SWP': 'swp',
         'S': 's',
         'E': 'e',
-        'Y': 'y',
+        'Y': 's', // 與 S 相同版面
         'IP': 'ip'
       };
       templateName = prefixMap[result.numberPrefix] || 's';
@@ -243,7 +243,7 @@ exports.generatePdfBuffer = async (
     else templateName = 'invoice';
   }
   if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
-    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 'y', IP: 'ip' };
+    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 's', IP: 'ip' };
     templateName = prefixMap[result.numberPrefix] || 's';
   }
   if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {

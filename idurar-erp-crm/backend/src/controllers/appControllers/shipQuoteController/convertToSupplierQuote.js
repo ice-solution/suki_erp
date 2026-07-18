@@ -174,8 +174,9 @@ const convertToSupplierQuote = async (req, res) => {
           ? `${shipQuote.numberPrefix}-${shipQuote.number}`
           : shipQuote.invoiceNumber,
       poNumber,
-      // 上單／轉發票：不帶備註與簽收單聯絡人（僅保留在原 ShipQuote 作內部記錄）
+      // 上單：帶出報價單工程地址與聯絡人（完工單顯示用）
       address: shipQuote.address,
+      contactPerson: shipQuote.contactPerson,
       clients: shipQuote.clients,
       client: shipQuote.client,
       project: linkedProject?._id || shipQuote.project,

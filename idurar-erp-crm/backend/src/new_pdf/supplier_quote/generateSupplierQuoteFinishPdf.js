@@ -45,6 +45,44 @@ function isFinishPdfPrefix(numberPrefix) {
 }
 
 /**
+ * 完工單聯絡人／工程地址：若 S 單未存，則從來源報價單帶出
+ */
+async function enrichFinishModelFromSourceQuote(model) {
+  if (!model) return model;
+  const hasContact =
+    model.contactPerson != null && String(model.contactPerson).trim() !== '';
+  const hasAddress = model.address != null && String(model.address).trim() !== '';
+  if (hasContact && hasAddress) return model;
+
+  const mongoose = require('mongoose');
+  let source = null;
+  try {
+    if (model.sourceQuote) {
+      const Quote = mongoose.model('Quote');
+      const id = model.sourceQuote._id || model.sourceQuote;
+      source = await Quote.findById(id).select('contactPerson address').lean();
+    } else if (model.sourceShipQuote) {
+      const ShipQuote = mongoose.model('ShipQuote');
+      const id = model.sourceShipQuote._id || model.sourceShipQuote;
+      source = await ShipQuote.findById(id).select('contactPerson address').lean();
+    }
+  } catch (err) {
+    console.error('完工單帶出報價單聯絡人／工程地址失敗:', err);
+    return model;
+  }
+  if (!source) return model;
+
+  const enriched = typeof model.toObject === 'function' ? model.toObject() : { ...model };
+  if (!hasContact && source.contactPerson) {
+    enriched.contactPerson = source.contactPerson;
+  }
+  if (!hasAddress && source.address) {
+    enriched.address = source.address;
+  }
+  return enriched;
+}
+
+/**
  * @param {object} model - SupplierQuote 文件
  * @returns {Promise<Buffer>}
  */
@@ -52,6 +90,8 @@ async function generateSupplierQuoteFinishPdfBuffer(model) {
   if (!isFinishPdfPrefix(model?.numberPrefix)) {
     throw new Error('此 Supplier type 不支援完工單 PDF');
   }
+
+  model = await enrichFinishModelFromSourceQuote(model);
 
   const settings = await loadSettings();
   const selectedLang = settings['idurar_app_language'];

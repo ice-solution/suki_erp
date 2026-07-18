@@ -190,7 +190,6 @@ async function resolveInvoiceNumberForCreate(input = {}) {
 
   if (userPrefix && userNumber) {
     await assertInvoiceNumber({ numberPrefix: userPrefix, number: userNumber });
-    await syncInvoiceLastNumberAfterUse(userPrefix, userNumber);
     return { numberPrefix: userPrefix, number: userNumber };
   }
 

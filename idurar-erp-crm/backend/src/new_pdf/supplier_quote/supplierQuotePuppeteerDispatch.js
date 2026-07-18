@@ -11,7 +11,8 @@ const { generateWingShunNoPdfBuffer } = require('./generateWingShunNoPdf');
  */
 async function tryGenerateSupplierQuotePdfBufferWithPuppeteer(doc) {
   if (!doc) return null;
-  if (doc.numberPrefix === 'S') {
+  // Y 與 S 相同版面（s.pug）
+  if (doc.numberPrefix === 'S' || doc.numberPrefix === 'Y') {
     return generateSupplierQuoteSPdfBuffer(doc);
   }
   if (doc.numberPrefix === 'IP') {

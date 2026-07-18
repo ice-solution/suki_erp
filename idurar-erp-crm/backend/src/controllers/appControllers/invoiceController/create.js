@@ -4,7 +4,7 @@ const Model = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
 const { computeInvoiceTotals } = require('@/helpers/invoiceTotals');
-const { increaseInvoiceLastNumberByPrefix } = require('@/helpers/lastNumberSettings');
+const assertInvoiceNumber = require('@/helpers/assertInvoiceNumber');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
 const schema = require('./schemaValidate');
 
@@ -80,6 +80,16 @@ const create = async (req, res) => {
   body['paymentStatus'] = autoPaymentStatus;
   body['createdBy'] = req.admin._id;
 
+  try {
+    await assertInvoiceNumber(body);
+  } catch (numErr) {
+    return res.status(numErr.statusCode || 400).json({
+      success: false,
+      result: null,
+      message: numErr.message || '發票編號無效',
+    });
+  }
+
   // Creating a new document in the collection
   const result = await new Model(body).save();
   const fileId = 'invoice-' + result._id + '.pdf';
@@ -90,9 +100,6 @@ const create = async (req, res) => {
       new: true,
     }
   ).exec();
-
-  const invoicePrefix = String(body.numberPrefix || 'SMI').trim().toUpperCase();
-  await increaseInvoiceLastNumberByPrefix(invoicePrefix);
 
   let projectLink = null;
   const quoteNumber = body.invoiceNumber != null ? String(body.invoiceNumber).trim() : '';

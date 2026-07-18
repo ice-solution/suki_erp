@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const InvoiceModel = mongoose.model('Invoice');
 
-const { increaseInvoiceLastNumberByPrefix } = require('@/helpers/lastNumberSettings');
+const assertInvoiceNumber = require('@/helpers/assertInvoiceNumber');
 
 const INVOICE_PREFIXES = new Set(['SMI', 'WSE', 'SP']);
 
@@ -57,6 +57,16 @@ const convert = async (req, res) => {
       createdBy: req.admin._id,
     };
 
+    try {
+      await assertInvoiceNumber(invoiceData);
+    } catch (numErr) {
+      return res.status(numErr.statusCode || 400).json({
+        success: false,
+        result: null,
+        message: numErr.message || '發票編號無效',
+      });
+    }
+
     // Create new invoice
     const invoice = await new InvoiceModel(invoiceData).save();
     
@@ -64,8 +74,6 @@ const convert = async (req, res) => {
     await SupplierQuoteModel.findByIdAndUpdate(req.params.id, {
       converted: true,
     });
-
-    await increaseInvoiceLastNumberByPrefix(invoiceNumberPrefix);
 
     return res.status(200).json({
       success: true,
