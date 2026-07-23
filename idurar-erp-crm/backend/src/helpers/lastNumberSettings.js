@@ -92,6 +92,31 @@ async function syncSupplierQuoteLastNumberAfterUse(prefix, usedNumber) {
   return syncLastNumberAfterUse(supplierQuoteLastNumberSettingKey(prefix), usedNumber);
 }
 
+/**
+ * 僅當所用編號 = 最後號碼 + 1（即使用系統建議下一號）時才更新最後號碼。
+ * 手動填更大／更細嘅個別號碼唔會改最後號碼。
+ */
+async function syncSupplierQuoteLastNumberIfSequentialNext(prefix, usedNumber) {
+  const used = parseDocNumber(usedNumber);
+  if (!Number.isFinite(used) || used <= 0) return null;
+  const last = await readSupplierQuoteLastNumber(prefix);
+  if (used !== last + 1) return null;
+  return upsertSettingNumber(supplierQuoteLastNumberSettingKey(prefix), used);
+}
+
+/**
+ * 發票：僅當所用編號 = 最後號碼 + 1 時才更新最後號碼。
+ */
+async function syncInvoiceLastNumberIfSequentialNext(prefix, usedNumber) {
+  const key = invoiceLastNumberSettingKey(prefix);
+  if (!key) return null;
+  const used = parseDocNumber(usedNumber);
+  if (!Number.isFinite(used) || used <= 0) return null;
+  const last = await readInvoiceLastNumber(prefix);
+  if (used !== last + 1) return null;
+  return upsertSettingNumber(key, used);
+}
+
 function invoiceLastNumberSettingKey(prefix) {
   const p = String(prefix || 'SMI').trim().toUpperCase();
   if (p === 'SMI') return 'last_smi_number';
@@ -169,6 +194,7 @@ async function resolveSupplierQuoteNumberForCreate(input = {}) {
 
   if (userPrefix && userNumber) {
     await assertSupplierQuoteNumber({ numberPrefix: userPrefix, number: userNumber });
+    await syncSupplierQuoteLastNumberIfSequentialNext(userPrefix, userNumber);
     return { numberPrefix: userPrefix, number: userNumber };
   }
 
@@ -190,6 +216,7 @@ async function resolveInvoiceNumberForCreate(input = {}) {
 
   if (userPrefix && userNumber) {
     await assertInvoiceNumber({ numberPrefix: userPrefix, number: userNumber });
+    await syncInvoiceLastNumberIfSequentialNext(userPrefix, userNumber);
     return { numberPrefix: userPrefix, number: userNumber };
   }
 
@@ -239,6 +266,8 @@ module.exports = {
   syncLastNumberAfterUse,
   syncQuoteLastNumberAfterUse,
   syncSupplierQuoteLastNumberAfterUse,
+  syncSupplierQuoteLastNumberIfSequentialNext,
+  syncInvoiceLastNumberIfSequentialNext,
   increaseSupplierQuoteLastNumberByPrefix,
   resolveSupplierQuoteNumberForCreate,
   resolveInvoiceNumberForCreate,

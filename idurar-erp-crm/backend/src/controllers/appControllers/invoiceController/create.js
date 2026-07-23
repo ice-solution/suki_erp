@@ -5,6 +5,7 @@ const Model = mongoose.model('Invoice');
 const { calculate } = require('@/helpers');
 const { computeInvoiceTotals } = require('@/helpers/invoiceTotals');
 const assertInvoiceNumber = require('@/helpers/assertInvoiceNumber');
+const { syncInvoiceLastNumberIfSequentialNext } = require('@/helpers/lastNumberSettings');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
 const schema = require('./schemaValidate');
 
@@ -100,6 +101,11 @@ const create = async (req, res) => {
       new: true,
     }
   ).exec();
+
+  await syncInvoiceLastNumberIfSequentialNext(
+    updateResult.numberPrefix || body.numberPrefix || 'SMI',
+    updateResult.number != null ? updateResult.number : body.number
+  );
 
   let projectLink = null;
   const quoteNumber = body.invoiceNumber != null ? String(body.invoiceNumber).trim() : '';
