@@ -127,6 +127,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   
   const form = Form.useFormInstance();
   const discountAmountEditingRef = useRef(false);
+  const discountSourceRef = useRef('percent');
   const shipTypeWatched = Form.useWatch('shipType', form);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -182,6 +183,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   
   const handleDiscountChange = (value) => {
     discountAmountEditingRef.current = false;
+    discountSourceRef.current = 'percent';
     const v = value == null || value === '' ? 0 : Number(value);
     setDiscount(v);
   };
@@ -189,6 +191,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   /** 輸入中唔強制小數／唔即時回推 %；失焦先同步 */
   const handleDiscountAmountChange = (value) => {
     discountAmountEditingRef.current = true;
+    discountSourceRef.current = 'amount';
     if (value == null || value === '') {
       form.setFieldValue('discountTotal', null);
       setDiscountTotal(0);
@@ -205,9 +208,10 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
     const raw = form.getFieldValue('discountTotal');
     const num = raw == null || raw === '' ? 0 : Number(raw);
     const cap = subTotal > 0 ? Math.min(Math.max(0, num), subTotal) : Math.max(0, num);
-    const pct = subTotal > 0 ? (cap / subTotal) * 100 : 0;
-    const pctRounded = Number(pct.toFixed(6));
     const amountRounded = Number(cap.toFixed(2));
+    const pct = subTotal > 0 ? (amountRounded / subTotal) * 100 : 0;
+    const pctRounded = Number(pct.toFixed(10));
+    discountSourceRef.current = 'amount';
     setDiscount(pctRounded);
     setDiscountTotal(amountRounded);
     form.setFieldsValue({
@@ -571,6 +575,26 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
 
   useEffect(() => {
     if (discountAmountEditingRef.current) return;
+
+    if (discountSourceRef.current === 'amount') {
+      const raw = form.getFieldValue('discountTotal');
+      const num = raw == null || raw === '' ? 0 : Number(raw);
+      const cap = subTotal > 0 ? Math.min(Math.max(0, num), subTotal) : Math.max(0, num);
+      const amountRounded = Number(cap.toFixed(2));
+      const pct = subTotal > 0 ? (amountRounded / subTotal) * 100 : 0;
+      const pctRounded = Number(pct.toFixed(10));
+      if (amountRounded !== num) {
+        form.setFieldValue('discountTotal', amountRounded);
+      }
+      setDiscountTotal(amountRounded);
+      if (pctRounded !== discount) {
+        setDiscount(pctRounded);
+        form.setFieldValue('discount', pctRounded);
+      }
+      setTotal(Number.parseFloat(Number(calculate.sub(subTotal, amountRounded)).toFixed(2)));
+      return;
+    }
+
     const discountAmount = calculate.multiply(subTotal, discount / 100);
     const currentTotal = calculate.sub(subTotal, discountAmount);
     setDiscountTotal(Number.parseFloat(discountAmount));

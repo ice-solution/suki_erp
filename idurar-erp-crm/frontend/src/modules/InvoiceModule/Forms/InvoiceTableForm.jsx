@@ -126,6 +126,8 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
   /** 輸入 Discount Amount 期間唔用折扣% 反寫金額，避免 InputNumber 跳小數 */
   const discountAmountEditingRef = useRef(false);
+  /** 最後改嘅係金額定 %：amount 時保留你打嘅金額，唔再用 % 反算覆蓋 */
+  const discountSourceRef = useRef('percent');
 
   const invoiceNumberPrefixInitial =
     current?.numberPrefix && INVOICE_NUMBER_PREFIXES.includes(current.numberPrefix)
@@ -322,6 +324,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   
   const handleDiscountChange = (value) => {
     discountAmountEditingRef.current = false;
+    discountSourceRef.current = 'percent';
     const v = value == null || value === '' ? 0 : Number(value);
     setDiscount(v);
     form.setFieldValue('discount', v);
@@ -330,6 +333,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   /** 輸入中：只寫入金額、更新總計預覽；失焦先回推折扣% 並四捨五入 */
   const handleDiscountAmountChange = (value) => {
     discountAmountEditingRef.current = true;
+    discountSourceRef.current = 'amount';
     if (value == null || value === '') {
       form.setFieldValue('discountTotal', null);
       const split = computeInvoiceTotals({
@@ -356,9 +360,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     const pct = safeProjectPct(projectPercentageWatch);
     const splitSubTotal = calculate.multiply(subTotal, pct / 100);
     const cap = splitSubTotal > 0 ? Math.min(Math.max(0, num), splitSubTotal) : Math.max(0, num);
-    const discPct = splitSubTotal > 0 ? (cap / splitSubTotal) * 100 : 0;
-    const pctRounded = Number(discPct.toFixed(6));
     const amountRounded = Number(cap.toFixed(cent_precision ?? 2));
+    // 用金額反推 %（高精度），但之後以金額為準，避免 %→金額 出現 30000.02
+    const discPct = splitSubTotal > 0 ? (amountRounded / splitSubTotal) * 100 : 0;
+    const pctRounded = Number(discPct.toFixed(10));
+    discountSourceRef.current = 'amount';
     setDiscount(pctRounded);
     form.setFieldsValue({
       discount: pctRounded,
@@ -696,6 +702,35 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   // 依小計、專案佔比、折扣% 更新折扣金額與總計（先佔比、後折扣）
   useEffect(() => {
     if (discountAmountEditingRef.current) return;
+
+    const splitSubTotal = computeInvoiceTotals({
+      subTotal,
+      discount: 0,
+      projectPercentage: projectPercentageWatch,
+    }).splitSubTotal;
+
+    // 以金額為準：保留你輸入嘅折扣金額，只更新總計；小計變動時封頂並回推 %
+    if (discountSourceRef.current === 'amount') {
+      const raw = form.getFieldValue('discountTotal');
+      const num = raw == null || raw === '' ? 0 : Number(raw);
+      const cap =
+        splitSubTotal > 0 ? Math.min(Math.max(0, num), splitSubTotal) : Math.max(0, num);
+      const amountRounded = Number(cap.toFixed(cent_precision ?? 2));
+      const discPct = splitSubTotal > 0 ? (amountRounded / splitSubTotal) * 100 : 0;
+      const pctRounded = Number(discPct.toFixed(10));
+      if (amountRounded !== num) {
+        form.setFieldValue('discountTotal', amountRounded);
+      }
+      if (pctRounded !== discount) {
+        setDiscount(pctRounded);
+        form.setFieldValue('discount', pctRounded);
+      }
+      setTotal(
+        Number.parseFloat(Number(calculate.sub(splitSubTotal, amountRounded)).toFixed(cent_precision ?? 2))
+      );
+      return;
+    }
+
     const { discountTotal: discountAmount, total: currentTotal } = computeInvoiceTotals({
       subTotal,
       discount,
