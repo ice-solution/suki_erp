@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message } from 'antd';
 
@@ -126,6 +126,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const [dragRentalExtraIndex, setDragRentalExtraIndex] = useState(null);
   
   const form = Form.useFormInstance();
+  const discountAmountEditingRef = useRef(false);
   const shipTypeWatched = Form.useWatch('shipType', form);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -180,21 +181,41 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   };
   
   const handleDiscountChange = (value) => {
+    discountAmountEditingRef.current = false;
     const v = value == null || value === '' ? 0 : Number(value);
     setDiscount(v);
   };
 
-  /** 手動輸入折扣金額：回推折扣%（高精度），以便小計變動時仍可按比例重算 */
+  /** 輸入中唔強制小數／唔即時回推 %；失焦先同步 */
   const handleDiscountAmountChange = (value) => {
-    const raw = value == null || value === '' ? 0 : Number(value);
-    const cap = subTotal > 0 ? Math.min(Math.max(0, raw), subTotal) : Math.max(0, raw);
+    discountAmountEditingRef.current = true;
+    if (value == null || value === '') {
+      form.setFieldValue('discountTotal', null);
+      setDiscountTotal(0);
+      setTotal(Number.parseFloat(Number(subTotal).toFixed(2)));
+      return;
+    }
+    form.setFieldValue('discountTotal', value);
+    const amount = Math.min(Math.max(0, Number(value) || 0), subTotal > 0 ? subTotal : Number.POSITIVE_INFINITY);
+    setDiscountTotal(amount);
+    setTotal(Number.parseFloat(Number(calculate.sub(subTotal, amount)).toFixed(2)));
+  };
+
+  const handleDiscountAmountBlur = () => {
+    const raw = form.getFieldValue('discountTotal');
+    const num = raw == null || raw === '' ? 0 : Number(raw);
+    const cap = subTotal > 0 ? Math.min(Math.max(0, num), subTotal) : Math.max(0, num);
     const pct = subTotal > 0 ? (cap / subTotal) * 100 : 0;
     const pctRounded = Number(pct.toFixed(6));
+    const amountRounded = Number(cap.toFixed(2));
     setDiscount(pctRounded);
+    setDiscountTotal(amountRounded);
     form.setFieldsValue({
       discount: pctRounded,
-      discountTotal: Number(cap.toFixed(2)),
+      discountTotal: amountRounded,
     });
+    setTotal(Number.parseFloat(Number(calculate.sub(subTotal, amountRounded)).toFixed(2)));
+    discountAmountEditingRef.current = false;
   };
 
   // 檢查 Quote Number 是否對應現有項目
@@ -549,6 +570,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   }, [items, form]);
 
   useEffect(() => {
+    if (discountAmountEditingRef.current) return;
     const discountAmount = calculate.multiply(subTotal, discount / 100);
     const currentTotal = calculate.sub(subTotal, discountAmount);
     setDiscountTotal(Number.parseFloat(discountAmount));
@@ -1312,10 +1334,10 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
               <InputNumber
                 min={0}
                 max={subTotal > 0 ? subTotal : undefined}
-                precision={2}
                 style={{ width: '100%' }}
                 controls={false}
                 onChange={handleDiscountAmountChange}
+                onBlur={handleDiscountAmountBlur}
               />
             </Form.Item>
           </Col>

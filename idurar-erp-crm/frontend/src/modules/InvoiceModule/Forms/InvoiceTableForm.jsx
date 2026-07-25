@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import dayjs from 'dayjs';
 import { Form, Input, InputNumber, Button, Select, Divider, Row, Col, Switch, Table, AutoComplete, Modal, message, Space } from 'antd';
 
@@ -124,6 +124,8 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const numberValue = Form.useWatch('number', form);
   const [quoteOptions, setQuoteOptions] = useState([]);
   const [quoteSearchLoading, setQuoteSearchLoading] = useState(false);
+  /** 輸入 Discount Amount 期間唔用折扣% 反寫金額，避免 InputNumber 跳小數 */
+  const discountAmountEditingRef = useRef(false);
 
   const invoiceNumberPrefixInitial =
     current?.numberPrefix && INVOICE_NUMBER_PREFIXES.includes(current.numberPrefix)
@@ -319,24 +321,53 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   };
   
   const handleDiscountChange = (value) => {
+    discountAmountEditingRef.current = false;
     const v = value == null || value === '' ? 0 : Number(value);
     setDiscount(v);
     form.setFieldValue('discount', v);
   };
 
-  /** 手動輸入折扣金額：依專案佔比後金額回推折扣% */
+  /** 輸入中：只寫入金額、更新總計預覽；失焦先回推折扣% 並四捨五入 */
   const handleDiscountAmountChange = (value) => {
-    const raw = value == null || value === '' ? 0 : Number(value);
+    discountAmountEditingRef.current = true;
+    if (value == null || value === '') {
+      form.setFieldValue('discountTotal', null);
+      const split = computeInvoiceTotals({
+        subTotal,
+        discount: 0,
+        projectPercentage: projectPercentageWatch,
+      }).splitSubTotal;
+      setTotal(Number.parseFloat(Number(split).toFixed(cent_precision ?? 2)));
+      return;
+    }
+    form.setFieldValue('discountTotal', value);
+    const split = computeInvoiceTotals({
+      subTotal,
+      discount: 0,
+      projectPercentage: projectPercentageWatch,
+    }).splitSubTotal;
+    const amount = Math.min(Math.max(0, Number(value) || 0), split > 0 ? split : Number.POSITIVE_INFINITY);
+    setTotal(Number.parseFloat(Number(calculate.sub(split, amount)).toFixed(cent_precision ?? 2)));
+  };
+
+  const handleDiscountAmountBlur = () => {
+    const raw = form.getFieldValue('discountTotal');
+    const num = raw == null || raw === '' ? 0 : Number(raw);
     const pct = safeProjectPct(projectPercentageWatch);
     const splitSubTotal = calculate.multiply(subTotal, pct / 100);
-    const cap = splitSubTotal > 0 ? Math.min(Math.max(0, raw), splitSubTotal) : Math.max(0, raw);
+    const cap = splitSubTotal > 0 ? Math.min(Math.max(0, num), splitSubTotal) : Math.max(0, num);
     const discPct = splitSubTotal > 0 ? (cap / splitSubTotal) * 100 : 0;
     const pctRounded = Number(discPct.toFixed(6));
+    const amountRounded = Number(cap.toFixed(cent_precision ?? 2));
     setDiscount(pctRounded);
     form.setFieldsValue({
       discount: pctRounded,
-      discountTotal: Number(cap.toFixed(cent_precision ?? 2)),
+      discountTotal: amountRounded,
     });
+    setTotal(
+      Number.parseFloat(Number(calculate.sub(splitSubTotal, amountRounded)).toFixed(cent_precision ?? 2))
+    );
+    discountAmountEditingRef.current = false;
   };
 
   // 檢查 Quote Number 是否對應現有項目
@@ -664,6 +695,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
   // 依小計、專案佔比、折扣% 更新折扣金額與總計（先佔比、後折扣）
   useEffect(() => {
+    if (discountAmountEditingRef.current) return;
     const { discountTotal: discountAmount, total: currentTotal } = computeInvoiceTotals({
       subTotal,
       discount,
@@ -1460,10 +1492,10 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               <InputNumber
                 min={0}
                 max={splitSubTotalForDiscount > 0 ? splitSubTotalForDiscount : undefined}
-                precision={cent_precision ?? 2}
                 style={{ width: '100%' }}
                 controls={false}
                 onChange={handleDiscountAmountChange}
+                onBlur={handleDiscountAmountBlur}
                 addonBefore={currency_position === 'before' ? currency_symbol : undefined}
                 addonAfter={currency_position === 'after' ? currency_symbol : undefined}
               />
