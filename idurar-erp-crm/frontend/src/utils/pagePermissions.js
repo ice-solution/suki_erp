@@ -24,6 +24,11 @@ export const PAGE_PERMISSION_DEFS = [
 
 export const PAGE_PERMISSION_KEYS = PAGE_PERMISSION_DEFS.map((d) => d.key);
 
+/** 舊 key 對應（向後相容） */
+const PERMISSION_ALIASES = {
+  supplier_quote: 'supplierquote',
+};
+
 export const PAGE_PERMISSION_OPTIONS = PAGE_PERMISSION_DEFS.map((d) => ({
   value: d.key,
   label: `${d.zh} / ${d.en}`,
@@ -47,7 +52,12 @@ export function hasPermission({ perms, key, role }) {
   const normalized = normalizePermissions(perms);
   if (normalized === null) return true;
   if (key === 'dashboard') return true;
-  return normalized.includes(key);
+  if (normalized.includes(key)) return true;
+  const alias = PERMISSION_ALIASES[key];
+  if (alias && normalized.includes(alias)) return true;
+  const reverseAlias = Object.entries(PERMISSION_ALIASES).find(([, v]) => v === key)?.[0];
+  if (reverseAlias && normalized.includes(reverseAlias)) return true;
+  return false;
 }
 
 /** 僅 owner / admin 可刪除業務記錄（一般 user 隱藏 del 按鈕） */

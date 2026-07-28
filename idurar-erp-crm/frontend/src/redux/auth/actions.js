@@ -1,6 +1,6 @@
 import * as actionTypes from './types';
 import * as authService from '@/auth';
-import { request } from '@/request';
+import request from '@/request/request';
 
 export const login =
   ({ loginData }) =>
@@ -133,6 +133,29 @@ export const logout = () => async (dispatch) => {
     });
   } else {
     // on lgout success
+  }
+};
+
+export const refreshSession = () => async (dispatch, getState) => {
+  const data = await request.adminSession();
+  if (data?.success === true && data.result) {
+    const current = getState().auth?.current || {};
+    const updated = {
+      ...current,
+      ...data.result,
+      token: current.token,
+    };
+    const auth_state = {
+      current: updated,
+      isLoggedIn: true,
+      isLoading: false,
+      isSuccess: true,
+    };
+    window.localStorage.setItem('auth', JSON.stringify(auth_state));
+    dispatch({
+      type: actionTypes.REQUEST_SUCCESS,
+      payload: updated,
+    });
   }
 };
 

@@ -12,6 +12,32 @@ const adminAuth = require('../controllers/coreControllers/adminAuth');
 // 所有路由需登入
 router.use(adminAuth.isValidAuthToken);
 
+// 取得目前登入者的最新資料（含 permissions），供前端同步權限
+router.get('/session', catchErrors(async (req, res) => {
+  const user = req.admin;
+  if (!user) {
+    return res.status(401).json({
+      success: false,
+      result: null,
+      message: 'Not authenticated',
+    });
+  }
+  return res.status(200).json({
+    success: true,
+    result: {
+      _id: user._id,
+      email: user.email,
+      name: user.name,
+      surname: user.surname,
+      role: user.role,
+      permissions: user.permissions,
+      photo: user.photo,
+      enabled: user.enabled,
+    },
+    message: 'Success',
+  });
+}));
+
 // 只有 admin / owner 可改帳號（含權限）
 function requireAdminRole(req, res, next) {
   const role = req.admin && req.admin.role;

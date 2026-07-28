@@ -484,6 +484,17 @@ const request = {
     }
   },
 
+  adminSession: async () => {
+    try {
+      includeToken();
+      const response = await axios.get('admin/session');
+      successHandler(response, { notifyOnSuccess: false, notifyOnFailed: false });
+      return response.data;
+    } catch (error) {
+      return errorHandler(error);
+    }
+  },
+
   // 登入帳號管理（Settings - 登入帳號）
   adminList: async () => {
     try {

@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react';
+import { useLayoutEffect, useState } from 'react';
 import { useEffect } from 'react';
 import { selectAppSettings } from '@/redux/settings/selectors';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,6 +13,7 @@ import HeaderContent from '@/apps/Header/HeaderContainer';
 import PageLoader from '@/components/PageLoader';
 
 import { settingsAction } from '@/redux/settings/actions';
+import { refreshSession } from '@/redux/auth/actions';
 
 import { selectSettings } from '@/redux/settings/selectors';
 
@@ -24,6 +25,7 @@ import storePersist from '@/redux/storePersist';
 
 export default function ErpCrmApp() {
   const { Content } = Layout;
+  const [sessionReady, setSessionReady] = useState(false);
 
   // const { state: stateApp, appContextAction } = useAppContext();
   // // const { app } = appContextAction;
@@ -35,6 +37,7 @@ export default function ErpCrmApp() {
 
   useLayoutEffect(() => {
     dispatch(settingsAction.list({ entity: 'setting' }));
+    dispatch(refreshSession()).finally(() => setSessionReady(true));
   }, []);
 
   // const appSettings = useSelector(selectAppSettings);
@@ -48,7 +51,7 @@ export default function ErpCrmApp() {
   //   }
   // }, [appSettings]);
 
-  if (settingIsloaded)
+  if (settingIsloaded && sessionReady)
     return (
       <Layout hasSider>
         <Navigation />
