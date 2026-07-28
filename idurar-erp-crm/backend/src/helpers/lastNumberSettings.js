@@ -88,6 +88,17 @@ async function syncQuoteLastNumberAfterUse(prefix, usedNumber) {
   return syncLastNumberAfterUse(quoteLastNumberSettingKey(prefix), usedNumber);
 }
 
+/**
+ * 報價單：僅當所用編號 = 最後號碼 + 1（即使用系統建議下一號）時才更新最後號碼。
+ */
+async function syncQuoteLastNumberIfSequentialNext(prefix, usedNumber) {
+  const used = parseDocNumber(usedNumber);
+  if (!Number.isFinite(used) || used <= 0) return null;
+  const last = await readQuoteLastNumber(prefix);
+  if (used !== last + 1) return null;
+  return upsertSettingNumber(quoteLastNumberSettingKey(prefix), used);
+}
+
 async function syncSupplierQuoteLastNumberAfterUse(prefix, usedNumber) {
   return syncLastNumberAfterUse(supplierQuoteLastNumberSettingKey(prefix), usedNumber);
 }
@@ -265,6 +276,7 @@ module.exports = {
   upsertSettingNumber,
   syncLastNumberAfterUse,
   syncQuoteLastNumberAfterUse,
+  syncQuoteLastNumberIfSequentialNext,
   syncSupplierQuoteLastNumberAfterUse,
   syncSupplierQuoteLastNumberIfSequentialNext,
   syncInvoiceLastNumberIfSequentialNext,

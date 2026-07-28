@@ -4,7 +4,7 @@ const Model = mongoose.model('Quote');
 
 const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
-const { syncQuoteLastNumberAfterUse } = require('@/helpers/lastNumberSettings');
+const { syncQuoteLastNumberIfSequentialNext } = require('@/helpers/lastNumberSettings');
 const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
 
 const create = async (req, res) => {
@@ -58,7 +58,7 @@ const create = async (req, res) => {
   ).exec();
   // Returning successfull response
 
-  await syncQuoteLastNumberAfterUse(body.numberPrefix, body.number);
+  await syncQuoteLastNumberIfSequentialNext(body.numberPrefix, body.number);
 
   return res.status(200).json({
     success: true,
