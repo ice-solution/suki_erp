@@ -55,11 +55,11 @@ export default function AppRouter() {
     if (p.startsWith('/project/xero-eo-export')) return 'xero-eo';
 
     if (p.startsWith('/customer')) return 'customer';
+    if (p.startsWith('/supplierquote')) return 'supplierquote';
     if (p.startsWith('/supplier')) return 'supplier';
     if (p.startsWith('/invoice')) return 'invoice';
     if (p.startsWith('/quote/operational-report')) return 'quote-operational-report';
     if (p.startsWith('/quote')) return 'quote';
-    if (p.startsWith('/supplierquote')) return 'supplierquote';
     if (p.startsWith('/shipquote')) return 'shipquote';
     if (p.startsWith('/warehouse')) return 'warehouse';
 
