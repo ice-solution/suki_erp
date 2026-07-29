@@ -26,6 +26,7 @@ const create = async (req, res) => {
       endDate,
       contractors = [],
       name,
+      status,
     } = req.body;
 
     if (!invoiceNumber) {
@@ -178,6 +179,9 @@ const create = async (req, res) => {
       sPrice,
       grossProfit,
       createdBy: req.admin._id,
+      ...(status != null && String(status).trim() !== ''
+        ? { status: String(status).trim() }
+        : {}),
     };
 
     // 創建項目
