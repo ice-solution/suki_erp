@@ -251,6 +251,13 @@ const PDF_PAGINATION_PRESETS = {
     closingBlockLines: 17,
     pageBodyLines: 38,
   },
+  /** 超越工程 SML 報價（banner header 較高） */
+  supermaxSmlQuote: {
+    charsPerLine: 32,
+    pageHeaderLines: 12,
+    closingBlockLines: 17,
+    pageBodyLines: 38,
+  },
   wingShunShipRenewal: {
     charsPerLine: 32,
     pageHeaderLines: 10,
@@ -291,6 +298,7 @@ const PDF_PAGINATION_PRESETS = {
 
 const TEMPLATE_PRESET_MAP = {
   quote: 'wingShunQuote',
+  sml: 'supermaxSmlQuote',
   'shipquote-renewal': 'supermaxShipRenewal',
   wse: 'wingShunWse',
   'shipquote-rental': 'supermaxShipRental',

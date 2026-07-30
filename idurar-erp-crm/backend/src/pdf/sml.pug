@@ -163,6 +163,8 @@ html(class=isPuppeteer ? 'puppeteer-sml-quote' : '')
       /* 避免固定高度 + page-break-after 造成列印時多一頁空白 */
       .sml-page { display: block; page-break-inside: auto; }
       .sml-page + .sml-page { page-break-before: always; }
+      /* body padding-top 只影響第一頁；續頁補相同上邊距（同 shipquote-renewal） */
+      .sml-page + .sml-page .sml-page-body { padding-top: 20px; }
       .sml-page-body { display: block; }
       .supermax-header-banner { width: 100%; margin-bottom: 6px; }
       .supermax-header-banner img { width: 100%; height: auto; display: block; }
@@ -243,48 +245,12 @@ body
     - const consigneeLine = model.contactPerson ? (client.phone ? model.contactPerson + ' ' + client.phone : model.contactPerson) : (client.phone || '')
     - const deliveryAddress = model.address || clientAddress || ''
     - const itemsOnly = model.items || []
-    -
-      // 行數估算分頁（取代固定 8 筆）：保守係數避免 overlay
-      const S_PDF_CHARS_PER_LINE = 18
-      const S_PDF_SAFETY_FACTOR = 1.25
-      const S_PDF_MAX_LINES_PER_PAGE = 30
-      function buildItemContentText(item) {
-        const name = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim()
-        const desc = item.description ? ' ' + item.description : ''
-        return (name + desc).trim() || '-'
-      }
-      function estimateItemContentLines(item) {
-        const text = buildItemContentText(item)
-        let lines = 0
-        const parts = String(text).split(/\r\n|\n|\r/)
-        for (let pi = 0; pi < parts.length; pi++) {
-          const seg = parts[pi]
-          lines += Math.max(1, Math.ceil(seg.length / S_PDF_CHARS_PER_LINE))
-        }
-        return Math.ceil(lines * S_PDF_SAFETY_FACTOR) + 1
-      }
-      const itemChunks = []
-      let curChunk = []
-      let curLines = 0
-      for (let ii = 0; ii < itemsOnly.length; ii++) {
-        const it = itemsOnly[ii]
-        const L = estimateItemContentLines(it)
-        if (curChunk.length > 0 && curLines + L > S_PDF_MAX_LINES_PER_PAGE) {
-          itemChunks.push(curChunk)
-          curChunk = []
-          curLines = 0
-        }
-        curChunk.push(it)
-        curLines += L
-      }
-      if (curChunk.length > 0) itemChunks.push(curChunk)
-      if (itemChunks.length === 0) itemChunks.push([])
+    - var itemChunks = itemChunks || [[]]
     - const subTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
     - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
     - const total = model.total != null ? model.total : (subTotal - discountTotal)
     - const currency = model.currency || 'HKD'
-    - var serialBase = 0
 
     each chunk, pageIndex in itemChunks
       - const isLastPage = pageIndex === itemChunks.length - 1
@@ -320,19 +286,19 @@ body
                   th.col-unit 單價 HKD$
                   th.col-amount 金額 HKD$
               tbody
-                each item, idx in chunk
-                  - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
+                each row, idx in chunk
+                  - const item = row.item
+                  - const contentText = row.contentText
                   - const unitLabel = item.unit ? String(item.unit) : 'JOB'
                   tr
-                    td.col-no #{serialBase + idx + 1}
+                    td.col-no #{row.showMeta ? row.itemIndex + 1 : ''}
                     td.col-content #{contentText}
-                    td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
-                    td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
-                    td.col-amount.num #{item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
+                    td.col-qty #{row.showMeta && item.quantity != null ? item.quantity : ''}#{row.showMeta ? ' / ' + unitLabel : ''}
+                    td.col-unit.num #{row.showMeta && item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
+                    td.col-amount.num #{row.showMeta && item.total != null ? moneyFormatter({ amount: item.total, currency_code: currency }) : (row.showMeta && item.price != null && item.quantity != null ? moneyFormatter({ amount: item.price * item.quantity, currency_code: currency }) : '')}
                 if chunk.length === 0
                   tr
                     td(colspan='5' style='text-align:center') 無項目
-            - serialBase += chunk.length
             if isLastPage
               .sml-closing-summary
                 .summary-wrap

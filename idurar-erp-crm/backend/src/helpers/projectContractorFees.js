@@ -16,7 +16,21 @@ function ensureContractorFeeLineIds(contractorFees, existingFees = []) {
       lineId = String(existingByIndex[index].lineId);
     }
     if (!lineId) lineId = newLineId();
-    return { lineId, projectName, amount };
+
+    let contractorId =
+      fee?.contractorId != null && String(fee.contractorId).trim()
+        ? String(fee.contractorId).trim()
+        : null;
+    if (!contractorId && existingByIndex[index]?.contractorId) {
+      contractorId = String(existingByIndex[index].contractorId);
+    }
+
+    return {
+      lineId,
+      projectName,
+      amount,
+      ...(contractorId ? { contractorId } : {}),
+    };
   });
 }
 
@@ -84,6 +98,56 @@ function allocateUsedByLineId(contractorFees, usedContractorFees) {
   return { fees, usedByLineId };
 }
 
+/**
+ * 對照承辦商 accountCode。
+ * 優先 contractorId；否則依 projectName 精確／最長前綴匹配（相容舊資料）。
+ */
+function resolveContractorAccountCode(feeProjectName, contractors, contractorId) {
+  if (Array.isArray(contractors) && contractors.length) {
+    if (contractorId) {
+      const id = String(contractorId);
+      const byId = contractors.find((c) => String(c?._id || '') === id);
+      if (byId) return String(byId.accountCode || '').trim();
+    }
+
+    const name = String(feeProjectName || '').trim();
+    if (name) {
+      const exact = contractors.find((c) => String(c?.name || '').trim() === name);
+      if (exact) return String(exact.accountCode || '').trim();
+
+      let best = null;
+      for (const c of contractors) {
+        const cn = String(c?.name || '').trim();
+        if (!cn) continue;
+        if (name === cn || name.startsWith(`${cn} `)) {
+          if (!best || cn.length > String(best.name || '').length) best = c;
+        }
+      }
+      if (best) return String(best.accountCode || '').trim();
+    }
+  }
+  return '';
+}
+
+/** 依 projectName 對照承辦商（精確／最長前綴）；供 migration 用 */
+function matchContractorByProjectName(feeProjectName, contractors) {
+  const name = String(feeProjectName || '').trim();
+  if (!name || !Array.isArray(contractors) || !contractors.length) return null;
+
+  const exact = contractors.find((c) => String(c?.name || '').trim() === name);
+  if (exact) return exact;
+
+  let best = null;
+  for (const c of contractors) {
+    const cn = String(c?.name || '').trim();
+    if (!cn) continue;
+    if (name === cn || name.startsWith(`${cn} `)) {
+      if (!best || cn.length > String(best.name || '').length) best = c;
+    }
+  }
+  return best;
+}
+
 function normalizeUsedContractorFees(usedContractorFees, contractorFees) {
   const fees = ensureContractorFeeLineIds(contractorFees);
   const feeByLineId = new Map(fees.map((f) => [f.lineId, f]));
@@ -123,4 +187,6 @@ module.exports = {
   formatFeeLineLabel,
   allocateUsedByLineId,
   normalizeUsedContractorFees,
+  resolveContractorAccountCode,
+  matchContractorByProjectName,
 };

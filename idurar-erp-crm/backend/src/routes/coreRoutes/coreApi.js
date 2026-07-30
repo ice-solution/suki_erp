@@ -42,6 +42,9 @@ router
   .get(catchErrors(settingController.readBySettingKey));
 router.route('/setting/listBySettingKey').get(catchErrors(settingController.listBySettingKey));
 router
+  .route('/setting/suggested-next-number')
+  .get(catchErrors(settingController.suggestedNextNumber));
+router
   .route('/setting/updateBySettingKey/:settingKey?')
   .patch(catchErrors(settingController.updateBySettingKey));
 // 使用 express-fileupload 的 req.files.file（app 已全域啟用），因 body 已被其解析，multer 收不到檔案

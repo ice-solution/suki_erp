@@ -1,9 +1,11 @@
-import { Form, Input, InputNumber, Select, Row, Col, Button } from 'antd';
+import { useState } from 'react';
+import { Input, Select, Row, Col, Button, message } from 'antd';
 import useLanguage from '@/locale/useLanguage';
 import {
   SUPPLIER_QUOTE_PREFIX_OPTIONS,
   getSuggestedNextNumber,
 } from '@/utils/lastNumberSettings';
+import { fetchSuggestedNextNumber } from '@/utils/fetchSuggestedNextNumber';
 
 export default function SupplierOrderNumberFields({
   prefix,
@@ -13,7 +15,26 @@ export default function SupplierOrderNumberFields({
   mergedLastNumbers,
 }) {
   const translate = useLanguage();
-  const suggested = getSuggestedNextNumber(mergedLastNumbers, prefix, 'supplier');
+  const cachedSuggested = getSuggestedNextNumber(mergedLastNumbers, prefix, 'supplier');
+  const [loading, setLoading] = useState(false);
+
+  const applyLiveSuggested = async () => {
+    try {
+      setLoading(true);
+      const next = await fetchSuggestedNextNumber('supplier', prefix);
+      if (next == null) {
+        onNumberChange(String(cachedSuggested));
+        message.warning('無法即時取得建議編號，已用本機快取');
+        return;
+      }
+      onNumberChange(String(next));
+      message.success(`已套用建議編號：${next}`);
+    } catch (e) {
+      message.error(e?.message || '無法取得建議編號');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div style={{ marginBottom: 16, padding: 12, background: '#fafafa', borderRadius: 6 }}>
@@ -33,21 +54,22 @@ export default function SupplierOrderNumberFields({
           <Input
             value={number}
             onChange={(e) => onNumberChange(e.target.value)}
-            placeholder={String(suggested)}
+            placeholder={String(cachedSuggested)}
           />
         </Col>
         <Col span={6} style={{ display: 'flex', alignItems: 'flex-end' }}>
           <Button
             type="link"
-            onClick={() => onNumberChange(String(suggested))}
+            loading={loading}
+            onClick={() => void applyLiveSuggested()}
             style={{ padding: 0, marginBottom: 4 }}
           >
-            使用建議 {suggested}
+            使用建議編號
           </Button>
         </Col>
       </Row>
       <p style={{ color: '#888', fontSize: 12, margin: '8px 0 0' }}>
-        須大於最後號碼，且不可與現有 S 單重複。
+        按一下向伺服器查詢目前最後號碼 +1。須大於最後號碼，且不可與現有 S 單重複。
       </p>
     </div>
   );

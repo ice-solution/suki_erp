@@ -16,7 +16,21 @@ export function ensureContractorFeeLineIds(contractorFees, existingFees = []) {
       lineId = String(existingByIndex[index].lineId);
     }
     if (!lineId) lineId = newContractorFeeLineId();
-    return { lineId, projectName, amount };
+
+    let contractorId =
+      fee?.contractorId != null && String(fee.contractorId).trim()
+        ? String(fee.contractorId).trim()
+        : null;
+    if (!contractorId && existingByIndex[index]?.contractorId) {
+      contractorId = String(existingByIndex[index].contractorId);
+    }
+
+    return {
+      lineId,
+      projectName,
+      amount,
+      ...(contractorId ? { contractorId } : {}),
+    };
   });
 }
 

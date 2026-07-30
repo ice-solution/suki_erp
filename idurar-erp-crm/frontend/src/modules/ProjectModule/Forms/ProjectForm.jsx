@@ -34,6 +34,7 @@ export default function ProjectForm({ current = null }) {
   const [invoiceNumberChangeWarning, setInvoiceNumberChangeWarning] = useState(null);
   const [originalInvoiceNumber, setOriginalInvoiceNumber] = useState('');
   const [contractorNameOptions, setContractorNameOptions] = useState([]);
+  const [contractorIdByName, setContractorIdByName] = useState({});
   const [clientOptions, setClientOptions] = useState([]);
   const [clientRecords, setClientRecords] = useState([]);
   const [clientsLoading, setClientsLoading] = useState(false);
@@ -312,18 +313,25 @@ export default function ProjectForm({ current = null }) {
         console.log('✅ Project: 承包商選項:', contractorOptions);
         setContractors(contractorOptions);
 
-        // 判頭費選擇用：存到 Project.contractorFees[].projectName 需要是承辦商 name（用於 exportXeroEo 的 accountCode 對照）
+        // 判頭費：AutoComplete 仍存 name 文字；另寫 contractorId 供 Xero EO 對 accountCode
+        const idByName = {};
         const names = contractorData
           .filter((c) => c && c.name)
-          .map((c) => ({
-            value: c.name,
-            label: c.accountCode ? `${c.name} (${c.accountCode})` : c.name,
-          }));
+          .map((c) => {
+            idByName[c.name] = c._id;
+            return {
+              value: c.name,
+              label: c.accountCode ? `${c.name} (${c.accountCode})` : c.name,
+              contractorId: c._id,
+            };
+          });
+        setContractorIdByName(idByName);
         setContractorNameOptions(names);
       } else {
         console.warn('⚠️ Project: 承包商數據不是數組格式:', contractorData);
         setContractors([]);
         setContractorNameOptions([]);
+        setContractorIdByName({});
       }
     } catch (error) {
       console.error('❌ Project: 獲取承包商列表失敗:', error);
@@ -806,6 +814,9 @@ export default function ProjectForm({ current = null }) {
                             <Form.Item {...restField} name={[name, 'lineId']} hidden>
                               <Input />
                             </Form.Item>
+                            <Form.Item {...restField} name={[name, 'contractorId']} hidden>
+                              <Input />
+                            </Form.Item>
                             {rowName ? (
                               <Col span={24} style={{ marginBottom: 4 }}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
@@ -844,6 +855,22 @@ export default function ProjectForm({ current = null }) {
                                         const lab =
                                           option?.label != null ? String(option.label).toLowerCase() : '';
                                         return v.includes(q) || lab.includes(q);
+                                      }}
+                                      onSelect={(value, option) => {
+                                        const id =
+                                          option?.contractorId ||
+                                          contractorIdByName[value] ||
+                                          '';
+                                        form?.setFieldValue?.(
+                                          ['contractorFees', name, 'contractorId'],
+                                          id || undefined
+                                        );
+                                      }}
+                                      onClear={() => {
+                                        form?.setFieldValue?.(
+                                          ['contractorFees', name, 'contractorId'],
+                                          undefined
+                                        );
                                       }}
                                     />
                                   );

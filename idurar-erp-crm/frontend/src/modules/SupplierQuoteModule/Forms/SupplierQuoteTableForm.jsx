@@ -38,6 +38,8 @@ import {
   formatMaterialWarehouseLabel,
 } from '@/utils/supplierQuoteMaterialWarehouse';
 import { applyDefaultQuoteSupplierOnCreate } from '@/utils/defaultQuoteSupplier';
+import { fetchSuggestedNextNumber } from '@/utils/fetchSuggestedNextNumber';
+import SuggestedNextNumberButton from '@/components/SuggestedNextNumberButton';
 
 function getLastSupplierQuoteSeqForPrefix(lastNumberSettings, prefix) {
   const k = `last_supplier_quote_number_${String(prefix || 'S').toLowerCase()}`;
@@ -315,9 +317,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     return isAssignableAsset(opt);
   };
 
-  const applySuggestedNumber = (prefix = watchedSupplierPrefix || 'S') => {
-    const next = getLastSupplierQuoteSeqForPrefix(lastNumberSettings, prefix) + 1;
-    setLastNumber(next);
+  const applySuggestedNumber = async (prefix = watchedSupplierPrefix || 'S') => {
+    const nextFromApi = await fetchSuggestedNextNumber('supplier', prefix);
+    const next =
+      nextFromApi != null
+        ? nextFromApi
+        : String(getLastSupplierQuoteSeqForPrefix(lastNumberSettings, prefix) + 1);
+    setLastNumber(Number(next) || next);
     form.setFieldsValue({ number: String(next) });
     numberManuallyEditedRef.current = false;
   };
@@ -334,7 +340,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
     if (numberManuallyEditedRef.current) return;
 
-    applySuggestedNumber(prefix);
+    void applySuggestedNumber(prefix);
   }, [lastNumberSettings, watchedSupplierPrefix, current, form]);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
@@ -1547,19 +1553,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               },
             ]}
             extra={
-              !current ? (
-                <span>
-                  預設為系統建議編號，可直接修改。
-                  <Button
-                    type="link"
-                    size="small"
-                    style={{ padding: 0, height: 'auto', marginLeft: 4 }}
-                    onClick={() => applySuggestedNumber()}
-                  >
-                    使用建議編號
-                  </Button>
-                </span>
-              ) : null
+              <span>
+                按一下向伺服器查詢目前最後號碼 +1（避免其他人已上單而編號過期）。
+                <SuggestedNextNumberButton
+                  kind="supplier"
+                  prefix={watchedSupplierPrefix || 'S'}
+                  onApply={(next) => {
+                    setLastNumber(Number(next) || next);
+                    form.setFieldsValue({ number: String(next) });
+                    numberManuallyEditedRef.current = false;
+                  }}
+                />
+              </span>
             }
           >
             <Input

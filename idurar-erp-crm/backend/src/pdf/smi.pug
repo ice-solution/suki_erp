@@ -221,7 +221,7 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
 body
     - const client = model.client || (model.clients && model.clients[0]) || {}
     - const clientName = client.name || ''
-    - const clientAddress = (client.address || model.address || '').replace(/\n/g, ' ')
+    - const clientAddress = client.address ? String(client.address).replace(/\n/g, ' ').trim() : ''
     - const invoiceType = model.numberPrefix || 'S'
     - const docNumber = invoiceType + '-' + (model.number || '')
     - const quoteNumber = model.invoiceNumber || ''
@@ -285,8 +285,8 @@ body
             tr
               td.info-left
                 .info-row TO : #{clientName}
-                .info-row.info-row-indent #{clientAddress || ''}
-                if !model.shipType && model.address
+                if clientAddress
+                  .info-row.info-row-indent #{clientAddress}
               td.info-right
                 .info-row INVOICE NO: #{docNumber}
                 .info-row 報價編號 : #{quoteNumber}

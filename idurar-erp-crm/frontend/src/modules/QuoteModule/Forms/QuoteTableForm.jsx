@@ -12,6 +12,7 @@ import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
 import { selectLastNumberSettings, selectItemUnitOptions } from '@/redux/settings/selectors';
 import { getSuggestedNextNumber } from '@/utils/lastNumberSettings';
+import SuggestedNextNumberButton from '@/components/SuggestedNextNumberButton';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -731,6 +732,19 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
                 required: true,
               },
             ]}
+            extra={
+              <span>
+                按一下向伺服器查詢目前最後號碼 +1（避免其他人已上單而編號過期）。
+                <SuggestedNextNumberButton
+                  kind="quote"
+                  prefix={quoteTypeValue || 'SML'}
+                  onApply={(next) => {
+                    setLastNumber(Number(next) || next);
+                    form.setFieldsValue({ number: String(next) });
+                  }}
+                />
+              </span>
+            }
           >
             <Input style={{ width: '100%' }} />
           </Form.Item>

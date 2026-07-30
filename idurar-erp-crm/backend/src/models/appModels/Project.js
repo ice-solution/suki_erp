@@ -197,6 +197,12 @@ const projectSchema = new mongoose.Schema({
       type: String,
       trim: true,
     },
+    /** 對應 Contractor._id；Xero EO 用此欄對 accountCode（projectName 可帶後綴） */
+    contractorId: {
+      type: mongoose.Schema.ObjectId,
+      ref: 'Contractor',
+      required: false,
+    },
     projectName: {
       type: String,
       required: false,

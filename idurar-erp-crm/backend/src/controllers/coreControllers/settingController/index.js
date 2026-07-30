@@ -6,6 +6,7 @@ const readBySettingKey = require('./readBySettingKey');
 const updateBySettingKey = require('./updateBySettingKey');
 const updateManySetting = require('./updateManySetting');
 const listAll = require('./listAll');
+const suggestedNextNumber = require('./suggestedNextNumber');
 
 const settingMethods = {
   read: crudController.read,
@@ -19,6 +20,7 @@ const settingMethods = {
   readBySettingKey,
   updateBySettingKey,
   updateManySetting,
+  suggestedNextNumber,
 };
 
 module.exports = settingMethods;

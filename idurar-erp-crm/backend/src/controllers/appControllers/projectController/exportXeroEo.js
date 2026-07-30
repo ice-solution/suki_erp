@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const Project = mongoose.model('Project');
 const Contractor = mongoose.model('Contractor');
+const { resolveContractorAccountCode } = require('@/helpers/projectContractorFees');
 
 /**
  * GET /project/export-xero-eo?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
@@ -39,37 +40,26 @@ const exportXeroEo = async (req, res) => {
     const projects = await Project.find({
       removed: false,
     })
-      .select('name usedContractorFees')
+      .select('name usedContractorFees contractorFees')
       .lean()
       .exec();
 
-    // 收集 usedContractorFees 裡所有承辦商名稱（stored in usedContractorFees.projectName）
-    const contractorNames = new Set();
-    projects.forEach((p) => {
-      (p.usedContractorFees || []).forEach((fee) => {
-        const feeDate = fee?.date ? new Date(fee.date) : null;
-        if (!fee?.eoNumber) return;
-        if (!feeDate || feeDate < from || feeDate > to) return;
-        if (fee?.projectName) contractorNames.add(fee.projectName);
-      });
-    });
-
-    // 透過 contractor name 對照 accountCode
+    // 載入全部啟用承辦商；優先用 contractorFees.contractorId 對 accountCode
     const contractors = await Contractor.find({
       removed: false,
       enabled: true,
-      name: { $in: Array.from(contractorNames) },
     })
       .select('name accountCode')
       .lean()
       .exec();
 
-    const accountCodeByName = new Map();
-    contractors.forEach((c) => {
-      accountCodeByName.set(c.name, c.accountCode || '');
-    });
-
     const result = projects.map((p) => {
+      const feeByLineId = new Map(
+        (p.contractorFees || [])
+          .filter((f) => f?.lineId)
+          .map((f) => [String(f.lineId), f])
+      );
+
       const usedContractorFees = (p.usedContractorFees || [])
         // 只匯出有 EO number 且 fee.date 在指定範圍內的記錄
         .filter((fee) => {
@@ -78,15 +68,28 @@ const exportXeroEo = async (req, res) => {
           if (!feeDate) return false;
           return feeDate >= from && feeDate <= to;
         })
-        .map((fee) => ({
-          eoNumber: fee.eoNumber,
-          invoiceNo: fee.invoiceNo != null ? String(fee.invoiceNo).trim() : '',
-          date: fee.date,
-          dueDate: fee.dueDate,
-          amount: fee.amount,
-          contractorName: fee.projectName || '',
-          accountCode: accountCodeByName.get(fee.projectName) || '',
-        }));
+        .map((fee) => {
+          const lineId =
+            fee?.contractorFeeLineId != null && String(fee.contractorFeeLineId).trim()
+              ? String(fee.contractorFeeLineId).trim()
+              : '';
+          const linkedFee = lineId ? feeByLineId.get(lineId) : null;
+          const contractorId = linkedFee?.contractorId || null;
+
+          return {
+            eoNumber: fee.eoNumber,
+            invoiceNo: fee.invoiceNo != null ? String(fee.invoiceNo).trim() : '',
+            date: fee.date,
+            dueDate: fee.dueDate,
+            amount: fee.amount,
+            contractorName: fee.projectName || '',
+            accountCode: resolveContractorAccountCode(
+              fee.projectName,
+              contractors,
+              contractorId
+            ),
+          };
+        });
 
       return {
         projectId: p._id,
