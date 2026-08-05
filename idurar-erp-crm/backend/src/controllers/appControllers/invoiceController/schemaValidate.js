@@ -12,6 +12,7 @@ const schema = Joi.object({
   costPrice: Joi.number().optional(),
   status: Joi.string().optional(),
   notes: Joi.string().allow(''),
+  internalCommunication: Joi.string().allow('').optional(),
   date: Joi.date().required(),
   paymentDueDate: Joi.date().optional(),
   expiredDate: Joi.date().allow(null, '').optional(), // Invoice 無 expiredDate，選填避免 required 錯誤

@@ -52,6 +52,7 @@ const convert = async (req, res) => {
       currency: supplierQuote.currency,
       discount: supplierQuote.discount,
       notes: supplierQuote.notes,
+      internalCommunication: supplierQuote.internalCommunication,
       status: 'sent',
       paymentStatus: 'unpaid',
       createdBy: req.admin._id,

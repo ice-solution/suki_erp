@@ -216,6 +216,7 @@ async function convertSourceDocumentToInvoice({
     credit: 0,
     currency: sourceDoc.currency,
     discount: sourceDoc.discount,
+    internalCommunication: sourceDoc.internalCommunication,
     showDiscountPercentOnPdf: sourceDoc.showDiscountPercentOnPdf,
     showDiscountAmountOnPdf: sourceDoc.showDiscountAmountOnPdf,
     projectPercentage: 100,

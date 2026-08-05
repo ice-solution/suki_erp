@@ -1109,6 +1109,19 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       </Row>
 
       <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
+          <Form.Item label="內部通訊" name="internalCommunication">
+            <Input.TextArea
+              rows={3}
+              placeholder="內部通訊（選填）"
+              autoSize={{ minRows: 2, maxRows: 10 }}
+              style={{ width: '100%' }}
+            />
+          </Form.Item>
+        </Col>
+      </Row>
+
+      <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={4}>
           <Form.Item
             label={translate('Completed')}

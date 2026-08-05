@@ -51,6 +51,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [discount, setDiscount] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [selectedType, setSelectedType] = useState('服務');
+  const DEFAULT_QUOTE_NOTES = '備註：\n1）此報價有效期為90天';
+  const didInitDefaultNotesRef = useRef(false);
   
   // Item form states
   const [items, setItems] = useState([]);
@@ -86,6 +88,14 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
     setLastNumber(next);
     form.setFieldsValue({ number: String(next) });
   }, [lastNumberSettings, quoteTypeValue, current, form]);
+
+  // Create 模式預設備註
+  useEffect(() => {
+    if (current) return;
+    if (didInitDefaultNotesRef.current) return;
+    didInitDefaultNotesRef.current = true;
+    form.setFieldsValue({ notes: DEFAULT_QUOTE_NOTES });
+  }, [current, form]);
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 
@@ -920,6 +930,17 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
         <Col className="gutter-row" span={12}>
           <Form.Item label={translate('notes')} name="notes">
             <Input.TextArea rows={4} placeholder={translate('notes')} autoSize={{ minRows: 3, maxRows: 12 }} />
+          </Form.Item>
+        </Col>
+      </Row>
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={12}>
+          <Form.Item label="內部通訊" name="internalCommunication">
+            <Input.TextArea
+              rows={4}
+              placeholder="內部通訊（選填）"
+              autoSize={{ minRows: 3, maxRows: 12 }}
+            />
           </Form.Item>
         </Col>
       </Row>

@@ -157,6 +157,10 @@ const quoteSchema = new mongoose.Schema({
   notes: {
     type: String,
   },
+  // 供內部同事/團隊溝通用（不印入對外 PDF）
+  internalCommunication: {
+    type: String,
+  },
   status: {
     type: String,
     enum: ['draft', 'pending', 'sent', 'accepted', 'declined', 'cancelled', 'on hold'],

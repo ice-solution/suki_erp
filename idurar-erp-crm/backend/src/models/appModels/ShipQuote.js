@@ -186,6 +186,10 @@ const shipQuoteSchema = new mongoose.Schema({
   notes: {
     type: String,
   },
+  // 供內部同事/團隊溝通用（不印入對外 PDF）
+  internalCommunication: {
+    type: String,
+  },
   /** 吊船租賃 PDF「附加項目」：摘要 + 單位 + 單價（可排序） */
   rentalExtraItems: [
     {
