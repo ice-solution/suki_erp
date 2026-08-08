@@ -84,7 +84,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     quantity: 1,
     unit: 'JOB',
     price: 0,
-    total: 0
+    total: 0,
+    sourceItemIndex: undefined,
   });
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
@@ -1055,7 +1056,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       quantity: record.quantity || 1,
       unit: record.unit || 'JOB',
       price: record.price || 0,
-      total: record.total || 0
+      total: record.total || 0,
+      sourceItemIndex: record.sourceItemIndex,
     });
     setEditingItemKey(itemKey);
   };
@@ -1125,7 +1127,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       quantity: 1,
       unit: 'JOB',
       price: 0,
-      total: 0
+      total: 0,
+      sourceItemIndex: undefined,
     });
   };
 

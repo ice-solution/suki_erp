@@ -201,6 +201,11 @@ const supplierQuoteSchema = new mongoose.Schema({
         required: false,
         default: 0,
       },
+      /** 來源報價／吊船報價 items 下標；刪改明細時用以同步 orderFromQuoteLines */
+      sourceItemIndex: {
+        type: Number,
+        required: false,
+      },
     },
   ],
   materials: [

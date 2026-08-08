@@ -136,6 +136,7 @@ const convertToSupplierQuote = async (req, res) => {
         description: item.description || '',
         quantity,
         unit: item.unit,
+        sourceItemIndex: itemIndex,
       };
     });
 
