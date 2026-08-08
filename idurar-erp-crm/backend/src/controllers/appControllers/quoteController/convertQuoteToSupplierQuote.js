@@ -168,9 +168,8 @@ const convertQuoteToSupplierQuote = async (req, res) => {
       invoiceNumber:
         quote.numberPrefix && quote.number ? `${quote.numberPrefix}-${quote.number}` : quote.invoiceNumber,
       poNumber,
-      // 上單：帶出報價單工程地址與聯絡人（完工單顯示用）
+      // 上單：帶出工程地址；不帶簽收單聯絡人（僅保留在原報價單）
       address: quote.address,
-      contactPerson: quote.contactPerson,
       clients: quote.clients,
       client: quote.client,
       project: linkedProject?._id || quote.project,

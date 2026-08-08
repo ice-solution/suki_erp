@@ -22,6 +22,11 @@ const create = async (req, res) => {
     });
   }
 
+  body = value;
+  ['subcontractorCount', 'costPrice'].forEach((key) => {
+    if (body[key] === '' || body[key] === undefined) body[key] = null;
+  });
+
   const { items = [], discount = 0, projectPercentage: rawProjectPct } = value;
 
   // default

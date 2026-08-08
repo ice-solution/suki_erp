@@ -72,13 +72,23 @@ const Item = ({ item, rowNumber }) => {
 
 const MaterialRow = ({ material, moneyFormatter, currency, warehouseOptions }) => {
   const warehouseLabel = formatMaterialWarehouseLabel(material.warehouse, warehouseOptions);
+  const qty = Number(material.quantity);
+  const total = Number(material.price) || 0;
+  let unitPrice = material.unitPrice;
+  if (unitPrice == null || unitPrice === '') {
+    unitPrice = Number.isFinite(qty) && qty !== 0 ? total / qty : 0;
+  }
+  unitPrice = Number(unitPrice) || 0;
   return (
   <Row gutter={[12, 0]}>
     <Col span={4}>{warehouseLabel}</Col>
-    <Col span={8}><strong>{material.itemName}</strong></Col>
-    <Col span={4} style={{ textAlign: 'right' }}>{material.quantity != null ? Number(material.quantity).toFixed(2) : '-'}</Col>
-    <Col span={8} style={{ textAlign: 'right', color: (material.price || 0) < 0 ? '#ff4d4f' : undefined }}>
-      {moneyFormatter({ amount: material.price ?? 0, currency_code: currency })}
+    <Col span={6}><strong>{material.itemName}</strong></Col>
+    <Col span={3} style={{ textAlign: 'right' }}>{material.quantity != null ? Number(material.quantity).toFixed(2) : '-'}</Col>
+    <Col span={5} style={{ textAlign: 'right', color: unitPrice < 0 ? '#ff4d4f' : undefined }}>
+      {moneyFormatter({ amount: unitPrice, currency_code: currency })}
+    </Col>
+    <Col span={6} style={{ textAlign: 'right', color: total < 0 ? '#ff4d4f' : undefined }}>
+      {moneyFormatter({ amount: total, currency_code: currency })}
     </Col>
     <Divider dashed style={{ marginTop: 0, marginBottom: 15 }} />
   </Row>
@@ -745,9 +755,10 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
           <Divider orientation="left">材料及費用管理</Divider>
           <Row gutter={[12, 0]} style={{ marginBottom: 16 }}>
             <Col span={4}><strong>{translate('Warehouse')}</strong></Col>
-            <Col span={8}><strong>{translate('Item')}</strong></Col>
-            <Col span={4} style={{ textAlign: 'right' }}><strong>{translate('Quantity')}</strong></Col>
-            <Col span={8} style={{ textAlign: 'right' }}><strong>{translate('Price')}</strong></Col>
+            <Col span={6}><strong>{translate('Item')}</strong></Col>
+            <Col span={3} style={{ textAlign: 'right' }}><strong>{translate('Quantity')}</strong></Col>
+            <Col span={5} style={{ textAlign: 'right' }}><strong>單價</strong></Col>
+            <Col span={6} style={{ textAlign: 'right' }}><strong>總價</strong></Col>
           </Row>
           {currentErp.materials.map((material, index) => (
             <MaterialRow

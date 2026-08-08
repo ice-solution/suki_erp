@@ -31,6 +31,12 @@ const update = async (req, res) => {
     });
   }
 
+  body = value;
+  // InputNumber 清空時可能是 '' / null；Number 欄位統一成 null
+  ['subcontractorCount', 'costPrice'].forEach((key) => {
+    if (body[key] === '' || body[key] === undefined) body[key] = null;
+  });
+
   const previousInvoice = await Model.findOne({
     _id: req.params.id,
     removed: false,

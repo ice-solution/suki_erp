@@ -1148,6 +1148,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const OTHER_MATERIAL_OPTIONS = [
     { value: '加工費', label: '加工費' },
     { value: '運費', label: '運費' },
+    { value: '保險', label: '保險' },
     { value: '雜項', label: '雜項' },
   ];
 
@@ -1216,7 +1217,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     // 計算單價（如果沒有 unitPrice，則使用 price / quantity）
     const quantity = record.quantity || 1;
     const totalPrice = record.price || 0;
-    const unitPrice = record.unitPrice || (quantity > 0 ? totalPrice / quantity : 0);
+    const unitPrice =
+      record.unitPrice != null && record.unitPrice !== ''
+        ? Number(record.unitPrice)
+        : quantity && quantity !== 0
+          ? totalPrice / quantity
+          : 0;
     
     const wid = record.warehouseInventory;
     const warehouseInventoryStr =
@@ -1422,27 +1428,50 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       title: translate('Warehouse'),
       dataIndex: 'warehouse',
       key: 'warehouse',
-      width: '15%',
+      width: '12%',
       render: (warehouse) => formatMaterialWarehouseLabel(warehouse, warehouseOptions),
     },
     {
       title: translate('Item'),
       dataIndex: 'itemName',
       key: 'itemName',
-      width: '35%',
+      width: '28%',
     },
     {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
-      width: '15%',
+      width: '12%',
       render: (quantity) => quantity !== undefined && quantity !== null ? Number(quantity).toFixed(2) : '-',
     },
     {
-      title: translate('Price'),
+      title: '單價',
+      dataIndex: 'unitPrice',
+      key: 'unitPrice',
+      width: '14%',
+      render: (unitPrice, record) => {
+        const qty = Number(record?.quantity);
+        let amount = unitPrice;
+        if (amount == null || amount === '') {
+          // 舊資料可能只有總價：回推單價顯示
+          const total = Number(record?.price);
+          amount =
+            Number.isFinite(qty) && qty !== 0 && Number.isFinite(total)
+              ? total / qty
+              : 0;
+        }
+        amount = Number(amount) || 0;
+        if (amount < 0) {
+          return <span style={{ color: '#ff4d4f' }}>{moneyFormatter({ amount })}</span>;
+        }
+        return moneyFormatter({ amount });
+      },
+    },
+    {
+      title: '總價',
       dataIndex: 'price',
       key: 'price',
-      width: '20%',
+      width: '14%',
       render: (price) => {
         const amount = price ?? 0;
         if (amount < 0) {
@@ -1454,7 +1483,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     {
       title: '',
       key: 'action',
-      width: '15%',
+      width: '12%',
       render: (_, record) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <EditOutlined 
@@ -1964,12 +1993,12 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
       <Divider orientation="left">材料及費用管理</Divider>
 
-      {/* Materials Input Form */}
+      {/* Materials Input Form：數量 × 單價 = 總價 */}
       <Row gutter={[12, 12]} style={{ backgroundColor: '#f0f8ff', padding: '16px', borderRadius: '6px', marginBottom: '16px' }}>
         <Col span={24}>
           <h4>添加材料</h4>
         </Col>
-        <Col span={6}>
+        <Col span={4}>
           <Select
             placeholder="選擇倉庫"
             value={currentMaterial.warehouse}
@@ -1982,7 +2011,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             ]}
           />
         </Col>
-        <Col span={8}>
+        <Col span={6}>
           {isVirtualMaterialWarehouse(currentMaterial.warehouse) ? (
             <AutoComplete
               placeholder="輸入或選擇項目名稱..."
@@ -2092,21 +2121,34 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         </Col>
         <Col span={3}>
           <InputNumber
-            placeholder="總價（正=加，負=減）"
+            placeholder="單價"
+            step={0.01}
+            precision={2}
+            value={currentMaterial.unitPrice}
+            onChange={(value) => updateCurrentMaterial('unitPrice', value)}
+            style={{ width: '100%' }}
+            addonBefore="$"
+          />
+        </Col>
+        <Col span={4}>
+          <InputNumber
+            placeholder="總價（數量×單價）"
             step={0.01}
             precision={2}
             value={currentMaterial.price}
             onChange={(value) => {
-              // 當用戶修改總價時，反向計算單價（支援負數）
+              // 手動改總價時，反向回推單價（支援負數）
               const quantity = currentMaterial.quantity;
-              const unitPrice = (quantity && quantity !== 0) ? (value || 0) / quantity : (value || 0);
+              const unitPrice =
+                quantity && quantity !== 0 ? (value || 0) / quantity : value || 0;
               setCurrentMaterial({
                 ...currentMaterial,
-                unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
-                price: value || 0
+                unitPrice: Number.parseFloat(Number(unitPrice).toFixed(2)),
+                price: value || 0,
               });
             }}
             style={{ width: '100%' }}
+            addonBefore="$"
           />
         </Col>
         <Col span={4}>

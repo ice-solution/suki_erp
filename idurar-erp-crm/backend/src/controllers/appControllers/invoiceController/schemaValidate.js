@@ -8,8 +8,9 @@ const schema = Joi.object({
   year: Joi.number().required(),
   type: Joi.string().optional(),
   shipType: Joi.string().optional(),
-  subcontractorCount: Joi.number().optional(),
-  costPrice: Joi.number().optional(),
+  // optional：允許不傳；清空 InputNumber 時前端常送 null / ''，亦須接受
+  subcontractorCount: Joi.number().allow(null, '').optional(),
+  costPrice: Joi.number().allow(null, '').optional(),
   status: Joi.string().optional(),
   notes: Joi.string().allow(''),
   internalCommunication: Joi.string().allow('').optional(),
