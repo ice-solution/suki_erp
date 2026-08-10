@@ -16,6 +16,7 @@ const LOGO_OPTIONS = [
   { key: 'company_logo_e', label: '廠用 (E)', desc: 'S單 類型 E' },
   { key: 'company_logo_y', label: '有榮 (Y)', desc: 'S單 類型 Y' },
   { key: 'company_logo_ip', label: 'IP', desc: 'S單 類型 IP（版面同 S）' },
+  { key: 'company_logo_ih', label: 'IH', desc: 'S單 類型 IH（版面同 S）' },
   { key: 'company_logo_sml', label: 'SML 報價', desc: 'Quote SML、Ship Quote 續租' },
 ];
 

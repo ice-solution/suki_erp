@@ -15,6 +15,7 @@ const SUPPLIER_LAST_NUMBER_KEYS = [
   'last_supplier_quote_number_e',
   'last_supplier_quote_number_y',
   'last_supplier_quote_number_ip',
+  'last_supplier_quote_number_ih',
 ];
 
 const QUOTE_LAST_NUMBER_KEYS = ['last_sml_number', 'last_qu_number', 'last_quote_number'];

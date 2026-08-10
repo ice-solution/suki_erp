@@ -1,6 +1,6 @@
 /**
  * 使用 Puppeteer 將 finish.pug（SupplierQuote 完工單，版面同 s.pug）渲染為 PDF。
- * 適用 numberPrefix：S、NO、SWP、Y
+ * 適用 numberPrefix：S、NO、SWP、Y、IP、IH
  *
  * @module new_pdf/supplier_quote/generateSupplierQuoteFinishPdf
  */
@@ -16,11 +16,11 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 
-const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP']);
+const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP', 'IH']);
 
 function resolveLogoSettingKeyForFinish(result) {
   const prefix = String(result?.numberPrefix || '').toLowerCase();
-  if (['s', 'no', 'swp', 'y', 'ip'].includes(prefix)) {
+  if (['s', 'no', 'swp', 'y', 'ip', 'ih'].includes(prefix)) {
     return `company_logo_${prefix}`;
   }
   return null;

@@ -31,6 +31,7 @@ export function mergeLastNumberSettings({
     last_supplier_quote_number_e: pick('last_supplier_quote_number_e', fin.last_supplier_quote_number_e),
     last_supplier_quote_number_y: pick('last_supplier_quote_number_y', fin.last_supplier_quote_number_y),
     last_supplier_quote_number_ip: pick('last_supplier_quote_number_ip', fin.last_supplier_quote_number_ip),
+    last_supplier_quote_number_ih: pick('last_supplier_quote_number_ih', fin.last_supplier_quote_number_ih),
     last_smi_number: pick('last_smi_number', fin.last_invoice_number),
     last_wse_number: pick('last_wse_number'),
     last_sp_number: pick('last_sp_number'),
@@ -93,4 +94,5 @@ export const SUPPLIER_QUOTE_PREFIX_OPTIONS = [
   { value: 'E', label: 'E' },
   { value: 'Y', label: 'Y' },
   { value: 'IP', label: 'IP' },
+  { value: 'IH', label: 'IH' },
 ];

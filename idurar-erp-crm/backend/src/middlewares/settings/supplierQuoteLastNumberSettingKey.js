@@ -1,5 +1,5 @@
 /** SupplierQuote numberPrefix 與財務設定鍵（settingKey 會存成小寫） */
-const SUPPLIER_QUOTE_NUMBER_PREFIXES = ['NO', 'PO', 'S', 'SWP', 'E', 'Y', 'IP'];
+const SUPPLIER_QUOTE_NUMBER_PREFIXES = ['NO', 'PO', 'S', 'SWP', 'E', 'Y', 'IP', 'IH'];
 
 function normalizeSupplierQuotePrefix(prefix) {
   const p = String(prefix || 'S').trim();

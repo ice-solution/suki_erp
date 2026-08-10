@@ -32,7 +32,7 @@ function resolveLogoSettingKey(modelName, result) {
   const name = (modelName || '').toLowerCase();
   if (name === 'supplierquote' && result && result.numberPrefix) {
     const prefix = (result.numberPrefix || '').toLowerCase();
-    if (['no', 'po', 's', 'swp', 'e', 'y', 'ip'].includes(prefix)) {
+    if (['no', 'po', 's', 'swp', 'e', 'y', 'ip', 'ih'].includes(prefix)) {
       return `company_logo_${prefix}`;
     }
   }
@@ -133,7 +133,8 @@ exports.generatePdf = async (
         'S': 's',
         'E': 'e',
         'Y': 's', // 與 S 相同版面
-        'IP': 'ip'
+        'IP': 'ip',
+        'IH': 's', // 與 S 相同版面
       };
       templateName = prefixMap[result.numberPrefix] || 's';
     }
@@ -243,7 +244,7 @@ exports.generatePdfBuffer = async (
     else templateName = 'invoice';
   }
   if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
-    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 's', IP: 'ip' };
+    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 's', IP: 'ip', IH: 's' };
     templateName = prefixMap[result.numberPrefix] || 's';
   }
   if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {

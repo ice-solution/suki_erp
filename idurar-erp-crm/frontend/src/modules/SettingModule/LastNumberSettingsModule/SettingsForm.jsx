@@ -24,6 +24,7 @@ const supplierNumberItems = [
   { label: 'supplier_last_number_e', settingKey: 'last_supplier_quote_number_e' },
   { label: 'supplier_last_number_y', settingKey: 'last_supplier_quote_number_y' },
   { label: 'supplier_last_number_ip', settingKey: 'last_supplier_quote_number_ip' },
+  { label: 'supplier_last_number_ih', settingKey: 'last_supplier_quote_number_ih' },
 ];
 
 function NumberFields({ items, translate }) {

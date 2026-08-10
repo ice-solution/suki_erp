@@ -1569,6 +1569,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                 { value: 'E', label: 'E' },
                 { value: 'Y', label: 'Y' },
                 { value: 'IP', label: 'IP' },
+                { value: 'IH', label: 'IH' },
               ].filter(option => option.value !== 'XX')}
             />
           </Form.Item>
