@@ -70,7 +70,7 @@ export default function XeroExport() {
   };
 
   const buildPreviewAndCsv = (invoices, dateFrom, dateTo) => {
-    const branchByInvoiceType = { SMI: 'Supermax', WSE: 'Wing Shun', SP: 'supermax' };
+    const branchByInvoiceType = { SMI: '', WSE: 'Wing Shun', SP: '' };
 
     const rows = [XERO_CSV_HEADER];
     const outPreviewRows = [];

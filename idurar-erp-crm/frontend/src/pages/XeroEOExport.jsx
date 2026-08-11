@@ -65,7 +65,7 @@ export default function XeroEOExport() {
             'Tax Exempt (0%)', // TaxType
             '', // TaxAmount
             'Branch',
-            'Supermax',
+            '',
             '',
             '',
             'HKD',

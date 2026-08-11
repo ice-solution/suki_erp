@@ -1,5 +1,5 @@
 /**
- * 使用 Puppeteer 將 s.pug（SupplierQuote S 單／超越工程簽收單）渲染為 PDF。
+ * 使用 Puppeteer 將 s.pug（SupplierQuote S 單簽收單）渲染為 PDF。
  *
  * @module new_pdf/supplier_quote/generateSupplierQuoteSPdf
  */

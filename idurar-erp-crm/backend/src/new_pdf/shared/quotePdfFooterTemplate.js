@@ -11,7 +11,7 @@ const QUOTE_PDF_FOOTER_LINES = {
   en: 'Flat G&H, 14/F, Phase 2, Kin Ho Ind. Bldg., 14-24 Au Pui Wan St., Fotan, N.T. Tel: 2776 4793, 2756 7579 Fax: 2776 4796',
 };
 
-/** 永順 Puppeteer PDF 底部留白（頁尾固定於此區域，與超越工程 footerTemplate 做法一致） */
+/** 永順 Puppeteer PDF 底部留白（頁尾固定於此區域） */
 const WING_SHUN_PDF_BOTTOM_MARGIN = '32mm';
 
 /**
@@ -32,7 +32,7 @@ function buildStandardQuoteFooterTemplate() {
 }
 
 /**
- * 讀取超越工程頁尾 PNG，供 Puppeteer footerTemplate 使用（不依賴 PUBLIC_SERVER_FILE / 網路）。
+ * 讀取頁尾 PNG，供 Puppeteer footerTemplate 使用（不依賴 PUBLIC_SERVER_FILE / 網路）。
  */
 function resolveFooter001ImageSrc(publicBaseUrl) {
   const candidates = [
@@ -58,7 +58,7 @@ function resolveFooter001ImageSrc(publicBaseUrl) {
 }
 
 /**
- * 超越工程：Puppeteer 頁尾改為單一 PNG（footer_001.png），頁碼疊加於右下角。
+ * Puppeteer 頁尾改為單一 PNG（footer_001.png），頁碼疊加於右下角。
  * 優先使用本機檔案 base64 內嵌，避免 footerTemplate 內無法載入 http(s) 或相對路徑圖片。
  * @param {string} publicBaseUrl - 後備：PUBLIC_SERVER_FILE（僅當本機找不到 footer_001.png）
  */

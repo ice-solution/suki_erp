@@ -1,6 +1,6 @@
 /**
  * 使用 Puppeteer 將 shipquote-rental.pug / shipquote-renewal.pug（吊船 Quote）渲染為 PDF。
- * 與 pdfController：租賃 → rental；續租 → renewal。SML 版面均為超越工程（Supermax footer）。
+ * 與 pdfController：租賃 → rental；續租 → renewal。
  *
  * @module new_pdf/ship_quote/generateShipQuotePdf
  */

@@ -251,7 +251,7 @@ const PDF_PAGINATION_PRESETS = {
     closingBlockLines: 17,
     pageBodyLines: 38,
   },
-  /** 超越工程 SML 報價（banner header 較高） */
+  /** SML 報價（banner header 較高） */
   supermaxSmlQuote: {
     charsPerLine: 32,
     pageHeaderLines: 12,

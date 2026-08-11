@@ -124,7 +124,7 @@ export default function XeroPOExport() {
           escapeCsvCell(accountCode),
           'Tax Exempt (0%)', // TaxType
           '', // TaxAmount
-          'Branch', 'Supermax', '', '', // TrackingName1, TrackingOption1, TrackingName2, TrackingOption2
+          'Branch', '', '', '', // TrackingName1, TrackingOption1, TrackingName2, TrackingOption2
           'HKD', // Currency
         ].join(',')
       );
