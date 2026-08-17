@@ -6,6 +6,7 @@ const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
 const { syncQuoteLastNumberIfSequentialNext } = require('@/helpers/lastNumberSettings');
 const { normalizeShipQuoteRentalExtraItems } = require('@/helpers/normalizeShipQuoteRentalExtras');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 const { assertSharedQuoteNumberUnique } = require('@/helpers/assertSharedQuoteNumberUnique');
 
 const create = async (req, res) => {
@@ -60,6 +61,7 @@ const create = async (req, res) => {
   body['total'] = total;
   body['items'] = items;
   body['createdBy'] = req.admin._id;
+  body['followUpBy'] = pickFollowUpById(body, req.admin._id);
   normalizeShipQuoteRentalExtraItems(body);
 
   // Creating a new document in the collection

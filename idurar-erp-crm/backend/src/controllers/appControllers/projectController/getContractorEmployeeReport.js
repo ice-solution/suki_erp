@@ -27,10 +27,16 @@ const parseDayRange = (dateFrom, dateTo) => {
   return { from, to };
 };
 
+const isDateInRange = (date, from, to) => {
+  const normalized = normalizeDate(date);
+  if (!normalized) return false;
+  return normalized >= from && normalized <= to;
+};
+
 /**
  * GET /project/contractor-employee-report?contractorEmployeeId=&dateFrom=&dateTo=
- * 依項目 startDate 篩選，列出該承辦商員工參與的項目（onboard 或 salaries 有該員工），
- * 並統計該員工在各項目之打咭日（詳細日期、上班總天數）。
+ * 依「打咭日期」篩選（唔依賴項目 startDate；startDate 為空仍會列出），
+ * 並列出日薪／範圍內天數／工資。
  */
 const getContractorEmployeeReport = async (req, res) => {
   try {
@@ -78,51 +84,78 @@ const getContractorEmployeeReport = async (req, res) => {
     const empOid = new mongoose.Types.ObjectId(contractorEmployeeId);
     const empIdStr = String(contractorEmployeeId);
 
+    // 唔再用 startDate 過濾：好多項目 startDate 為空但已有打咭
     const projects = await Project.find({
       removed: false,
-      startDate: { $gte: range.from, $lte: range.to },
       $or: [{ 'onboard.contractorEmployee': empOid }, { 'salaries.contractorEmployee': empOid }],
     })
-      .select('name invoiceNumber poNumber onboard startDate')
+      .select('name invoiceNumber poNumber onboard salaries startDate')
       .populate('onboard.contractorEmployee', 'name')
       .sort({ startDate: 1, invoiceNumber: 1 })
       .lean();
 
-    const projectRows = projects.map((project) => {
-      const workDateSet = new Set();
+    const projectRows = projects
+      .map((project) => {
+        const workDateSet = new Set();
 
-      (project.onboard || []).forEach((record) => {
-        const id =
-          record.contractorEmployee && record.contractorEmployee._id
-            ? String(record.contractorEmployee._id)
-            : String(record.contractorEmployee || '');
-        if (id !== empIdStr) return;
-        const normalized = normalizeDate(record.checkInDate);
-        if (!normalized) return;
-        workDateSet.add(normalized.toISOString().slice(0, 10));
+        (project.onboard || []).forEach((record) => {
+          const id =
+            record.contractorEmployee && record.contractorEmployee._id
+              ? String(record.contractorEmployee._id)
+              : String(record.contractorEmployee || '');
+          if (id !== empIdStr) return;
+          if (!isDateInRange(record.checkInDate, range.from, range.to)) return;
+          const normalized = normalizeDate(record.checkInDate);
+          if (!normalized) return;
+          workDateSet.add(normalized.toISOString().slice(0, 10));
+        });
+
+        const workDates = Array.from(workDateSet).sort();
+        const salary = (project.salaries || []).find((s) => {
+          const id =
+            s.contractorEmployee && s.contractorEmployee._id
+              ? String(s.contractorEmployee._id)
+              : String(s.contractorEmployee || '');
+          return id === empIdStr;
+        });
+        const dailySalary = Number(salary?.dailySalary) || 0;
+        const totalWorkDays = workDates.length;
+        const totalSalary = dailySalary * totalWorkDays;
+
+        // 只列出範圍內有打咭的項目
+        if (totalWorkDays === 0) return null;
+
+        return {
+          projectId: project._id,
+          projectName: project.name || '-',
+          quoteNumber: project.invoiceNumber || '-',
+          poNumber: project.poNumber || '-',
+          startDate: project.startDate || null,
+          dailySalary,
+          totalWorkDays,
+          totalSalary,
+          workDates,
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => {
+        const da = a.workDates[0] || '';
+        const db = b.workDates[0] || '';
+        return da.localeCompare(db);
       });
 
-      const workDates = Array.from(workDateSet).sort();
-
-      return {
-        projectId: project._id,
-        projectName: project.name || '-',
-        quoteNumber: project.invoiceNumber || '-',
-        poNumber: project.poNumber || '-',
-        startDate: project.startDate || null,
-        totalWorkDays: workDates.length,
-        workDates,
-      };
-    });
-
     const contractor = employee.contractor;
-    const contractorInfo = contractor && typeof contractor === 'object'
-      ? {
-          _id: contractor._id,
-          name: contractor.name || '-',
-          accountCode: contractor.accountCode || '',
-        }
-      : { _id: null, name: '-', accountCode: '' };
+    const contractorInfo =
+      contractor && typeof contractor === 'object'
+        ? {
+            _id: contractor._id,
+            name: contractor.name || '-',
+            accountCode: contractor.accountCode || '',
+          }
+        : { _id: null, name: '-', accountCode: '' };
+
+    const totalWorkDays = projectRows.reduce((sum, p) => sum + p.totalWorkDays, 0);
+    const totalSalary = projectRows.reduce((sum, p) => sum + p.totalSalary, 0);
 
     return res.status(200).json({
       success: true,
@@ -136,7 +169,8 @@ const getContractorEmployeeReport = async (req, res) => {
         },
         summary: {
           totalProjects: projectRows.length,
-          totalWorkDays: projectRows.reduce((sum, p) => sum + p.totalWorkDays, 0),
+          totalWorkDays,
+          totalSalary,
           dateFrom: String(dateFrom).slice(0, 10),
           dateTo: String(dateTo).slice(0, 10),
         },

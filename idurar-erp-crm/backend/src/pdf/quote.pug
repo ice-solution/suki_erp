@@ -161,10 +161,10 @@ html(class=isPuppeteer ? 'puppeteer-default-quote' : '')
                 .signature-section
                   .prepared-by-row
                     span.prepared-by-label 制單人：
-                    if model.updatedBy && model.updatedBy.name
-                      span #{model.updatedBy.name}
+                    if model.followUpBy && model.followUpBy.name
+                      span #{model.followUpBy.name}#{model.followUpBy.surname ? ' ' + model.followUpBy.surname : ''}
                     else if model.createdBy && model.createdBy.name
-                      span #{model.createdBy.name}
+                      span #{model.createdBy.name}#{model.createdBy.surname ? ' ' + model.createdBy.surname : ''}
                     else
                       span.prepared-by-space
                   table.signature-table

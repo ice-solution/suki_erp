@@ -403,6 +403,7 @@ const lang = {
   sorry_the_page_you_requested_does_not_exist: 'Sorry The Page You Requested Does Not Exist',
   back: 'Back',
   download_pdf: 'Download Pdf',
+  preview_pdf: 'Preview PDF',
   send_by_email: 'Send By Email',
   convert_to_invoice: 'Convert To Invoice',
   subtotal: 'Subtotal',

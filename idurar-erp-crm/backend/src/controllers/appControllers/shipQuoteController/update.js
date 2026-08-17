@@ -7,6 +7,7 @@ const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
 const { normalizeShipQuoteRentalExtraItems } = require('@/helpers/normalizeShipQuoteRentalExtras');
 const { assertSharedQuoteNumberUnique } = require('@/helpers/assertSharedQuoteNumberUnique');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 const update = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
@@ -70,6 +71,7 @@ const update = async (req, res) => {
   body.modified_at = now;
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+  body.followUpBy = pickFollowUpById(body, req.admin._id);
   normalizeShipQuoteRentalExtraItems(body);
   // Find document by id and updates with the required fields
 

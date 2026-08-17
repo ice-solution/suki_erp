@@ -4,6 +4,7 @@ import { tagColor } from '@/utils/statusTagColor';
 import QuoteDataTableModule from '@/modules/QuoteModule/QuoteDataTableModule';
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 
 export default function Quote() {
   const translate = useLanguage();
@@ -50,16 +51,11 @@ export default function Quote() {
       },
     },
     {
-      title: '制單人',
-      dataIndex: 'createdBy',
+      title: '跟單人',
+      dataIndex: 'followUpBy',
       width: 150,
       ellipsis: false,
-      render: (_, record) => {
-        const u = record.createdBy;
-        if (!u || typeof u !== 'object') return '-';
-        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
-        return name || u.email || '-';
-      },
+      render: (_, record) => followUpDisplayName(record),
     },
     {
       title: translate('Date'),

@@ -6,6 +6,7 @@ import dayjs from 'dayjs';
 const { RangePicker } = DatePicker;
 import { ErpLayout } from '@/layout';
 import { request } from '@/request';
+import { useMoney } from '@/settings';
 import * as XLSX from 'xlsx';
 
 const { Text } = Typography;
@@ -21,6 +22,7 @@ const wrapCell = (maxWidth) => () => ({
 });
 
 export default function ContractorEmployeeReport() {
+  const { moneyFormatter } = useMoney();
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState(undefined);
   const [loading, setLoading] = useState(false);
@@ -59,7 +61,7 @@ export default function ContractorEmployeeReport() {
       return;
     }
     if (!dateRange?.[0] || !dateRange?.[1]) {
-      message.warning('請選擇項目開始日期範圍（由／至）');
+      message.warning('請選擇打咭日期範圍（由／至）');
       return;
     }
     setReportLoading(true);
@@ -101,7 +103,9 @@ export default function ContractorEmployeeReport() {
       開始日期: project.startDate ? dayjs(project.startDate).format('YYYY-MM-DD') : '-',
       QuoteNumber: project.quoteNumber || '-',
       PO_Number: project.poNumber || '-',
+      日薪: project.dailySalary ?? 0,
       上班總天數: project.totalWorkDays ?? 0,
+      總工資: project.totalSalary ?? 0,
       詳細日期: (project.workDates || []).join(', '),
     }));
 
@@ -149,12 +153,32 @@ export default function ContractorEmployeeReport() {
         onCell: wrapCell(),
       },
       {
+        title: '日薪',
+        dataIndex: 'dailySalary',
+        key: 'dailySalary',
+        width: 100,
+        ellipsis: false,
+        onCell: wrapCell(),
+        render: (amount) => moneyFormatter({ amount: amount || 0 }),
+      },
+      {
         title: '上班總天數',
         dataIndex: 'totalWorkDays',
         key: 'totalWorkDays',
         width: 100,
         ellipsis: false,
         onCell: wrapCell(),
+      },
+      {
+        title: '總工資',
+        dataIndex: 'totalSalary',
+        key: 'totalSalary',
+        width: 120,
+        ellipsis: false,
+        onCell: wrapCell(),
+        render: (amount) => (
+          <span style={{ fontWeight: 600 }}>{moneyFormatter({ amount: amount || 0 })}</span>
+        ),
       },
       {
         title: '詳細日期',
@@ -166,7 +190,7 @@ export default function ContractorEmployeeReport() {
         render: (dates) => (dates && dates.length ? dates.join(', ') : '-'),
       },
     ],
-    []
+    [moneyFormatter]
   );
 
   return (
@@ -189,7 +213,7 @@ export default function ContractorEmployeeReport() {
               />
             </Col>
             <Col span={8}>
-              <Text strong>項目開始日期（由 — 至）</Text>
+              <Text strong>打咭日期（由 — 至）</Text>
               <div style={{ marginTop: 8 }}>
                 <RangePicker
                   style={{ width: '100%' }}
@@ -217,14 +241,21 @@ export default function ContractorEmployeeReport() {
                 <Col span={24} style={{ marginBottom: 8 }}>
                   <Text type="secondary">
                     員工：{reportData.employee?.name || '-'}（承辦商：{reportData.employee?.contractor?.name || '-'}
-                    ）｜篩選：項目開始日期介於 {reportData.summary?.dateFrom} 至 {reportData.summary?.dateTo}
+                    ）｜篩選：打咭日期介於 {reportData.summary?.dateFrom} 至 {reportData.summary?.dateTo}
                   </Text>
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Statistic title="參與項目數" value={reportData.summary?.totalProjects || 0} />
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Statistic title="上班總天數（各項目相加）" value={reportData.summary?.totalWorkDays || 0} />
+                </Col>
+                <Col span={6}>
+                  <Statistic
+                    title="總工資"
+                    value={reportData.summary?.totalSalary || 0}
+                    formatter={(v) => moneyFormatter({ amount: Number(v) || 0 })}
+                  />
                 </Col>
               </Row>
 

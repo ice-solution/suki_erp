@@ -2,8 +2,7 @@
  * 多類單據 PDF（Puppeteer）頁尾：與 quote、sml、s、shipquote、invoice/smi/wse 等 pug 內嵌頁尾（或舊版 invoice 之 footer）文字一致。
  * 改地址時請同步此檔與上述模板。
  */
-const fs = require('fs');
-const path = require('path');
+const { getPdfFooterSrc } = require('./pdfBrandImages');
 
 const QUOTE_PDF_FOOTER_LINES = {
   zh:
@@ -32,35 +31,20 @@ function buildStandardQuoteFooterTemplate() {
 }
 
 /**
- * 讀取超越工程頁尾 PNG，供 Puppeteer footerTemplate 使用（不依賴 PUBLIC_SERVER_FILE / 網路）。
+ * 讀取超越工程頁尾圖，供 Puppeteer footerTemplate 使用（優先壓縮 JPEG data URI）。
  */
 function resolveFooter001ImageSrc(publicBaseUrl) {
-  const candidates = [
-    path.join(__dirname, '../../public/uploads/images/footer_001.png'),
-    path.join(process.cwd(), 'src/public/uploads/images/footer_001.png'),
-    path.join(process.cwd(), 'backend/src/public/uploads/images/footer_001.png'),
-  ];
-  for (const filePath of candidates) {
-    try {
-      if (fs.existsSync(filePath)) {
-        const buf = fs.readFileSync(filePath);
-        return `data:image/png;base64,${buf.toString('base64')}`;
-      }
-    } catch {
-      // continue
-    }
-  }
+  const dataUri = getPdfFooterSrc();
+  if (dataUri) return dataUri;
   const base = String(publicBaseUrl || '').replace(/\/?$/, '/');
   if (base) {
-    return `${base}uploads/images/footer_001.png`;
+    return `${base}uploads/images/footer_001_pdf.jpg`;
   }
   return '';
 }
 
 /**
- * 超越工程：Puppeteer 頁尾改為單一 PNG（footer_001.png），頁碼疊加於右下角。
- * 優先使用本機檔案 base64 內嵌，避免 footerTemplate 內無法載入 http(s) 或相對路徑圖片。
- * @param {string} publicBaseUrl - 後備：PUBLIC_SERVER_FILE（僅當本機找不到 footer_001.png）
+ * 超越工程：Puppeteer 頁尾用壓縮圖，頁碼疊加於右下角。
  */
 function buildSuperMaxImageFooterTemplate(publicBaseUrl) {
   const src = resolveFooter001ImageSrc(publicBaseUrl);

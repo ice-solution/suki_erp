@@ -19,9 +19,11 @@ import { generate as uniqueId } from 'shortid';
 import { selectCurrentItem, selectListItems } from '@/redux/erp/selectors';
 
 import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
+import PreviewPdfButton from '@/components/PreviewPdfButton';
 import { useMoney, useDate } from '@/settings';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { multilineStyle } from '@/utils/renderMultilineText';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 import { request } from '@/request';
 
 /** 舊條款「一／二／三個月」改以 30／60／90 日顯示（與編輯表單一致） */
@@ -293,6 +295,12 @@ export default function InvoiceReadItem({ config, selectedItem }) {
           >
             {translate('Download PDF')}
           </Button>,
+          <PreviewPdfButton
+            key="invoice-pdf-preview"
+            entity={entity}
+            id={currentErp._id}
+            modifiedAt={currentErp?.modified_at || currentErp?.updated}
+          />,
           <Button
             key={`${uniqueId()}`}
             onClick={() => {
@@ -401,13 +409,7 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         </Descriptions.Item>
         <Descriptions.Item label="部份付款 (Partially paid)">{currentErp.credit != null ? moneyFormatter({ amount: currentErp.credit, currency_code: currentErp.currency }) : '-'}</Descriptions.Item>
         <Descriptions.Item label="Full paid">{currentErp.fullPaid === true ? translate('Yes') : translate('No')}</Descriptions.Item>
-        <Descriptions.Item label="制單人">
-          {currentErp.createdBy
-            ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
-                currentErp.createdBy.email ||
-                '-')
-            : '-'}
-        </Descriptions.Item>
+        <Descriptions.Item label="跟單人">{followUpDisplayName(currentErp)}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>

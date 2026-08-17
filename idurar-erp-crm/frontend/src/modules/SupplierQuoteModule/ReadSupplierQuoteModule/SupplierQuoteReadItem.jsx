@@ -21,9 +21,11 @@ import { selectCurrentItem, selectListItems } from '@/redux/erp/selectors';
 import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
 import { DOWNLOAD_BASE_URL, BASE_URL, FILE_BASE_URL } from '@/config/serverApiConfig';
+import PreviewPdfButton from '@/components/PreviewPdfButton';
 import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
 import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 
 const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP', 'IH']);
 
@@ -489,6 +491,12 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
               >
                 {translate('Download PDF')}
               </Button>,
+              <PreviewPdfButton
+                key="sq-pdf-preview"
+                entity={entity}
+                id={currentErp._id}
+                modifiedAt={currentErp?.modified_at || currentErp?.updated}
+              />,
               ...(FINISH_PDF_PREFIXES.has(String(currentErp?.numberPrefix || '').toUpperCase())
                 ? [
                   <Button
@@ -506,6 +514,14 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
                   >
                     下載完工單
                   </Button>,
+                  <PreviewPdfButton
+                    key="sq-finish-pdf-preview"
+                    entity={entity}
+                    id={currentErp._id}
+                    variant="finish"
+                    modifiedAt={currentErp?.modified_at || currentErp?.updated}
+                    label="預覽完工單"
+                  />,
                 ]
                 : []),
             ]),
@@ -610,13 +626,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
             ? (warehouseOptions?.find((o) => o.value === currentErp.warehouse)?.label || `${currentErp.warehouse} / -`)
             : '-'}
         </Descriptions.Item>
-        <Descriptions.Item label="制單人">
-          {currentErp.createdBy
-            ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
-                currentErp.createdBy.email ||
-                '-')
-            : '-'}
-        </Descriptions.Item>
+        <Descriptions.Item label="跟單人">{followUpDisplayName(currentErp)}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>

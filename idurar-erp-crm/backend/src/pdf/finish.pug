@@ -275,7 +275,7 @@ body
       .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
         .sml-page-body
           .supermax-header-banner
-            img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+            img(src=settings.pdfHeaderSrc || (settings.public_server_file+'uploads/images/header_001_pdf.jpg') alt='')
           table.info-table-ship
             tr
               td.info-left
@@ -336,8 +336,9 @@ body
                         span.sig-label 日期
                         span.fill-line
             .end-marker End
-        .footer-section
-          img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+        if !isPuppeteer
+          .footer-section
+            img(src=settings.pdfFooterSrc || (settings.public_server_file+'uploads/images/footer_001_pdf.jpg') alt='')
 
     if typeof paginationDebug !== 'undefined' && paginationDebug
       .sml-page.sml-page-pagination-debug

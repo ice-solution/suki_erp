@@ -14,6 +14,7 @@ const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
 /** 與 pdfController.resolveLogoSettingKey('supplierquote', …) 一致：S／Y／IH 用各自 logo（版面同 s.pug） */
 function resolveLogoSettingKeyForSupplierQuoteS(result) {
@@ -69,6 +70,7 @@ async function generateSupplierQuoteSPdfBuffer(model) {
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
+  attachPdfBrandImages(settings);
 
   const logoKey = resolveLogoSettingKeyForSupplierQuoteS(model);
   if (logoKey && settings[logoKey]) {

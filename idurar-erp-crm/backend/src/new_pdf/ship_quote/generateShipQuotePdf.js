@@ -20,6 +20,7 @@ const {
   getPdfPaginationPugLocalsForTemplate,
   getShipQuoteRentalPdfPugLocals,
 } = require('@/helpers/pdfPagination');
+const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
 /** 與 pdfController.resolveLogoSettingKey('shipquote', …) 一致 */
 function resolveLogoSettingKeyForShipQuote(model) {
@@ -82,6 +83,7 @@ async function generateShipQuotePdfBuffer(model) {
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
+  attachPdfBrandImages(settings);
 
   const logoKey = resolveLogoSettingKeyForShipQuote(model);
   if (logoKey && settings[logoKey]) {

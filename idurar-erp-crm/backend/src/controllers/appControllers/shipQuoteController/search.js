@@ -30,6 +30,7 @@ const search = async (req, res) => {
       includePrefixRank: false,
       populate: [
         { path: 'createdBy', select: 'name surname email' },
+        { path: 'followUpBy', select: 'name surname email' },
         { path: 'clients', select: 'name' },
         { path: 'client', select: 'name' },
       ],

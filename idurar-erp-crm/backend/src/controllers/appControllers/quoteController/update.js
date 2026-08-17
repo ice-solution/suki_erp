@@ -6,6 +6,7 @@ const custom = require('@/controllers/pdfController');
 
 const { calculate } = require('@/helpers');
 const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 const update = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
@@ -51,6 +52,7 @@ const update = async (req, res) => {
   body.modified_at = now;
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+  body.followUpBy = pickFollowUpById(body, req.admin._id);
 
   const existingTypeDoc = await Model.findOne({ _id: req.params.id, removed: false })
     .select('type')

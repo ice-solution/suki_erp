@@ -33,6 +33,7 @@ import {
   getFeeLineLabel,
 } from '@/utils/projectContractorFees';
 import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
+import { sortDocsByNumberDesc } from '@/utils/sortDocsByNumberDesc';
 import { request } from '@/request';
 import SalaryManagement from '@/components/SalaryManagement';
 import calculate from '@/utils/calculate';
@@ -1095,7 +1096,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         <Col span={24}>
           <Card title={`Quotations (${currentProject.quotations?.length || 0})`} size="small">
             <Table
-              dataSource={currentProject.quotations || []}
+              dataSource={sortDocsByNumberDesc(currentProject.quotations || [])}
               columns={quotationColumns}
               pagination={false}
               size="small"
@@ -1108,7 +1109,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         <Col span={24}>
           <Card title={`Supplier Quotations (${currentProject.supplierQuotations?.length || 0})`} size="small">
             <Table
-              dataSource={currentProject.supplierQuotations || []}
+              dataSource={sortDocsByNumberDesc(currentProject.supplierQuotations || [])}
               columns={supplierQuotationColumns}
               pagination={false}
               size="small"
@@ -1121,7 +1122,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         <Col span={24}>
           <Card title={`吊船Quotations (${currentProject.shipQuotations?.length || 0})`} size="small">
             <Table
-              dataSource={currentProject.shipQuotations || []}
+              dataSource={sortDocsByNumberDesc(currentProject.shipQuotations || [])}
               columns={shipQuotationColumns}
               pagination={false}
               size="small"
@@ -1157,7 +1158,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             }
           >
             <Table
-              dataSource={currentProject.invoices || []}
+              dataSource={sortDocsByNumberDesc(currentProject.invoices || [])}
               columns={invoiceColumns}
               pagination={false}
               size="small"

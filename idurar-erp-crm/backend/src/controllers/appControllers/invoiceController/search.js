@@ -75,6 +75,7 @@ const search = async (req, res) => {
       .sort({ created: -1 })
       .limit(50)
       .populate('createdBy', 'name')
+      .populate('followUpBy', 'name surname email')
       .populate('clients', 'name')
       .populate('client', 'name');
 

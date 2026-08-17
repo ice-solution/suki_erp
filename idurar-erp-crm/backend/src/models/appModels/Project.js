@@ -52,7 +52,7 @@ const projectSchema = new mongoose.Schema({
   status: {
     type: String,
     enum: ['draft', 'pending', 'in_progress', 'completed', 'cancelled', 'on hold'],
-    default: 'draft',
+    default: 'in_progress',
   },
 
   // 成本承擔方

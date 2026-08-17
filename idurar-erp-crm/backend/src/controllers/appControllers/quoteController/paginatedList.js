@@ -36,6 +36,7 @@ const paginatedList = async (req, res) => {
       includePrefixRank: true,
       populate: [
         { path: 'createdBy', select: 'name surname email' },
+        { path: 'followUpBy', select: 'name surname email' },
         { path: 'updatedBy', select: 'name surname email' },
       ],
     });
@@ -47,6 +48,7 @@ const paginatedList = async (req, res) => {
       .limit(limit)
       .sort(sortObj)
       .populate('createdBy', 'name surname email')
+      .populate('followUpBy', 'name surname email')
       .populate('updatedBy', 'name surname email')
       .exec();
     count = await Model.countDocuments(matchQuery);

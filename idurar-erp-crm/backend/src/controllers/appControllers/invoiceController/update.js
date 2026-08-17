@@ -17,6 +17,7 @@ const {
   inferInvoiceConversionMode,
 } = require('@/helpers/quoteInvoiceConversion');
 const schema = require('./schemaValidate');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 const update = async (req, res) => {
   let body = req.body;
@@ -137,6 +138,7 @@ const update = async (req, res) => {
   body.modified_at = now;
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+  body.followUpBy = pickFollowUpById(body, req.admin._id);
 
   // Quote Number（invoiceNumber）變更：先同步 Quote / S單 / 吊船 / 其他 Invoice 與專案抬頭，再寫入本筆（與 Project 更新時邏輯一致）
   const oldQuoteNo =

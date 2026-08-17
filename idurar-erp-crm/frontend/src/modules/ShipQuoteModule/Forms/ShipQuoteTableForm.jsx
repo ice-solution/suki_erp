@@ -19,6 +19,7 @@ import useLanguage from '@/locale/useLanguage';
 import calculate from '@/utils/calculate';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
+import FollowUpBySelect from '@/components/FollowUpBySelect';
 import {
   DiscountAmountPdfCheckboxCol,
   DiscountPercentPdfCheckboxCol,
@@ -136,11 +137,11 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   // 吊船報價的 Quote Type 固定為 SML（移除不需要的 QU/XX）
 
   useEffect(() => {
-    if (current) return;
+    if (current?._id) return;
     const next = getSuggestedNextNumber(lastNumberSettings, 'SML', 'quote');
     setLastNumber(next);
     form.setFieldsValue({ number: String(next) });
-  }, [lastNumberSettings, current, form]);
+  }, [lastNumberSettings, current?._id, form]);
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 
@@ -837,13 +838,14 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           <Form.Item
             label={translate('number')}
             name="number"
-            initialValue={lastNumber.toString()}
+            initialValue={current?._id ? undefined : lastNumber.toString()}
             rules={[
               {
                 required: true,
               },
             ]}
             extra={
+              current?._id ? null : (
               <span>
                 按一下向伺服器查詢目前最後號碼 +1（避免其他人已上單而編號過期）。
                 <SuggestedNextNumberButton
@@ -855,6 +857,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
                   }}
                 />
               </span>
+              )
             }
           >
             <Input style={{ width: '100%' }} />
@@ -873,6 +876,9 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           >
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={5}>
+          <FollowUpBySelect current={current} />
         </Col>
 
         <Col className="gutter-row" span={5}>

@@ -134,6 +134,7 @@ const search = async (req, res) => {
     const results = await fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, 0, 50, {
       populate: [
         { path: 'createdBy', select: 'name' },
+        { path: 'followUpBy', select: 'name surname email' },
         { path: 'clients', select: 'name' },
         { path: 'client', select: 'name' },
         { path: 'supplier', select: 'name' },

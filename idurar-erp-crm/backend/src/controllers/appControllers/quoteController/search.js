@@ -27,6 +27,7 @@ const search = async (req, res) => {
       includePrefixRank: true,
       populate: [
         { path: 'createdBy', select: 'name' },
+        { path: 'followUpBy', select: 'name surname email' },
         { path: 'clients', select: 'name' },
         { path: 'client', select: 'name' },
       ],

@@ -28,6 +28,12 @@ const parseDayRange = (dateFrom, dateTo) => {
   return { from, to };
 };
 
+const isDateInRange = (date, from, to) => {
+  const normalized = normalizeDate(date);
+  if (!normalized) return false;
+  return normalized >= from && normalized <= to;
+};
+
 const getContractorReport = async (req, res) => {
   try {
     const { contractorId, dateFrom, dateTo } = req.query;
@@ -71,59 +77,79 @@ const getContractorReport = async (req, res) => {
       acc[String(e._id)] = e;
       return acc;
     }, {});
+    const employeeOids = contractorEmployees.map((e) => e._id);
 
+    // 唔再用 startDate 過濾：好多項目 startDate 為空但已有打咭
     const projects = await Project.find({
       removed: false,
-      startDate: { $gte: range.from, $lte: range.to },
       $or: [
         { contractors: contractorId },
-        { 'onboard.contractorEmployee': { $in: contractorEmployees.map((e) => e._id) } },
-        { 'salaries.contractorEmployee': { $in: contractorEmployees.map((e) => e._id) } },
+        { 'onboard.contractorEmployee': { $in: employeeOids } },
+        { 'salaries.contractorEmployee': { $in: employeeOids } },
       ],
     })
-      .select('name invoiceNumber poNumber contractors onboard startDate')
+      .select('name invoiceNumber poNumber contractors onboard salaries startDate')
       .populate('onboard.contractorEmployee', 'name contractor')
       .lean();
 
-    const projectRows = projects.map((project) => {
-      const employeeDateMap = {};
+    const projectRows = projects
+      .map((project) => {
+        const employeeDateMap = {};
+        const salaryByEmp = {};
 
-      (project.onboard || []).forEach((record) => {
-        const emp = record.contractorEmployee;
-        const empId = emp && emp._id ? String(emp._id) : String(record.contractorEmployee || '');
-        if (!employeeIdSet.has(empId)) return;
-        const normalized = normalizeDate(record.checkInDate);
-        if (!normalized) return;
-        if (!employeeDateMap[empId]) employeeDateMap[empId] = new Set();
-        employeeDateMap[empId].add(normalized.toISOString().slice(0, 10));
-      });
+        (project.salaries || []).forEach((s) => {
+          const empId = s.contractorEmployee
+            ? String(s.contractorEmployee._id || s.contractorEmployee)
+            : '';
+          if (!employeeIdSet.has(empId)) return;
+          salaryByEmp[empId] = Number(s.dailySalary) || 0;
+        });
 
-      const employees = Object.keys(employeeDateMap)
-        .map((empId) => {
-          const dateList = Array.from(employeeDateMap[empId]).sort();
-          const info = employeeMap[empId] || {};
-          return {
-            employeeId: empId,
-            employeeName: info.name || '-',
-            employmentStatus: info.employmentStatus || '在職',
-            resignationDate: info.resignationDate || null,
-            totalWorkDays: dateList.length,
-            workDates: dateList,
-          };
-        })
-        .sort((a, b) => b.totalWorkDays - a.totalWorkDays);
+        (project.onboard || []).forEach((record) => {
+          const emp = record.contractorEmployee;
+          const empId = emp && emp._id ? String(emp._id) : String(record.contractorEmployee || '');
+          if (!employeeIdSet.has(empId)) return;
+          if (!isDateInRange(record.checkInDate, range.from, range.to)) return;
+          const normalized = normalizeDate(record.checkInDate);
+          if (!normalized) return;
+          if (!employeeDateMap[empId]) employeeDateMap[empId] = new Set();
+          employeeDateMap[empId].add(normalized.toISOString().slice(0, 10));
+        });
 
-      return {
-        projectId: project._id,
-        projectName: project.name || '-',
-        quoteNumber: project.invoiceNumber || '-',
-        poNumber: project.poNumber || '-',
-        startDate: project.startDate || null,
-        employeeCount: employees.length,
-        totalWorkDays: employees.reduce((sum, e) => sum + e.totalWorkDays, 0),
-        employees,
-      };
-    });
+        const employees = Object.keys(employeeDateMap)
+          .map((empId) => {
+            const dateList = Array.from(employeeDateMap[empId]).sort();
+            const info = employeeMap[empId] || {};
+            const dailySalary = salaryByEmp[empId] || 0;
+            const totalWorkDays = dateList.length;
+            return {
+              employeeId: empId,
+              employeeName: info.name || '-',
+              employmentStatus: info.employmentStatus || '在職',
+              resignationDate: info.resignationDate || null,
+              dailySalary,
+              totalWorkDays,
+              totalSalary: dailySalary * totalWorkDays,
+              workDates: dateList,
+            };
+          })
+          .sort((a, b) => b.totalWorkDays - a.totalWorkDays);
+
+        if (employees.length === 0) return null;
+
+        return {
+          projectId: project._id,
+          projectName: project.name || '-',
+          quoteNumber: project.invoiceNumber || '-',
+          poNumber: project.poNumber || '-',
+          startDate: project.startDate || null,
+          employeeCount: employees.length,
+          totalWorkDays: employees.reduce((sum, e) => sum + e.totalWorkDays, 0),
+          totalSalary: employees.reduce((sum, e) => sum + e.totalSalary, 0),
+          employees,
+        };
+      })
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -135,10 +161,10 @@ const getContractorReport = async (req, res) => {
         },
         summary: {
           totalProjects: projectRows.length,
-          totalEmployees: new Set(
-            projectRows.flatMap((p) => p.employees.map((e) => e.employeeId))
-          ).size,
+          totalEmployees: new Set(projectRows.flatMap((p) => p.employees.map((e) => e.employeeId)))
+            .size,
           totalWorkDays: projectRows.reduce((sum, p) => sum + p.totalWorkDays, 0),
+          totalSalary: projectRows.reduce((sum, p) => sum + p.totalSalary, 0),
           dateFrom: String(dateFrom).slice(0, 10),
           dateTo: String(dateTo).slice(0, 10),
         },
@@ -156,4 +182,3 @@ const getContractorReport = async (req, res) => {
 };
 
 module.exports = getContractorReport;
-

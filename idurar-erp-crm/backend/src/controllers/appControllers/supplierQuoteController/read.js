@@ -9,6 +9,7 @@ const read = async (req, res) => {
     removed: false,
   })
     .populate('createdBy', 'name surname email')
+    .populate('followUpBy', 'name surname email')
     .populate('updatedBy', 'name surname email')
     .populate('ship', 'registrationNumber status supplierNumber installationDate dismantlingDate')
     .populate('winch', 'serialNumber status supplierNumber installationDate dismantlingDate')

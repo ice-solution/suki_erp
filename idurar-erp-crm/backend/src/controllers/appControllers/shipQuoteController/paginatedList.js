@@ -31,7 +31,10 @@ const paginatedList = async (req, res) => {
   if (!sortBy) {
     result = await fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, {
       includePrefixRank: false,
-      populate: [{ path: 'createdBy', select: 'name surname email' }],
+      populate: [
+        { path: 'createdBy', select: 'name surname email' },
+        { path: 'followUpBy', select: 'name surname email' },
+      ],
     });
     count = await Model.countDocuments(matchQuery);
   } else {
@@ -41,6 +44,7 @@ const paginatedList = async (req, res) => {
       .limit(limit)
       .sort(sortObj)
       .populate('createdBy', 'name surname email')
+      .populate('followUpBy', 'name surname email')
       .exec();
     count = await Model.countDocuments(matchQuery);
   }

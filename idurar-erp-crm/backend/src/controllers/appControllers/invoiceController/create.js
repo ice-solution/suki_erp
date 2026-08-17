@@ -7,6 +7,7 @@ const { computeInvoiceTotals } = require('@/helpers/invoiceTotals');
 const assertInvoiceNumber = require('@/helpers/assertInvoiceNumber');
 const { syncInvoiceLastNumberIfSequentialNext } = require('@/helpers/lastNumberSettings');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 const schema = require('./schemaValidate');
 
 const create = async (req, res) => {
@@ -85,6 +86,7 @@ const create = async (req, res) => {
   const autoPaymentStatus = total === 0 || paidSum >= total ? 'paid' : 'unpaid';
   body['paymentStatus'] = autoPaymentStatus;
   body['createdBy'] = req.admin._id;
+  body['followUpBy'] = pickFollowUpById(body, req.admin._id);
 
   try {
     await assertInvoiceNumber(body);

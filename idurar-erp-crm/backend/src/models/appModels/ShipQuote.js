@@ -6,6 +6,7 @@ const shipQuoteSchema = new mongoose.Schema({
     default: false,
   },
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: true },
+  followUpBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: false },
 
   converted: {
     to: {

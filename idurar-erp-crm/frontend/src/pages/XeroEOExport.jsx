@@ -177,7 +177,7 @@ export default function XeroEOExport() {
 
   return (
     <div style={{ padding: 24 }}>
-      <Card title="Xero EO單滙出" style={{ maxWidth: 560 }}>
+      <Card title="Xero EO單滙出" style={{ maxWidth: 1100 }}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
           <div>
             <label style={{ display: 'block', marginBottom: 8 }}>
@@ -224,7 +224,11 @@ export default function XeroEOExport() {
                 rowKey="key"
                 columns={columns}
                 dataSource={previewRows}
-                pagination={{ pageSize: 10 }}
+                pagination={{
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  defaultPageSize: 10,
+                }}
               />
             </div>
           </>

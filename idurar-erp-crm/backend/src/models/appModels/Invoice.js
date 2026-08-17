@@ -6,6 +6,7 @@ const invoiceSchema = new mongoose.Schema({
     default: false,
   },
   createdBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: true },
+  followUpBy: { type: mongoose.Schema.ObjectId, ref: 'Admin', required: false },
 
   // Quote結構的字段 - 保持完全一致
   numberPrefix: {

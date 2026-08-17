@@ -19,6 +19,7 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import FollowUpBySelect from '@/components/FollowUpBySelect';
 import {
   DiscountAmountPdfCheckboxCol,
   DiscountPercentPdfCheckboxCol,
@@ -319,7 +320,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   };
 
   const applySuggestedNumber = async (prefix = watchedSupplierPrefix || 'S') => {
+    if (current?._id) return;
     const nextFromApi = await fetchSuggestedNextNumber('supplier', prefix);
+    if (current?._id) return;
     const next =
       nextFromApi != null
         ? nextFromApi
@@ -331,7 +334,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
   // 建立時預填建議編號；使用者手動改過後不再覆寫（避免設定載入時把輸入清掉）
   useEffect(() => {
-    if (current) return;
+    if (current?._id) return;
 
     const prefix = watchedSupplierPrefix || 'S';
     if (prevPrefixRef.current !== prefix) {
@@ -342,7 +345,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     if (numberManuallyEditedRef.current) return;
 
     void applySuggestedNumber(prefix);
-  }, [lastNumberSettings, watchedSupplierPrefix, current, form]);
+  }, [lastNumberSettings, watchedSupplierPrefix, current?._id, form]);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
@@ -1578,7 +1581,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           <Form.Item
             label={translate('number')}
             name="number"
-            initialValue={lastNumber.toString()}
+            initialValue={current?._id ? undefined : lastNumber.toString()}
             rules={[
               {
                 required: true,
@@ -1586,6 +1589,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               },
             ]}
             extra={
+              current?._id ? null : (
               <span>
                 按一下向伺服器查詢目前最後號碼 +1（避免其他人已上單而編號過期）。
                 <SuggestedNextNumberButton
@@ -1598,6 +1602,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                   }}
                 />
               </span>
+              )
             }
           >
             <Input
@@ -1622,6 +1627,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           >
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={5}>
+          <FollowUpBySelect current={current} />
         </Col>
       </Row>
 

@@ -4,6 +4,7 @@ const SupplierQuoteModel = mongoose.model('SupplierQuote');
 const InvoiceModel = mongoose.model('Invoice');
 
 const assertInvoiceNumber = require('@/helpers/assertInvoiceNumber');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 const INVOICE_PREFIXES = new Set(['SMI', 'WSE', 'SP']);
 
@@ -56,6 +57,7 @@ const convert = async (req, res) => {
       status: 'sent',
       paymentStatus: 'unpaid',
       createdBy: req.admin._id,
+      followUpBy: pickFollowUpById(supplierQuote, req.admin._id),
     };
 
     try {
