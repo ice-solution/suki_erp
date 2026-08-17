@@ -6,11 +6,13 @@ import dayjs from 'dayjs';
 const { RangePicker } = DatePicker;
 import { ErpLayout } from '@/layout';
 import { request } from '@/request';
+import { useMoney } from '@/settings';
 import * as XLSX from 'xlsx';
 
 const { Text } = Typography;
 
 export default function ContractorReport() {
+  const { moneyFormatter } = useMoney();
   const [contractors, setContractors] = useState([]);
   const [selectedContractor, setSelectedContractor] = useState(undefined);
   const [loading, setLoading] = useState(false);
@@ -45,7 +47,7 @@ export default function ContractorReport() {
       return;
     }
     if (!dateRange?.[0] || !dateRange?.[1]) {
-      message.warning('請選擇項目開始日期範圍（由／至）');
+      message.warning('請選擇打咭日期範圍（由／至）');
       return;
     }
     setReportLoading(true);
@@ -88,7 +90,9 @@ export default function ContractorReport() {
           QuoteNumber: project.quoteNumber || '-',
           PO_Number: project.poNumber || '-',
           員工: '-',
+          日薪: 0,
           上班總天數: 0,
+          總工資: 0,
           詳細日期: '-',
         });
         return;
@@ -102,7 +106,9 @@ export default function ContractorReport() {
           QuoteNumber: project.quoteNumber || '-',
           PO_Number: project.poNumber || '-',
           員工: emp.employeeName || '-',
+          日薪: emp.dailySalary ?? 0,
           上班總天數: emp.totalWorkDays || 0,
+          總工資: emp.totalSalary ?? 0,
           詳細日期: (emp.workDates || []).join(', '),
         });
       });
@@ -129,14 +135,37 @@ export default function ContractorReport() {
       { title: 'P.O Number', dataIndex: 'poNumber', key: 'poNumber' },
       { title: '員工數', dataIndex: 'employeeCount', key: 'employeeCount', width: 100 },
       { title: '上班總天數', dataIndex: 'totalWorkDays', key: 'totalWorkDays', width: 120 },
+      {
+        title: '總工資',
+        dataIndex: 'totalSalary',
+        key: 'totalSalary',
+        width: 120,
+        render: (amount) => moneyFormatter({ amount: amount || 0 }),
+      },
     ],
-    []
+    [moneyFormatter]
   );
 
   const employeeColumns = useMemo(
     () => [
       { title: '員工', dataIndex: 'employeeName', key: 'employeeName' },
+      {
+        title: '日薪',
+        dataIndex: 'dailySalary',
+        key: 'dailySalary',
+        width: 100,
+        render: (amount) => moneyFormatter({ amount: amount || 0 }),
+      },
       { title: '上班總天數', dataIndex: 'totalWorkDays', key: 'totalWorkDays', width: 120 },
+      {
+        title: '總工資',
+        dataIndex: 'totalSalary',
+        key: 'totalSalary',
+        width: 120,
+        render: (amount) => (
+          <span style={{ fontWeight: 600 }}>{moneyFormatter({ amount: amount || 0 })}</span>
+        ),
+      },
       {
         title: '詳細日期',
         dataIndex: 'workDates',
@@ -144,7 +173,7 @@ export default function ContractorReport() {
         render: (dates) => (dates && dates.length ? dates.join(', ') : '-'),
       },
     ],
-    []
+    [moneyFormatter]
   );
 
   return (
@@ -167,7 +196,7 @@ export default function ContractorReport() {
               />
             </Col>
             <Col span={8}>
-              <Text strong>項目開始日期（由 — 至）</Text>
+              <Text strong>打咭日期（由 — 至）</Text>
               <div style={{ marginTop: 8 }}>
                 <RangePicker
                   style={{ width: '100%' }}
@@ -194,17 +223,24 @@ export default function ContractorReport() {
               <Row gutter={16} style={{ marginTop: 20, marginBottom: 16 }}>
                 <Col span={24} style={{ marginBottom: 8 }}>
                   <Text type="secondary">
-                    篩選條件：項目開始日期介於 {reportData.summary?.dateFrom} 至 {reportData.summary?.dateTo}
+                    篩選條件：打咭日期介於 {reportData.summary?.dateFrom} 至 {reportData.summary?.dateTo}
                   </Text>
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Statistic title="相關項目數" value={reportData.summary?.totalProjects || 0} />
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Statistic title="員工數" value={reportData.summary?.totalEmployees || 0} />
                 </Col>
-                <Col span={8}>
+                <Col span={6}>
                   <Statistic title="上班總天數" value={reportData.summary?.totalWorkDays || 0} />
+                </Col>
+                <Col span={6}>
+                  <Statistic
+                    title="總工資"
+                    value={reportData.summary?.totalSalary || 0}
+                    formatter={(v) => moneyFormatter({ amount: Number(v) || 0 })}
+                  />
                 </Col>
               </Row>
 

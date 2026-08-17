@@ -20,6 +20,7 @@ import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import ContactPersonAutoComplete from '@/components/ContactPersonAutoComplete';
+import FollowUpBySelect from '@/components/FollowUpBySelect';
 import {
   DiscountAmountPdfCheckboxCol,
   DiscountPercentPdfCheckboxCol,
@@ -1013,13 +1014,14 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Form.Item
             label={translate('number')}
             name="number"
-            initialValue={lastNumber.toString()}
+            initialValue={current?._id ? undefined : lastNumber.toString()}
             rules={[
               {
                 required: true,
               },
             ]}
             extra={
+              current?._id ? null : (
               <span>
                 按一下向伺服器查詢目前最後號碼 +1（避免其他人已上單而編號過期）。
                 <SuggestedNextNumberButton
@@ -1031,6 +1033,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
                   }}
                 />
               </span>
+              )
             }
           >
             <Input style={{ width: '100%' }} />
@@ -1049,6 +1052,9 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           >
             <InputNumber style={{ width: '100%' }} />
           </Form.Item>
+        </Col>
+        <Col className="gutter-row" span={5}>
+          <FollowUpBySelect current={current} />
         </Col>
         <Col className="gutter-row" span={5}>
           <Form.Item

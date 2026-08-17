@@ -99,7 +99,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
 
     mixin rentalPageHeader()
       .supermax-header-banner
-        img(src=settings.public_server_file+'uploads/images/header_001.png' alt='')
+        img(src=settings.pdfHeaderSrc || (settings.public_server_file+'uploads/images/header_001_pdf.jpg') alt='')
       table.info-table-ship
         tr
           td.info-left
@@ -164,7 +164,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   .notes-content #{model.notes}
           if !isPuppeteer
             .footer-section
-              img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+              img(src=settings.pdfFooterSrc || (settings.public_server_file+'uploads/images/footer_001_pdf.jpg') alt='')
 
     each extraChunk, extraPageIndex in extraChunks
       .pdf-page
@@ -198,7 +198,7 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
             - extraSerialBase += extraChunk.length
           if !isPuppeteer
             .footer-section
-              img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+              img(src=settings.pdfFooterSrc || (settings.public_server_file+'uploads/images/footer_001_pdf.jpg') alt='')
 
     each termsChunk, termsPageIndex in termsChunks
       - const isLastTermsPage = termsPageIndex === termsChunks.length - 1
@@ -225,10 +225,10 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   .signature-section
                     .prepared-by-row
                       span.prepared-by-label 制單人：
-                      if model.updatedBy && model.updatedBy.name
-                        span #{model.updatedBy.name}
+                      if model.followUpBy && model.followUpBy.name
+                        span #{model.followUpBy.name}#{model.followUpBy.surname ? ' ' + model.followUpBy.surname : ''}
                       else if model.createdBy && model.createdBy.name
-                        span #{model.createdBy.name}
+                        span #{model.createdBy.name}#{model.createdBy.surname ? ' ' + model.createdBy.surname : ''}
                       else
                         span.prepared-by-space
                     table.signature-table
@@ -248,4 +248,4 @@ html(class=isPuppeteer ? 'puppeteer-ship-quote-rental' : '')
                   .end-marker End
           if !isPuppeteer
             .footer-section
-              img(src=settings.public_server_file+'uploads/images/footer_001.png' alt='')
+              img(src=settings.pdfFooterSrc || (settings.public_server_file+'uploads/images/footer_001_pdf.jpg') alt='')

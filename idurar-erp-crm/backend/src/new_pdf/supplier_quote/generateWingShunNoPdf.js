@@ -12,6 +12,7 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { buildStandardQuoteFooterTemplate, WING_SHUN_PDF_BOTTOM_MARGIN } = require('../shared/quotePdfFooterTemplate');
+const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
 function resolveNoTemplatePath() {
   const fileNameLower = 'no.pug';
@@ -54,6 +55,7 @@ async function generateWingShunNoPdfBuffer(model) {
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
+  attachPdfBrandImages(settings);
   const logoKey = 'company_logo_no';
   if (settings[logoKey]) {
     settings.company_logo = settings[logoKey];

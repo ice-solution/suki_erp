@@ -15,6 +15,7 @@ const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
 const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP', 'IH']);
 
@@ -115,6 +116,7 @@ async function generateSupplierQuoteFinishPdfBuffer(model) {
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
+  attachPdfBrandImages(settings);
 
   const logoKey = resolveLogoSettingKeyForFinish(model);
   if (logoKey && settings[logoKey]) {

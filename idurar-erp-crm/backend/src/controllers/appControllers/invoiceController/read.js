@@ -19,6 +19,7 @@ const read = async (req, res) => {
       removed: false,
     })
       .populate('createdBy', 'name surname email')
+      .populate('followUpBy', 'name surname email')
       .populate('updatedBy', 'name surname email')
       .populate('client', 'name email phone address')
       .populate('revenueAccount', 'accountCode accountName')

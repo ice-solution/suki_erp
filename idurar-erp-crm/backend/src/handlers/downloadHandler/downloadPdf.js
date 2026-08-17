@@ -74,6 +74,17 @@ function buildDownloadFilename(modelName, result, options = {}) {
   return `${name || 'document'}.pdf`;
 }
 
+/** preview=1 / inline=1：瀏覽器內嵌預覽；否則下載 */
+function setPdfContentDisposition(req, res, downloadFilename) {
+  const mode = String(req.query?.preview || req.query?.inline || '')
+    .trim()
+    .toLowerCase();
+  const inline = mode === '1' || mode === 'true' || mode === 'yes';
+  const disposition = inline ? 'inline' : 'attachment';
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', `${disposition}; filename="${downloadFilename}"`);
+}
+
 module.exports = downloadPdf = async (req, res, { directory, id, variant } = {}) => {
   try {
     // 處理特殊模型名稱映射
@@ -108,6 +119,7 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
           removed: false,
         })
           .populate('createdBy', 'name surname email')
+          .populate('followUpBy', 'name surname email')
           .populate('updatedBy', 'name surname email')
           .exec();
       } else if (modelName === 'SupplierQuote') {
@@ -115,6 +127,7 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
           _id: id,
         })
           .populate('createdBy', 'name surname email')
+          .populate('followUpBy', 'name surname email')
           .populate('updatedBy', 'name surname email')
           .exec();
       } else if (modelName === 'ShipQuote') {
@@ -122,6 +135,7 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
           _id: id,
         })
           .populate('createdBy', 'name surname email')
+          .populate('followUpBy', 'name surname email')
           .populate('updatedBy', 'name surname email')
           .exec();
       } else if (modelName === 'Invoice') {
@@ -129,6 +143,7 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
           _id: id,
         })
           .populate('createdBy', 'name surname email')
+          .populate('followUpBy', 'name surname email')
           .populate('updatedBy', 'name surname email')
           .exec();
       } else {
@@ -158,16 +173,14 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
           });
         }
         const finishBuffer = await generateSupplierQuoteFinishPdfBuffer(result);
-        res.setHeader('Content-Type', 'application/pdf');
-        res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+        setPdfContentDisposition(req, res, downloadFilename);
         return res.send(finishBuffer);
       }
 
       if (modelName === 'Quote') {
         const puppeteerBuffer = await tryGenerateQuotePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+          setPdfContentDisposition(req, res, downloadFilename);
           return res.send(puppeteerBuffer);
         }
       }
@@ -175,8 +188,7 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
       if (modelName === 'SupplierQuote') {
         const puppeteerBuffer = await tryGenerateSupplierQuotePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+          setPdfContentDisposition(req, res, downloadFilename);
           return res.send(puppeteerBuffer);
         }
       }
@@ -184,8 +196,7 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
       if (modelName === 'ShipQuote') {
         const puppeteerBuffer = await tryGenerateShipQuotePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+          setPdfContentDisposition(req, res, downloadFilename);
           return res.send(puppeteerBuffer);
         }
       }
@@ -193,16 +204,14 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
       if (modelName === 'Invoice') {
         const puppeteerBuffer = await tryGenerateInvoicePdfBufferWithPuppeteer(result);
         if (puppeteerBuffer) {
-          res.setHeader('Content-Type', 'application/pdf');
-          res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+          setPdfContentDisposition(req, res, downloadFilename);
           return res.send(puppeteerBuffer);
         }
       }
 
       // fallback：用 html-pdf 直接產生 buffer，避免讀寫磁碟而被誤判「舊檔」
       const buffer = await custom.generatePdfBuffer(modelName, { format: 'A4' }, result);
-      res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="${downloadFilename}"`);
+      setPdfContentDisposition(req, res, downloadFilename);
       return res.send(buffer);
     } else {
       return res.status(404).json({

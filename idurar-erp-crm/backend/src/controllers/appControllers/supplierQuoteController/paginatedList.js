@@ -13,6 +13,7 @@ const paginatedList = async (req, res) => {
   const result = await fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, skip, limit, {
     populate: [
       { path: 'createdBy', select: 'name surname email' },
+      { path: 'followUpBy', select: 'name surname email' },
       { path: 'supplier', select: 'name' },
     ],
   });

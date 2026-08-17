@@ -20,9 +20,11 @@ import { erp } from '@/redux/erp/actions';
 import { selectCurrentItem, selectListItems } from '@/redux/erp/selectors';
 
 import { DOWNLOAD_BASE_URL, API_BASE_URL } from '@/config/serverApiConfig';
+import PreviewPdfButton from '@/components/PreviewPdfButton';
 import { useMoney, useDate } from '@/settings';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 import { multilineStyle, renderMultilineText } from '@/utils/renderMultilineText';
 import axios from 'axios';
 import storePersist from '@/redux/storePersist';
@@ -632,6 +634,12 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
               >
                 {translate('Download PDF')}
               </Button>
+              <PreviewPdfButton
+                key="sq-pdf-preview"
+                entity={entity}
+                id={currentErp._id}
+                modifiedAt={currentErp?.modified_at || currentErp?.updated}
+              />
             </Space>
             <Space wrap size="small">
               <Button
@@ -762,13 +770,7 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice ? `$${currentErp.costPrice}` : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
-        <Descriptions.Item label="制單人">
-          {currentErp.createdBy
-            ? ((currentErp.createdBy.name + (currentErp.createdBy.surname ? ' ' + currentErp.createdBy.surname : '')).trim() ||
-                currentErp.createdBy.email ||
-                '-')
-            : '-'}
-        </Descriptions.Item>
+        <Descriptions.Item label="跟單人">{followUpDisplayName(currentErp)}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
       </Descriptions>

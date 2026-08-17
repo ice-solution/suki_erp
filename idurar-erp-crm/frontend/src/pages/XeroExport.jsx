@@ -266,7 +266,11 @@ export default function XeroExport() {
                 rowKey="key"
                 columns={columns}
                 dataSource={previewRows}
-                pagination={{ pageSize: 10 }}
+                pagination={{
+                  showSizeChanger: true,
+                  pageSizeOptions: ['10', '20', '50', '100'],
+                  defaultPageSize: 10,
+                }}
               />
             </div>
           </>

@@ -17,6 +17,7 @@ const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 const { getPdfPaginationPugLocalsForTemplate } = require('@/helpers/pdfPagination');
+const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
 /** 與 pdfController 一致：SML 報價單 logo */
 function resolveLogoSettingKeyForQuote(result) {
@@ -71,6 +72,7 @@ async function generateSmlQuotePdfBuffer(model) {
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
+  attachPdfBrandImages(settings);
 
   const logoKey = resolveLogoSettingKeyForQuote(model);
   if (logoKey && settings[logoKey]) {

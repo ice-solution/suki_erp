@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('Winch');
 const SupplierQuote = mongoose.model('SupplierQuote');
 const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
+const { assertUniqueAssetIdentifier } = require('@/helpers/assertUniqueAssetIdentifier');
 
 // 當爬纜器狀態改為待回廠／香港倉時，清掉 expiredDate / supplierNumber，並寫入綁定歷史（回廠日期未填則用當前時間）
 // 當狀態為「待保養」時，回廠日期由使用者必填，僅寫入爬纜器文件（不觸發上述解除 S 單綁定流程）
@@ -14,6 +15,21 @@ const updateWinch = async (req, res) => {
 
   if (req.admin && req.admin._id) {
     req.body.updatedBy = req.admin._id;
+  }
+
+  if (req.body.serialNumber !== undefined) {
+    const check = await assertUniqueAssetIdentifier(Model, 'serialNumber', req.body.serialNumber, {
+      excludeId: req.params.id,
+      label: 'RegistrationNumber',
+    });
+    if (!check.ok) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: check.message,
+      });
+    }
+    req.body.serialNumber = check.value;
   }
 
   const warehouseReturnStatuses = ['returned_warehouse_cn', 'returned_warehouse_hk'];

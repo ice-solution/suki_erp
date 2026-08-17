@@ -22,6 +22,7 @@ const {
   lockSourceInvoiceConversionMode,
 } = require('@/helpers/quoteInvoiceConversion');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 function buildInvoiceItemsFromResolvedLines(items, resolvedLines) {
   return resolvedLines.map(({ itemIndex, quantity }) => {
@@ -225,6 +226,7 @@ async function convertSourceDocumentToInvoice({
     isOverdue: false,
     approved: false,
     createdBy: req.admin._id,
+    followUpBy: pickFollowUpById(sourceDoc, req.admin._id),
   };
 
   const invoice = await new InvoiceModel(invoiceData).save();

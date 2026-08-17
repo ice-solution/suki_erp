@@ -9,6 +9,7 @@ const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
 const { getPdfPaginationPugLocalsForTemplate, getShipQuoteRentalPdfPugLocals } = require('@/helpers/pdfPagination');
+const { attachPdfBrandImages } = require('@/new_pdf/shared/pdfBrandImages');
 
 function getPdfPugLocalsForTemplate(templateName, result) {
   const t = String(templateName || '').toLowerCase();
@@ -92,6 +93,7 @@ exports.generatePdf = async (
     const { dateFormat } = useDate({ settings });
 
     settings.public_server_file = process.env.PUBLIC_SERVER_FILE;
+    attachPdfBrandImages(settings);
 
     // 依單據類型解析使用的 Logo（不同 type 可用不同 logo）
     const logoKey = resolveLogoSettingKey(modelName, result);
@@ -227,6 +229,7 @@ exports.generatePdfBuffer = async (
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE;
+  attachPdfBrandImages(settings);
 
   const logoKey = resolveLogoSettingKey(modelName, result);
   if (logoKey && settings[logoKey]) {

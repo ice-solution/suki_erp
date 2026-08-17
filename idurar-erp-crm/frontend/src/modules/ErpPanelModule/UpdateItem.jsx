@@ -344,6 +344,10 @@ export default function UpdateItem({ config, UpdateForm }) {
         formData = normalizeInvoiceFormData(formData);
       }
 
+      if (formData.followUpBy && typeof formData.followUpBy === 'object') {
+        formData.followUpBy = formData.followUpBy._id;
+      }
+
       const { subTotal } = formData;
 
       form.resetFields();
@@ -386,9 +390,11 @@ export default function UpdateItem({ config, UpdateForm }) {
       ></PageHeader>
       <Divider dashed />
       <Loading isLoading={isLoading}>
-        <Form form={form} layout="vertical" onFinish={onSubmit} onValuesChange={handelValuesChange}>
-          <UpdateForm subTotal={subTotal} current={current} />
-        </Form>
+        {current?._id ? (
+          <Form form={form} layout="vertical" onFinish={onSubmit} onValuesChange={handelValuesChange}>
+            <UpdateForm subTotal={subTotal} current={current} />
+          </Form>
+        ) : null}
       </Loading>
     </>
   );

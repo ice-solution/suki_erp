@@ -14,6 +14,7 @@ const { loadSettings } = require('@/middlewares/settings');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
+const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
 function resolveLogoSettingKeyForSupplierQuoteIP(result) {
   if (result && String(result.numberPrefix || '').toLowerCase() === 'ip') {
@@ -67,6 +68,7 @@ async function generateSupplierQuoteIPPdfBuffer(model) {
   const { dateFormat } = useDate({ settings });
 
   settings.public_server_file = process.env.PUBLIC_SERVER_FILE || '';
+  attachPdfBrandImages(settings);
 
   const logoKey = resolveLogoSettingKeyForSupplierQuoteIP(model);
   if (logoKey && settings[logoKey]) {

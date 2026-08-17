@@ -39,6 +39,7 @@ const paginatedList = async (req, res) => {
     .limit(limit)
     .sort(sortObj)
     .populate('createdBy', 'name surname email')
+    .populate('followUpBy', 'name surname email')
     .exec();
 
   // Counting the total documents

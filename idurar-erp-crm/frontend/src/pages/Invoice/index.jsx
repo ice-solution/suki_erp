@@ -7,6 +7,7 @@ import { tagColor } from '@/utils/statusTagColor';
 import { useMoney, useDate } from '@/settings';
 import InvoiceDataTableModule from '@/modules/InvoiceModule/InvoiceDataTableModule';
 import { ErpLayout } from '@/layout';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 
 export default function Invoice() {
   const translate = useLanguage();
@@ -80,16 +81,11 @@ export default function Invoice() {
       render: (date) => dayjs(date).format(dateFormat),
     },
     {
-      title: '制單人',
-      dataIndex: 'createdBy',
+      title: '跟單人',
+      dataIndex: 'followUpBy',
       width: 150,
       ellipsis: false,
-      render: (_, record) => {
-        const u = record.createdBy;
-        if (!u || typeof u !== 'object') return '-';
-        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
-        return name || u.email || '-';
-      },
+      render: (_, record) => followUpDisplayName(record),
     },
     {
       title: translate('Total'),

@@ -110,6 +110,8 @@ export default function WinchList() {
       title: translate('serialNumber') || '序列號',
       dataIndex: 'serialNumber',
       key: 'serialNumber',
+      width: 110,
+      ellipsis: true,
       render: (text, record) => (
         <span
           style={{ color: '#1890ff', cursor: 'pointer' }}
@@ -221,18 +223,8 @@ export default function WinchList() {
         return dayjs(date).format(dateFormat);
       },
     });
-    baseColumns.push({
-      title: '拆卸日期',
-      dataIndex: 'dismantlingDate',
-      key: 'dismantlingDate',
-      width: 120,
-      render: (date, record) => {
-        if (record.status !== 'in_use' || !date) return '-';
-        return dayjs(date).format(dateFormat);
-      },
-    });
 
-    // Expired Date列（到期日）：一個月內到期或已過期變色
+    // Expired Date列（到期日）：即將到期橙色；已過期（含一個月或以上）維持紅色
     baseColumns.push({
       title: translate('expired Date') || '到期日',
       dataIndex: 'expiredDate',
@@ -242,11 +234,13 @@ export default function WinchList() {
         const d = dayjs(date);
         const today = dayjs().startOf('day');
         const diffDays = d.diff(today, 'day');
-        const withinOneMonth = diffDays >= -31 && diffDays <= 31;
         const isPast = diffDays < 0;
+        const soon = !isPast && diffDays <= 31;
         let style = {};
-        if (withinOneMonth) {
-          style = { color: isPast ? '#cf1322' : '#fa8c16', fontWeight: 500 };
+        if (isPast) {
+          style = { color: '#cf1322', fontWeight: 500 };
+        } else if (soon) {
+          style = { color: '#fa8c16', fontWeight: 500 };
         }
         return <span style={style}>{d.format(dateFormat)}</span>;
       },

@@ -70,6 +70,7 @@ const lang = {
   show: '顯示',
   download: '下載',
   download_pdf: '下載 PDF',
+  preview_pdf: '預覽 PDF',
   send_by_email: '電郵發送',
   convert_to_invoice: '轉換成發票',
   this_month: '本月',

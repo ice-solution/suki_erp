@@ -5,7 +5,7 @@ const Model = mongoose.model('Quote');
 const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
 const { syncQuoteLastNumberIfSequentialNext } = require('@/helpers/lastNumberSettings');
-const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 const create = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
@@ -32,6 +32,7 @@ const create = async (req, res) => {
   body['total'] = total;
   body['items'] = items;
   body['createdBy'] = req.admin._id;
+  body['followUpBy'] = pickFollowUpById(body, req.admin._id);
 
   if (!body['invoiceNumber'] && body['numberPrefix'] && body['number']) {
     body['invoiceNumber'] = `${body['numberPrefix']}-${body['number']}`;

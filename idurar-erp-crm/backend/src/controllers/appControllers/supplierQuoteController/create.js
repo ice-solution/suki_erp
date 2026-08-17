@@ -16,6 +16,7 @@ const {
 const {
   stripSupplierQuoteAssetDateFields,
 } = require('@/helpers/supplierQuoteAssetDates');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 const {
   parseShipWinchAssignmentsInput,
   syncSupplierQuoteAssetAssignments,
@@ -134,6 +135,7 @@ const create = async (req, res) => {
   body['items'] = items;
   body['materials'] = materials;
   body['createdBy'] = req.admin._id;
+  body['followUpBy'] = pickFollowUpById(body, req.admin._id);
   body.expiredDate = null;
 
   // Handle file uploads using express-fileupload

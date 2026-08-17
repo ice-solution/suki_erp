@@ -225,9 +225,10 @@ const create = async (req, res) => {
       sPrice,
       grossProfit,
       createdBy: req.admin._id,
-      ...(status != null && String(status).trim() !== ''
-        ? { status: String(status).trim() }
-        : {}),
+      status:
+        status != null && String(status).trim() !== ''
+          ? String(status).trim()
+          : 'in_progress',
     };
 
     // 創建項目

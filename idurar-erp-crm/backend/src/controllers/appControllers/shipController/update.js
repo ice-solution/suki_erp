@@ -3,6 +3,7 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('Ship');
 const SupplierQuote = mongoose.model('SupplierQuote');
 const SupplierQuoteAssetBinding = mongoose.model('SupplierQuoteAssetBinding');
+const { assertUniqueAssetIdentifier } = require('@/helpers/assertUniqueAssetIdentifier');
 
 // 當船隻狀態改為待回廠／香港倉時，清掉 expiredDate / supplierNumber，並寫入綁定歷史（回廠日期未填則用當前時間）
 // 當狀態為「待保養」時，回廠日期由使用者必填，僅寫入船隻文件（不觸發上述解除 S 單綁定流程）
@@ -14,6 +15,23 @@ const updateShip = async (req, res) => {
 
   if (req.admin && req.admin._id) {
     req.body.updatedBy = req.admin._id;
+  }
+
+  if (req.body.registrationNumber !== undefined) {
+    const check = await assertUniqueAssetIdentifier(
+      Model,
+      'registrationNumber',
+      req.body.registrationNumber,
+      { excludeId: req.params.id, label: 'RegistrationNumber' }
+    );
+    if (!check.ok) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: check.message,
+      });
+    }
+    req.body.registrationNumber = check.value;
   }
 
   const warehouseReturnStatuses = ['returned_warehouse_cn', 'returned_warehouse_hk'];

@@ -4,6 +4,7 @@ import { tagColor } from '@/utils/statusTagColor';
 import SupplierQuoteDataTableModule from '@/modules/SupplierQuoteModule/SupplierQuoteDataTableModule';
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 
 export default function SupplierQuote() {
   const translate = useLanguage();
@@ -60,16 +61,11 @@ export default function SupplierQuote() {
       render: (_, record) => record.supplier?.name || '-',
     },
     {
-      title: '制單人',
-      dataIndex: 'createdBy',
+      title: '跟單人',
+      dataIndex: 'followUpBy',
       width: 150,
       ellipsis: false,
-      render: (_, record) => {
-        const u = record.createdBy;
-        if (!u || typeof u !== 'object') return '-';
-        const name = `${u.name || ''}${u.surname ? ` ${u.surname}` : ''}`.trim();
-        return name || u.email || '-';
-      },
+      render: (_, record) => followUpDisplayName(record),
     },
     {
       title: '上單日期',

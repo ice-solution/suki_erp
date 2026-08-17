@@ -22,6 +22,7 @@ const {
   stripLegacyAssetFieldsFromBody,
 } = require('@/helpers/supplierQuoteAssetAssignments');
 const assertSupplierQuoteNumber = require('@/helpers/assertSupplierQuoteNumber');
+const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
 
 const update = async (req, res) => {
   // Handle FormData - parse JSON strings back to objects
@@ -386,6 +387,7 @@ const update = async (req, res) => {
   body.modified_at = now;
   body.updated = now;
   if (req.admin && req.admin._id) body.updatedBy = req.admin._id;
+  body.followUpBy = pickFollowUpById(body, req.admin._id);
 
   let result;
   try {

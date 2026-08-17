@@ -716,7 +716,7 @@ export default function ProjectForm({ current = null }) {
                 <Form.Item
                   label={translate('Status')}
                   name="status"
-                  initialValue="draft"
+                  initialValue="in_progress"
                 >
                   <Select
                     options={[
