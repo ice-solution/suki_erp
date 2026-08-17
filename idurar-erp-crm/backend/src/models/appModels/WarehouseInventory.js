@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { computeTotalValue, roundMoney } = require('../../helpers/warehouseInventoryPricing');
+const { computeTotalValue, roundMoney, roundQty } = require('../../helpers/warehouseInventoryPricing');
 
 const warehouseInventorySchema = new mongoose.Schema({
   removed: {
@@ -166,12 +166,15 @@ warehouseInventorySchema.virtual('statusDisplay').get(function() {
 
 /** 依庫存數量同步狀態：0 → 缺貨；有貨且原為缺貨 → 可用 */
 function syncStatusFromQuantity(doc) {
-  const qty = Number(doc.quantity);
+  const qty = roundQty(doc.quantity);
   if (!Number.isFinite(qty) || qty <= 0) {
     doc.quantity = 0;
     doc.status = 'out_of_stock';
-  } else if (doc.status === 'out_of_stock') {
-    doc.status = 'available';
+  } else {
+    doc.quantity = qty;
+    if (doc.status === 'out_of_stock') {
+      doc.status = 'available';
+    }
   }
 }
 

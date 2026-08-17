@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { roundQty } = require('./warehouseInventoryPricing');
 
 const WarehouseInventory = mongoose.model('WarehouseInventory');
 const WarehouseTransaction = mongoose.model('WarehouseTransaction');
@@ -27,8 +28,8 @@ function parseStockableLine(m) {
   const itemName = m.itemName != null ? String(m.itemName).trim() : '';
   if (!hasValidId && !itemName) return null;
 
-  const qty = Number(m.quantity);
-  if (!Number.isFinite(qty) || qty === 0) return null;
+  const qty = roundQty(m.quantity);
+  if (qty === 0) return null;
 
   return {
     warehouse: String(wh).trim(),
@@ -49,7 +50,7 @@ function aggregateMaterials(materials) {
       : `legacy:${p.warehouse}\t${p.itemName}`;
     const prev = map.get(key);
     if (prev) {
-      prev.quantity += p.quantity;
+      prev.quantity = roundQty(prev.quantity + p.quantity);
     } else {
       map.set(key, {
         warehouse: p.warehouse,
@@ -74,7 +75,7 @@ function computeMaterialDeltas(oldMaterials, newMaterials) {
   for (const k of keys) {
     const oldQ = oldMap.get(k)?.quantity || 0;
     const newQ = newMap.get(k)?.quantity || 0;
-    const materialDelta = newQ - oldQ;
+    const materialDelta = roundQty(newQ - oldQ);
     if (materialDelta === 0) continue;
     const meta = newMap.get(k) || oldMap.get(k);
     deltas.push({
@@ -98,7 +99,8 @@ async function applyOneStockChange({
   supplierQuoteId,
   adminId,
 }) {
-  if (stockChange === 0) return;
+  const change = roundQty(stockChange);
+  if (change === 0) return;
 
   if (!adminId) {
     throw new Error('缺少操作者資訊，無法同步倉庫');
@@ -124,7 +126,7 @@ async function applyOneStockChange({
   const displayName = inv ? inv.itemName : itemName;
 
   if (!inv) {
-    if (stockChange < 0) {
+    if (change < 0) {
       throw new Error(
         `倉庫「${displayWh}」找不到貨品「${displayName || itemName || idStr}」，無法扣減庫存`
       );
@@ -136,10 +138,10 @@ async function applyOneStockChange({
   }
 
   const oldQuantity = inv.quantity;
-  const newQuantity = oldQuantity + stockChange;
+  const newQuantity = roundQty(oldQuantity + change);
   if (newQuantity < 0) {
     throw new Error(
-      `倉庫「${inv.warehouse}」貨品「${inv.itemName}」庫存不足（現有 ${oldQuantity}，需扣 ${-stockChange}）`
+      `倉庫「${inv.warehouse}」貨品「${inv.itemName}」庫存不足（現有 ${oldQuantity}，需扣 ${-change}）`
     );
   }
 
@@ -148,15 +150,15 @@ async function applyOneStockChange({
   inv.lastUpdated = new Date();
   await inv.save();
 
-  const isOutbound = stockChange < 0;
+  const isOutbound = change < 0;
   const transaction = new WarehouseTransaction({
     warehouseInventory: inv._id,
     transactionType: isOutbound ? 'outbound' : 'inbound',
-    quantityChange: stockChange,
+    quantityChange: change,
     quantityBefore: oldQuantity,
     quantityAfter: newQuantity,
     unitPrice: inv.unitPrice || 0,
-    totalValue: Math.abs(stockChange) * (inv.unitPrice || 0),
+    totalValue: Math.abs(change) * (inv.unitPrice || 0),
     project: inv.project,
     supplierQuote: supplierQuoteId,
     reason: isOutbound ? 'S單材料出庫' : 'S單材料退回',

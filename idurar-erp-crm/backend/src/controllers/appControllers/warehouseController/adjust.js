@@ -5,6 +5,7 @@ const {
   computeTotalValue,
   computeWeightedAverageUnitPrice,
   roundMoney,
+  roundQty,
 } = require('../../../helpers/warehouseInventoryPricing');
 
 const adjust = async (req, res) => {
@@ -35,8 +36,14 @@ const adjust = async (req, res) => {
       });
     }
 
-    const parsedChange = parseInt(quantityChange, 10);
-    const newQuantity = inventory.quantity + parsedChange;
+    const parsedChange = roundQty(quantityChange);
+    if (parsedChange === 0) {
+      return res.status(400).json({
+        success: false,
+        message: '數量變動不能為0',
+      });
+    }
+    const newQuantity = roundQty(inventory.quantity + parsedChange);
 
     // 檢查數量不能為負數
     if (newQuantity < 0) {
@@ -104,7 +111,7 @@ const adjust = async (req, res) => {
       message: '庫存調整成功',
       result: {
         ...updatedInventory,
-        quantityChange: parseInt(quantityChange),
+        quantityChange: parsedChange,
         oldQuantity,
         newQuantity
       }

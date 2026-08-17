@@ -1,7 +1,7 @@
 const WarehouseInventory = require('../../../models/appModels/WarehouseInventory');
 const WarehouseTransaction = require('../../../models/appModels/WarehouseTransaction');
 const { catchErrors } = require('../../../handlers/errorHandlers');
-const { computeTotalValue, roundMoney } = require('../../../helpers/warehouseInventoryPricing');
+const { computeTotalValue, roundMoney, roundQty } = require('../../../helpers/warehouseInventoryPricing');
 const {
   applyWarehouseProjectsFields,
   warehouseProjectPopulate,
@@ -77,7 +77,7 @@ const create = async (req, res) => {
       });
     }
 
-    const parsedQuantity = Math.max(0, parseInt(quantity, 10) || 0);
+    const parsedQuantity = Math.max(0, roundQty(quantity));
     const parsedUnitPrice = roundMoney(parseFloat(unitPrice) || 0);
 
     // 如果沒有提供 SKU，自動生成下一個可用的 SKU
@@ -113,7 +113,7 @@ const create = async (req, res) => {
       totalValue: computeTotalValue(parsedQuantity, parsedUnitPrice),
       supplier,
       status: parsedQuantity <= 0 ? 'out_of_stock' : status,
-      minStockLevel: parseInt(minStockLevel) || 0,
+      minStockLevel: Math.max(0, roundQty(minStockLevel)),
       location,
       siteAddress: siteAddress != null && String(siteAddress).trim() ? String(siteAddress).trim() : undefined,
       notes,

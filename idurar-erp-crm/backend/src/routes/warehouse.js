@@ -20,6 +20,8 @@ router.get('/', adminAuth.isValidAuthToken, list);
 router.post('/', adminAuth.isValidAuthToken, create);
 router.get('/:id', adminAuth.isValidAuthToken, read);
 router.patch('/:id', adminAuth.isValidAuthToken, update);
+// 前端 request.delete 使用 /delete/:id（IDURAR 慣例）
+router.delete('/delete/:id', adminAuth.isValidAuthToken, deleteItem);
 router.delete('/:id', adminAuth.isValidAuthToken, deleteItem);
 
 // 庫存操作路由

@@ -733,9 +733,11 @@ export default function Warehouse() {
               >
                 <InputNumber
                   min={0}
+                  precision={2}
+                  step={0.01}
                   disabled={!!editingItem}
                   style={{ width: '100%' }}
-                  placeholder="請輸入數量"
+                  placeholder="請輸入數量（可小數）"
                 />
               </Form.Item>
             </Col>
@@ -891,6 +893,8 @@ export default function Warehouse() {
               >
                 <InputNumber
                   min={0}
+                  precision={2}
+                  step={0.01}
                   style={{ width: '100%' }}
                   placeholder="請輸入最低庫存數量"
                 />
@@ -1056,7 +1060,9 @@ export default function Warehouse() {
           >
             <InputNumber 
               style={{ width: '100%' }} 
-              placeholder="正數為入庫，負數為出庫"
+              precision={2}
+              step={0.01}
+              placeholder="正數為入庫，負數為出庫（可小數）"
             />
           </Form.Item>
 
@@ -1210,8 +1216,10 @@ export default function Warehouse() {
             rules={[{ required: true, message: '請輸入轉移數量' }]}
           >
             <InputNumber 
-              min={1}
+              min={0.01}
               max={editingItem?.quantity || 0}
+              precision={2}
+              step={0.01}
               style={{ width: '100%' }} 
               placeholder="請輸入轉移數量"
             />

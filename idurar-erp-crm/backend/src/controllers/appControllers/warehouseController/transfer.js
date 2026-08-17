@@ -6,6 +6,7 @@ const {
   computeTotalValue,
   computeWeightedAverageUnitPrice,
   roundMoney,
+  roundQty,
 } = require('../../../helpers/warehouseInventoryPricing');
 const { warehouseProjectPopulate } = require('../../../helpers/warehouseProjects');
 
@@ -55,7 +56,7 @@ const transfer = async (req, res) => {
     const { id } = req.params;
     const { toWarehouse, quantity, targetSku, unitPrice, reason, notes } = req.body;
 
-    const parsedQty = parseInt(quantity, 10);
+    const parsedQty = roundQty(quantity);
     const skuTrimmed = targetSku != null ? String(targetSku).trim() : '';
     const toWarehouseCode = toWarehouse != null ? String(toWarehouse).trim() : '';
 
@@ -132,7 +133,7 @@ const transfer = async (req, res) => {
     targetWasNew = !targetInventory;
 
     sourceOldQuantity = sourceInventory.quantity;
-    const sourceAfterQty = sourceOldQuantity - parsedQty;
+    const sourceAfterQty = roundQty(sourceOldQuantity - parsedQty);
 
     // 先驗證交易紀錄 schema（避免扣庫存後才因 enum 等失敗）
     const sourceTransactionDoc = new WarehouseTransaction({
@@ -153,7 +154,7 @@ const transfer = async (req, res) => {
     await sourceTransactionDoc.validate();
 
     targetOldQuantity = targetInventory ? targetInventory.quantity : 0;
-    const targetAfterQty = targetOldQuantity + parsedQty;
+    const targetAfterQty = roundQty(targetOldQuantity + parsedQty);
     const targetInvRef = targetInventory ? targetInventory._id : new mongoose.Types.ObjectId();
 
     const targetTransactionDoc = new WarehouseTransaction({

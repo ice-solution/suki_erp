@@ -4,6 +4,7 @@ const { catchErrors } = require('../../../handlers/errorHandlers');
 const {
   computeTotalValue,
   roundMoney,
+  roundQty,
 } = require('../../../helpers/warehouseInventoryPricing');
 const {
   applyWarehouseProjectsFields,
@@ -58,7 +59,10 @@ const update = async (req, res) => {
 
     // 記錄數量變動
     const oldQuantity = existingInventory.quantity;
-    const newQuantity = quantity ? parseInt(quantity) : oldQuantity;
+    const newQuantity =
+      quantity !== undefined && quantity !== null && quantity !== ''
+        ? Math.max(0, roundQty(quantity))
+        : oldQuantity;
     const quantityChange = newQuantity - oldQuantity;
 
     // 更新記錄
@@ -93,7 +97,7 @@ const update = async (req, res) => {
       applyWarehouseProjectsFields(updateData, projects !== undefined ? projects : project);
     }
     if (status !== undefined) updateData.status = status;
-    if (minStockLevel !== undefined) updateData.minStockLevel = parseInt(minStockLevel) || 0;
+    if (minStockLevel !== undefined) updateData.minStockLevel = Math.max(0, roundQty(minStockLevel));
     if (location !== undefined) updateData.location = location;
     if (siteAddress !== undefined) {
       updateData.siteAddress =
