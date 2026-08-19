@@ -26,7 +26,7 @@ for (const filePath of globSync('./src/models/**/*.js')) {
   require(path.resolve(filePath));
 }
 
-const WAREHOUSE_KEYS = new Set(['A', 'B', 'C', 'D']);
+const WAREHOUSE_KEYS = new Set(['A', 'B', 'C', 'D', 'E', 'F']);
 
 const mongoOptions = {
   serverSelectionTimeoutMS: 10000,

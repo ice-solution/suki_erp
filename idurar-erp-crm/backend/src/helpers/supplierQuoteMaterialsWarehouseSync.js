@@ -4,7 +4,7 @@ const { roundQty } = require('./warehouseInventoryPricing');
 const WarehouseInventory = mongoose.model('WarehouseInventory');
 const WarehouseTransaction = mongoose.model('WarehouseTransaction');
 
-const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D'];
+const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function normalizeInventoryId(raw) {
   if (raw == null || raw === '') return '';
@@ -13,7 +13,7 @@ function normalizeInventoryId(raw) {
 }
 
 /**
- * 可扣倉的材料列：倉 A–D、有數量；排除「其他」及加工費等非實物項。
+ * 可扣倉的材料列：倉 A–F、有數量；排除虛擬倉（與成廠房、其他）及加工費等非實物項。
  * 優先使用 warehouseInventory（ObjectId）彙總；舊資料無 id 時仍用 倉+貨品名稱。
  */
 function parseStockableLine(m) {

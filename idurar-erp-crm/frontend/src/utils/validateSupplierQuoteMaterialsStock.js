@@ -1,7 +1,7 @@
 import { request } from '@/request';
 import { isVirtualMaterialWarehouse } from '@/utils/supplierQuoteMaterialWarehouse';
 
-const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D'];
+const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 function normalizeInventoryId(raw) {
   if (raw == null || raw === '') return '';

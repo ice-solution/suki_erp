@@ -89,7 +89,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   },
   warehouse: {
     type: String,
-    enum: ['A', 'B', 'C', 'D'],
+    enum: ['A', 'B', 'C', 'D', 'E', 'F'],
   },
 
   // 向後兼容：保留舊的client字段
@@ -211,7 +211,7 @@ const supplierQuoteSchema = new mongoose.Schema({
   ],
   materials: [
     {
-      /** 存倉貨品 _id；倉 A–D 扣庫優先用此欄位，改名後仍可對應 */
+      /** 存倉貨品 _id；倉 A–F 扣庫優先用此欄位，改名後仍可對應 */
       warehouseInventory: {
         type: mongoose.Schema.ObjectId,
         ref: 'WarehouseInventory',
@@ -219,7 +219,7 @@ const supplierQuoteSchema = new mongoose.Schema({
       },
       warehouse: {
         type: String,
-        enum: ['A', 'B', 'C', 'D', '與成廠房', '供應商管理', '其他'],
+        enum: ['A', 'B', 'C', 'D', 'E', 'F', '與成廠房', '供應商管理', '其他'],
         required: true,
       },
       itemName: {

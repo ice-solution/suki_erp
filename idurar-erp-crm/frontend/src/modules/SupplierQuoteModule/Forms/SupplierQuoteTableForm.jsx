@@ -1478,7 +1478,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
     if (!isVirtualWh) {
       if (!currentMaterial.warehouseInventory || !currentMaterial.itemName) {
-        message.warning('倉 A–D 請從下拉選單選擇存倉貨品（不可手動輸入名稱）');
+        message.warning('倉 A–F 請從下拉選單選擇存倉貨品（不可手動輸入名稱）');
         return;
       }
       const qty = Number(currentMaterial.quantity);
