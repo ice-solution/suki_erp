@@ -1,6 +1,23 @@
 const mongoose = require('mongoose');
 const Model = mongoose.model('Invoice');
 
+function parseLocalDayRange(dateFrom, dateTo) {
+  const parseLocalDay = (s, endOfDay) => {
+    const parts = String(s || '')
+      .slice(0, 10)
+      .split('-')
+      .map((x) => parseInt(x, 10));
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  };
+
+  const from = parseLocalDay(dateFrom, false);
+  const to = parseLocalDay(dateTo, true);
+  if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) return null;
+  return { from, to };
+}
+
 /**
  * GET /invoice/export-xero?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
  * 依發票 date 篩選日期範圍，回傳用於 Xero CSV 滙出的發票列表（含 client/clients 以取得客戶名與 accountCode）
@@ -16,17 +33,15 @@ const exportXero = async (req, res) => {
         message: 'dateFrom and dateTo are required (YYYY-MM-DD)',
       });
     }
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    const range = parseLocalDayRange(dateFrom, dateTo);
+    if (!range) {
       return res.status(400).json({
         success: false,
         result: null,
         message: 'Invalid date format',
       });
     }
-    // 當日結束時間
-    to.setHours(23, 59, 59, 999);
+    const { from, to } = range;
 
     const result = await Model.find({
       removed: false,

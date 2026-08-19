@@ -21,6 +21,7 @@ import { Link } from 'react-router-dom';
 import { ErpLayout } from '@/layout';
 import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
+import { followUpDisplayName } from '@/utils/adminDisplayName';
 import * as XLSX from 'xlsx';
 
 const { RangePicker } = DatePicker;
@@ -180,6 +181,7 @@ const QuoteOperationalReport = () => {
       報價編號: formatQuoteNo(r),
       PO_Number: poNumbersText(r) === '—' ? '' : poNumbersText(r),
       客戶: clientNames(r) === '—' ? '' : clientNames(r),
+      跟單人: followUpDisplayName(r) === '-' ? '' : followUpDisplayName(r),
       總計: Number(r?.total) || 0,
       貨幣: r?.currency || 'HKD',
       日期: formatDate(r?.date),
@@ -198,6 +200,7 @@ const QuoteOperationalReport = () => {
         發票編號: formatInvoiceNo(inv),
         報價編號: inv?.invoiceNumber || '',
         客戶: clientNames(inv) === '—' ? '' : clientNames(inv),
+        跟單人: followUpDisplayName(inv) === '-' ? '' : followUpDisplayName(inv),
         總計: Number(inv?.total) || 0,
         '已付(部份付款)': Number(inv?.credit) || 0,
         付款狀態: inv?.paymentStatus || '',
@@ -277,6 +280,11 @@ const QuoteOperationalReport = () => {
       render: (_, r) => clientNames(r),
     },
     {
+      title: '跟單人',
+      key: 'followUpBy',
+      render: (_, r) => followUpDisplayName(r),
+    },
+    {
       title: '總計',
       dataIndex: 'total',
       key: 'total',
@@ -315,6 +323,11 @@ const QuoteOperationalReport = () => {
       title: '客戶',
       key: 'clients',
       render: (_, r) => clientNames(r),
+    },
+    {
+      title: '跟單人',
+      key: 'followUpBy',
+      render: (_, r) => followUpDisplayName(r),
     },
     {
       title: '總計',
@@ -530,7 +543,7 @@ const QuoteOperationalReport = () => {
                     <Select
                       showSearch
                       allowClear
-                      placeholder="制單人"
+                      placeholder="跟單人"
                       filterOption={false}
                       onSearch={onSearchAdmin}
                       onChange={(v) => setCreatorId(v || null)}

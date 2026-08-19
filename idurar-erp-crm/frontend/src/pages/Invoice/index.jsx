@@ -18,7 +18,8 @@ export default function Invoice() {
   const searchConfig = {
     entity: 'invoice',
     displayLabels: ['address', 'invoiceNumber', 'poNumber'],
-    searchFields: 'address,invoiceNumber,poNumber,contactPerson',
+    // 支援直接搜尋完整單號，例如 SMI-2508114R
+    searchFields: 'address,invoiceNumber,poNumber,contactPerson,numberPrefix,number',
   };
   const deleteModalLabels = ['number', 'client.name'];
   const dataTableColumns = [

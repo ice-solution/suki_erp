@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { projectRelatedDocsPopulate } = require('../../../helpers/projectRelatedDocsPopulate');
 
 const Model = mongoose.model('Project');
 
@@ -16,22 +17,7 @@ const paginatedList = async (req, res) => {
     .sort({ created: -1 })
     .populate('createdBy', 'name')
     .populate('suppliers', 'name')
-    .populate({
-      path: 'quotations',
-      select: 'number year total status'
-    })
-    .populate({
-      path: 'supplierQuotations', 
-      select: 'number year total status'
-    })
-    .populate({
-      path: 'shipQuotations', 
-      select: 'number year total status'
-    })
-    .populate({
-      path: 'invoices',
-      select: 'number year total status'
-    });
+    .populate(projectRelatedDocsPopulate);
 
   // Counting the total documents
   const countPromise = Model.countDocuments({ removed: false });

@@ -4,6 +4,7 @@ import ProjectDataTableModule from '@/modules/ProjectModule/ProjectDataTableModu
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
+import { projectFollowUpDisplayName } from '@/utils/adminDisplayName';
 
 const { Text } = Typography;
 
@@ -75,10 +76,10 @@ export default function Project() {
       render: (text) => text || '-',
     },
     {
-      title: translate('prepared_by'),
-      dataIndex: 'createdBy',
+      title: '跟單人',
+      dataIndex: 'followUpBy',
       key: 'preparedBy',
-      render: (_, record) => record?.createdBy?.name || '-',
+      render: (_, record) => projectFollowUpDisplayName(record),
     },
     {
       title: translate('Cost By'),

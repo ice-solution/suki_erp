@@ -310,7 +310,7 @@ const lang = {
   project_percentage_short: 'Share',
   project_percentage_hint: 'Share of this invoice in the whole project (0–100)',
   paid_date: 'Paid date',
-  prepared_by: 'Prepared by',
+  prepared_by: 'Follow-up by',
   modified_by: 'Last modified by',
   default_currency: 'Default Currency',
   select_default_currency: 'Select Default Currency',

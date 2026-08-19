@@ -29,7 +29,8 @@ const filter = async (req, res) => {
     .skip(skip)
     .limit(limit)
     .sort({ created: -1 })
-    .populate('createdBy', 'name');
+    .populate('createdBy', 'name')
+    .populate('followUpBy', 'name surname email');
 
   const countPromise = Model.countDocuments(query);
 

@@ -2,6 +2,23 @@ const mongoose = require('mongoose');
 const Quote = mongoose.model('Quote');
 const Invoice = mongoose.model('Invoice');
 
+function parseLocalDayRange(startDate, endDate) {
+  const parseLocalDay = (s, endOfDay) => {
+    const parts = String(s || '')
+      .slice(0, 10)
+      .split('-')
+      .map((x) => parseInt(x, 10));
+    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
+    const [y, m, d] = parts;
+    return new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
+  };
+
+  const start = parseLocalDay(startDate, false);
+  const end = parseLocalDay(endDate, true);
+  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
+  return { start, end };
+}
+
 /**
  * 營運報告（與前端 /quote/operational-report 對應）
  * Query: startDate, endDate（篩選 Quote / Invoice 的 date）
@@ -17,9 +34,14 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
       });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    end.setHours(23, 59, 59, 999);
+    const range = parseLocalDayRange(startDate, endDate);
+    if (!range) {
+      return res.status(400).json({
+        success: false,
+        message: '日期格式不正確',
+      });
+    }
+    const { start, end } = range;
 
     const dateRange = { $gte: start, $lte: end };
 
@@ -30,6 +52,7 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
 
     const populateCreators = [
       { path: 'createdBy', select: 'name email' },
+      { path: 'followUpBy', select: 'name surname email' },
       { path: 'updatedBy', select: 'name email' },
     ];
 
@@ -42,7 +65,7 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
     }
     if (creatorId) {
       const aid = new mongoose.Types.ObjectId(String(creatorId));
-      andFilters.push({ $or: [{ createdBy: aid }, { updatedBy: aid }] });
+      andFilters.push({ $or: [{ followUpBy: aid }, { createdBy: aid }] });
     }
 
     // 1) 已接受、已完成、指定日期內、從未轉過 Invoice（無 converted.invoices 且無 legacy converted.invoice）

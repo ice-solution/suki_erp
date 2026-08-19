@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { projectRelatedDocsPopulate } = require('../../../helpers/projectRelatedDocsPopulate');
 
 const Model = mongoose.model('Project');
 const QuoteModel = mongoose.model('Quote');
@@ -164,22 +165,7 @@ const search = async (req, res) => {
   const populatePaths = [
     { path: 'createdBy', select: 'name' },
     { path: 'suppliers', select: 'name' },
-    {
-      path: 'quotations',
-      select: 'numberPrefix number year total status isCompleted invoiceNumber',
-    },
-    {
-      path: 'supplierQuotations',
-      select: 'numberPrefix number year total status invoiceNumber',
-    },
-    {
-      path: 'shipQuotations',
-      select: 'numberPrefix number year total status isCompleted invoiceNumber',
-    },
-    {
-      path: 'invoices',
-      select: 'invoiceNumber numberPrefix number year total status',
-    },
+    ...projectRelatedDocsPopulate,
   ];
 
   try {

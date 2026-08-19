@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const { projectRelatedDocsPopulate } = require('../../../helpers/projectRelatedDocsPopulate');
 
 const Model = mongoose.model('Project');
 
@@ -19,24 +20,7 @@ const list = async (req, res) => {
     .populate('client', 'name')
     .populate('suppliers', 'name')
     .populate('contractors', 'name')
-    .populate({
-      path: 'quotations',
-      select: 'numberPrefix number year total status isCompleted'
-    })
-    .populate({
-      path: 'supplierQuotations', 
-      select: 'numberPrefix number year total status isCompleted'
-    })
-    .populate({
-      path: 'shipQuotations', 
-      select: 'numberPrefix number year total status isCompleted'
-    })
-    .populate({
-      path: 'invoices',
-      // 需要 invoiceNumber 用於 Project list 第一欄顯示
-      // numberPrefix/number 也一併取回，以防 invoiceNumber 欄位未填
-      select: 'invoiceNumber numberPrefix number year total status'
-    });
+    .populate(projectRelatedDocsPopulate);
 
   // Counting the total documents
   const countPromise = Model.countDocuments({ removed: false });

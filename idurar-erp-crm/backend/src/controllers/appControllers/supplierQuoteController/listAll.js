@@ -7,7 +7,10 @@ const listAll = async (req, res) => {
   const matchQuery = { removed: false };
 
   const result = await fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, 0, 100000, {
-    populate: [{ path: 'createdBy', select: 'name' }],
+    populate: [
+      { path: 'createdBy', select: 'name surname email' },
+      { path: 'followUpBy', select: 'name surname email' },
+    ],
   });
 
   if (result.length > 0) {

@@ -134,7 +134,7 @@ const lang = {
   project_percentage_short: '整個佔比%',
   project_percentage_hint: '自動計算：本張發票總額 ÷ Project 總額 × 100（小數點後 2 位，四捨五入）',
   paid_date: '已付款日期',
-  prepared_by: '制單人',
+  prepared_by: '跟單人',
   modified_by: '修改人',
   last_invoice_number: '發票最後編號',
   last_smi_number: 'SMI 最後編號',
