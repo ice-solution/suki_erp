@@ -14,6 +14,7 @@ const routerApp = (entity, controller) => {
     router.route(`/${entity}/update-with-files/:id`).patch(catchErrors(controller['update']));
     router.route(`/${entity}/delete-file/:id`).delete(catchErrors(controller['deleteFile']));
     router.route(`/${entity}/export-xero-po`).get(catchErrors(controller['exportXeroPo']));
+    router.route(`/${entity}/source-items/:id`).get(catchErrors(controller['getSourceItemsForEdit']));
   }
 
   router.route(`/${entity}/create`).post(catchErrors(controller['create']));
@@ -55,6 +56,9 @@ const routerApp = (entity, controller) => {
     router
       .route(`/${entity}/operational-report`)
       .get(catchErrors(controller['getQuoteInvoiceOperationalReport']));
+    router
+      .route(`/${entity}/my-follow-up-report`)
+      .get(catchErrors(controller['getMyFollowUpMonthlyReport']));
     router.route(`/${entity}/po-sync-preview/:id`).get(catchErrors(controller['poSyncPreview']));
     router.route(`/${entity}/po-sync/:id`).post(catchErrors(controller['poSyncExecute']));
   }

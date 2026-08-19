@@ -23,6 +23,7 @@ const QuoteUpdate = lazy(() => import('@/pages/Quote/QuoteUpdate'));
 const QuoteTableCreate = lazy(() => import('@/pages/Quote/QuoteTableCreate'));
 const QuoteTableUpdate = lazy(() => import('@/pages/Quote/QuoteTableUpdate'));
 const QuoteOperationalReport = lazy(() => import('@/pages/QuoteOperationalReport'));
+const MyFollowUpMonthlyReport = lazy(() => import('@/pages/MyFollowUpMonthlyReport'));
 const SupplierQuote = lazy(() => import('@/pages/SupplierQuote/index'));
 const SupplierQuoteRead = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteRead'));
 const SupplierQuoteTableCreate = lazy(() => import('@/pages/SupplierQuote/SupplierQuoteTableCreate'));
@@ -137,6 +138,10 @@ let routes = {
     {
       path: '/quote/operational-report',
       element: <QuoteOperationalReport />,
+    },
+    {
+      path: '/quote/my-follow-up-report',
+      element: <MyFollowUpMonthlyReport />,
     },
     {
       path: '/quote/read/:id',

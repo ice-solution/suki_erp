@@ -80,6 +80,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const [items, setItems] = useState([]);
   const [editingItemKey, setEditingItemKey] = useState(null);
   const [currentItem, setCurrentItem] = useState({
+    sourceItemNumber: '',
     itemName: '',
     description: '',
     quantity: 1,
@@ -88,6 +89,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     total: 0,
     sourceItemIndex: undefined,
   });
+  const [sourceItemCatalog, setSourceItemCatalog] = useState(null);
+  const [sourceItemMessage, setSourceItemMessage] = useState('');
+  const [sourceItemMessageType, setSourceItemMessageType] = useState('info');
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [clientRecords, setClientRecords] = useState([]);
@@ -348,6 +352,14 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   }, [lastNumberSettings, watchedSupplierPrefix, current?._id, form]);
   const [invoiceOptions, setInvoiceOptions] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const sourceItemMap = useMemo(() => {
+    const map = new Map();
+    for (const row of sourceItemCatalog?.items || []) {
+      map.set(Number(row.itemNo), row);
+    }
+    return map;
+  }, [sourceItemCatalog]);
 
   const searchInvoiceNumbers = async (searchText) => {
     if (!searchText || searchText.length < 1) {
@@ -806,6 +818,13 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         ...item, 
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
+      setCurrentItem((prev) => ({
+        ...prev,
+        sourceItemNumber: '',
+        sourceItemIndex: undefined,
+      }));
+      setSourceItemMessage('');
+      setSourceItemMessageType('info');
       originalMaterialsRef.current = currentMaterials.map((m) => ({ ...m }));
 
       setMaterials(
@@ -900,6 +919,29 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       }, 100);
     }
   }, [current, form, clients]);
+
+  useEffect(() => {
+    const loadSourceItems = async () => {
+      if (!current?._id) {
+        setSourceItemCatalog(null);
+        return;
+      }
+      try {
+        const res = await request.get({
+          entity: `supplierquote/source-items/${current._id}`,
+        });
+        if (res?.success) {
+          setSourceItemCatalog(res.result || null);
+        } else {
+          setSourceItemCatalog(null);
+        }
+      } catch (error) {
+        console.error('取得來源報價項目失敗:', error);
+        setSourceItemCatalog(null);
+      }
+    };
+    void loadSourceItems();
+  }, [current?._id]);
 
   useEffect(() => {
     syncAssetRowsToForm(shipRows, winchRows);
@@ -1034,6 +1076,81 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       }));
   };
 
+  const getDraftReservedQtyForSourceIndex = (sourceItemIndex, excludingKey = null) =>
+    items.reduce((sum, item) => {
+      const idx = Number(item?.sourceItemIndex);
+      if (!Number.isFinite(idx) || idx !== Number(sourceItemIndex)) return sum;
+      const itemKey = item.key || item._id;
+      if (excludingKey != null && String(itemKey) === String(excludingKey)) return sum;
+      return sum + Math.max(0, Math.floor(Number(item?.quantity) || 0));
+    }, 0);
+
+  const resolveSourceItemSelection = (rawValue, { silent = false } = {}) => {
+    const value = String(rawValue || '').trim();
+    const base = {
+      ...currentItem,
+      sourceItemNumber: value,
+    };
+
+    if (!value) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('');
+      setSourceItemMessageType('info');
+      return;
+    }
+
+    const itemNo = Number(value);
+    if (!Number.isInteger(itemNo) || itemNo <= 0) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('找不到來源項次，會當作手動新增 item');
+      setSourceItemMessageType('warning');
+      return;
+    }
+
+    const row = sourceItemMap.get(itemNo);
+    if (!row) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('找不到來源項次，會當作手動新增 item');
+      setSourceItemMessageType('warning');
+      return;
+    }
+
+    if (!row.matchesPo) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage(`第 ${itemNo} 行存在，但不屬於 P.O. ${sourceItemCatalog?.poNumber || ''}`);
+      setSourceItemMessageType('error');
+      if (!silent) message.error(`第 ${itemNo} 行不屬於 P.O. ${sourceItemCatalog?.poNumber || ''}`);
+      return;
+    }
+
+    setCurrentItem({
+      ...base,
+      itemName: row.itemName || '',
+      description: row.description || '',
+      unit: row.unit || base.unit || 'JOB',
+      sourceItemIndex: row.itemIndex,
+    });
+    setSourceItemMessage(
+      `來源 ${sourceItemCatalog?.sourceNumber || '報價單'} 第 ${itemNo} 行，可用餘額 ${row.remainingForThisDoc}`
+    );
+    setSourceItemMessageType(row.remainingForThisDoc > 0 ? 'success' : 'error');
+    if (!silent && row.remainingForThisDoc <= 0) {
+      message.error(`第 ${itemNo} 行已沒有可上單餘額`);
+    }
+  };
+
   // 更新當前項目
   const updateCurrentItem = (field, value) => {
     const updatedItem = { ...currentItem, [field]: value };
@@ -1054,6 +1171,10 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }
     console.log('Editing item:', { record, itemKey, allItems: items });
     setCurrentItem({
+      sourceItemNumber:
+        record.sourceItemIndex !== undefined && record.sourceItemIndex !== null
+          ? String(Number(record.sourceItemIndex) + 1)
+          : '',
       itemName: record.itemName || '',
       description: record.description || '',
       quantity: record.quantity || 1,
@@ -1063,6 +1184,21 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       sourceItemIndex: record.sourceItemIndex,
     });
     setEditingItemKey(itemKey);
+    if (record.sourceItemIndex !== undefined && record.sourceItemIndex !== null) {
+      const sourceNo = Number(record.sourceItemIndex) + 1;
+      const row = sourceItemMap.get(sourceNo);
+      if (row?.matchesPo) {
+        setSourceItemMessage(
+          `來源 ${sourceItemCatalog?.sourceNumber || '報價單'} 第 ${sourceNo} 行，可用餘額 ${row.remainingForThisDoc}`
+        );
+        setSourceItemMessageType('info');
+      } else {
+        setSourceItemMessage('');
+      }
+    } else {
+      setSourceItemMessage('');
+      setSourceItemMessageType('info');
+    }
   };
 
   // 添加或更新項目到列表
@@ -1070,6 +1206,41 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     // 允許負數價格，只檢查必要字段
     if (!currentItem.itemName || currentItem.quantity <= 0) {
       return;
+    }
+
+    const typedSourceNo = String(currentItem.sourceItemNumber || '').trim();
+    const boundSourceNo =
+      currentItem.sourceItemIndex !== undefined && currentItem.sourceItemIndex !== null
+        ? String(Number(currentItem.sourceItemIndex) + 1)
+        : '';
+    if (typedSourceNo && typedSourceNo !== boundSourceNo) {
+      resolveSourceItemSelection(typedSourceNo, { silent: true });
+      message.warning('已按來源項次重新帶入資料，請再按一次新增/更新');
+      return;
+    }
+
+    if (sourceItemMessageType === 'error') {
+      message.error(sourceItemMessage || '來源項次不可用');
+      return;
+    }
+
+    if (currentItem.sourceItemIndex !== undefined && currentItem.sourceItemIndex !== null) {
+      const sourceNo = Number(currentItem.sourceItemIndex) + 1;
+      const row = sourceItemMap.get(sourceNo);
+      if (!row || !row.matchesPo) {
+        message.error('來源項次不屬於當前 Quote + P.O.，不可建立');
+        return;
+      }
+      const reservedByOtherDraftRows = getDraftReservedQtyForSourceIndex(
+        currentItem.sourceItemIndex,
+        editingItemKey
+      );
+      const draftRemaining = Math.max(0, Number(row.remainingForThisDoc || 0) - reservedByOtherDraftRows);
+      const requestQty = Math.max(0, Math.floor(Number(currentItem.quantity) || 0));
+      if (requestQty > draftRemaining) {
+        message.error(`第 ${sourceNo} 行最多只可再上 ${draftRemaining} 件`);
+        return;
+      }
     }
 
     const itemTotal = calculate.multiply(currentItem.quantity, currentItem.price);
@@ -1125,6 +1296,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
 
     // 重置當前項目
     setCurrentItem({
+      sourceItemNumber: '',
       itemName: '',
       description: '',
       quantity: 1,
@@ -1133,6 +1305,8 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       total: 0,
       sourceItemIndex: undefined,
     });
+    setSourceItemMessage('');
+    setSourceItemMessageType('info');
   };
 
   // 刪除項目
@@ -1140,6 +1314,21 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     const updatedItems = items.filter(item => item.key !== key);
     setItems(updatedItems);
     form.setFieldsValue({ items: updatedItems });
+    if (editingItemKey && String(editingItemKey) === String(key)) {
+      setEditingItemKey(null);
+      setCurrentItem({
+        sourceItemNumber: '',
+        itemName: '',
+        description: '',
+        quantity: 1,
+        unit: 'JOB',
+        price: 0,
+        total: 0,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('');
+      setSourceItemMessageType('info');
+    }
   };
 
   // 處理材料選擇（僅「與成廠房」「其他」：從預設選項帶入名稱）
@@ -1393,26 +1582,34 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       title: translate('Description'),
       dataIndex: 'description',
       key: 'description',
-      width: '70%',
+      width: '50%',
       render: (text) => renderMultilineText(text),
+    },
+    {
+      title: '來源項次',
+      dataIndex: 'sourceItemIndex',
+      key: 'sourceItemIndex',
+      width: '10%',
+      render: (value) =>
+        value !== undefined && value !== null && Number.isFinite(Number(value)) ? Number(value) + 1 : '—',
     },
     {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
-      width: '10%',
+      width: '8%',
     },
     {
       title: '單位',
       dataIndex: 'unit',
       key: 'unit',
-      width: '8%',
+      width: '7%',
       render: (unit) => unit || 'JOB',
     },
     {
       title: '',
       key: 'action',
-      width: '7%',
+      width: '10%',
       render: (_, record) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <EditOutlined 
@@ -1929,7 +2126,23 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         <Col span={24}>
           <h4>{translate('Add Item')}</h4>
         </Col>
-        <Col span={6}>
+        {current?._id && sourceItemCatalog?.sourceId ? (
+          <Col span={24}>
+            <div style={{ fontSize: 12, color: '#666' }}>
+              來源單：{sourceItemCatalog.sourceNumber || '-'} | P.O.：{sourceItemCatalog.poNumber || '-'}
+            </div>
+          </Col>
+        ) : null}
+        <Col span={3}>
+          <Input
+            placeholder="來源項次"
+            value={currentItem.sourceItemNumber}
+            onChange={(e) => updateCurrentItem('sourceItemNumber', e.target.value)}
+            onBlur={(e) => resolveSourceItemSelection(e.target.value)}
+            disabled={!current?._id || !sourceItemCatalog?.sourceId}
+          />
+        </Col>
+        <Col span={5}>
           <AutoComplete
             placeholder="輸入項目名稱搜索..."
             onSearch={handleSearch}
@@ -1943,7 +2156,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={12}>
+        <Col span={10}>
           <Input.TextArea
             placeholder="描述（Shift+Enter 換行）"
             value={currentItem.description}
@@ -1991,6 +2204,23 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
             {editingItemKey ? translate('Update') : ''}
           </Button>
         </Col>
+        {sourceItemMessage ? (
+          <Col span={24}>
+            <div
+              style={{
+                fontSize: 12,
+                color:
+                  sourceItemMessageType === 'error'
+                    ? '#ff4d4f'
+                    : sourceItemMessageType === 'success'
+                      ? '#389e0d'
+                      : '#666',
+              }}
+            >
+              {sourceItemMessage}
+            </div>
+          </Col>
+        ) : null}
       </Row>
 
       {/* Items Table */}

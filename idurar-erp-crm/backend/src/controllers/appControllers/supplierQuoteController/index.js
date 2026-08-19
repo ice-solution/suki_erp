@@ -14,6 +14,7 @@ const mail = require('./sendMail');
 const deleteFile = require('./deleteFile');
 const exportXeroPo = require('./exportXeroPo');
 const neighbors = require('./neighbors');
+const getSourceItemsForEdit = require('./getSourceItemsForEdit');
 
 module.exports = {
   create,
@@ -32,4 +33,5 @@ module.exports = {
   deleteFile,
   exportXeroPo,
   neighbors,
+  getSourceItemsForEdit,
 };

@@ -18,6 +18,7 @@ const linkProject = require('./linkProject');
 const search = require('./search');
 const neighbors = require('./neighbors');
 const getQuoteInvoiceOperationalReport = require('./getQuoteInvoiceOperationalReport');
+const getMyFollowUpMonthlyReport = require('./getMyFollowUpMonthlyReport');
 const poSyncHandlers = require('./poSync');
 
 methods.list = paginatedList;
@@ -35,6 +36,7 @@ methods.poInvoiceStatus = poInvoiceStatus;
 methods.summary = summary;
 methods.linkProject = linkProject;
 methods.getQuoteInvoiceOperationalReport = getQuoteInvoiceOperationalReport;
+methods.getMyFollowUpMonthlyReport = getMyFollowUpMonthlyReport;
 methods.poSyncPreview = poSyncHandlers.poSyncPreview;
 methods.poSyncExecute = poSyncHandlers.poSyncExecute;
 

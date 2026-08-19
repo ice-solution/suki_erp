@@ -58,6 +58,7 @@ export default function AppRouter() {
     if (p.startsWith('/supplierquote')) return 'supplierquote';
     if (p.startsWith('/supplier')) return 'supplier';
     if (p.startsWith('/invoice')) return 'invoice';
+    if (p.startsWith('/quote/my-follow-up-report')) return 'my-follow-up-report';
     if (p.startsWith('/quote/operational-report')) return 'quote-operational-report';
     if (p.startsWith('/quote')) return 'quote';
     if (p.startsWith('/shipquote')) return 'shipquote';

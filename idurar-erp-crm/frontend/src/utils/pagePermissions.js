@@ -12,6 +12,7 @@ export const PAGE_PERMISSION_DEFS = [
   { key: 'project-contractor-report', zh: '承辦商報告', en: 'Contractor Report' },
   { key: 'project-contractor-employee-report', zh: '承辦商員工報告', en: 'Contractor Employee Report' },
   { key: 'quote-operational-report', zh: '報價／發票營運報告', en: 'Quote/Invoice Ops Report' },
+  { key: 'my-follow-up-report', zh: '我的跟單月報', en: 'My Follow-up Monthly Report' },
   { key: 'xero-invoice', zh: 'Xero 發票滙出', en: 'Xero Invoice Export' },
   { key: 'xero-po', zh: 'Xero PO 單滙出', en: 'Xero PO Export' },
   { key: 'xero-eo', zh: 'Xero EO 單滙出', en: 'Xero EO Export' },
