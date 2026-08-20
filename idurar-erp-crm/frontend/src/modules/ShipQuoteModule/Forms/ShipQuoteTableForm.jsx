@@ -17,7 +17,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
-import { DEFAULT_QUOTE_NOTES } from '@/utils/defaultQuoteNotes';
+import { DEFAULT_SHIP_QUOTE_NOTES } from '@/utils/defaultQuoteNotes';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import FollowUpBySelect from '@/components/FollowUpBySelect';
@@ -150,7 +150,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
     if (current) return;
     if (didInitDefaultNotesRef.current) return;
     didInitDefaultNotesRef.current = true;
-    form.setFieldsValue({ notes: DEFAULT_QUOTE_NOTES });
+    form.setFieldsValue({ notes: DEFAULT_SHIP_QUOTE_NOTES });
   }, [current, form]);
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
