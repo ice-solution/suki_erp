@@ -6,6 +6,7 @@ const custom = require('@/controllers/pdfController');
 const { calculate } = require('@/helpers');
 const { syncQuoteLastNumberIfSequentialNext } = require('@/helpers/lastNumberSettings');
 const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
+const assertQuoteNumberUnique = require('./assertQuoteNumberUnique');
 
 const create = async (req, res) => {
   const { items = [], discount = 0 } = req.body;
