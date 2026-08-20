@@ -17,6 +17,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
+import { DEFAULT_QUOTE_NOTES } from '@/utils/defaultQuoteNotes';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
 import FollowUpBySelect from '@/components/FollowUpBySelect';
@@ -126,6 +127,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(false);
   const [dragRentalExtraIndex, setDragRentalExtraIndex] = useState(null);
+  const didInitDefaultNotesRef = useRef(false);
   
   const form = Form.useFormInstance();
   const discountAmountEditingRef = useRef(false);
@@ -142,6 +144,14 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
     setLastNumber(next);
     form.setFieldsValue({ number: String(next) });
   }, [lastNumberSettings, current?._id, form]);
+
+  // Create 模式預設備註
+  useEffect(() => {
+    if (current) return;
+    if (didInitDefaultNotesRef.current) return;
+    didInitDefaultNotesRef.current = true;
+    form.setFieldsValue({ notes: DEFAULT_QUOTE_NOTES });
+  }, [current, form]);
 
   // 已移除自動計算 Quote Number 的功能，現在 Quote Number 可以獨立輸入
 

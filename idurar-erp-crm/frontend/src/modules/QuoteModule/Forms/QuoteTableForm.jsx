@@ -17,6 +17,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
+import { DEFAULT_QUOTE_NOTES } from '@/utils/defaultQuoteNotes';
 import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
@@ -52,7 +53,6 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [discount, setDiscount] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [selectedType, setSelectedType] = useState('服務');
-  const DEFAULT_QUOTE_NOTES = '備註：\n1）此報價有效期為90天';
   const didInitDefaultNotesRef = useRef(false);
   
   // Item form states

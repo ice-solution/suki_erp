@@ -16,6 +16,7 @@ import { useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
+import { DEFAULT_QUOTE_NOTES } from '@/utils/defaultQuoteNotes';
 import { useSelector } from 'react-redux';
 import SelectAsync from '@/components/SelectAsync';
 
@@ -40,6 +41,8 @@ function LoadQuoteForm({ subTotal = 0, current = null }) {
   const [discountTotal, setDiscountTotal] = useState(0);
   const [currentYear, setCurrentYear] = useState(() => new Date().getFullYear());
   const [selectedType, setSelectedType] = useState('服務');
+  const didInitDefaultNotesRef = useRef(false);
+  const form = Form.useFormInstance();
   
   const handleDiscountChange = (value) => {
     setDiscount(value || 0);
@@ -64,6 +67,14 @@ function LoadQuoteForm({ subTotal = 0, current = null }) {
   useEffect(() => {
     addField.current.click();
   }, []);
+
+  // Create 模式預設備註
+  useEffect(() => {
+    if (current) return;
+    if (didInitDefaultNotesRef.current) return;
+    didInitDefaultNotesRef.current = true;
+    form.setFieldsValue({ notes: DEFAULT_QUOTE_NOTES });
+  }, [current, form]);
 
   return (
     <>
