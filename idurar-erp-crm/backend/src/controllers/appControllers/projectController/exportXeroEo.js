@@ -3,11 +3,12 @@ const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const Contractor = mongoose.model('Contractor');
 const { resolveContractorAccountCode } = require('@/helpers/projectContractorFees');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 /**
  * GET /project/export-xero-eo?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
  *
- * 依 usedContractorFees[].date 篩選日期範圍，並把每個 Project 的 usedContractorFees 轉成
+ * 依 usedContractorFees[].date 篩選日期範圍（香港日曆日），並把每個 Project 的 usedContractorFees 轉成
  * Xero EO（Bill）CSV rows 格式所需資料。
  */
 const exportXeroEo = async (req, res) => {
@@ -23,18 +24,15 @@ const exportXeroEo = async (req, res) => {
       });
     }
 
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    const range = parseHongKongDayRange(dateFrom, dateTo);
+    if (!range) {
       return res.status(400).json({
         success: false,
         result: null,
         message: 'Invalid date format',
       });
     }
-
-    // 當日結束時間
-    to.setHours(23, 59, 59, 999);
+    const { from, to } = range;
 
     // 先不在 DB 層面用 startDate 篩專案，避免專案起始日不在範圍內但實際 EO 日期在範圍內的情況
     const projects = await Project.find({

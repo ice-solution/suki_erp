@@ -1,9 +1,10 @@
 const mongoose = require('mongoose');
 const Model = mongoose.model('SupplierQuote');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 /**
  * GET /supplierquote/export-xero-po?dateFrom=YYYY-MM-DD&dateTo=YYYY-MM-DD
- * 依 S單 date 篩選日期範圍，只取 numberPrefix = 'PO' 且 isCompleted = true 的 S單，回傳用於 Xero PO 滙出（含 supplier 以取得供應商名與 accountCode）
+ * 依 S單 date 篩選日期範圍（香港日曆日），只取 numberPrefix = 'PO' 且 isCompleted = true 的 S單，回傳用於 Xero PO 滙出（含 supplier 以取得供應商名與 accountCode）
  */
 const exportXeroPo = async (req, res) => {
   try {
@@ -16,16 +17,15 @@ const exportXeroPo = async (req, res) => {
         message: 'dateFrom and dateTo are required (YYYY-MM-DD)',
       });
     }
-    const from = new Date(dateFrom);
-    const to = new Date(dateTo);
-    if (isNaN(from.getTime()) || isNaN(to.getTime())) {
+    const range = parseHongKongDayRange(dateFrom, dateTo);
+    if (!range) {
       return res.status(400).json({
         success: false,
         result: null,
         message: 'Invalid date format',
       });
     }
-    to.setHours(23, 59, 59, 999);
+    const { from, to } = range;
 
     const result = await Model.find({
       removed: false,
