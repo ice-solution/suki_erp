@@ -23,6 +23,7 @@ const {
 } = require('@/helpers/quoteInvoiceConversion');
 const { syncInvoiceToProjectsByQuoteNumber } = require('@/helpers/syncInvoiceToProjectsByQuoteNumber');
 const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
+const { resolveProjectLinkNumber } = require('@/helpers/resolveProjectLinkNumber');
 
 function buildInvoiceItemsFromResolvedLines(items, resolvedLines) {
   return resolvedLines.map(({ itemIndex, quantity }) => {
@@ -145,10 +146,7 @@ async function convertSourceDocumentToInvoice({
     selectedItems = buildInvoiceItemsFromPercentageLines(items, resolved.lines);
   }
 
-  const quoteNumberLink =
-    sourceDoc.numberPrefix && sourceDoc.number
-      ? `${sourceDoc.numberPrefix}-${sourceDoc.number}`
-      : sourceDoc.invoiceNumber;
+  const quoteNumberLink = resolveProjectLinkNumber(sourceDoc);
   const linkedProject = quoteNumberLink
     ? await ProjectModel.findOne({ invoiceNumber: quoteNumberLink, removed: false })
         .select('projectPrice costPrice')

@@ -863,9 +863,13 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label="Quote Number" name="invoiceNumber">
+          <Form.Item
+            label="Quote Number"
+            name="invoiceNumber"
+            extra="可填主專案單號（例如 SML-47059R），與「編號」不同亦可；多張報價可掛同一 Project"
+          >
             <Input 
-              placeholder="輸入 Quote Number"
+              placeholder="輸入 Quote Number（專案關聯鍵）"
               onBlur={(e) => {
                 const quoteNumber = e.target.value;
                 if (quoteNumber) {

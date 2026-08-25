@@ -24,6 +24,7 @@ function resolveQuoteNumberIdentity(body) {
   return { prefix: resolvedPrefix, number: resolvedNumber, invoiceNumber };
 }
 
+/** QU：同 type 下檢查單號／Quote Number */
 function buildMatchClauses(identity, typeFilter) {
   const { prefix, number, invoiceNumber } = identity;
   const or = [];
@@ -42,10 +43,29 @@ function buildMatchClauses(identity, typeFilter) {
   return or;
 }
 
+/**
+ * SML：只檢查單據身份 numberPrefix+number 不可重複。
+ * Quote Number（invoiceNumber）可與其他 SML 相同，以便多張報價掛同一 Project。
+ */
+function buildSmlDocumentIdentityClauses(identity) {
+  const { prefix, number } = identity;
+  if (!prefix || !number) return [];
+  return [
+    { numberPrefix: prefix, number },
+    {
+      numberPrefix: new RegExp(`^${escapeRegex(prefix)}$`, 'i'),
+      number,
+    },
+  ];
+}
+
 function formatDocLabel(dup) {
+  if (dup.numberPrefix && dup.number != null && String(dup.number).trim() !== '') {
+    return `${dup.numberPrefix}-${dup.number}`;
+  }
   return dup.invoiceNumber && String(dup.invoiceNumber).trim()
     ? String(dup.invoiceNumber).trim()
-    : `${dup.numberPrefix}-${dup.number}`;
+    : '—';
 }
 
 async function findDuplicate(Model, baseFilter, orClauses) {
@@ -56,9 +76,10 @@ async function findDuplicate(Model, baseFilter, orClauses) {
 }
 
 /**
- * 報價單（Quote）與吊船報價（ShipQuote）共用 SML 單號：
- * - SML-{n} 在兩邊不可重複（建立／修改皆檢查）
- * - QU 前綴仍只在 Quote 內、同 type 不可重複
+ * 報價單（Quote）與吊船報價（ShipQuote）共用 SML 單據編號：
+ * - SML-{n} 的 numberPrefix+number 在兩邊不可重複（建立／修改皆檢查）
+ * - Quote Number（invoiceNumber）允許重複，多張單可掛同一 Project
+ * - QU 前綴仍只在 Quote 內、同 type 不可重複（含 invoiceNumber）
  *
  * @param {'quote'|'shipquote'} sourceKind
  * @param {object} body
@@ -91,7 +112,7 @@ async function assertSharedQuoteNumberUnique(sourceKind, body, excludeMongoId) {
     return { ok: true };
   }
 
-  const orShared = buildMatchClauses(identity, null);
+  const orShared = buildSmlDocumentIdentityClauses(identity);
   if (!orShared.length) {
     return { ok: true };
   }

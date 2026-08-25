@@ -8,6 +8,7 @@ const { aggregateOrderedQtyByShipQuoteLine } = require('@/helpers/quoteSupplierO
 const { resolveDefaultSupplierId } = require('@/helpers/resolveDefaultSupplierId');
 const { resolveSupplierQuoteNumberForCreate } = require('@/helpers/lastNumberSettings');
 const { pickFollowUpById } = require('@/helpers/pickFollowUpById');
+const { resolveProjectLinkNumber } = require('@/helpers/resolveProjectLinkNumber');
 
 function normalizeQty(n) {
   const v = Math.floor(Number(n));
@@ -41,10 +42,7 @@ const convertToSupplierQuote = async (req, res) => {
       });
     }
 
-    const quoteNumber =
-      shipQuote.numberPrefix && shipQuote.number
-        ? `${shipQuote.numberPrefix}-${shipQuote.number}`
-        : shipQuote.invoiceNumber;
+    const quoteNumber = resolveProjectLinkNumber(shipQuote);
     let linkedProject = null;
     if (quoteNumber) {
       linkedProject = await ProjectModel.findOne({ invoiceNumber: quoteNumber, removed: false });
@@ -171,10 +169,7 @@ const convertToSupplierQuote = async (req, res) => {
       openDate: new Date(),
       expiredDate: shipQuote.expiredDate,
       isCompleted: shipQuote.isCompleted,
-      invoiceNumber:
-        shipQuote.numberPrefix && shipQuote.number
-          ? `${shipQuote.numberPrefix}-${shipQuote.number}`
-          : shipQuote.invoiceNumber,
+      invoiceNumber: resolveProjectLinkNumber(shipQuote),
       poNumber,
       // 上單：帶出工程地址；不帶簽收單聯絡人（僅保留在原報價單）
       address: shipQuote.address,

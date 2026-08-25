@@ -354,9 +354,10 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
       return;
     }
     const quoteNumber =
-      currentErp.numberPrefix && currentErp.number
+      (currentErp.invoiceNumber && String(currentErp.invoiceNumber).trim()) ||
+      (currentErp.numberPrefix && currentErp.number
         ? `${currentErp.numberPrefix}-${currentErp.number}`
-        : currentErp.invoiceNumber;
+        : '');
     if (!quoteNumber) {
       message.warning('無法取得 Quote 編號');
       return;
@@ -456,9 +457,10 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
   // Ship Quote 轉 S 單：與報價單相同，選 P.O、拆量、餘額
   const handleConvertShipQuoteToS = async () => {
     const quoteNumber =
-      currentErp.numberPrefix && currentErp.number
+      (currentErp.invoiceNumber && String(currentErp.invoiceNumber).trim()) ||
+      (currentErp.numberPrefix && currentErp.number
         ? `${currentErp.numberPrefix}-${currentErp.number}`
-        : currentErp.invoiceNumber;
+        : '');
     if (!quoteNumber) {
       message.warning('無法取得 Quote 編號');
       return;

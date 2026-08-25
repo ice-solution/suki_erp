@@ -373,9 +373,10 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
     const quoteNumber =
-      currentErp.numberPrefix && currentErp.number
+      (currentErp.invoiceNumber && String(currentErp.invoiceNumber).trim()) ||
+      (currentErp.numberPrefix && currentErp.number
         ? `${currentErp.numberPrefix}-${currentErp.number}`
-        : currentErp.invoiceNumber;
+        : '');
     if (!quoteNumber) {
       message.warning('無法取得 Quote 編號');
       return;
@@ -474,10 +475,12 @@ export default function QuoteReadItem({ config, selectedItem }) {
 
   // 處理Quote轉Supplier Quote（上單）
   const handleConvertToSupplierQuote = async () => {
-    // 檢查 Project Management 是否已建立此 Quote Number
-    const quoteNumber = currentErp.numberPrefix && currentErp.number
-      ? `${currentErp.numberPrefix}-${currentErp.number}`
-      : currentErp.invoiceNumber;
+    // 檢查 Project Management：優先用 Quote Number 欄（可與單據編號不同，掛同一專案）
+    const quoteNumber =
+      (currentErp.invoiceNumber && String(currentErp.invoiceNumber).trim()) ||
+      (currentErp.numberPrefix && currentErp.number
+        ? `${currentErp.numberPrefix}-${currentErp.number}`
+        : '');
     if (!quoteNumber) {
       message.warning('無法取得 Quote 編號');
       return;
