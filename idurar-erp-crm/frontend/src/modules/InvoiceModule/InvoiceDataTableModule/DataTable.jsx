@@ -212,9 +212,12 @@ export default function DataTable({ config, extra = [] }) {
     // 立即搜索（當用戶按Enter或點擊搜索按鈕時）
     if (value && value.trim()) {
       setIsSearchMode(true);
-      const options = { 
-        q: value.trim(), 
-        fields: 'address,number,numberPrefix,invoiceNumber' 
+      const options = {
+        q: value.trim(),
+        // 支援發票單號（SMI-xxx）、報價單號、P.O、地址、聯絡人
+        fields:
+          searchConfig?.searchFields ||
+          'address,invoiceNumber,poNumber,contactPerson,numberPrefix,number',
       };
       dispatch(erp.search({ entity, options }));
     } else {

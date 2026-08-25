@@ -36,6 +36,7 @@ function buildInvoiceItemsFromResolvedLines(items, resolvedLines) {
       unit: item.unit,
       price,
       total: roundMoney(lineTotal),
+      sourceItemIndex: itemIndex,
     };
   });
 }

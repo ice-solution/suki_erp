@@ -1,5 +1,3 @@
-import calculate from '@/utils/calculate';
-
 export function safeProjectPct(raw) {
   if (raw == null || raw === '') return 100;
   const n = Number(raw);
@@ -13,7 +11,7 @@ export function safeDiscountPct(raw) {
   return Math.min(100, Math.max(0, n));
 }
 
-/** 四捨五入至小數點後 2 位 */
+/** 四捨五入至小數點後 2 位（僅用於整個佔比% 顯示／其他需要入數嘅場合） */
 export function roundHalfUp2(value) {
   const n = Number(value);
   if (!Number.isFinite(n)) return null;
@@ -46,12 +44,16 @@ export function resolveProjectTotalAmount(project) {
   return 0;
 }
 
-/** 發票總計：先依專案佔比得出本單金額，再套用折扣 */
+/**
+ * 發票總計：先依專案佔比得出本單金額，再套用折扣。
+ * 佔比後不四捨五入。
+ */
 export function computeInvoiceTotals({ subTotal, discount = 0, projectPercentage = 100 }) {
   const pct = safeProjectPct(projectPercentage);
   const disc = safeDiscountPct(discount);
-  const splitSubTotal = calculate.multiply(subTotal, pct / 100);
-  const discountTotal = calculate.multiply(splitSubTotal, disc / 100);
-  const total = calculate.sub(splitSubTotal, discountTotal);
+  const base = Number(subTotal) || 0;
+  const splitSubTotal = (base * pct) / 100;
+  const discountTotal = (splitSubTotal * disc) / 100;
+  const total = splitSubTotal - discountTotal;
   return { splitSubTotal, discountTotal, total };
 }

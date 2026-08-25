@@ -106,13 +106,19 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const [items, setItems] = useState([]);
   const [editingItemKey, setEditingItemKey] = useState(null);
   const [currentItem, setCurrentItem] = useState({
+    sourceItemNumber: '',
     itemName: '',
     description: '',
     quantity: 1,
     unit: 'JOB',
     price: 0,
-    total: 0
+    total: 0,
+    sourceItemIndex: undefined,
+    lineProjectPercentage: undefined,
   });
+  const [sourceItemCatalog, setSourceItemCatalog] = useState(null);
+  const [sourceItemMessage, setSourceItemMessage] = useState('');
+  const [sourceItemMessageType, setSourceItemMessageType] = useState('info');
   const [projectItems, setProjectItems] = useState([]);
   const [clients, setClients] = useState([]);
   const [clientRecords, setClientRecords] = useState([]);
@@ -602,8 +608,39 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       setSelectedType(type);
       setDiscount(discount != null && discount !== '' ? Number(discount) : 0);
       
+      // 先依 orderFromQuoteLines 位置寫入 sourceItemIndex（再排序顯示），刪改時可退回報價餘額
+      const orderLines = Array.isArray(current.orderFromQuoteLines)
+        ? current.orderFromQuoteLines
+        : [];
+      const itemsWithSource = currentItems.map((item, index) => {
+        const sourceItemIndex =
+          item.sourceItemIndex != null && item.sourceItemIndex !== ''
+            ? Number(item.sourceItemIndex)
+            : orderLines[index]?.itemIndex != null
+              ? Number(orderLines[index].itemIndex)
+              : undefined;
+        let lineProjectPercentage =
+          item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+            ? Number(item.lineProjectPercentage)
+            : undefined;
+        if (
+          (lineProjectPercentage == null || Number.isNaN(lineProjectPercentage)) &&
+          sourceItemIndex != null
+        ) {
+          const matched = orderLines.find((l) => Number(l.itemIndex) === Number(sourceItemIndex));
+          if (matched?.percentage != null && matched.percentage !== '') {
+            lineProjectPercentage = Number(matched.percentage);
+          }
+        }
+        return {
+          ...item,
+          sourceItemIndex,
+          lineProjectPercentage,
+        };
+      });
+
       // 按 itemName 中的數字排序
-      const sortedItems = [...currentItems].sort((a, b) => {
+      const sortedItems = [...itemsWithSource].sort((a, b) => {
         const getNumber = (str) => {
           if (!str) return 0;
           const match = str.toString().match(/\d+/);
@@ -624,12 +661,19 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
       
-      // 計算subTotal（允許負數影響總額）
+      // 計算subTotal（允許負數影響總額；B 模式套用逐項佔比）
       let calculatedSubTotal = 0;
       if (currentItems && currentItems.length > 0) {
         currentItems.forEach((item) => {
           if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
             let itemTotal = calculate.multiply(item.quantity, item.price);
+            const pct =
+              item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+                ? Number(item.lineProjectPercentage)
+                : null;
+            if (pct != null && Number.isFinite(pct)) {
+              itemTotal = calculate.multiply(itemTotal, pct / 100);
+            }
             calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
           }
         });
@@ -684,13 +728,43 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
   }, [current, form, clients]);
 
-  // 計算subTotal當items改變時（允許負數影響總額）
+  useEffect(() => {
+    const loadSourceItems = async () => {
+      if (!current?._id) {
+        setSourceItemCatalog(null);
+        return;
+      }
+      try {
+        const res = await request.get({
+          entity: `invoice/source-items/${current._id}`,
+        });
+        if (res?.success) {
+          setSourceItemCatalog(res.result || null);
+        } else {
+          setSourceItemCatalog(null);
+        }
+      } catch (error) {
+        console.error('取得發票來源報價項目失敗:', error);
+        setSourceItemCatalog(null);
+      }
+    };
+    void loadSourceItems();
+  }, [current?._id]);
+
+  // 計算subTotal當items改變時（允許負數影響總額；B 模式套用逐項佔比）
   useEffect(() => {
     let newSubTotal = 0;
     if (items && items.length > 0) {
       items.forEach((item) => {
         if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
           let itemTotal = calculate.multiply(item.quantity, item.price);
+          const pct =
+            item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+              ? Number(item.lineProjectPercentage)
+              : null;
+          if (pct != null && Number.isFinite(pct)) {
+            itemTotal = calculate.multiply(itemTotal, pct / 100);
+          }
           newSubTotal = calculate.add(newSubTotal, itemTotal);
         }
       });
@@ -783,12 +857,100 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       }));
   };
 
+  const sourceItemMap = new Map(
+    (sourceItemCatalog?.items || []).map((row) => [Number(row.itemNo), row])
+  );
+  const hasSourceQuoteLink = Boolean(current?._id && sourceItemCatalog?.sourceId);
+
+  const getDraftReservedQtyForSourceIndex = (sourceItemIndex, excludingKey = null) =>
+    (items || []).reduce((sum, item) => {
+      const idx = Number(item?.sourceItemIndex);
+      if (!Number.isFinite(idx) || idx !== Number(sourceItemIndex)) return sum;
+      if (excludingKey != null && String(item.key) === String(excludingKey)) return sum;
+      return sum + Math.max(0, Math.floor(Number(item.quantity) || 0));
+    }, 0);
+
+  const resolveSourceItemSelection = (rawValue, { silent = false } = {}) => {
+    const text = String(rawValue || '').trim();
+    const base = {
+      ...currentItem,
+      sourceItemNumber: text,
+    };
+    if (!text) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('');
+      setSourceItemMessageType('info');
+      return;
+    }
+    const itemNo = Number(text);
+    if (!Number.isFinite(itemNo) || itemNo <= 0) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('找不到來源項次，會當作手動新增 item');
+      setSourceItemMessageType('warning');
+      return;
+    }
+    const row = sourceItemMap.get(itemNo);
+    if (!row) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage('找不到來源項次，會當作手動新增 item');
+      setSourceItemMessageType('warning');
+      return;
+    }
+    if (!row.matchesPo) {
+      setCurrentItem({
+        ...base,
+        sourceItemIndex: undefined,
+      });
+      setSourceItemMessage(`第 ${itemNo} 行存在，但不屬於 P.O. ${sourceItemCatalog?.poNumber || ''}`);
+      setSourceItemMessageType('error');
+      if (!silent) message.error(`第 ${itemNo} 行不屬於 P.O. ${sourceItemCatalog?.poNumber || ''}`);
+      return;
+    }
+    setCurrentItem({
+      ...base,
+      itemName: row.itemName || '',
+      description: row.description || '',
+      unit: row.unit || base.unit || 'JOB',
+      price: row.price != null ? row.price : base.price,
+      total: calculate.multiply(base.quantity || 1, row.price != null ? row.price : base.price || 0),
+      sourceItemIndex: row.itemIndex,
+    });
+    setSourceItemMessage(
+      `來源 ${sourceItemCatalog?.sourceNumber || '報價單'} 第 ${itemNo} 行，可用餘額 ${row.remainingForThisDoc}`
+    );
+    setSourceItemMessageType(row.remainingForThisDoc > 0 ? 'success' : 'error');
+    if (!silent && row.remainingForThisDoc <= 0) {
+      message.error(`第 ${itemNo} 行已沒有可開票餘額`);
+    }
+  };
+
   // 更新當前項目
   const updateCurrentItem = (field, value) => {
+    if (field === 'sourceItemNumber') {
+      setCurrentItem({ ...currentItem, sourceItemNumber: value });
+      return;
+    }
     const updatedItem = { ...currentItem, [field]: value };
     
-    if (field === 'quantity' || field === 'price') {
-      updatedItem.total = calculate.multiply(updatedItem.quantity, updatedItem.price);
+    if (field === 'quantity' || field === 'price' || field === 'lineProjectPercentage') {
+      const pct =
+        updatedItem.lineProjectPercentage != null && updatedItem.lineProjectPercentage !== ''
+          ? Number(updatedItem.lineProjectPercentage)
+          : null;
+      const base = calculate.multiply(updatedItem.quantity, updatedItem.price);
+      updatedItem.total =
+        pct != null && Number.isFinite(pct)
+          ? calculate.multiply(base, pct / 100)
+          : base;
     }
     
     setCurrentItem(updatedItem);
@@ -802,14 +964,36 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       return;
     }
     setCurrentItem({
+      sourceItemNumber:
+        record.sourceItemIndex !== undefined && record.sourceItemIndex !== null
+          ? String(Number(record.sourceItemIndex) + 1)
+          : '',
       itemName: record.itemName || '',
       description: record.description || '',
       quantity: record.quantity || 1,
       unit: record.unit || 'JOB',
       price: record.price || 0,
-      total: record.total || 0
+      total: record.total || 0,
+      sourceItemIndex: record.sourceItemIndex,
+      lineProjectPercentage:
+        record.lineProjectPercentage != null && record.lineProjectPercentage !== ''
+          ? Number(record.lineProjectPercentage)
+          : undefined,
     });
     setEditingItemKey(itemKey);
+    if (record.sourceItemIndex !== undefined && record.sourceItemIndex !== null) {
+      const sourceNo = Number(record.sourceItemIndex) + 1;
+      const row = sourceItemMap.get(sourceNo);
+      if (row?.matchesPo) {
+        setSourceItemMessage(
+          `來源 ${sourceItemCatalog?.sourceNumber || '報價單'} 第 ${sourceNo} 行，可用餘額 ${row.remainingForThisDoc}`
+        );
+        setSourceItemMessageType(row.remainingForThisDoc > 0 ? 'success' : 'error');
+      }
+    } else {
+      setSourceItemMessage('');
+      setSourceItemMessageType('info');
+    }
   };
 
   // 添加或更新項目到列表
@@ -819,7 +1003,40 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       return;
     }
 
-    const itemTotal = calculate.multiply(currentItem.quantity, currentItem.price);
+    if (
+      hasSourceQuoteLink &&
+      currentItem.sourceItemIndex !== undefined &&
+      currentItem.sourceItemIndex !== null
+    ) {
+      const sourceNo = Number(currentItem.sourceItemIndex) + 1;
+      const row = sourceItemMap.get(sourceNo);
+      const requestQty = Math.max(0, Math.floor(Number(currentItem.quantity) || 0));
+      if (!row?.matchesPo) {
+        message.error(`第 ${sourceNo} 行不屬於來源 P.O.`);
+        return;
+      }
+      const reservedByOtherDraftRows = getDraftReservedQtyForSourceIndex(
+        currentItem.sourceItemIndex,
+        editingItemKey
+      );
+      const draftRemaining = Math.max(0, Number(row.remainingForThisDoc || 0) - reservedByOtherDraftRows);
+      if (requestQty > draftRemaining) {
+        message.error(
+          `第 ${sourceNo} 行開票數量 ${requestQty} 超過可用餘額 ${draftRemaining}`
+        );
+        return;
+      }
+    }
+
+    const itemTotal =
+      currentItem.lineProjectPercentage != null &&
+      currentItem.lineProjectPercentage !== '' &&
+      Number.isFinite(Number(currentItem.lineProjectPercentage))
+        ? calculate.multiply(
+            calculate.multiply(currentItem.quantity, currentItem.price),
+            Number(currentItem.lineProjectPercentage) / 100
+          )
+        : calculate.multiply(currentItem.quantity, currentItem.price);
     
     let updatedItems;
     if (editingItemKey) {
@@ -845,13 +1062,18 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
 
     // 重置當前項目
     setCurrentItem({
+      sourceItemNumber: '',
       itemName: '',
       description: '',
       quantity: 1,
       unit: 'JOB',
       price: 0,
-      total: 0
+      total: 0,
+      sourceItemIndex: undefined,
+      lineProjectPercentage: undefined,
     });
+    setSourceItemMessage('');
+    setSourceItemMessageType('info');
   };
 
   // 移除項目
@@ -873,14 +1095,22 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       title: translate('Description'),
       dataIndex: 'description',
       key: 'description',
-      width: '45%',
+      width: '38%',
       render: (text) => renderMultilineText(text),
+    },
+    {
+      title: '佔比 %',
+      dataIndex: 'lineProjectPercentage',
+      key: 'lineProjectPercentage',
+      width: '8%',
+      render: (pct) =>
+        pct != null && pct !== '' && Number.isFinite(Number(pct)) ? `${Number(pct)}%` : '-',
     },
     {
       title: translate('Quantity'),
       dataIndex: 'quantity',
       key: 'quantity',
-      width: '12%',
+      width: '10%',
     },
     {
       title: '單位',
@@ -893,7 +1123,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       title: translate('Price'),
       dataIndex: 'price',
       key: 'price',
-      width: '15%',
+      width: '12%',
       render: (price) => {
         // 如果是負數價格，用紅色顯示
         if (price < 0) {
@@ -906,7 +1136,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       title: translate('Total'),
       dataIndex: 'total',
       key: 'total',
-      width: '15%',
+      width: '12%',
       render: (total) => {
         // 如果是負數總計，用紅色顯示
         if (total < 0) {
@@ -918,7 +1148,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     {
       title: translate('Action'),
       key: 'action',
-      width: '8%',
+      width: '7%',
       render: (_, record) => (
         <div style={{ display: 'flex', gap: '8px' }}>
           <Button 
@@ -1349,8 +1579,43 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       {/* Add Item Section */}
       <div style={{ marginBottom: 16, padding: '16px', backgroundColor: '#fafafa', borderRadius: '6px' }}>
         <h4 style={{ marginBottom: 12 }}>添加項目</h4>
+        {hasSourceQuoteLink ? (
+          <div style={{ marginBottom: 8, fontSize: 12, color: '#666' }}>
+            來源單：{sourceItemCatalog.sourceNumber || '-'} | P.O.：{sourceItemCatalog.poNumber || '-'}
+            （可刪除明細；儲存後數量會退返報價餘額。輸入來源項次可按餘額加項。）
+          </div>
+        ) : null}
+        {sourceItemMessage ? (
+          <div
+            style={{
+              marginBottom: 8,
+              fontSize: 12,
+              color:
+                sourceItemMessageType === 'error'
+                  ? '#cf1322'
+                  : sourceItemMessageType === 'success'
+                    ? '#389e0d'
+                    : sourceItemMessageType === 'warning'
+                      ? '#d48806'
+                      : '#666',
+            }}
+          >
+            {sourceItemMessage}
+          </div>
+        ) : null}
         <Row gutter={[12, 8]}>
-          <Col span={2}>
+          {hasSourceQuoteLink ? (
+            <Col span={2}>
+              <label>來源項次</label>
+              <Input
+                placeholder="項次"
+                value={currentItem.sourceItemNumber}
+                onChange={(e) => updateCurrentItem('sourceItemNumber', e.target.value)}
+                onBlur={(e) => resolveSourceItemSelection(e.target.value)}
+              />
+            </Col>
+          ) : null}
+          <Col span={hasSourceQuoteLink ? 2 : 2}>
             <label>項目名稱</label>
             <AutoComplete
               placeholder="選擇項目"
@@ -1365,7 +1630,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               style={{ width: '100%' }}
             />
           </Col>
-          <Col span={11}>
+          <Col span={hasSourceQuoteLink ? 10 : 11}>
             <label>描述</label>
             <Input.TextArea
               placeholder="描述（Shift+Enter 換行）"

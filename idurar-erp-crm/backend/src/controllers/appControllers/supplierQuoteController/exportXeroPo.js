@@ -34,8 +34,8 @@ const exportXeroPo = async (req, res) => {
       date: { $gte: from, $lte: to },
     })
       .populate('supplier', 'name email accountCode')
-      // 依「Quote type + number」分組/排序
-      .sort({ type: 1, number: 1, date: 1 })
+      // 依 InvoiceDate（S單 date）由新到舊
+      .sort({ date: -1, number: -1 })
       .lean()
       .exec();
 

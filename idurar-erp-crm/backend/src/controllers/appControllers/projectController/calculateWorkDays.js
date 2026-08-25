@@ -1,9 +1,16 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
+const { toHongKongDateKey } = require('@/helpers/hongKongMoment');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('./salaryTotal');
+
+/** 單筆打咭：全日=1，半日=0.5；缺省／mobile 視為全日 */
+function getAttendanceDayValue(attendance) {
+  return String(attendance?.dayType || 'full').toLowerCase() === 'half' ? 0.5 : 1;
+}
 
 /**
  * 根據打咭記錄計算指定員工的工作天數
- * 工作天數 = 該員工在項目中的不同打咭日期數
+ * 全日計 1 天，半日計 0.5 天（同一日僅一筆）
  */
 const calculateWorkDaysFromAttendance = async (projectId, contractorEmployeeId) => {
   try {
@@ -12,34 +19,30 @@ const calculateWorkDaysFromAttendance = async (projectId, contractorEmployeeId) 
       throw new Error('項目不存在');
     }
 
-    // 查找該員工的所有打咭記錄
-    const attendanceRecords = project.onboard.filter(
-      attendance => {
-        if (!attendance.contractorEmployee) return false;
-        const attendanceEmployeeId = attendance.contractorEmployee._id || attendance.contractorEmployee;
-        return attendanceEmployeeId.toString() === contractorEmployeeId.toString();
-      }
-    );
-    
-    console.log(`[calculateWorkDaysFromAttendance] 項目 ${projectId}，員工 ${contractorEmployeeId} 有 ${attendanceRecords.length} 條打咭記錄`);
-
-    // 使用 Set 來儲存不同的日期（只計算日期部分，不計算時間）
-    const uniqueDates = new Set();
-    attendanceRecords.forEach(attendance => {
-      const checkInDate = attendance.checkInDate;
-      // 確保正確處理日期對象或字符串
-      const dateObj = checkInDate instanceof Date ? checkInDate : new Date(checkInDate);
-      if (!isNaN(dateObj.getTime())) {
-        const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-        uniqueDates.add(dateStr);
-      }
+    const attendanceRecords = project.onboard.filter((attendance) => {
+      if (!attendance.contractorEmployee) return false;
+      const attendanceEmployeeId = attendance.contractorEmployee._id || attendance.contractorEmployee;
+      return attendanceEmployeeId.toString() === contractorEmployeeId.toString();
     });
 
-    // 工作天數 = 不同日期的數量
-    const workDays = uniqueDates.size;
+    console.log(
+      `[calculateWorkDaysFromAttendance] 項目 ${projectId}，員工 ${contractorEmployeeId} 有 ${attendanceRecords.length} 條打咭記錄`
+    );
 
-    // 只返回工作天數，不更新記錄
-    // 更新記錄應該由調用者（如 updateSalary）來處理
+    // 同一日若理論上有多筆，取該日最大值（全日優先於半日）
+    const dayByDate = new Map();
+    attendanceRecords.forEach((attendance) => {
+      const dateStr = toHongKongDateKey(attendance.checkInDate);
+      if (!dateStr) return;
+      const value = getAttendanceDayValue(attendance);
+      const prev = dayByDate.get(dateStr) || 0;
+      if (value > prev) dayByDate.set(dateStr, value);
+    });
+
+    let workDays = 0;
+    dayByDate.forEach((v) => {
+      workDays += v;
+    });
     return workDays;
   } catch (error) {
     console.error('計算工作天數錯誤:', error);
@@ -57,57 +60,34 @@ const recalculateAllWorkDays = async (projectId) => {
       throw new Error('項目不存在');
     }
 
-    // 為每個有工資記錄的員工計算並更新工作天數
     for (const salary of project.salaries) {
       const contractorEmployeeId = salary.contractorEmployee;
-      
+
       if (!contractorEmployeeId) {
         console.warn(`工資記錄 ${salary._id} 沒有 contractorEmployee`);
         continue;
       }
 
-      // 查找該員工的所有打咭記錄
-      const attendanceRecords = project.onboard.filter(
-        attendance => {
-          if (!attendance.contractorEmployee) return false;
-          const attendanceEmployeeId = attendance.contractorEmployee._id || attendance.contractorEmployee;
-          return attendanceEmployeeId.toString() === contractorEmployeeId.toString();
-        }
-      );
-      
-      console.log(`員工 ${contractorEmployeeId} 有 ${attendanceRecords.length} 條打咭記錄`);
-
-      // 使用 Set 來儲存不同的日期（只計算日期部分，不計算時間）
-      const uniqueDates = new Set();
-      attendanceRecords.forEach(attendance => {
-        const checkInDate = attendance.checkInDate;
-        // 確保正確處理日期對象或字符串
-        const dateObj = checkInDate instanceof Date ? checkInDate : new Date(checkInDate);
-        if (!isNaN(dateObj.getTime())) {
-          const dateStr = dateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-          uniqueDates.add(dateStr);
-        }
-      });
-
-      // 工作天數 = 不同日期的數量
-      const workDays = uniqueDates.size;
+      const workDays = await calculateWorkDaysFromAttendance(projectId, contractorEmployeeId);
       const dailySalary = salary.dailySalary || 0;
-      const totalSalary = dailySalary * workDays;
-      
-      console.log(`員工 ${contractorEmployeeId}: 工作天數=${workDays}, 日薪=${dailySalary}, 總工資=${totalSalary}`);
+      const paidLeaveAmount = getPaidLeaveAmount(salary);
+      const totalSalary = computeSalaryTotal(dailySalary, workDays, paidLeaveAmount);
 
-      // 更新該員工的工作天數和總工資
+      console.log(
+        `員工 ${contractorEmployeeId}: 工作天數=${workDays}, 有薪假期=${paidLeaveAmount}, 日薪=${dailySalary}, 總工資=${totalSalary}`
+      );
+
       const updateResult = await Project.findOneAndUpdate(
         { _id: projectId, 'salaries._id': salary._id },
         {
           $set: {
             'salaries.$.workDays': workDays,
             'salaries.$.totalSalary': totalSalary,
-            'salaries.$.updated': new Date()
-          }
+            'salaries.$.updated': new Date(),
+          },
         }
       );
-      
+
       if (!updateResult) {
         console.warn(`無法更新工資記錄 ${salary._id}`);
       }
@@ -122,6 +102,6 @@ const recalculateAllWorkDays = async (projectId) => {
 
 module.exports = {
   calculateWorkDaysFromAttendance,
-  recalculateAllWorkDays
+  recalculateAllWorkDays,
+  getAttendanceDayValue,
 };
-

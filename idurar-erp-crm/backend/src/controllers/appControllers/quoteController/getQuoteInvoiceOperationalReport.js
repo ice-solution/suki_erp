@@ -1,27 +1,11 @@
 const mongoose = require('mongoose');
 const Quote = mongoose.model('Quote');
 const Invoice = mongoose.model('Invoice');
-
-function parseLocalDayRange(startDate, endDate) {
-  const parseLocalDay = (s, endOfDay) => {
-    const parts = String(s || '')
-      .slice(0, 10)
-      .split('-')
-      .map((x) => parseInt(x, 10));
-    if (parts.length !== 3 || parts.some((n) => Number.isNaN(n))) return null;
-    const [y, m, d] = parts;
-    return new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
-  };
-
-  const start = parseLocalDay(startDate, false);
-  const end = parseLocalDay(endDate, true);
-  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  return { start, end };
-}
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 /**
  * 營運報告（與前端 /quote/operational-report 對應）
- * Query: startDate, endDate（篩選 Quote / Invoice 的 date）
+ * Query: startDate, endDate（篩選 Quote / Invoice 的 date；香港日曆日）
  */
 const getQuoteInvoiceOperationalReport = async (req, res) => {
   try {
@@ -34,14 +18,14 @@ const getQuoteInvoiceOperationalReport = async (req, res) => {
       });
     }
 
-    const range = parseLocalDayRange(startDate, endDate);
+    const range = parseHongKongDayRange(startDate, endDate);
     if (!range) {
       return res.status(400).json({
         success: false,
         message: '日期格式不正確',
       });
     }
-    const { start, end } = range;
+    const { from: start, to: end } = range;
 
     const dateRange = { $gte: start, $lte: end };
 

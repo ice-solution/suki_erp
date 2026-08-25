@@ -105,6 +105,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     warehouse: '',
     warehouseInventory: undefined,
     itemName: '',
+    sku: '',
     quantity: 1,
     unitPrice: 0, // 單價
     price: 0, // 總價（quantity * unitPrice）
@@ -617,6 +618,34 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const getWarehouseItemOptionLabel = (item) => {
     const skuPart = item.sku ? `${item.sku} · ` : '';
     return `${skuPart}${item.itemName} — ${translate('Warehouse')} ${item.warehouse} — ${translate('Quantity')}: ${item.quantity}`;
+  };
+
+  /** 材料項目名稱前加上貨品編號（已有則不重複） */
+  const withSkuInFront = (sku, itemName) => {
+    const name = String(itemName || '').trim();
+    const code = String(sku || '').trim();
+    if (!code) return name;
+    if (!name) return code;
+    if (
+      name === code ||
+      name.startsWith(`${code} `) ||
+      name.startsWith(`${code}·`) ||
+      name.startsWith(`${code} ·`)
+    ) {
+      return name;
+    }
+    return `${code} ${name}`;
+  };
+
+  const resolveMaterialSku = (material) => {
+    const existing = material?.sku != null ? String(material.sku).trim() : '';
+    if (existing) return existing;
+    const wid = material?.warehouseInventory;
+    if (!wid) return '';
+    const item =
+      warehouseItems.find((w) => String(w._id) === String(wid)) ||
+      warehouseSelectList.find((w) => String(w._id) === String(wid));
+    return item?.sku != null ? String(item.sku).trim() : '';
   };
 
   const fetchWarehouseItems = async (selectedWarehouse = null) => {
@@ -1374,6 +1403,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           ...updatedMaterial,
           warehouseInventory: undefined,
           itemName: updatedMaterial.itemName || '',
+          sku: '',
           stockOnHand: null,
         };
         fetchWarehouseItems(value);
@@ -1382,6 +1412,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
           ...updatedMaterial,
           warehouseInventory: undefined,
           itemName: '',
+          sku: '',
           unitPrice: 0,
           price: 0,
           stockOnHand: null,
@@ -1431,6 +1462,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       warehouse: record.warehouse || '',
       warehouseInventory: warehouseInventoryStr,
       itemName: record.itemName || '',
+      sku: record.sku != null ? String(record.sku) : '',
       quantity: quantity,
       unitPrice: Number.parseFloat(unitPrice.toFixed(2)),
       price: totalPrice,
@@ -1492,6 +1524,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       return;
     }
 
+    const resolvedSku = isVirtualWh ? '' : resolveMaterialSku(currentMaterial);
+    const itemNameForList = isVirtualWh
+      ? currentMaterial.itemName
+      : withSkuInFront(resolvedSku, currentMaterial.itemName);
+    const materialPayload = {
+      ...currentMaterial,
+      sku: resolvedSku || undefined,
+      itemName: itemNameForList,
+    };
+
     let updatedMaterials;
     if (editingMaterialKey) {
       // 編輯模式：更新現有材料
@@ -1507,15 +1549,15 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
         if (matches) {
           found = true;
           const accountingType =
-            currentMaterial.warehouse === '其他' && currentMaterial.itemName === '加工費'
+            materialPayload.warehouse === '其他' && materialPayload.itemName === '加工費'
               ? 'processing_fee'
               : undefined;
           const updatedMaterial = {
             ...material,
-            ...currentMaterial,
+            ...materialPayload,
             warehouseInventory: isVirtualWh
               ? undefined
-              : currentMaterial.warehouseInventory,
+              : materialPayload.warehouseInventory,
             key: material.key || editingMaterialKey,
             _id: material._id,
             accountingType,
@@ -1536,11 +1578,11 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     } else {
       // 添加模式：添加新材料
       const newMaterial = {
-        ...currentMaterial,
+        ...materialPayload,
         key: Date.now(),
-        warehouseInventory: isVirtualWh ? undefined : currentMaterial.warehouseInventory,
+        warehouseInventory: isVirtualWh ? undefined : materialPayload.warehouseInventory,
         accountingType:
-          currentMaterial.warehouse === '其他' && currentMaterial.itemName === '加工費'
+          materialPayload.warehouse === '其他' && materialPayload.itemName === '加工費'
             ? 'processing_fee'
             : undefined,
       };
@@ -1556,6 +1598,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       warehouse: '',
       warehouseInventory: undefined,
       itemName: '',
+      sku: '',
       quantity: 1,
       unitPrice: 0,
       price: 0,
@@ -2286,6 +2329,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                     ...prev,
                     warehouseInventory: undefined,
                     itemName: '',
+                    sku: '',
                     unitPrice: 0,
                     price: 0,
                     stockOnHand: null,
@@ -2303,6 +2347,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
                   ...prev,
                   warehouseInventory: String(item._id),
                   itemName: item.itemName,
+                  sku: item.sku != null ? String(item.sku) : '',
                   warehouse: item.warehouse,
                   unitPrice: up,
                   price: Number.parseFloat(totalPrice.toFixed(2)),

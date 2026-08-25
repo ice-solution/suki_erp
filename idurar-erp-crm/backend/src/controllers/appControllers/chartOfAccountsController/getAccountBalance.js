@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const ChartOfAccounts = mongoose.model('ChartOfAccounts');
 const JournalEntry = mongoose.model('JournalEntry');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 const getAccountBalance = async (req, res) => {
   try {
@@ -21,12 +22,20 @@ const getAccountBalance = async (req, res) => {
       });
     }
 
-    // 構建日期範圍查詢
+    // 構建日期範圍查詢（香港日曆日）
     const dateQuery = {};
     if (startDate || endDate) {
+      const range = parseHongKongDayRange(startDate || endDate, endDate || startDate);
+      if (!range) {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: 'Invalid date format',
+        });
+      }
       dateQuery.transactionDate = {};
-      if (startDate) dateQuery.transactionDate.$gte = new Date(startDate);
-      if (endDate) dateQuery.transactionDate.$lte = new Date(endDate);
+      if (startDate) dateQuery.transactionDate.$gte = range.from;
+      if (endDate) dateQuery.transactionDate.$lte = range.to;
     }
 
     // 構建過帳狀態查詢

@@ -7,13 +7,14 @@ import { tagColor } from '@/utils/statusTagColor';
 import { useMoney, useDate } from '@/settings';
 import InvoiceDataTableModule from '@/modules/InvoiceModule/InvoiceDataTableModule';
 import { ErpLayout } from '@/layout';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 
 export default function Invoice() {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const entity = 'invoice';
   const { moneyFormatter } = useMoney();
+  const { followUpDisplayName } = useFollowUpDisplayName();
 
   const searchConfig = {
     entity: 'invoice',

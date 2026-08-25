@@ -184,8 +184,13 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
       .quotation-table .col-no { width: 6%; text-align: center; }
       .quotation-table .col-content { width: 44%; word-wrap: break-word; word-break: break-word; text-align: left; white-space: pre-wrap; }
       .quotation-table .col-qty { width: 16%; text-align: center; white-space: nowrap; }
+      .quotation-table .col-pct { width: 10%; text-align: center; white-space: nowrap; }
       .quotation-table .col-unit { width: 16%; text-align: right; white-space: nowrap; }
       .quotation-table .col-amount { width: 18%; text-align: right; white-space: nowrap; }
+      .quotation-table.has-line-pct .col-content { width: 36%; }
+      .quotation-table.has-line-pct .col-qty { width: 12%; }
+      .quotation-table.has-line-pct .col-unit { width: 18%; }
+      .quotation-table.has-line-pct .col-amount { width: 18%; }
       .quotation-table td.num { text-align: right; }
       .summary-wrap { margin-top: 8px; display: flex; justify-content: flex-end; }
       .summary-block { text-align: right; font-size: 10px; }
@@ -269,12 +274,14 @@ body
     - const discount = model.discount != null ? model.discount : 0
     - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
     - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage : 100
-    - const subTotal = fullSubTotal * projectPctForCalc / 100
-    - const discountTotal = model.discountTotal != null ? model.discountTotal : (subTotal * discount / 100)
+    //- 合共港幣 = 小計（items 總額）；佔比只影響總金額，且不四捨五入
+    - const chargedAfterPct = Number(fullSubTotal) * projectPctForCalc / 100
+    - const discountTotal = model.discountTotal != null ? model.discountTotal : (chargedAfterPct * discount / 100)
     - const projectPercentageLabel = model.projectPercentageLabel != null && String(model.projectPercentageLabel).trim() ? String(model.projectPercentageLabel).trim() : '整個佔比 (%)'
-    - const total = model.total != null ? model.total : (subTotal - discountTotal)
+    - const total = model.total != null ? model.total : (chargedAfterPct - discountTotal)
     - const currency = model.currency || 'HKD'
     - var serialBase = 0
+    - const showLineProjectPct = typeof invoiceHasLineProjectPercentage === 'function' ? invoiceHasLineProjectPercentage(itemsOnly) : (itemsOnly || []).some(function (i) { var p = i.lineProjectPercentage != null && i.lineProjectPercentage !== '' ? Number(i.lineProjectPercentage) : null; return p != null && !isNaN(p); })
 
     each chunk, pageIndex in itemChunks
       .sml-page(class=pageIndex === itemChunks.length - 1 ? 'sml-page-last' : '')
@@ -295,36 +302,41 @@ body
           .doc-title INVOICE
           if model.address
             .project-address-line 工程地址：#{model.address || ''}
-          table.quotation-table
+          table.quotation-table(class=showLineProjectPct ? 'has-line-pct' : '')
             thead
               tr
                 th.col-no
                 th.col-content 工程內容
                 th.col-qty 數量 / 單位
+                if showLineProjectPct
+                  th.col-pct 百分比
                 th.col-unit 單價 HKD$
                 th.col-amount 金額 HKD$
             tbody
               each item, idx in chunk
                 - const contentText = (item.itemName || '').replace(/^\s*\d+[\.\)]?\s*/, '').trim() + (item.description ? ' ' + item.description : '')
                 - const unitLabel = item.unit ? String(item.unit) : 'JOB'
-                - const lineBase = item.total != null ? item.total : ((item.price != null && item.quantity != null) ? item.price * item.quantity : 0)
-                - const lineAmount = lineBase * projectPctForCalc / 100
+                - const lineAmount = item.total != null ? item.total : ((item.price != null && item.quantity != null) ? item.price * item.quantity : 0)
+                - const linePct = item.lineProjectPercentage != null && item.lineProjectPercentage !== '' ? Number(item.lineProjectPercentage) : null
+                - const displayUnitPrice = showLineProjectPct && linePct != null && !isNaN(linePct) && typeof resolvePdfDisplayUnitPrice === 'function' ? resolvePdfDisplayUnitPrice(item, lineAmount, linePct) : item.price
                 tr
                   td.col-no #{serialBase + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
-                  td.col-unit.num #{item.price != null ? moneyFormatter({ amount: item.price, currency_code: currency }) + ' / ' + unitLabel : ''}
+                  if showLineProjectPct
+                    td.col-pct #{linePct != null && !isNaN(linePct) ? linePct + '%' : ''}
+                  td.col-unit.num #{displayUnitPrice != null ? moneyFormatter({ amount: displayUnitPrice, currency_code: currency }) + ' / ' + unitLabel : ''}
                   td.col-amount.num #{moneyFormatter({ amount: lineAmount, currency_code: currency })}
               if chunk.length === 0
                 tr
-                  td(colspan='5' style='text-align:center') 無項目
+                  td(colspan=showLineProjectPct ? '6' : '5' style='text-align:center') 無項目
           - serialBase += chunk.length
           if pageIndex === itemChunks.length - 1
             .summary-wrap
               .summary-block
                 .summary-row.subtotal
                   span.summary-label 合共港幣：
-                  span.summary-value #{moneyFormatter({ amount: subTotal, currency_code: currency })}
+                  span.summary-value #{moneyFormatter({ amount: fullSubTotal, currency_code: currency })}
                 if model.showDiscountPercentOnPdf !== false
                   .summary-row.underline
                     span.summary-label 折扣%：

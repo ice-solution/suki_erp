@@ -14,6 +14,10 @@ const {
   generateSupplierQuoteFinishPdfBuffer,
   isFinishPdfPrefix,
 } = require('@/new_pdf/supplier_quote/generateSupplierQuoteFinishPdf');
+const {
+  generateWseReceiptPdfBuffer,
+  isWseInvoice,
+} = require('@/new_pdf/invoice/generateWseReceiptPdf');
 
 /** 動態 PDF：固定 URL 會被 CDN／瀏覽器快取，導致內容更新後仍下載舊檔 */
 function setDynamicPdfCacheHeaders(res) {
@@ -55,7 +59,7 @@ function buildDownloadFilename(modelName, result, options = {}) {
   const name = String(modelName || '').toLowerCase();
   const prefix = sanitizeFilenamePart(result?.numberPrefix || '');
   const number = sanitizeFilenamePart(result?.number || '');
-  const suffix = variant === 'finish' ? '-finish' : '';
+  const suffix = variant === 'finish' ? '-finish' : variant === 'receipt' ? '-receipt' : '';
 
   // 主要單據類型：優先用 numberPrefix-number
   if (prefix && number) {
@@ -175,6 +179,19 @@ module.exports = downloadPdf = async (req, res, { directory, id, variant } = {})
         const finishBuffer = await generateSupplierQuoteFinishPdfBuffer(result);
         setPdfContentDisposition(req, res, downloadFilename);
         return res.send(finishBuffer);
+      }
+
+      if (modelName === 'Invoice' && variant === 'receipt') {
+        if (!isWseInvoice(result)) {
+          return res.status(400).json({
+            success: false,
+            result: null,
+            message: '只有 WSE 發票可下載簽收單',
+          });
+        }
+        const receiptBuffer = await generateWseReceiptPdfBuffer(result);
+        setPdfContentDisposition(req, res, downloadFilename);
+        return res.send(receiptBuffer);
       }
 
       if (modelName === 'Quote') {

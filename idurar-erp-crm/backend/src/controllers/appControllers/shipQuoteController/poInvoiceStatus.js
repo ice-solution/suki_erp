@@ -38,6 +38,11 @@ const poInvoiceStatus = async (req, res) => {
       const linePo = String(item.poNumber || '').trim() || headerPo;
       if (linePo !== poNumber) return;
       const totalQty = Math.max(0, Math.floor(Number(item.quantity) || 0));
+      const unitPrice = Number(item.price) || 0;
+      const itemValue =
+        item.total != null && !Number.isNaN(Number(item.total))
+          ? Number(item.total)
+          : totalQty * unitPrice;
       const invoicedQty = Math.max(0, Math.floor(Number(invoicedMap[itemIndex] || 0)));
       const invoicedPercentage = Math.max(0, Number(invoicedPctMap[itemIndex] || 0));
       lines.push({
@@ -45,6 +50,8 @@ const poInvoiceStatus = async (req, res) => {
         itemName: item.itemName,
         description: item.description,
         unit: item.unit,
+        price: unitPrice,
+        itemValue: Math.round(itemValue * 100) / 100,
         quoteQuantity: totalQty,
         orderedQty: invoicedQty,
         remainingQty: Math.max(0, totalQty - invoicedQty),

@@ -8,16 +8,23 @@ const { getData } = require('@/middlewares/serverData');
 const useLanguage = require('@/locale/useLanguage');
 const { useMoney, useDate } = require('@/settings');
 const { formatDiscountPct, formatDiscountMoneyForPdf } = require('@/helpers/formatDiscountForPdf');
-const { getPdfPaginationPugLocalsForTemplate, getShipQuoteRentalPdfPugLocals } = require('@/helpers/pdfPagination');
+const {
+  getPdfPaginationPugLocalsForTemplate,
+  getShipQuoteRentalPdfPugLocals,
+  resolvePdfDisplayUnitPrice,
+  invoiceHasLineProjectPercentage,
+} = require('@/helpers/pdfPagination');
 const { attachPdfBrandImages } = require('@/new_pdf/shared/pdfBrandImages');
+const { applyFollowUpCustomNameToModel } = require('@/helpers/followUpDisplayName');
 
 function getPdfPugLocalsForTemplate(templateName, result) {
   const t = String(templateName || '').toLowerCase();
+  const shared = { resolvePdfDisplayUnitPrice, invoiceHasLineProjectPercentage };
   if (t === 'shipquote-rental') {
     const moment = require('moment');
-    return getShipQuoteRentalPdfPugLocals(result, moment);
+    return { ...shared, ...getShipQuoteRentalPdfPugLocals(result, moment) };
   }
-  return getPdfPaginationPugLocalsForTemplate(templateName, result);
+  return { ...shared, ...getPdfPaginationPugLocalsForTemplate(templateName, result) };
 }
 
 // 注意：在不同 OS/部署環境下，pdf 模板檔名大小寫敏感度不同。
@@ -167,6 +174,8 @@ exports.generatePdf = async (
       throw new Error(`Template file not found: ${templatePath}. Tried: ${candidates.join(', ')}`);
     }
 
+    await applyFollowUpCustomNameToModel(result);
+
     const htmlContent = pug.renderFile(templatePath, {
       model: result,
       settings,
@@ -265,6 +274,8 @@ exports.generatePdfBuffer = async (
     templatePath = candidates[0];
     throw new Error(`Template file not found: ${templatePath}. Tried: ${candidates.join(', ')}`);
   }
+
+  await applyFollowUpCustomNameToModel(result);
 
   const htmlContent = pug.renderFile(templatePath, {
     model: result,

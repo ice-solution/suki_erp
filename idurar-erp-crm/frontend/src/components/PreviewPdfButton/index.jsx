@@ -5,12 +5,13 @@ import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import useLanguage from '@/locale/useLanguage';
 
 /**
- * @param {{ entity: string, id: string, variant?: 'finish'|null, modifiedAt?: any, preview?: boolean }} opts
+ * @param {{ entity: string, id: string, variant?: 'finish'|'receipt'|null, modifiedAt?: any, preview?: boolean }} opts
  */
 export function buildDocumentPdfUrl({ entity, id, variant = null, modifiedAt, preview = false }) {
   const v = encodeURIComponent(String(modifiedAt || Date.now()));
-  const file =
-    variant === 'finish' ? `${entity}-finish-${id}.pdf` : `${entity}-${id}.pdf`;
+  let file = `${entity}-${id}.pdf`;
+  if (variant === 'finish') file = `${entity}-finish-${id}.pdf`;
+  else if (variant === 'receipt') file = `${entity}-receipt-${id}.pdf`;
   const qs = preview ? `v=${v}&preview=1` : `v=${v}`;
   return `${DOWNLOAD_BASE_URL}${entity}/${file}?${qs}`;
 }

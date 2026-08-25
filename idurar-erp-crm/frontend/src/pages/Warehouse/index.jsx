@@ -400,19 +400,19 @@ export default function Warehouse() {
       const sheetRows = rows.map((r) => ({
         貨品編號: r.sku || '',
         貨品名稱: r.itemName || '',
-        類別: r.category || '',
         數量: r.quantity != null ? r.quantity : '',
-        倉庫: getWarehouseLabel(r.warehouse),
         單價: r.unitPrice != null ? r.unitPrice : '',
         總價值:
           r.totalValue != null
             ? r.totalValue
             : computeDisplayTotal(r.quantity, r.unitPrice),
+        報價單編號: getQuoteNumber(r) || '',
+        地盤地址: r.siteAddress || '',
+        類別: r.category || '',
+        倉庫: getWarehouseLabel(r.warehouse),
         狀態: getStatusLabel(r.status),
         供應商: r.supplier?.name || '',
         重量_KG: r.weight != null && r.weight !== '' ? Number(r.weight) : '',
-        報價單編號: getQuoteNumber(r) || '',
-        地盤地址: r.siteAddress || '',
         位置: r.location || '',
         備註: r.notes || '',
       }));
@@ -463,14 +463,6 @@ export default function Warehouse() {
       width: 150,
     },
     {
-      title: '類別',
-      dataIndex: 'category',
-      key: 'category',
-      width: 120,
-      render: (cat) => (cat ? cat : '-'),
-      filters: warehouseItemCategories.map((c) => ({ text: c, value: c })),
-    },
-    {
       title: '數量',
       dataIndex: 'quantity',
       key: 'quantity',
@@ -488,19 +480,6 @@ export default function Warehouse() {
           )}
         </span>
       ),
-    },
-    {
-      title: '倉庫',
-      dataIndex: 'warehouse',
-      key: 'warehouse',
-      width: 200,
-      ellipsis: false,
-      render: (warehouse, record) => {
-        const opt = warehouseOptions.find((o) => o.value === warehouse);
-        const text = opt ? opt.label : (warehouse ? `${warehouse} / -` : '-');
-        return <span style={{ whiteSpace: 'nowrap' }}>{text}</span>;
-      },
-      filters: warehouseOptions.map(opt => ({ text: opt.label, value: opt.value })),
     },
     {
       title: '單價',
@@ -521,6 +500,46 @@ export default function Warehouse() {
             : computeDisplayTotal(record.quantity, record.unitPrice);
         return formatMoney(display);
       },
+    },
+    {
+      title: '報價單編號',
+      dataIndex: 'projects',
+      key: 'quoteNumber',
+      width: 200,
+      ellipsis: true,
+      render: (_, record) => {
+        const qn = getQuoteNumber(record);
+        return qn ? qn : '-';
+      },
+    },
+    {
+      title: '地盤地址',
+      dataIndex: 'siteAddress',
+      key: 'siteAddress',
+      width: 160,
+      ellipsis: true,
+      render: (v) => v || '-',
+    },
+    {
+      title: '類別',
+      dataIndex: 'category',
+      key: 'category',
+      width: 120,
+      render: (cat) => (cat ? cat : '-'),
+      filters: warehouseItemCategories.map((c) => ({ text: c, value: c })),
+    },
+    {
+      title: '倉庫',
+      dataIndex: 'warehouse',
+      key: 'warehouse',
+      width: 200,
+      ellipsis: false,
+      render: (warehouse, record) => {
+        const opt = warehouseOptions.find((o) => o.value === warehouse);
+        const text = opt ? opt.label : (warehouse ? `${warehouse} / -` : '-');
+        return <span style={{ whiteSpace: 'nowrap' }}>{text}</span>;
+      },
+      filters: warehouseOptions.map(opt => ({ text: opt.label, value: opt.value })),
     },
     {
       title: '狀態',
@@ -549,25 +568,6 @@ export default function Warehouse() {
         weight != null && weight !== '' && Number(weight) > 0
           ? `${Number(weight)} KG`
           : '-',
-    },
-    {
-      title: '報價單編號',
-      dataIndex: 'projects',
-      key: 'quoteNumber',
-      width: 200,
-      ellipsis: true,
-      render: (_, record) => {
-        const qn = getQuoteNumber(record);
-        return qn ? qn : '-';
-      },
-    },
-    {
-      title: '地盤地址',
-      dataIndex: 'siteAddress',
-      key: 'siteAddress',
-      width: 160,
-      ellipsis: true,
-      render: (v) => v || '-',
     },
     {
       title: '操作',
@@ -960,7 +960,7 @@ export default function Warehouse() {
           dataSource={Array.isArray(transactionList) ? transactionList : []}
           rowKey={(r) => r._id}
           pagination={{ pageSize: 10 }}
-          scroll={{ x: 960 }}
+          scroll={{ x: 1120 }}
           columns={[
             {
               title: '日期',
@@ -1013,9 +1013,26 @@ export default function Warehouse() {
               title: '原因',
               dataIndex: 'reason',
               key: 'reason',
-              width: 160,
+              width: 180,
               ellipsis: true,
               render: (v) => v || '-',
+            },
+            {
+              title: 'S單號',
+              key: 'supplierQuoteNo',
+              width: 130,
+              render: (_, r) => {
+                const sq = r.supplierQuote;
+                if (sq && typeof sq === 'object') {
+                  const prefix = sq.numberPrefix != null ? String(sq.numberPrefix).trim() : '';
+                  const num = sq.number != null ? String(sq.number).trim() : '';
+                  if (prefix && num) return `${prefix}-${num}`;
+                  if (num) return num;
+                }
+                // 後備：從原因「S單材料出庫（S-123）」抽出
+                const m = String(r.reason || '').match(/（([^）]+)）/);
+                return m ? m[1] : '-';
+              },
             },
             {
               title: '備註',

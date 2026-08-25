@@ -1,17 +1,11 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
+const { toHongKongDateKey } = require('@/helpers/hongKongMoment');
 
-/** 從 attendance.checkInDate 取得 YYYY-MM-DD 字串（支援多種格式） */
+/** 從 attendance.checkInDate 取得香港日曆日 YYYY-MM-DD */
 function getDateStr(checkInDate) {
-  if (!checkInDate) return null;
-  if (checkInDate instanceof Date) {
-    return checkInDate.toISOString().split('T')[0];
-  }
-  if (typeof checkInDate === 'string') {
-    return checkInDate.includes('T') ? checkInDate.split('T')[0] : checkInDate;
-  }
-  const dateObj = new Date(checkInDate);
-  return !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : null;
+  const key = toHongKongDateKey(checkInDate);
+  return key || null;
 }
 
 /** 從 ref 取得 ObjectId 字串（支援 ObjectId 或 populated 物件） */

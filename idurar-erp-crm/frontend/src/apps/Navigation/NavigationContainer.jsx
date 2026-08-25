@@ -22,6 +22,7 @@ import {
   TagOutlined,
   TagsOutlined,
   UserOutlined,
+  DeleteOutlined,
   MenuOutlined,
   FileOutlined,
   ShopOutlined,
@@ -164,6 +165,11 @@ function Sidebar({ collapsible, isMobile = false }) {
       ],
     },
     {
+      key: 'deleted-records',
+      icon: <DeleteOutlined />,
+      label: <SideMenuLink to={'/deleted-records'}>已刪除記錄</SideMenuLink>,
+    },
+    {
       key: 'settings',
       label: <SideMenuLink to={'/settings'}>{translate('settings')}</SideMenuLink>,
       icon: <SettingOutlined />,
@@ -212,6 +218,8 @@ function Sidebar({ collapsible, isMobile = false }) {
             setCurrentPath('quote-operational-report');
           } else if (path === 'quote/my-follow-up-report') {
             setCurrentPath('my-follow-up-report');
+          } else if (path === 'deleted-records') {
+            setCurrentPath('deleted-records');
           } else {
             setCurrentPath(path);
           }

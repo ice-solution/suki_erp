@@ -800,17 +800,34 @@ export default function ProjectForm({ current = null }) {
                     {(fields, { add, remove }) => (
                       <>
                         {fields.map(({ key, name, ...restField }) => {
+                          return (
+                          <Form.Item
+                            key={key}
+                            noStyle
+                            shouldUpdate={(prev, cur) => {
+                              const p = prev?.contractorFees?.[name];
+                              const c = cur?.contractorFees?.[name];
+                              return (
+                                p?.projectName !== c?.projectName ||
+                                p?.customText !== c?.customText ||
+                                p?.lineId !== c?.lineId
+                              );
+                            }}
+                          >
+                            {() => {
                           const feeRows = form?.getFieldValue?.('contractorFees') || [];
                           const rowLineId = form?.getFieldValue?.(['contractorFees', name, 'lineId']);
                           const rowName = form?.getFieldValue?.(['contractorFees', name, 'projectName']) || '';
+                          const rowCustom =
+                            form?.getFieldValue?.(['contractorFees', name, 'customText']) || '';
                           const rowIndex = typeof name === 'number' ? name : feeRows.length;
                           const rowLabel = formatFeeLineShortLabel(
-                            { projectName: rowName, lineId: rowLineId },
+                            { projectName: rowName, customText: rowCustom, lineId: rowLineId },
                             rowIndex,
                             feeRows
                           );
                           return (
-                          <Row key={key} gutter={8} style={{ marginBottom: 8 }} align="middle">
+                          <Row gutter={8} style={{ marginBottom: 8 }} align="middle">
                             <Form.Item {...restField} name={[name, 'lineId']} hidden>
                               <Input />
                             </Form.Item>
@@ -820,11 +837,11 @@ export default function ProjectForm({ current = null }) {
                             {rowName ? (
                               <Col span={24} style={{ marginBottom: 4 }}>
                                 <Text type="secondary" style={{ fontSize: 12 }}>
-                                  {rowLabel}
+                                  顯示：{rowLabel}
                                 </Text>
                               </Col>
                             ) : null}
-                            <Col span={10}>
+                            <Col span={7}>
                               <Form.Item
                                 {...restField}
                                 name={[name, 'projectName']}
@@ -877,7 +894,16 @@ export default function ProjectForm({ current = null }) {
                                 })()}
                               </Form.Item>
                             </Col>
-                            <Col span={10}>
+                            <Col span={6}>
+                              <Form.Item
+                                {...restField}
+                                name={[name, 'customText']}
+                                style={{ marginBottom: 0 }}
+                              >
+                                <Input placeholder="自訂文字（選填）" allowClear />
+                              </Form.Item>
+                            </Col>
+                            <Col span={7}>
                               <Form.Item
                                 {...restField}
                                 name={[name, 'amount']}
@@ -906,11 +932,21 @@ export default function ProjectForm({ current = null }) {
                             </Col>
                           </Row>
                           );
+                            }}
+                          </Form.Item>
+                          );
                         })}
                         <Form.Item style={{ marginBottom: 0 }}>
                           <Button
                             type="dashed"
-                            onClick={() => add({ lineId: newContractorFeeLineId(), projectName: '', amount: 0 })}
+                            onClick={() =>
+                              add({
+                                lineId: newContractorFeeLineId(),
+                                projectName: '',
+                                customText: '',
+                                amount: 0,
+                              })
+                            }
                             icon={<PlusOutlined />}
                             block
                           >

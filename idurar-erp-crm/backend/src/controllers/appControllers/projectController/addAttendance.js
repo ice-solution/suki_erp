@@ -1,17 +1,28 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const { calculateWorkDaysFromAttendance } = require('./calculateWorkDays');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('./salaryTotal');
+const { parseHongKongDayRange, toHongKongDateKey } = require('@/helpers/hongKongMoment');
 
 const addAttendance = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { contractorEmployee, checkInDate, checkInTime, checkOutTime, notes } = req.body;
+    const { contractorEmployee, checkInDate, checkInTime, checkOutTime, notes, dayType } = req.body;
 
     // 驗證必填字段
     if (!contractorEmployee || !checkInDate) {
       return res.status(400).json({
         success: false,
         message: '員工和打咭日期為必填字段'
+      });
+    }
+
+    const dateKey = toHongKongDateKey(checkInDate);
+    const dayRange = parseHongKongDayRange(dateKey, dateKey);
+    if (!dateKey || !dayRange) {
+      return res.status(400).json({
+        success: false,
+        message: '打咭日期格式不正確'
       });
     }
 
@@ -24,36 +35,40 @@ const addAttendance = async (req, res) => {
       });
     }
 
-    // 檢查是否已經有該員工在該日期的打咭記錄
-    const existingAttendance = project.onboard.find(
-      (attendance) => 
-        attendance.contractorEmployee.toString() === contractorEmployee &&
-        attendance.checkInDate.toDateString() === new Date(checkInDate).toDateString()
-    );
+    // 檢查是否已經有該員工在該日期的打咭記錄（香港日曆日，不可重複）
+    const existingAttendance = (project.onboard || []).find((attendance) => {
+      const empId = attendance.contractorEmployee?._id || attendance.contractorEmployee;
+      return (
+        String(empId) === String(contractorEmployee) &&
+        toHongKongDateKey(attendance.checkInDate) === dateKey
+      );
+    });
 
     if (existingAttendance) {
       return res.status(400).json({
         success: false,
-        message: '該員工在該日期已有打咭記錄'
+        message: `該員工在 ${dateKey} 已有打咭記錄，日期不可重複`
       });
     }
 
     // 計算工作時數（如果提供了時間）
     let workHours = 0;
     if (checkOutTime && checkInTime) {
-      const checkIn = new Date(`${checkInDate} ${checkInTime}`);
-      const checkOut = new Date(`${checkInDate} ${checkOutTime}`);
+      const checkIn = new Date(`${dateKey} ${checkInTime}`);
+      const checkOut = new Date(`${dateKey} ${checkOutTime}`);
       workHours = (checkOut - checkIn) / (1000 * 60 * 60); // 轉換為小時
       workHours = Math.max(0, workHours); // 確保不為負數
     }
 
-    // 創建新的打咭記錄
+    // 創建新的打咭記錄（存香港當日 00:00）；未傳 dayType 時預設全日（含 mobile）
+    const normalizedDayType = String(dayType || 'full').toLowerCase() === 'half' ? 'half' : 'full';
     const newAttendance = {
       contractorEmployee,
-      checkInDate: new Date(checkInDate),
+      checkInDate: dayRange.from,
       checkInTime: checkInTime || null,
       checkOutTime: checkOutTime || null,
       workHours,
+      dayType: normalizedDayType,
       notes: notes || '',
       created: new Date(),
       updated: new Date()
@@ -89,9 +104,10 @@ const addAttendance = async (req, res) => {
         
         if (salaryRecord) {
           const dailySalary = salaryRecord.dailySalary || 0;
-          const totalSalary = dailySalary * workDays;
-          
-          console.log(`[addAttendance] 找到工資記錄，日薪=${dailySalary}，更新工作天數=${workDays}，總工資=${totalSalary}`);
+          const paidLeaveAmount = getPaidLeaveAmount(salaryRecord);
+          const totalSalary = computeSalaryTotal(dailySalary, workDays, paidLeaveAmount);
+
+          console.log(`[addAttendance] 找到工資記錄，日薪=${dailySalary}，有薪假期=${paidLeaveAmount}，更新工作天數=${workDays}，總工資=${totalSalary}`);
           
           const updateResult = await Project.findOneAndUpdate(
             { _id: projectId, 'salaries._id': salaryRecord._id },

@@ -4,13 +4,14 @@ import { tagColor } from '@/utils/statusTagColor';
 import QuoteDataTableModule from '@/modules/QuoteModule/QuoteDataTableModule';
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 
 export default function Quote() {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const entity = 'quote';
   const { moneyFormatter } = useMoney();
+  const { followUpDisplayName } = useFollowUpDisplayName();
 
   const searchConfig = {
     entity: 'quote',

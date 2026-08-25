@@ -27,11 +27,11 @@ const read = async (req, res) => {
       warehouseInventory: id 
     })
       .populate('project', 'name')
-      .populate('supplierQuote', 'number')
+      .populate('supplierQuote', 'numberPrefix number')
       .populate('purchaseOrder', 'number')
       .populate('createdBy', 'name')
       .sort({ transactionDate: -1 })
-      .limit(20)
+      .limit(50)
       .lean();
 
     // 計算統計信息

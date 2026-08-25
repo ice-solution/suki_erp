@@ -12,6 +12,9 @@ router.route('/:directory/:file').get(function (req, res) {
     if (directory === 'supplierquote' && file.startsWith('supplierquote-finish-') && file.endsWith('.pdf')) {
       id = file.slice('supplierquote-finish-'.length, -4);
       variant = 'finish';
+    } else if (directory === 'invoice' && file.startsWith('invoice-receipt-') && file.endsWith('.pdf')) {
+      id = file.slice('invoice-receipt-'.length, -4);
+      variant = 'receipt';
     } else {
       id = file.slice(directory.length + 1).slice(0, -4);
     }

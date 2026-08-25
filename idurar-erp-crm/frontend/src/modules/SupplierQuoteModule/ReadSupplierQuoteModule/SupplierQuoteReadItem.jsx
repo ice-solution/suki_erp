@@ -25,7 +25,7 @@ import PreviewPdfButton from '@/components/PreviewPdfButton';
 import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
 import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 
 const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP', 'IH']);
 
@@ -189,6 +189,7 @@ function readAssetTableColumns(assetKey) {
 }
 
 export default function SupplierQuoteReadItem({ config, selectedItem }) {
+  const { followUpDisplayName } = useFollowUpDisplayName();
   const showDelete = useCanDeleteRecords();
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;

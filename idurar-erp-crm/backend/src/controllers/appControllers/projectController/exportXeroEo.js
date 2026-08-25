@@ -87,6 +87,12 @@ const exportXeroEo = async (req, res) => {
               contractorId
             ),
           };
+        })
+        // 依 InvoiceDate 由新到舊
+        .sort((a, b) => {
+          const da = a?.date ? new Date(a.date).getTime() : 0;
+          const db = b?.date ? new Date(b.date).getTime() : 0;
+          return db - da;
         });
 
       return {
@@ -95,6 +101,19 @@ const exportXeroEo = async (req, res) => {
         startDate: p.startDate,
         usedContractorFees,
       };
+    });
+
+    // 專案層亦依最新 EO 日期由新到舊（前端會再扁平排序）
+    result.sort((a, b) => {
+      const aMax = (a.usedContractorFees || []).reduce((m, f) => {
+        const t = f?.date ? new Date(f.date).getTime() : 0;
+        return t > m ? t : m;
+      }, 0);
+      const bMax = (b.usedContractorFees || []).reduce((m, f) => {
+        const t = f?.date ? new Date(f.date).getTime() : 0;
+        return t > m ? t : m;
+      }, 0);
+      return bMax - aMax;
     });
 
     return res.status(200).json({

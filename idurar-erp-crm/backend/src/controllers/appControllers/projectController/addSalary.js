@@ -2,19 +2,25 @@ const mongoose = require('mongoose');
 
 const Project = mongoose.model('Project');
 const { calculateWorkDaysFromAttendance } = require('./calculateWorkDays');
+const { computeSalaryTotal } = require('./salaryTotal');
 
 const addSalary = async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { contractorEmployee, dailySalary, notes } = req.body;
+    const { contractorEmployee, dailySalary, paidLeaveAmount, paidLeaveDays, notes } = req.body;
 
     // 驗證必填字段
-    if (!contractorEmployee || !dailySalary) {
+    if (!contractorEmployee || dailySalary === undefined || dailySalary === null) {
       return res.status(400).json({
         success: false,
         message: '員工和日薪為必填字段'
       });
     }
+
+    const paidLeave = Math.max(
+      0,
+      Number(paidLeaveAmount ?? paidLeaveDays) || 0
+    );
 
     // 查找項目
     const project = await Project.findOne({ _id: projectId, removed: false });
@@ -47,13 +53,14 @@ const addSalary = async (req, res) => {
       workDays = 0;
     }
 
-    // 計算總工資
-    const totalSalary = dailySalary * workDays;
+    // 計算總工資（含有薪假期）
+    const totalSalary = computeSalaryTotal(dailySalary, workDays, paidLeave);
 
     // 創建新的工資記錄
     const newSalary = {
       contractorEmployee,
       dailySalary,
+      paidLeaveAmount: paidLeave,
       workDays,
       totalSalary,
       notes: notes || '',

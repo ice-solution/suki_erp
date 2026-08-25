@@ -47,13 +47,6 @@ function getMaterialRowTotal(row) {
   return null;
 }
 
-function invoiceNumberSortKey(po) {
-  const typeKey = po.type != null ? String(po.type).trim() : '';
-  const poNo = `${po.numberPrefix || 'PO'}-${po.number || ''}`;
-  // 依「Quote type + number」分組/排序
-  return `${typeKey}__${poNo}`;
-}
-
 export default function XeroPOExport() {
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -67,14 +60,14 @@ export default function XeroPOExport() {
     const outPreviewRows = [];
     let rowIndex = 0;
 
+    // 依 InvoiceDate（S單 date）由新到舊
     const sortedList = [...(list || [])].sort((a, b) => {
-      const ka = invoiceNumberSortKey(a);
-      const kb = invoiceNumberSortKey(b);
-      const c = ka.localeCompare(kb, undefined, { numeric: true, sensitivity: 'base' });
-      if (c !== 0) return c;
+      const da = a?.date ? dayjs(a.date).valueOf() : 0;
+      const db = b?.date ? dayjs(b.date).valueOf() : 0;
+      if (db !== da) return db - da;
       const pa = `${a.numberPrefix || 'PO'}-${a.number || ''}`;
       const pb = `${b.numberPrefix || 'PO'}-${b.number || ''}`;
-      return pa.localeCompare(pb, undefined, { numeric: true, sensitivity: 'base' });
+      return pb.localeCompare(pa, undefined, { numeric: true, sensitivity: 'base' });
     });
 
     for (const po of sortedList) {
@@ -260,7 +253,7 @@ export default function XeroPOExport() {
           )}
         </div>
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          僅滙出 S單中 Supplier type = PO 且<strong> Completed（已完成）= 是</strong>的紀錄。以<strong>PO</strong>為單位輸出材料列；整份列表依<strong>Quote type + PO 編號</strong>排序/分組。CSV 欄位 InvoiceNumber 為 PO 編號；材料<strong>減數</strong>（負數量／負單價／負總價）不輸出；Description 為該 PO 的「供應商 Invoice No.」。
+          僅滙出 S單中 Supplier type = PO 且<strong> Completed（已完成）= 是</strong>的紀錄。以<strong>PO</strong>為單位輸出材料列；整份列表依<strong>InvoiceDate（由新到舊）</strong>排序。CSV 欄位 InvoiceNumber 為 PO 編號；材料<strong>減數</strong>（負數量／負單價／負總價）不輸出；Description 為該 PO 的「供應商 Invoice No.」。
         </p>
 
         {previewRows.length > 0 && (

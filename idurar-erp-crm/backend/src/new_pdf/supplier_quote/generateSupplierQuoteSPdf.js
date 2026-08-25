@@ -16,10 +16,10 @@ const { useMoney, useDate } = require('@/settings');
 const { buildSuperMaxImageFooterTemplate } = require('../shared/quotePdfFooterTemplate');
 const { attachPdfBrandImages } = require('../shared/pdfBrandImages');
 
-/** 與 pdfController.resolveLogoSettingKey('supplierquote', …) 一致：S／Y／IH 用各自 logo（版面同 s.pug） */
+/** 與 pdfController.resolveLogoSettingKey('supplierquote', …) 一致：S／Y／IH／SWP 用各自 logo（版面同 s.pug） */
 function resolveLogoSettingKeyForSupplierQuoteS(result) {
   const prefix = String(result?.numberPrefix || '').toLowerCase();
-  if (prefix === 's' || prefix === 'y' || prefix === 'ih') {
+  if (prefix === 's' || prefix === 'y' || prefix === 'ih' || prefix === 'swp') {
     return `company_logo_${prefix}`;
   }
   return null;

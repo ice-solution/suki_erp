@@ -80,6 +80,22 @@ const InventoryRecordList = () => {
       render: (v) => v || '-',
     },
     {
+      title: 'S單號',
+      key: 'supplierQuoteNo',
+      width: 130,
+      render: (_, r) => {
+        const sq = r.supplierQuote;
+        if (sq && typeof sq === 'object') {
+          const prefix = sq.numberPrefix != null ? String(sq.numberPrefix).trim() : '';
+          const num = sq.number != null ? String(sq.number).trim() : '';
+          if (prefix && num) return `${prefix}-${num}`;
+          if (num) return num;
+        }
+        const m = String(r.reason || '').match(/（([^）]+)）/);
+        return m ? m[1] : '-';
+      },
+    },
+    {
       title: '備註',
       dataIndex: 'notes',
       key: 'notes',

@@ -21,7 +21,7 @@ import { Link } from 'react-router-dom';
 import { ErpLayout } from '@/layout';
 import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 import * as XLSX from 'xlsx';
 
 const { RangePicker } = DatePicker;
@@ -57,6 +57,7 @@ const poNumbersText = (record) => {
 const QuoteOperationalReport = () => {
   const { moneyFormatter } = useMoney();
   const { dateFormat } = useDate();
+  const { followUpDisplayName } = useFollowUpDisplayName();
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);

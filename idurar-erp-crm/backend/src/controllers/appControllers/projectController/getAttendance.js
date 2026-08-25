@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 const getAttendance = async (req, res) => {
   try {
@@ -27,13 +28,21 @@ const getAttendance = async (req, res) => {
       );
     }
 
-    // 如果指定了日期範圍，過濾日期
+    // 如果指定了日期範圍，過濾日期（香港日曆日）
     if (startDate || endDate) {
+      const range = parseHongKongDayRange(startDate || endDate, endDate || startDate);
+      if (!range) {
+        return res.status(400).json({
+          success: false,
+          message: '日期格式不正確',
+        });
+      }
+      const start = startDate ? range.from : null;
+      const end = endDate ? range.to : null;
+
       attendanceRecords = attendanceRecords.filter((record) => {
         const recordDate = new Date(record.checkInDate);
-        const start = startDate ? new Date(startDate) : null;
-        const end = endDate ? new Date(endDate) : null;
-
+        if (Number.isNaN(recordDate.getTime())) return false;
         if (start && end) {
           return recordDate >= start && recordDate <= end;
         } else if (start) {

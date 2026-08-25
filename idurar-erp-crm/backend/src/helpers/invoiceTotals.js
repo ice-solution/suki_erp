@@ -1,5 +1,3 @@
-const { calculate } = require('@/helpers');
-
 function safeProjectPct(raw) {
   if (raw == null || raw === '') return 100;
   const n = Number(raw);
@@ -15,14 +13,15 @@ function safeDiscountPct(raw) {
 
 /**
  * 發票總計：先依專案佔比得出本單金額，再套用折扣。
- * 例：小計 300,700 × 60% = 180,420；折扣 2% = 3,608.40；總計 176,811.60
+ * 佔比後不四捨五入（用原生浮點運算，避免 currency.js 預設 2 位入數）。
  */
 function computeInvoiceTotals({ subTotal, discount = 0, projectPercentage = 100 }) {
   const pct = safeProjectPct(projectPercentage);
   const disc = safeDiscountPct(discount);
-  const splitSubTotal = calculate.multiply(subTotal, pct / 100);
-  const discountTotal = calculate.multiply(splitSubTotal, disc / 100);
-  const total = calculate.sub(splitSubTotal, discountTotal);
+  const base = Number(subTotal) || 0;
+  const splitSubTotal = (base * pct) / 100;
+  const discountTotal = (splitSubTotal * disc) / 100;
+  const total = splitSubTotal - discountTotal;
   return { splitSubTotal, discountTotal, total };
 }
 

@@ -33,6 +33,7 @@ import {
 } from '@ant-design/icons';
 import { useMoney } from '@/settings';
 import { request } from '@/request';
+import axios from 'axios';
 import dayjs from 'dayjs';
 import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
@@ -56,6 +57,7 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
   const [attendanceDrawerVisible, setAttendanceDrawerVisible] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [attendanceModalVisible, setAttendanceModalVisible] = useState(false);
+  const [editingAttendance, setEditingAttendance] = useState(null);
   const [attendanceForm] = Form.useForm();
   const [recalculating, setRecalculating] = useState(false);
 
@@ -114,6 +116,7 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
     form.setFieldsValue({
       contractorEmployee: record.contractorEmployee._id,
       dailySalary: record.dailySalary,
+      paidLeaveAmount: record.paidLeaveAmount ?? record.paidLeaveDays ?? 0,
       notes: record.notes,
       employmentStatus: employee.employmentStatus || '在職',
       resignationDate: employee.resignationDate ? dayjs(employee.resignationDate) : null,
@@ -128,6 +131,7 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
       const salaryData = {
         contractorEmployee: values.contractorEmployee,
         dailySalary: values.dailySalary,
+        paidLeaveAmount: values.paidLeaveAmount || 0,
         notes: values.notes
       };
 
@@ -198,38 +202,100 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
 
   const handleAddAttendance = (employee = null) => {
     setSelectedEmployee(employee);
+    setEditingAttendance(null);
     attendanceForm.resetFields();
     attendanceForm.setFieldsValue({
       contractorEmployee: employee?._id,
-      checkInDate: dayjs()
+      checkInDate: dayjs(),
+      dayType: 'full',
+    });
+    setAttendanceModalVisible(true);
+  };
+
+  const handleEditAttendance = (record) => {
+    setEditingAttendance(record);
+    const empId = record.contractorEmployee?._id || record.contractorEmployee;
+    attendanceForm.setFieldsValue({
+      contractorEmployee: empId,
+      checkInDate: record.checkInDate ? dayjs(record.checkInDate) : null,
+      dayType: record.dayType === 'half' ? 'half' : 'full',
+      notes: record.notes || '',
     });
     setAttendanceModalVisible(true);
   };
 
   const handleSaveAttendance = async (values) => {
     try {
+      const dateKey = values.checkInDate.format('YYYY-MM-DD');
+      const employeeId = values.contractorEmployee;
+      const alreadyChecked = attendanceRecords.some((r) => {
+        if (editingAttendance && String(r._id) === String(editingAttendance._id)) return false;
+        const empId = r.contractorEmployee?._id || r.contractorEmployee;
+        return (
+          String(empId) === String(employeeId) &&
+          dayjs(r.checkInDate).format('YYYY-MM-DD') === dateKey
+        );
+      });
+      if (alreadyChecked) {
+        message.error(`該員工在 ${dateKey} 已有打咭記錄，日期不可重複`);
+        return;
+      }
+
       const attendanceData = {
-        contractorEmployee: values.contractorEmployee,
-        checkInDate: values.checkInDate.format('YYYY-MM-DD'),
-        notes: values.notes
+        contractorEmployee: employeeId,
+        checkInDate: dateKey,
+        dayType: values.dayType === 'half' ? 'half' : 'full',
+        notes: values.notes,
       };
 
-      const response = await request.post({ 
-        entity: `project/${projectId}/attendance`, 
-        jsonData: attendanceData 
-      });
-      
+      let response;
+      if (editingAttendance) {
+        response = await request.patch({
+          entity: `project/${projectId}/attendance/${editingAttendance._id}`,
+          jsonData: attendanceData,
+        });
+      } else {
+        response = await request.post({
+          entity: `project/${projectId}/attendance`,
+          jsonData: attendanceData,
+        });
+      }
+
       if (response.success) {
-        message.success('打咭記錄添加成功');
+        message.success(editingAttendance ? '打咭記錄更新成功' : '打咭記錄添加成功');
         setAttendanceModalVisible(false);
-        // 刷新打咭記錄列表
+        setEditingAttendance(null);
         fetchAttendanceRecords(selectedEmployee?._id);
-        // 刷新工資列表以更新工作天數
         fetchSalaries();
+      } else {
+        message.error(
+          response.message || (editingAttendance ? '更新打咭記錄失敗' : '添加打咭記錄失敗')
+        );
       }
     } catch (error) {
-      console.error('添加打咭記錄失敗:', error);
-      message.error('添加打咭記錄失敗');
+      console.error('儲存打咭記錄失敗:', error);
+      message.error(
+        error?.response?.data?.message ||
+          (editingAttendance ? '更新打咭記錄失敗' : '添加打咭記錄失敗')
+      );
+    }
+  };
+
+  const handleDeleteAttendance = async (attendanceId) => {
+    try {
+      const response = await axios.delete(
+        `project/${projectId}/attendance/${attendanceId}`
+      );
+      if (response.data?.success) {
+        message.success('打咭記錄刪除成功');
+        fetchAttendanceRecords(selectedEmployee?._id);
+        fetchSalaries();
+      } else {
+        message.error(response.data?.message || '刪除打咭記錄失敗');
+      }
+    } catch (error) {
+      console.error('刪除打咭記錄失敗:', error);
+      message.error(error?.response?.data?.message || '刪除打咭記錄失敗');
     }
   };
 
@@ -331,10 +397,19 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
       sorter: (a, b) => a.dailySalary - b.dailySalary,
     },
     {
+      title: '有薪假期',
+      dataIndex: 'paidLeaveAmount',
+      key: 'paidLeaveAmount',
+      render: (_, record) =>
+        moneyFormatter({ amount: record.paidLeaveAmount ?? record.paidLeaveDays ?? 0 }),
+      sorter: (a, b) =>
+        (a.paidLeaveAmount ?? a.paidLeaveDays ?? 0) - (b.paidLeaveAmount ?? b.paidLeaveDays ?? 0),
+    },
+    {
       title: '工作天數',
       dataIndex: 'workDays',
       key: 'workDays',
-      render: (days) => `${days} 天`,
+      render: (days) => `${Number(days) || 0} 天`,
       sorter: (a, b) => a.workDays - b.workDays,
     },
     {
@@ -549,6 +624,21 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
           </Form.Item>
 
           <Form.Item
+            name="paidLeaveAmount"
+            label="有薪假期"
+            initialValue={0}
+            extra="總人工 = 日薪 × 工作天數 + 有薪假期"
+          >
+            <InputNumber
+              placeholder="輸入有薪假期金額"
+              min={0}
+              precision={2}
+              style={{ width: '100%' }}
+              addonBefore="$"
+            />
+          </Form.Item>
+
+          <Form.Item
             name="employmentStatus"
             label="判頭員工是否離職"
             initialValue="在職"
@@ -616,13 +706,45 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
         <List
           dataSource={attendanceRecords}
           renderItem={(record) => (
-            <List.Item>
+            <List.Item
+              actions={[
+                <Button
+                  key="edit"
+                  type="link"
+                  icon={<EditOutlined />}
+                  onClick={() => handleEditAttendance(record)}
+                >
+                  修改
+                </Button>,
+                ...(showDelete
+                  ? [
+                      <Popconfirm
+                        key="delete"
+                        title="確定刪除此打咭記錄？"
+                        onConfirm={() => handleDeleteAttendance(record._id)}
+                        okText="刪除"
+                        cancelText="取消"
+                      >
+                        <Button type="link" danger icon={<DeleteOutlined />}>
+                          刪除
+                        </Button>
+                      </Popconfirm>,
+                    ]
+                  : []),
+              ]}
+            >
               <List.Item.Meta
                 avatar={<Badge status="success" />}
                 title={
                   <div>
                     <CalendarOutlined style={{ marginRight: 8 }} />
                     {dayjs(record.checkInDate).format('YYYY-MM-DD')}
+                    <Tag
+                      style={{ marginLeft: 8 }}
+                      color={record.dayType === 'half' ? 'orange' : 'blue'}
+                    >
+                      {record.dayType === 'half' ? '半日' : '全日'}
+                    </Tag>
                   </div>
                 }
                 description={
@@ -646,11 +768,14 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
         />
       </Drawer>
 
-      {/* 添加打咭記錄模態框 */}
+      {/* 添加／修改打咭記錄模態框 */}
       <Modal
-        title="添加打咭記錄"
+        title={editingAttendance ? '修改打咭記錄' : '添加打咭記錄'}
         open={attendanceModalVisible}
-        onCancel={() => setAttendanceModalVisible(false)}
+        onCancel={() => {
+          setAttendanceModalVisible(false);
+          setEditingAttendance(null);
+        }}
         onOk={() => attendanceForm.submit()}
         width={500}
       >
@@ -667,6 +792,7 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
             <Select
               placeholder="選擇員工"
               loading={employeesLoading}
+              disabled={!!editingAttendance}
               showSearch
               filterOption={(input, option) => {
                 const q = String(input || '').toLowerCase();
@@ -696,8 +822,42 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
             name="checkInDate"
             label="打咭日期"
             rules={[{ required: true, message: '請選擇打咭日期' }]}
+            extra="同一員工同一日不可重複打咭"
           >
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker
+              style={{ width: '100%' }}
+              disabledDate={(current) => {
+                if (!current) return false;
+                const employeeId =
+                  attendanceForm.getFieldValue('contractorEmployee') ||
+                  selectedEmployee?._id;
+                if (!employeeId) return false;
+                const dateKey = current.format('YYYY-MM-DD');
+                return attendanceRecords.some((r) => {
+                  if (editingAttendance && String(r._id) === String(editingAttendance._id)) {
+                    return false;
+                  }
+                  const empId = r.contractorEmployee?._id || r.contractorEmployee;
+                  return (
+                    String(empId) === String(employeeId) &&
+                    dayjs(r.checkInDate).format('YYYY-MM-DD') === dateKey
+                  );
+                });
+              }}
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="dayType"
+            label="全日／半日"
+            rules={[{ required: true, message: '請選擇全日或半日' }]}
+            initialValue="full"
+            extra="半日計 0.5 工作天；Mobile 打咭一律計全日"
+          >
+            <Select>
+              <Option value="full">全日</Option>
+              <Option value="half">半日</Option>
+            </Select>
           </Form.Item>
 
           <Form.Item

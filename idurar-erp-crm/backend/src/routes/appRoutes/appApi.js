@@ -4,6 +4,7 @@ const router = express.Router();
 
 const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
+const deletedRecordsList = require('@/controllers/appControllers/deletedRecordsController/list');
 
 const routerApp = (entity, controller) => {
   // 具體路由必須在參數路由之前
@@ -39,6 +40,7 @@ const routerApp = (entity, controller) => {
       .route(`/${entity}/whole-project-percentage/:id`)
       .patch(catchErrors(controller['updateWholeProjectPercentage']));
     router.route(`/${entity}/export-xero`).get(catchErrors(controller['exportXero']));
+    router.route(`/${entity}/source-items/:id`).get(catchErrors(controller['getSourceItemsForEdit']));
   }
 
   if (entity === 'quote') {
@@ -126,5 +128,7 @@ routesList.forEach(({ entity, controllerName }) => {
   const controller = appControllers[controllerName];
   routerApp(entity, controller);
 });
+
+router.route('/deleted-records/list').get(catchErrors(deletedRecordsList));
 
 module.exports = router;

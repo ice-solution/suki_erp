@@ -22,6 +22,7 @@ import WarehouseSettings from './WarehouseSettings';
 import ItemUnitSettings from './ItemUnitSettings';
 import WarehouseItemCategorySettings from './WarehouseItemCategorySettings';
 import AccountSettings from './AccountSettings';
+import FollowUpPersonSettings from './FollowUpPersonSettings';
 
 import useLanguage from '@/locale/useLanguage';
 import { useParams } from 'react-router-dom';
@@ -89,6 +90,12 @@ export default function Settings() {
       label: '倉存類別',
       icon: <InboxOutlined />,
       children: <WarehouseItemCategorySettings />,
+    },
+    {
+      key: 'follow_up_person_settings',
+      label: '跟單人列表',
+      icon: <UserOutlined />,
+      children: <FollowUpPersonSettings />,
     },
     {
       key: 'account_settings',

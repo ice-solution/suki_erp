@@ -1,17 +1,25 @@
 const mongoose = require('mongoose');
 const Invoice = mongoose.model('Invoice');
 const Client = mongoose.model('Client');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 const getMemberInvoices = async (req, res) => {
   try {
     const { startDate, endDate, clientId } = req.query;
 
-    // 構建日期範圍查詢
+    // 構建日期範圍查詢（香港日曆日）
     const dateQuery = {};
     if (startDate || endDate) {
+      const range = parseHongKongDayRange(startDate || endDate, endDate || startDate);
+      if (!range) {
+        return res.status(400).json({
+          success: false,
+          message: '日期格式不正確',
+        });
+      }
       dateQuery.date = {};
-      if (startDate) dateQuery.date.$gte = new Date(startDate);
-      if (endDate) dateQuery.date.$lte = new Date(endDate);
+      if (startDate) dateQuery.date.$gte = range.from;
+      if (endDate) dateQuery.date.$lte = range.to;
     }
 
     // 構建客戶查詢

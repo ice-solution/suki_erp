@@ -121,3 +121,18 @@ export const selectWarehouseOptions = createSelector(
     }));
   }
 );
+
+/** 跟單人列表：[{ adminId, displayName }] */
+export const selectFollowUpPersonList = createSelector(
+  [selectCurrentSettings],
+  (settings) => {
+    const list = settings?.follow_up_settings?.follow_up_person_list;
+    if (!Array.isArray(list)) return [];
+    return list
+      .map((row) => ({
+        adminId: row?.adminId != null ? String(row.adminId) : '',
+        displayName: row?.displayName != null ? String(row.displayName).trim() : '',
+      }))
+      .filter((row) => row.adminId);
+  }
+);

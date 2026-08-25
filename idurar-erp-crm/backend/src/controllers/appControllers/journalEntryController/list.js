@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const JournalEntry = mongoose.model('JournalEntry');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 const list = async (req, res) => {
   try {
@@ -23,11 +24,19 @@ const list = async (req, res) => {
     if (sourceType) query.sourceType = sourceType;
     if (accountingPeriod) query.accountingPeriod = accountingPeriod;
 
-    // 日期範圍查詢
+    // 日期範圍查詢（香港日曆日）
     if (startDate || endDate) {
+      const range = parseHongKongDayRange(startDate || endDate, endDate || startDate);
+      if (!range) {
+        return res.status(400).json({
+          success: false,
+          result: null,
+          message: 'Invalid date format',
+        });
+      }
       query.transactionDate = {};
-      if (startDate) query.transactionDate.$gte = new Date(startDate);
-      if (endDate) query.transactionDate.$lte = new Date(endDate);
+      if (startDate) query.transactionDate.$gte = range.from;
+      if (endDate) query.transactionDate.$lte = range.to;
     }
 
     // 搜索條件

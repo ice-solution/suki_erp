@@ -3,8 +3,25 @@ const { roundQty } = require('./warehouseInventoryPricing');
 
 const WarehouseInventory = mongoose.model('WarehouseInventory');
 const WarehouseTransaction = mongoose.model('WarehouseTransaction');
+const SupplierQuote = mongoose.model('SupplierQuote');
 
 const WAREHOUSE_KEYS = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+async function resolveSupplierQuoteLabel(supplierQuoteId) {
+  if (!supplierQuoteId) return '';
+  try {
+    const doc = await SupplierQuote.findById(supplierQuoteId)
+      .select('numberPrefix number')
+      .lean();
+    if (!doc) return '';
+    const prefix = doc.numberPrefix != null ? String(doc.numberPrefix).trim() : '';
+    const num = doc.number != null ? String(doc.number).trim() : '';
+    if (prefix && num) return `${prefix}-${num}`;
+    return num || prefix || '';
+  } catch (e) {
+    return '';
+  }
+}
 
 function normalizeInventoryId(raw) {
   if (raw == null || raw === '') return '';
@@ -151,6 +168,13 @@ async function applyOneStockChange({
   await inv.save();
 
   const isOutbound = change < 0;
+  const sLabel = await resolveSupplierQuoteLabel(supplierQuoteId);
+  const actionLabel = isOutbound ? 'S單材料出庫' : 'S單材料退回';
+  const reason = sLabel ? `${actionLabel}（${sLabel}）` : actionLabel;
+  const notes = sLabel
+    ? `${actionLabel}：${sLabel}`
+    : `SupplierQuote ${supplierQuoteId} 材料及費用管理同步`;
+
   const transaction = new WarehouseTransaction({
     warehouseInventory: inv._id,
     transactionType: isOutbound ? 'outbound' : 'inbound',
@@ -161,8 +185,8 @@ async function applyOneStockChange({
     totalValue: Math.abs(change) * (inv.unitPrice || 0),
     project: inv.project,
     supplierQuote: supplierQuoteId,
-    reason: isOutbound ? 'S單材料出庫' : 'S單材料退回',
-    notes: `SupplierQuote ${supplierQuoteId} 材料及費用管理同步`,
+    reason,
+    notes,
     createdBy: adminId,
   });
   await transaction.save();

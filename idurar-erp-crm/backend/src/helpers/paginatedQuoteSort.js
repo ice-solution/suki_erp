@@ -30,6 +30,7 @@ function buildQuoteNumberSearchMatch(searchTerm, fieldsArray = [], baseMatch = {
   }
 
   const escapedSubstring = escapeRegex(q);
+  // 完整單號：PREFIX-number（含字母後綴，如 SMI-2508114R）
   fields.$or.push({
     $expr: {
       $regexMatch: {
@@ -43,7 +44,7 @@ function buildQuoteNumberSearchMatch(searchTerm, fieldsArray = [], baseMatch = {
   for (const field of fieldsArray) {
     if (field === 'number') {
       const numberValue = parseInt(q, 10);
-      if (!Number.isNaN(numberValue)) {
+      if (!Number.isNaN(numberValue) && String(numberValue) === q) {
         fields.$or.push({ [field]: numberValue });
         fields.$or.push({ [field]: String(numberValue) });
       }
@@ -54,26 +55,47 @@ function buildQuoteNumberSearchMatch(searchTerm, fieldsArray = [], baseMatch = {
   }
 
   if (q.includes('-')) {
-    const [prefixPart, numberPart] = q.split('-');
-    const numberValue = parseInt(numberPart, 10);
-    if (prefixPart && !Number.isNaN(numberValue)) {
+    // 只拆第一個 '-'，保留 number 後綴字母（2508114R）
+    const dashIdx = q.indexOf('-');
+    const prefixPart = q.slice(0, dashIdx).trim();
+    const numberPart = q.slice(dashIdx + 1).trim();
+    if (prefixPart && numberPart) {
+      const escapedPrefix = escapeRegex(prefixPart);
+      const escapedNumberPart = escapeRegex(numberPart);
+      // 精確／前綴匹配完整 number 字串（含 R、A 等後綴）
       fields.$or.push({
         $and: [
-          { numberPrefix: { $regex: new RegExp(escapeRegex(prefixPart), 'i') } },
-          { number: String(numberValue) },
+          { numberPrefix: { $regex: new RegExp(`^${escapedPrefix}$`, 'i') } },
+          { number: { $regex: new RegExp(`^${escapedNumberPart}`, 'i') } },
         ],
       });
       fields.$or.push({
         $and: [
-          { numberPrefix: { $regex: new RegExp(escapeRegex(prefixPart), 'i') } },
-          { number: numberValue },
+          { numberPrefix: { $regex: new RegExp(`^${escapedPrefix}$`, 'i') } },
+          { number: numberPart },
         ],
       });
+      // 純數字後備（舊資料 number 無後綴）
+      const numberValue = parseInt(numberPart, 10);
+      if (!Number.isNaN(numberValue)) {
+        fields.$or.push({
+          $and: [
+            { numberPrefix: { $regex: new RegExp(`^${escapedPrefix}$`, 'i') } },
+            { number: String(numberValue) },
+          ],
+        });
+        fields.$or.push({
+          $and: [
+            { numberPrefix: { $regex: new RegExp(`^${escapedPrefix}$`, 'i') } },
+            { number: numberValue },
+          ],
+        });
+      }
     }
   } else {
     fields.$or.push({ numberPrefix: { $regex: new RegExp(escapedSubstring, 'i') } });
     const numberValue = parseInt(q, 10);
-    if (!Number.isNaN(numberValue)) {
+    if (!Number.isNaN(numberValue) && String(numberValue) === q) {
       fields.$or.push({ number: numberValue });
       fields.$or.push({ number: String(numberValue) });
     }

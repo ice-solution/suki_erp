@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const { calculateWorkDaysFromAttendance } = require('../projectController/calculateWorkDays');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('../projectController/salaryTotal');
+const { parseHongKongDayRange, toHongKongDateKey } = require('@/helpers/hongKongMoment');
 
 /**
  * 批量打咭 - 為多個員工在同一天打咭
@@ -21,6 +23,15 @@ const batchCheckIn = async (req, res) => {
       return res.status(400).json({
         success: false,
         message: '請選擇打咭日期'
+      });
+    }
+
+    const dateKey = toHongKongDateKey(checkInDate);
+    const dayRange = parseHongKongDayRange(dateKey, dateKey);
+    if (!dateKey || !dayRange) {
+      return res.status(400).json({
+        success: false,
+        message: '打咭日期格式不正確'
       });
     }
 
@@ -57,14 +68,11 @@ const batchCheckIn = async (req, res) => {
       });
     }
 
-    const checkInDateObj = new Date(checkInDate);
-    const dateStr = checkInDateObj.toISOString().split('T')[0]; // YYYY-MM-DD
-
     // 計算工作時數（如果提供了時間）
     let workHours = 0;
     if (checkOutTime && checkInTime) {
-      const checkIn = new Date(`${checkInDate} ${checkInTime}`);
-      const checkOut = new Date(`${checkInDate} ${checkOutTime}`);
+      const checkIn = new Date(`${dateKey} ${checkInTime}`);
+      const checkOut = new Date(`${dateKey} ${checkOutTime}`);
       workHours = (checkOut - checkIn) / (1000 * 60 * 60); // 轉換為小時
       workHours = Math.max(0, workHours); // 確保不為負數
     }
@@ -75,28 +83,31 @@ const batchCheckIn = async (req, res) => {
     // 為每個員工創建打咭記錄（使用 $push 直接寫入 DB，與後台 addAttendance 一致）
     for (const employeeId of employeeIds) {
       try {
-        // 檢查是否已經有該員工在該日期的打咭記錄
-        const existingAttendance = project.onboard.find(
-          (attendance) =>
-            attendance.contractorEmployee.toString() === employeeId.toString() &&
-            new Date(attendance.checkInDate).toISOString().split('T')[0] === dateStr
-        );
+        // 檢查是否已經有該員工在該日期的打咭記錄（香港日曆日）
+        const existingAttendance = (project.onboard || []).find((attendance) => {
+          const empId = attendance.contractorEmployee?._id || attendance.contractorEmployee;
+          return (
+            String(empId) === String(employeeId) &&
+            toHongKongDateKey(attendance.checkInDate) === dateKey
+          );
+        });
 
         if (existingAttendance) {
           errors.push({
             employeeId,
-            message: '該員工在此日期已有打咭記錄'
+            message: `該員工在 ${dateKey} 已有打咭記錄，日期不可重複`
           });
           continue;
         }
 
-        // 創建新的打咭記錄
+        // 創建新的打咭記錄（mobile 一律全日）
         const newAttendance = {
           contractorEmployee: new mongoose.Types.ObjectId(employeeId),
-          checkInDate: checkInDateObj,
+          checkInDate: dayRange.from,
           checkInTime: checkInTime || null,
           checkOutTime: checkOutTime || null,
           workHours,
+          dayType: 'full',
           notes: notes || '',
           created: new Date(),
           updated: new Date()
@@ -107,6 +118,9 @@ const batchCheckIn = async (req, res) => {
           projectId,
           { $push: { onboard: newAttendance } }
         );
+        // 同步記憶體，避免同批次重複日期漏檢
+        if (!project.onboard) project.onboard = [];
+        project.onboard.push(newAttendance);
         results.push({
           employeeId,
           success: true
@@ -134,7 +148,8 @@ const batchCheckIn = async (req, res) => {
         );
         if (salaryRecord) {
           const dailySalary = salaryRecord.dailySalary || 0;
-          const totalSalary = dailySalary * workDays;
+          const paidLeaveAmount = getPaidLeaveAmount(salaryRecord);
+          const totalSalary = computeSalaryTotal(dailySalary, workDays, paidLeaveAmount);
           await Project.findOneAndUpdate(
             { _id: projectId, 'salaries._id': salaryRecord._id },
             { $set: { 'salaries.$.workDays': workDays, 'salaries.$.totalSalary': totalSalary, 'salaries.$.updated': new Date() } }

@@ -4,7 +4,7 @@ import ProjectDataTableModule from '@/modules/ProjectModule/ProjectDataTableModu
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 import { resolveProjectCustomerName } from '@/utils/projectCustomerName';
-import { projectFollowUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 
 const { Text } = Typography;
 
@@ -13,6 +13,7 @@ export default function Project() {
   const { dateFormat } = useDate();
   const entity = 'project';
   const { moneyFormatter } = useMoney();
+  const { projectFollowUpDisplayName } = useFollowUpDisplayName();
 
   const searchConfig = {
     entity: 'project',

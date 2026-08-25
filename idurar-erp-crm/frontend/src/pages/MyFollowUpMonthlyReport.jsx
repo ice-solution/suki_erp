@@ -22,7 +22,7 @@ import { useSelector } from 'react-redux';
 import { ErpLayout } from '@/layout';
 import { useMoney, useDate } from '@/settings';
 import { request } from '@/request';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 import { selectCurrentAdmin } from '@/redux/auth/selectors';
 import * as XLSX from 'xlsx';
 
@@ -49,6 +49,7 @@ const MyFollowUpMonthlyReport = () => {
   const { moneyFormatter } = useMoney();
   const { dateFormat } = useDate();
   const currentAdmin = useSelector(selectCurrentAdmin) || {};
+  const { followUpDisplayName } = useFollowUpDisplayName();
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [loading, setLoading] = useState(false);
   const [reportData, setReportData] = useState(null);

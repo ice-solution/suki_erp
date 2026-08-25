@@ -24,6 +24,7 @@ const paginatedList = async (req, res) => {
     .limit(limit)
     .sort({ transactionDate: -1, _id: -1 })
     .populate('warehouseInventory', 'itemName sku warehouse')
+    .populate('supplierQuote', 'numberPrefix number')
     .populate('createdBy', 'name')
     .lean()
     .exec();

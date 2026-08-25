@@ -17,6 +17,37 @@ function buildItemContentText(item) {
   return (name + desc).trim() || '-';
 }
 
+/** B 模式：由行金額與佔比反推原始單價（兼容舊單已把 price 調成轉出金額） */
+function resolvePdfDisplayUnitPrice(item, lineAmount, linePct) {
+  const qty = Number(item.quantity);
+  const pct = Number(linePct);
+  const amount = Number(lineAmount);
+  if (!(pct > 0) || !Number.isFinite(amount)) {
+    return item.price != null ? Number(item.price) : null;
+  }
+  const price = Number(item.price);
+  const safeQty = qty > 0 ? qty : 1;
+  // 新邏輯若已存原始單價：qty×price×pct/100 ≈ amount
+  if (
+    Number.isFinite(price) &&
+    Math.abs(price * safeQty * (pct / 100) - amount) < 0.05
+  ) {
+    return price;
+  }
+  // 舊單 price 已調成轉出金額：反推原始單價
+  return amount * 100 / (pct * safeQty);
+}
+
+function invoiceHasLineProjectPercentage(items) {
+  return (items || []).some((item) => {
+    const pct =
+      item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+        ? Number(item.lineProjectPercentage)
+        : null;
+    return pct != null && Number.isFinite(pct);
+  });
+}
+
 function estimateTextLines(text, charsPerLine, safetyFactor = 1.08) {
   const raw = String(text || '').trim();
   if (!raw || raw === '-') return 1;
@@ -506,6 +537,8 @@ module.exports = {
   PUPPETEER_PRINT_SCALE,
   stripLeadingItemIndex,
   buildItemContentText,
+  resolvePdfDisplayUnitPrice,
+  invoiceHasLineProjectPercentage,
   estimateTextLines,
   buildItemDisplayPageChunks,
   buildTextLinePageChunks,

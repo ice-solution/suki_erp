@@ -4,13 +4,14 @@ import { tagColor } from '@/utils/statusTagColor';
 import ShipQuoteDataTableModule from '@/modules/ShipQuoteModule/ShipQuoteDataTableModule';
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 
 export default function ShipQuote() {
   const translate = useLanguage();
   const { dateFormat } = useDate();
   const entity = 'shipquote';
   const { moneyFormatter } = useMoney();
+  const { followUpDisplayName } = useFollowUpDisplayName();
 
   const searchConfig = {
     entity: 'shipquote',

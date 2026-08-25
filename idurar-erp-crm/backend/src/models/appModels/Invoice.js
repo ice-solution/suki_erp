@@ -173,6 +173,14 @@ const invoiceSchema = new mongoose.Schema({
         type: Number,
         required: true,
       },
+      /** 來源報價／吊船報價 items 下標；刪改明細時用以同步 orderFromQuoteLines */
+      sourceItemIndex: {
+        type: Number,
+      },
+      /** B 模式：該行轉出發票的專案佔比 %（例：10 → 項目價值×10%） */
+      lineProjectPercentage: {
+        type: Number,
+      },
     },
   ],
 

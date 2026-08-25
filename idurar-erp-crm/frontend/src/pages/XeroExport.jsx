@@ -36,6 +36,36 @@ function resolveXeroDueDate(inv) {
   return inv?.paymentDueDate ? dayjs(inv.paymentDueDate).format('YYYY-MM-DD') : '';
 }
 
+/** 發票次序：SMI → SP → WSE，其餘排後；同類型單號由大到小 */
+const INVOICE_PREFIX_RANK = { SMI: 0, SP: 1, WSE: 2 };
+
+function parseInvoiceNumberForSort(number) {
+  const raw = String(number ?? '').trim();
+  const m = raw.match(/^([0-9]+)(.*)$/);
+  if (!m) {
+    return { num: 0, suffix: raw.toLowerCase() };
+  }
+  return {
+    num: parseInt(m[1], 10) || 0,
+    suffix: (m[2] || '').toLowerCase(),
+  };
+}
+
+function compareInvoiceForXeroExport(a, b) {
+  const rankA = INVOICE_PREFIX_RANK[a?.numberPrefix] ?? 99;
+  const rankB = INVOICE_PREFIX_RANK[b?.numberPrefix] ?? 99;
+  if (rankA !== rankB) return rankA - rankB;
+
+  const na = parseInvoiceNumberForSort(a?.number);
+  const nb = parseInvoiceNumberForSort(b?.number);
+  if (nb.num !== na.num) return nb.num - na.num;
+  if (nb.suffix !== na.suffix) return nb.suffix.localeCompare(na.suffix);
+  return String(b?.number || '').localeCompare(String(a?.number || ''), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
+}
+
 export default function XeroExport() {
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -76,7 +106,9 @@ export default function XeroExport() {
     const outPreviewRows = [];
     let rowIndex = 0;
 
-    for (const inv of invoices) {
+    const sortedInvoices = [...(invoices || [])].sort(compareInvoiceForXeroExport);
+
+    for (const inv of sortedInvoices) {
       const client = inv.client || (inv.clients && inv.clients[0]);
       const contactName = client?.name || '';
       const accountCode = getAccountCodeByServiceType(inv.type) || '';
@@ -255,7 +287,7 @@ export default function XeroExport() {
         </div>
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
           每張發票一列：Description 為專案／工程地址（優先 Project.address，否則發票 address）；Quantity=1；UnitAmount
-          為該張發票總額。
+          為該張發票總額。排序：<strong>SMI → SP → WSE</strong>，同類型單號<strong>由大到小</strong>。
         </p>
 
         {previewRows.length > 0 && (

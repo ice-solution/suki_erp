@@ -1,8 +1,10 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
+const { getPaidLeaveAmount } = require('./salaryTotal');
 
 /**
- * 獲取指定時間段內的項目和人工報告
+ * 獲取指定時間段內的項目和人工報告（日期範圍以香港日曆日解讀）
  */
 const getProjectReport = async (req, res) => {
   try {
@@ -16,11 +18,14 @@ const getProjectReport = async (req, res) => {
       });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    
-    // 設置結束日期為當天的最後時刻
-    end.setHours(23, 59, 59, 999);
+    const range = parseHongKongDayRange(startDate, endDate);
+    if (!range) {
+      return res.status(400).json({
+        success: false,
+        message: '日期格式不正確',
+      });
+    }
+    const { from: start, to: end } = range;
 
     // 查找在指定時間段內創建或更新的項目
     // 條件：項目的 created 或 updated 日期在時間段內
@@ -71,6 +76,7 @@ const getProjectReport = async (req, res) => {
           _id: salary._id,
           contractorEmployee: salary.contractorEmployee,
           dailySalary: salary.dailySalary,
+          paidLeaveAmount: getPaidLeaveAmount(salary),
           workDays: salary.workDays,
           totalSalary: salary.totalSalary,
           notes: salary.notes,

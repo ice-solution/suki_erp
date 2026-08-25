@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const { calculateWorkDaysFromAttendance } = require('./calculateWorkDays');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('./salaryTotal');
 
 const deleteAttendance = async (req, res) => {
   try {
@@ -41,13 +42,15 @@ const deleteAttendance = async (req, res) => {
       const workDays = await calculateWorkDaysFromAttendance(projectId, contractorEmployeeId);
       
       // 查找該員工的工資記錄並更新
-      const salaryRecord = updatedProject.salaries.find(
-        salary => salary.contractorEmployee.toString() === contractorEmployeeId.toString()
-      );
+      const salaryRecord = (updatedProject.salaries || []).find((salary) => {
+        const salaryEmployeeId = salary.contractorEmployee?._id || salary.contractorEmployee;
+        return String(salaryEmployeeId) === String(contractorEmployeeId);
+      });
       
       if (salaryRecord) {
         const dailySalary = salaryRecord.dailySalary || 0;
-        const totalSalary = dailySalary * workDays;
+        const paidLeaveAmount = getPaidLeaveAmount(salaryRecord);
+        const totalSalary = computeSalaryTotal(dailySalary, workDays, paidLeaveAmount);
         
         await Project.findOneAndUpdate(
           { _id: projectId, 'salaries._id': salaryRecord._id },

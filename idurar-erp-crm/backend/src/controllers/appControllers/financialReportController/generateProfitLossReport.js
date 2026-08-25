@@ -3,6 +3,7 @@ const ChartOfAccounts = mongoose.model('ChartOfAccounts');
 const JournalEntry = mongoose.model('JournalEntry');
 const Invoice = mongoose.model('Invoice');
 const Payment = mongoose.model('Payment');
+const { parseHongKongDayRange } = require('@/helpers/hongKongMoment');
 
 const generateProfitLossReport = async (req, res) => {
   try {
@@ -16,8 +17,15 @@ const generateProfitLossReport = async (req, res) => {
       });
     }
 
-    const start = new Date(startDate);
-    const end = new Date(endDate);
+    const range = parseHongKongDayRange(startDate, endDate);
+    if (!range) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: 'Invalid date format',
+      });
+    }
+    const { from: start, to: end } = range;
 
     // 構建過帳狀態查詢
     const postingQuery = includeUnposted ? {} : { isPosted: true };

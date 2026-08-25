@@ -122,6 +122,11 @@ const projectSchema = new mongoose.Schema({
       required: true,
       min: 0,
     },
+    paidLeaveAmount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     workDays: {
       type: Number,
       default: 0,
@@ -166,6 +171,12 @@ const projectSchema = new mongoose.Schema({
       type: Number, // 工作時數，自動計算
       default: 0,
     },
+    // 全日 / 半日（mobile 打咭預設 full；後台可選）
+    dayType: {
+      type: String,
+      enum: ['full', 'half'],
+      default: 'full',
+    },
     notes: {
       type: String,
     },
@@ -206,6 +217,12 @@ const projectSchema = new mongoose.Schema({
     projectName: {
       type: String,
       required: false,
+    },
+    /** 顯示用後綴；勿寫入 projectName，以免對唔到承辦商 accountCode */
+    customText: {
+      type: String,
+      required: false,
+      trim: true,
     },
     amount: {
       type: Number,

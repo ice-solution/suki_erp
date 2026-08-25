@@ -52,7 +52,10 @@ const schema = Joi.object({
         unit: Joi.string().allow('').optional(),
         price: Joi.number().required(),
         total: Joi.number().required(),
-      }).required()
+        sourceItemIndex: Joi.number().integer().min(0).allow(null).optional(),
+        lineProjectPercentage: Joi.number().min(0).max(100).allow(null).optional(),
+        key: Joi.any().optional(),
+      }).unknown(true).required()
     )
     .required(),
   // Support both old taxRate and new discount

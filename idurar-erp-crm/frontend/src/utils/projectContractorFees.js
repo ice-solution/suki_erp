@@ -9,6 +9,7 @@ export function ensureContractorFeeLineIds(contractorFees, existingFees = []) {
 
   return (contractorFees || []).map((fee, index) => {
     const projectName = fee?.projectName != null ? String(fee.projectName).trim() : '';
+    const customText = fee?.customText != null ? String(fee.customText).trim() : '';
     const amount = Number(fee?.amount) || 0;
     let lineId =
       fee?.lineId && String(fee.lineId).trim() ? String(fee.lineId).trim() : null;
@@ -28,6 +29,7 @@ export function ensureContractorFeeLineIds(contractorFees, existingFees = []) {
     return {
       lineId,
       projectName,
+      customText,
       amount,
       ...(contractorId ? { contractorId } : {}),
     };
@@ -46,11 +48,14 @@ function getDuplicateOrdinal(index, allFees) {
   return pos >= 0 ? pos + 1 : null;
 }
 
+/** 顯示：判頭名 + 自訂文字（projectName 保持純承辦商名以對 accountCode） */
 export function formatFeeLineShortLabel(fee, index, allFees) {
-  const name = fee.projectName || '判頭費';
+  const name = (fee?.projectName || '判頭費').trim() || '判頭費';
+  const custom = (fee?.customText || '').trim();
+  const display = custom ? `${name} ${custom}` : name;
   const ord = getDuplicateOrdinal(index, allFees);
-  if (ord != null) return `(${ord}) ${name}`;
-  return name;
+  if (ord != null) return `(${ord}) ${display}`;
+  return display;
 }
 
 export function formatFeeLineLabel(fee, index, allFees) {
@@ -63,6 +68,7 @@ export function buildContractorFeeLineOptions(contractorFees) {
     value: fee.lineId,
     label: formatFeeLineLabel(fee, index, fees),
     projectName: fee.projectName,
+    customText: fee.customText || '',
     amount: fee.amount,
   }));
 }

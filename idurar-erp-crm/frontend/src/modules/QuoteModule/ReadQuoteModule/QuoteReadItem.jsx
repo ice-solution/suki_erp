@@ -49,7 +49,7 @@ import { getSuggestedNextNumber, getSuggestedNextInvoiceNumber } from '@/utils/l
 import SupplierOrderNumberFields from '@/components/SupplierOrderNumberFields';
 import InvoiceOrderNumberFields from '@/components/InvoiceOrderNumberFields';
 import PoNumberSyncModal from '@/components/PoNumberSyncModal';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
@@ -119,6 +119,7 @@ function collectQuotePoNumbers(erp) {
 }
 
 export default function QuoteReadItem({ config, selectedItem }) {
+  const { followUpDisplayName } = useFollowUpDisplayName();
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
@@ -924,7 +925,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
         <div style={{ marginBottom: 16 }}>
           <p>
             {poModalMode === 'invoice'
-              ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 逐項專案佔比（全數 items 帶去發票，請自行填寫每行 %）。Project 列表的整個佔比% 將依發票總額÷專案總額自動顯示。'
+              ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 逐項專案佔比（每行填 %；發票金額 = 項目金額 × %，例：100 萬轉 10% → 發票 10 萬）。Project 列表的整個佔比% 將依發票總額÷專案總額自動顯示。'
               : '請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。'}
           </p>
           {poModalMode === 'supplier' ? (
@@ -1053,6 +1054,14 @@ export default function QuoteReadItem({ config, selectedItem }) {
                 ellipsis: true,
                 render: (t) => <span style={multilineStyle}>{t || '-'}</span>,
               },
+              {
+                title: '項目金額',
+                dataIndex: 'itemValue',
+                key: 'itemValue',
+                width: 110,
+                render: (v) =>
+                  moneyFormatter({ amount: Number(v) || 0, currency_code: currentErp.currency }),
+              },
               { title: '已轉 %', dataIndex: 'invoicedPercentage', key: 'invoicedPercentage', width: 72 },
               { title: '餘額 %', dataIndex: 'remainingPercentage', key: 'remainingPercentage', width: 72 },
               {
@@ -1075,12 +1084,24 @@ export default function QuoteReadItem({ config, selectedItem }) {
                   />
                 ),
               },
+              {
+                title: '本次轉出發票金額',
+                key: 'transferAmount',
+                width: 130,
+                render: (_, row) => {
+                  const pct = Number(poLinePctByIndex[row.itemIndex]) || 0;
+                  const amount = ((Number(row.itemValue) || 0) * pct) / 100;
+                  return moneyFormatter({ amount, currency_code: currentErp.currency });
+                },
+              },
             ]}
           />
         ) : null}
         {selectedPoNumber && poModalMode === 'invoice' && invoiceConversionMode === 'B' ? (
           <p style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
-            B 模式：每行填寫專案佔比 (%)，數量不變；餘額 % = 100 − 該行已轉 % 總和，不可超過餘額。Project「整個佔比%」= 發票總額 ÷ 專案總額。
+            B 模式（逐項專案佔比）：每行填寫本次轉出 %；發票該行金額 = <strong>項目金額 × 佔比%</strong>
+            （例：項目 1,000,000，轉 10% → 發票該行 100,000）。餘額 % = 100 − 已轉 %，不可超過餘額。
+            Project「整個佔比%」= 發票總額 ÷ 專案總額。
           </p>
         ) : null}
         {selectedPoNumber && poModalMode === 'invoice' && invoiceConversionMode === 'A' ? (

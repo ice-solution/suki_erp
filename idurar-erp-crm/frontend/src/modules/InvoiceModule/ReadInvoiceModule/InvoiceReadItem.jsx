@@ -23,7 +23,7 @@ import PreviewPdfButton from '@/components/PreviewPdfButton';
 import { useMoney, useDate } from '@/settings';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { multilineStyle } from '@/utils/renderMultilineText';
-import { followUpDisplayName } from '@/utils/adminDisplayName';
+import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 import { request } from '@/request';
 
 /** 舊條款「一／二／三個月」改以 30／60／90 日顯示（與編輯表單一致） */
@@ -38,11 +38,35 @@ function displayInvoicePaymentTerms(terms) {
 
 const Item = ({ item, currentErp }) => {
   const { moneyFormatter } = useMoney();
+  const linePct =
+    item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+      ? Number(item.lineProjectPercentage)
+      : null;
+  const pctFromOrder =
+    linePct == null &&
+    Array.isArray(currentErp?.orderFromQuoteLines) &&
+    item.sourceItemIndex != null
+      ? currentErp.orderFromQuoteLines.find(
+          (l) => Number(l.itemIndex) === Number(item.sourceItemIndex)
+        )?.percentage
+      : null;
+  const displayPct =
+    linePct != null && Number.isFinite(linePct)
+      ? linePct
+      : pctFromOrder != null && Number.isFinite(Number(pctFromOrder))
+        ? Number(pctFromOrder)
+        : null;
+
   return (
     <Row gutter={[12, 0]} key={item._id}>
       <Col className="gutter-row" span={11}>
         <p style={{ marginBottom: 5 }}>
           <strong>{item.itemName}</strong>
+          {displayPct != null ? (
+            <Tag color="blue" style={{ marginLeft: 8 }}>
+              專案佔比 {displayPct}%
+            </Tag>
+          ) : null}
         </p>
         <p style={multilineStyle}>{item.description}</p>
       </Col>
@@ -80,6 +104,7 @@ const Item = ({ item, currentErp }) => {
 };
 
 export default function InvoiceReadItem({ config, selectedItem }) {
+  const { followUpDisplayName } = useFollowUpDisplayName();
   const translate = useLanguage();
   const { entity, ENTITY_NAME } = config;
   const dispatch = useDispatch();
@@ -301,6 +326,33 @@ export default function InvoiceReadItem({ config, selectedItem }) {
             id={currentErp._id}
             modifiedAt={currentErp?.modified_at || currentErp?.updated}
           />,
+          ...(String(currentErp?.numberPrefix || '').toUpperCase() === 'WSE'
+            ? [
+                <Button
+                  key="invoice-receipt-download"
+                  onClick={() => {
+                    const v = encodeURIComponent(
+                      String(currentErp?.modified_at || currentErp?.updated || Date.now())
+                    );
+                    window.open(
+                      `${DOWNLOAD_BASE_URL}${entity}/${entity}-receipt-${currentErp._id}.pdf?v=${v}`,
+                      '_blank'
+                    );
+                  }}
+                  icon={<FilePdfOutlined />}
+                >
+                  下載簽收單
+                </Button>,
+                <PreviewPdfButton
+                  key="invoice-receipt-preview"
+                  entity={entity}
+                  id={currentErp._id}
+                  variant="receipt"
+                  modifiedAt={currentErp?.modified_at || currentErp?.updated}
+                  label="預覽簽收單"
+                />,
+              ]
+            : []),
           <Button
             key={`${uniqueId()}`}
             onClick={() => {

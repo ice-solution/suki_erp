@@ -2,41 +2,20 @@ const mongoose = require('mongoose');
 
 const Project = mongoose.model('Project');
 const ContractorEmployee = mongoose.model('ContractorEmployee');
-
-const normalizeDate = (date) => {
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const parseDayRange = (dateFrom, dateTo) => {
-  if (!dateFrom || !dateTo) return { error: '請提供開始與結束日期（dateFrom、dateTo）' };
-  const parseLocalDay = (s, endOfDay) => {
-    const part = String(s).slice(0, 10).split('-').map((x) => parseInt(x, 10));
-    if (part.length !== 3 || part.some((n) => Number.isNaN(n))) return null;
-    const [y, m, d] = part;
-    return new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
-  };
-  const from = parseLocalDay(dateFrom, false);
-  const to = parseLocalDay(dateTo, true);
-  if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-    return { error: '日期格式不正確' };
-  }
-  if (from > to) return { error: '開始日期不可晚於結束日期' };
-  return { from, to };
-};
+const { parseHongKongDayRange, toHongKongDateKey } = require('@/helpers/hongKongMoment');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('./salaryTotal');
+const { getAttendanceDayValue } = require('./calculateWorkDays');
 
 const isDateInRange = (date, from, to) => {
-  const normalized = normalizeDate(date);
-  if (!normalized) return false;
-  return normalized >= from && normalized <= to;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return false;
+  return d >= from && d <= to;
 };
 
 /**
  * GET /project/contractor-employee-report?contractorEmployeeId=&dateFrom=&dateTo=
  * 依「打咭日期」篩選（唔依賴項目 startDate；startDate 為空仍會列出），
- * 並列出日薪／範圍內天數／工資。
+ * 並列出日薪／範圍內天數／工資。日期範圍以香港日曆日解讀。
  */
 const getContractorEmployeeReport = async (req, res) => {
   try {
@@ -57,12 +36,27 @@ const getContractorEmployeeReport = async (req, res) => {
       });
     }
 
-    const range = parseDayRange(dateFrom, dateTo);
-    if (range.error) {
+    if (!dateFrom || !dateTo) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: range.error,
+        message: '請提供開始與結束日期（dateFrom、dateTo）',
+      });
+    }
+
+    const range = parseHongKongDayRange(dateFrom, dateTo);
+    if (!range) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: '日期格式不正確',
+      });
+    }
+    if (range.from > range.to) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: '開始日期不可晚於結束日期',
       });
     }
 
@@ -96,7 +90,7 @@ const getContractorEmployeeReport = async (req, res) => {
 
     const projectRows = projects
       .map((project) => {
-        const workDateSet = new Set();
+        const workDateMap = new Map();
 
         (project.onboard || []).forEach((record) => {
           const id =
@@ -105,12 +99,14 @@ const getContractorEmployeeReport = async (req, res) => {
               : String(record.contractorEmployee || '');
           if (id !== empIdStr) return;
           if (!isDateInRange(record.checkInDate, range.from, range.to)) return;
-          const normalized = normalizeDate(record.checkInDate);
-          if (!normalized) return;
-          workDateSet.add(normalized.toISOString().slice(0, 10));
+          const dateKey = toHongKongDateKey(record.checkInDate);
+          if (!dateKey) return;
+          const value = getAttendanceDayValue(record);
+          const prev = workDateMap.get(dateKey) || 0;
+          if (value > prev) workDateMap.set(dateKey, value);
         });
 
-        const workDates = Array.from(workDateSet).sort();
+        const workDates = Array.from(workDateMap.keys()).sort();
         const salary = (project.salaries || []).find((s) => {
           const id =
             s.contractorEmployee && s.contractorEmployee._id
@@ -119,8 +115,12 @@ const getContractorEmployeeReport = async (req, res) => {
           return id === empIdStr;
         });
         const dailySalary = Number(salary?.dailySalary) || 0;
-        const totalWorkDays = workDates.length;
-        const totalSalary = dailySalary * totalWorkDays;
+        const paidLeaveAmount = getPaidLeaveAmount(salary);
+        let totalWorkDays = 0;
+        workDateMap.forEach((v) => {
+          totalWorkDays += v;
+        });
+        const totalSalary = computeSalaryTotal(dailySalary, totalWorkDays, paidLeaveAmount);
 
         // 只列出範圍內有打咭的項目
         if (totalWorkDays === 0) return null;
@@ -132,6 +132,7 @@ const getContractorEmployeeReport = async (req, res) => {
           poNumber: project.poNumber || '-',
           startDate: project.startDate || null,
           dailySalary,
+          paidLeaveAmount,
           totalWorkDays,
           totalSalary,
           workDates,

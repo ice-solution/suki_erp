@@ -28,8 +28,7 @@ export default function XeroEOExport() {
   const buildPreviewAndCsv = (projects, dateFrom, dateTo) => {
     const rows = [XERO_BILL_CSV_HEADER];
     const outPreviewRows = [];
-    let eoRowCount = 0;
-    let rowIndex = 0;
+    const feeRows = [];
 
     for (const project of projects) {
       const used = project?.usedContractorFees || [];
@@ -48,53 +47,74 @@ export default function XeroEOExport() {
         const unitAmount = fee.amount != null ? fee.amount : 0;
         const accountCode = fee.accountCode || '';
 
-        rows.push(
-          [
-            escapeCsvCell(contactName),
-            '', // EmailAddress
-            '', '', '', '', '', '', '', '', // POAddressLine1–4, POCity, PORegion, POPostalCode, POCountry（8 欄，須與表頭一致）
-            escapeCsvCell(invoiceNumber),
-            escapeCsvCell(invoiceDate),
-            escapeCsvCell(dueDate),
-            '', // Total
-            '', // InventoryItemCode
-            escapeCsvCell(description),
-            escapeCsvCell(quantity),
-            escapeCsvCell(unitAmount),
-            escapeCsvCell(accountCode),
-            'Tax Exempt (0%)', // TaxType
-            '', // TaxAmount
-            'Branch',
-            'Supermax',
-            '',
-            '',
-            'HKD',
-          ].join(',')
-        );
-
-        outPreviewRows.push({
-          key: `row-${rowIndex}`,
+        feeRows.push({
           contactName,
           invoiceNumber,
           invoiceDate,
+          invoiceDateMs: fee.date ? dayjs(fee.date).valueOf() : 0,
           dueDate,
           accountCode,
           description,
           quantity,
           unitAmount,
-          taxType: 'Tax Exempt (0%)',
         });
-        rowIndex += 1;
-        eoRowCount += 1;
       }
     }
+
+    // 依 InvoiceDate 由新到舊
+    feeRows.sort((a, b) => {
+      if (b.invoiceDateMs !== a.invoiceDateMs) return b.invoiceDateMs - a.invoiceDateMs;
+      return String(b.invoiceNumber || '').localeCompare(String(a.invoiceNumber || ''), undefined, {
+        numeric: true,
+        sensitivity: 'base',
+      });
+    });
+
+    feeRows.forEach((fee, rowIndex) => {
+      rows.push(
+        [
+          escapeCsvCell(fee.contactName),
+          '', // EmailAddress
+          '', '', '', '', '', '', '', '', // POAddressLine1–4, POCity, PORegion, POPostalCode, POCountry（8 欄，須與表頭一致）
+          escapeCsvCell(fee.invoiceNumber),
+          escapeCsvCell(fee.invoiceDate),
+          escapeCsvCell(fee.dueDate),
+          '', // Total
+          '', // InventoryItemCode
+          escapeCsvCell(fee.description),
+          escapeCsvCell(fee.quantity),
+          escapeCsvCell(fee.unitAmount),
+          escapeCsvCell(fee.accountCode),
+          'Tax Exempt (0%)', // TaxType
+          '', // TaxAmount
+          'Branch',
+          'Supermax',
+          '',
+          '',
+          'HKD',
+        ].join(',')
+      );
+
+      outPreviewRows.push({
+        key: `row-${rowIndex}`,
+        contactName: fee.contactName,
+        invoiceNumber: fee.invoiceNumber,
+        invoiceDate: fee.invoiceDate,
+        dueDate: fee.dueDate,
+        accountCode: fee.accountCode,
+        description: fee.description,
+        quantity: fee.quantity,
+        unitAmount: fee.unitAmount,
+        taxType: 'Tax Exempt (0%)',
+      });
+    });
 
     const csv = rows.join('\n');
     return {
       csv,
       filename: `xero_eo_export_${dateFrom}_${dateTo}.csv`,
       previewRows: outPreviewRows,
-      eoRowCount,
+      eoRowCount: feeRows.length,
     };
   };
 
@@ -213,7 +233,7 @@ export default function XeroEOExport() {
         </div>
 
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          ContactName 為承辦商名稱；Description 欄位輸出該筆判頭費之 Invoice No（Project › usedContractorFees.invoiceNo）。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。
+          ContactName 為承辦商名稱；Description 欄位輸出該筆判頭費之 Invoice No（Project › usedContractorFees.invoiceNo）。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。整份列表依<strong>InvoiceDate（由新到舊）</strong>排序。
         </p>
 
         {previewRows.length > 0 && (

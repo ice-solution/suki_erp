@@ -3,35 +3,14 @@ const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
 const Contractor = mongoose.model('Contractor');
 const ContractorEmployee = mongoose.model('ContractorEmployee');
-
-const normalizeDate = (date) => {
-  const d = new Date(date);
-  if (Number.isNaN(d.getTime())) return null;
-  d.setHours(0, 0, 0, 0);
-  return d;
-};
-
-const parseDayRange = (dateFrom, dateTo) => {
-  if (!dateFrom || !dateTo) return { error: '請提供開始與結束日期（dateFrom、dateTo）' };
-  const parseLocalDay = (s, endOfDay) => {
-    const part = String(s).slice(0, 10).split('-').map((x) => parseInt(x, 10));
-    if (part.length !== 3 || part.some((n) => Number.isNaN(n))) return null;
-    const [y, m, d] = part;
-    return new Date(y, m - 1, d, endOfDay ? 23 : 0, endOfDay ? 59 : 0, endOfDay ? 59 : 0, endOfDay ? 999 : 0);
-  };
-  const from = parseLocalDay(dateFrom, false);
-  const to = parseLocalDay(dateTo, true);
-  if (!from || !to || Number.isNaN(from.getTime()) || Number.isNaN(to.getTime())) {
-    return { error: '日期格式不正確' };
-  }
-  if (from > to) return { error: '開始日期不可晚於結束日期' };
-  return { from, to };
-};
+const { parseHongKongDayRange, toHongKongDateKey } = require('@/helpers/hongKongMoment');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('./salaryTotal');
+const { getAttendanceDayValue } = require('./calculateWorkDays');
 
 const isDateInRange = (date, from, to) => {
-  const normalized = normalizeDate(date);
-  if (!normalized) return false;
-  return normalized >= from && normalized <= to;
+  const d = new Date(date);
+  if (Number.isNaN(d.getTime())) return false;
+  return d >= from && d <= to;
 };
 
 const getContractorReport = async (req, res) => {
@@ -45,12 +24,27 @@ const getContractorReport = async (req, res) => {
       });
     }
 
-    const range = parseDayRange(dateFrom, dateTo);
-    if (range.error) {
+    if (!dateFrom || !dateTo) {
       return res.status(400).json({
         success: false,
         result: null,
-        message: range.error,
+        message: '請提供開始與結束日期（dateFrom、dateTo）',
+      });
+    }
+
+    const range = parseHongKongDayRange(dateFrom, dateTo);
+    if (!range) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: '日期格式不正確',
+      });
+    }
+    if (range.from > range.to) {
+      return res.status(400).json({
+        success: false,
+        result: null,
+        message: '開始日期不可晚於結束日期',
       });
     }
 
@@ -102,7 +96,10 @@ const getContractorReport = async (req, res) => {
             ? String(s.contractorEmployee._id || s.contractorEmployee)
             : '';
           if (!employeeIdSet.has(empId)) return;
-          salaryByEmp[empId] = Number(s.dailySalary) || 0;
+          salaryByEmp[empId] = {
+            dailySalary: Number(s.dailySalary) || 0,
+            paidLeaveAmount: getPaidLeaveAmount(s),
+          };
         });
 
         (project.onboard || []).forEach((record) => {
@@ -110,26 +107,35 @@ const getContractorReport = async (req, res) => {
           const empId = emp && emp._id ? String(emp._id) : String(record.contractorEmployee || '');
           if (!employeeIdSet.has(empId)) return;
           if (!isDateInRange(record.checkInDate, range.from, range.to)) return;
-          const normalized = normalizeDate(record.checkInDate);
-          if (!normalized) return;
-          if (!employeeDateMap[empId]) employeeDateMap[empId] = new Set();
-          employeeDateMap[empId].add(normalized.toISOString().slice(0, 10));
+          const dateKey = toHongKongDateKey(record.checkInDate);
+          if (!dateKey) return;
+          if (!employeeDateMap[empId]) employeeDateMap[empId] = new Map();
+          const value = getAttendanceDayValue(record);
+          const prev = employeeDateMap[empId].get(dateKey) || 0;
+          if (value > prev) employeeDateMap[empId].set(dateKey, value);
         });
 
         const employees = Object.keys(employeeDateMap)
           .map((empId) => {
-            const dateList = Array.from(employeeDateMap[empId]).sort();
+            const dateMap = employeeDateMap[empId];
+            const dateList = Array.from(dateMap.keys()).sort();
             const info = employeeMap[empId] || {};
-            const dailySalary = salaryByEmp[empId] || 0;
-            const totalWorkDays = dateList.length;
+            const salaryInfo = salaryByEmp[empId] || {};
+            const dailySalary = salaryInfo.dailySalary || 0;
+            const paidLeaveAmount = salaryInfo.paidLeaveAmount || 0;
+            let totalWorkDays = 0;
+            dateMap.forEach((v) => {
+              totalWorkDays += v;
+            });
             return {
               employeeId: empId,
               employeeName: info.name || '-',
               employmentStatus: info.employmentStatus || '在職',
               resignationDate: info.resignationDate || null,
               dailySalary,
+              paidLeaveAmount,
               totalWorkDays,
-              totalSalary: dailySalary * totalWorkDays,
+              totalSalary: computeSalaryTotal(dailySalary, totalWorkDays, paidLeaveAmount),
               workDates: dateList,
             };
           })

@@ -184,17 +184,24 @@ function buildInvoiceItemsFromPercentageLines(items, resolvedLines) {
     const item = items[itemIndex];
     const pct = Math.min(100, Math.max(0, Number(percentage) || 0));
     const quantity = Number(item.quantity) || 0;
-    const price = Number(item.price) || 0;
-    const baseTotal =
-      item.total != null ? Number(item.total) : calculate.multiply(quantity, price);
-    const lineTotal = roundMoney(calculate.multiply(baseTotal, pct / 100));
+    const unitPrice = Number(item.price) || 0;
+    // 項目價值（報價行總額）
+    const itemValue =
+      item.total != null && !Number.isNaN(Number(item.total))
+        ? Number(item.total)
+        : calculate.multiply(quantity, unitPrice);
+    // 轉 10% → 發票該行金額 = 項目價值 × 10%（例：100 萬 × 10% = 10 萬）
+    const lineTotal = roundMoney(calculate.multiply(itemValue, pct / 100));
     return {
       itemName: item.itemName,
       description: item.description,
       quantity,
       unit: item.unit,
-      price,
+      // 保留原始單價；PDF／畫面用 lineProjectPercentage 顯示佔比與轉出金額
+      price: unitPrice,
       total: lineTotal,
+      sourceItemIndex: itemIndex,
+      lineProjectPercentage: pct,
     };
   });
 }

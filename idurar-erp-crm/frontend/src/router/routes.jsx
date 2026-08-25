@@ -67,6 +67,7 @@ const WinchList = lazy(() => import('@/pages/WinchList.jsx'));
 const XeroExport = lazy(() => import('@/pages/XeroExport.jsx'));
 const XeroPOExport = lazy(() => import('@/pages/XeroPOExport.jsx'));
 const XeroEOExport = lazy(() => import('@/pages/XeroEOExport.jsx'));
+const DeletedRecords = lazy(() => import('@/pages/DeletedRecords.jsx'));
 
 let routes = {
   expense: [],
@@ -284,6 +285,10 @@ let routes = {
       element: <WinchList />,
     },
 
+    {
+      path: '/deleted-records',
+      element: <DeletedRecords />,
+    },
     {
       path: '/settings',
       element: <Settings />,

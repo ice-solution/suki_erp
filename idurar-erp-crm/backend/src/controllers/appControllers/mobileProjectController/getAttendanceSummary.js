@@ -1,17 +1,12 @@
 const mongoose = require('mongoose');
 const Project = mongoose.model('Project');
+const { toHongKongDateKey } = require('@/helpers/hongKongMoment');
+const { computeSalaryTotal, getPaidLeaveAmount } = require('../projectController/salaryTotal');
 
-/** 從 attendance.checkInDate 取得 YYYY-MM-DD 字串 */
+/** 從 attendance.checkInDate 取得香港日曆日 YYYY-MM-DD */
 function getDateStr(checkInDate) {
-  if (!checkInDate) return null;
-  if (checkInDate instanceof Date) {
-    return checkInDate.toISOString().split('T')[0];
-  }
-  if (typeof checkInDate === 'string') {
-    return checkInDate.includes('T') ? checkInDate.split('T')[0] : checkInDate;
-  }
-  const dateObj = new Date(checkInDate);
-  return !isNaN(dateObj.getTime()) ? dateObj.toISOString().split('T')[0] : null;
+  const key = toHongKongDateKey(checkInDate);
+  return key || null;
 }
 
 /** 從 ref 取得 ObjectId 字串 */
@@ -100,7 +95,7 @@ const getAttendanceSummary = async (req, res) => {
       const ref = s.contractorEmployee;
       const empId = ref ? (ref._id || ref).toString() : null;
       if (empId) {
-        salaryByEmp.set(empId, s.totalSalary ?? (s.dailySalary || 0) * (s.workDays || 0));
+        salaryByEmp.set(empId, s.totalSalary ?? computeSalaryTotal(s.dailySalary, s.workDays, getPaidLeaveAmount(s)));
       }
     }
 

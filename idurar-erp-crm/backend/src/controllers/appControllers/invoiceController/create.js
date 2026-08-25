@@ -40,9 +40,17 @@ const create = async (req, res) => {
       ? Math.min(100, Math.max(0, Number(rawProjectPct)))
       : 100;
 
-  //Calculate the items array with subTotal, total, discountTotal（允許負數影響總額）
+  //Calculate the items array with subTotal, total, discountTotal（允許負數影響總額；B 模式套用逐項佔比）
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
+    const pct =
+      item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+        ? Number(item.lineProjectPercentage)
+        : null;
+    if (pct != null && Number.isFinite(pct)) {
+      total = calculate.multiply(total, pct / 100);
+      item.lineProjectPercentage = pct;
+    }
     item['total'] = total;
     subTotal = calculate.add(subTotal, total);
   });

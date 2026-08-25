@@ -25,6 +25,8 @@ const remove = async (req, res) => {
         removed: true,
         project: null,
         updated: new Date(),
+        modified_at: new Date(),
+        ...(req.admin && req.admin._id ? { updatedBy: req.admin._id } : {}),
       },
     },
     { new: true }
