@@ -85,6 +85,48 @@ function normalizeLegacyInvoicePaymentTerms(terms) {
   return t;
 }
 
+/** B 模式：統一為「轉出後單價」令 qty×price=total；原單價放 originalUnitPrice 供 PDF */
+function normalizeBModeInvoiceItem(item) {
+  if (!item) return item;
+  const pct =
+    item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
+      ? Number(item.lineProjectPercentage)
+      : null;
+  if (pct == null || !Number.isFinite(pct) || pct <= 0) return item;
+
+  const qty = Number(item.quantity);
+  const price = Number(item.price);
+  const total = Number(item.total);
+  const safeQty = qty > 0 ? qty : 1;
+  if (!Number.isFinite(price) || !Number.isFinite(total)) return item;
+
+  // 已有原單價且 price 已是轉出後單價
+  if (item.originalUnitPrice != null && item.originalUnitPrice !== '') {
+    return item;
+  }
+
+  // 舊資料：price 仍是報價原單價（qty×price×pct/100 ≈ total）
+  if (Math.abs(price * safeQty * (pct / 100) - total) < 0.05) {
+    return {
+      ...item,
+      originalUnitPrice: price,
+      price: Number((total / safeQty).toFixed(2)),
+      lineProjectPercentage: pct,
+    };
+  }
+
+  // price 已是轉出後單價：補原單價
+  if (Math.abs(price * safeQty - total) < 0.05) {
+    return {
+      ...item,
+      originalUnitPrice: Number(((total * 100) / (pct * safeQty)).toFixed(2)),
+      lineProjectPercentage: pct,
+    };
+  }
+
+  return item;
+}
+
 function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const translate = useLanguage();
   const { dateFormat } = useDate();
@@ -115,6 +157,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     total: 0,
     sourceItemIndex: undefined,
     lineProjectPercentage: undefined,
+    originalUnitPrice: undefined,
   });
   const [sourceItemCatalog, setSourceItemCatalog] = useState(null);
   const [sourceItemMessage, setSourceItemMessage] = useState('');
@@ -632,11 +675,11 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
             lineProjectPercentage = Number(matched.percentage);
           }
         }
-        return {
+        return normalizeBModeInvoiceItem({
           ...item,
           sourceItemIndex,
           lineProjectPercentage,
-        };
+        });
       });
 
       // 按 itemName 中的數字排序
@@ -661,19 +704,12 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
         key: item.key || item._id || `item-${index}-${Date.now()}` 
       })));
       
-      // 計算subTotal（允許負數影響總額；B 模式套用逐項佔比）
+      // 計算subTotal（允許負數影響總額；B 模式 price 已是轉出後單價）
       let calculatedSubTotal = 0;
-      if (currentItems && currentItems.length > 0) {
-        currentItems.forEach((item) => {
+      if (sortedItems && sortedItems.length > 0) {
+        sortedItems.forEach((item) => {
           if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
             let itemTotal = calculate.multiply(item.quantity, item.price);
-            const pct =
-              item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
-                ? Number(item.lineProjectPercentage)
-                : null;
-            if (pct != null && Number.isFinite(pct)) {
-              itemTotal = calculate.multiply(itemTotal, pct / 100);
-            }
             calculatedSubTotal = calculate.add(calculatedSubTotal, itemTotal);
           }
         });
@@ -751,20 +787,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     void loadSourceItems();
   }, [current?._id]);
 
-  // 計算subTotal當items改變時（允許負數影響總額；B 模式套用逐項佔比）
+  // 計算subTotal當items改變時（允許負數影響總額；B 模式 price 已是轉出後單價）
   useEffect(() => {
     let newSubTotal = 0;
     if (items && items.length > 0) {
       items.forEach((item) => {
         if (item && item.quantity != null && item.price !== undefined && item.price !== null) {
           let itemTotal = calculate.multiply(item.quantity, item.price);
-          const pct =
-            item.lineProjectPercentage != null && item.lineProjectPercentage !== ''
-              ? Number(item.lineProjectPercentage)
-              : null;
-          if (pct != null && Number.isFinite(pct)) {
-            itemTotal = calculate.multiply(itemTotal, pct / 100);
-          }
           newSubTotal = calculate.add(newSubTotal, itemTotal);
         }
       });
@@ -941,16 +970,8 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     }
     const updatedItem = { ...currentItem, [field]: value };
     
-    if (field === 'quantity' || field === 'price' || field === 'lineProjectPercentage') {
-      const pct =
-        updatedItem.lineProjectPercentage != null && updatedItem.lineProjectPercentage !== ''
-          ? Number(updatedItem.lineProjectPercentage)
-          : null;
-      const base = calculate.multiply(updatedItem.quantity, updatedItem.price);
-      updatedItem.total =
-        pct != null && Number.isFinite(pct)
-          ? calculate.multiply(base, pct / 100)
-          : base;
+    if (field === 'quantity' || field === 'price') {
+      updatedItem.total = calculate.multiply(updatedItem.quantity, updatedItem.price);
     }
     
     setCurrentItem(updatedItem);
@@ -978,6 +999,10 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       lineProjectPercentage:
         record.lineProjectPercentage != null && record.lineProjectPercentage !== ''
           ? Number(record.lineProjectPercentage)
+          : undefined,
+      originalUnitPrice:
+        record.originalUnitPrice != null && record.originalUnitPrice !== ''
+          ? Number(record.originalUnitPrice)
           : undefined,
     });
     setEditingItemKey(itemKey);
@@ -1028,15 +1053,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       }
     }
 
-    const itemTotal =
-      currentItem.lineProjectPercentage != null &&
-      currentItem.lineProjectPercentage !== '' &&
-      Number.isFinite(Number(currentItem.lineProjectPercentage))
-        ? calculate.multiply(
-            calculate.multiply(currentItem.quantity, currentItem.price),
-            Number(currentItem.lineProjectPercentage) / 100
-          )
-        : calculate.multiply(currentItem.quantity, currentItem.price);
+    const itemTotal = calculate.multiply(currentItem.quantity, currentItem.price);
     
     let updatedItems;
     if (editingItemKey) {
@@ -1071,6 +1088,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       total: 0,
       sourceItemIndex: undefined,
       lineProjectPercentage: undefined,
+      originalUnitPrice: undefined,
     });
     setSourceItemMessage('');
     setSourceItemMessageType('info');
@@ -1319,6 +1337,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
               options={[
                 { value: 'sent', label: translate('Sent') },
                 { value: 'paid', label: translate('Paid') },
+                { value: 'cancelled', label: translate('cancelled') },
               ]}
             />
           </Form.Item>

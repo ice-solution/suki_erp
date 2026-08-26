@@ -5,6 +5,7 @@ function buildQuoteSourceMatch(quoteId, poNumber) {
   const oid = new mongoose.Types.ObjectId(String(quoteId));
   return {
     removed: { $ne: true },
+    status: { $ne: 'cancelled' },
     $and: [
       { $or: [{ sourceQuote: oid }, { 'converted.quote': oid }] },
       { $or: [{ orderFromPoNumber: pn }, { poNumber: pn }] },
@@ -17,6 +18,7 @@ function buildShipQuoteSourceMatch(shipQuoteId, poNumber) {
   const oid = new mongoose.Types.ObjectId(String(shipQuoteId));
   return {
     removed: { $ne: true },
+    status: { $ne: 'cancelled' },
     $and: [
       { $or: [{ sourceShipQuote: oid }, { 'converted.shipQuote': oid }] },
       { $or: [{ orderFromPoNumber: pn }, { poNumber: pn }] },
@@ -102,6 +104,7 @@ async function aggregateInvoicedPercentageByQuoteLine(quoteId, excludeInvoiceId 
   }
   const match = {
     removed: { $ne: true },
+    status: { $ne: 'cancelled' },
     invoiceConversionMode: 'B',
     $or: [{ sourceQuote: new mongoose.Types.ObjectId(String(quoteId)) }, { 'converted.quote': new mongoose.Types.ObjectId(String(quoteId)) }],
   };
@@ -140,6 +143,7 @@ async function aggregateInvoicedPercentageByShipQuoteLine(shipQuoteId, excludeIn
   }
   const match = {
     removed: { $ne: true },
+    status: { $ne: 'cancelled' },
     invoiceConversionMode: 'B',
     $or: [
       { sourceShipQuote: new mongoose.Types.ObjectId(String(shipQuoteId)) },

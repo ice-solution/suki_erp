@@ -17,8 +17,12 @@ function buildItemContentText(item) {
   return (name + desc).trim() || '-';
 }
 
-/** B 模式：由行金額與佔比反推原始單價（兼容舊單已把 price 調成轉出金額） */
+/** B 模式：PDF 單價欄顯示報價原單價（有百分比欄時） */
 function resolvePdfDisplayUnitPrice(item, lineAmount, linePct) {
+  if (item.originalUnitPrice != null && item.originalUnitPrice !== '') {
+    const orig = Number(item.originalUnitPrice);
+    if (Number.isFinite(orig)) return orig;
+  }
   const qty = Number(item.quantity);
   const pct = Number(linePct);
   const amount = Number(lineAmount);
@@ -27,14 +31,14 @@ function resolvePdfDisplayUnitPrice(item, lineAmount, linePct) {
   }
   const price = Number(item.price);
   const safeQty = qty > 0 ? qty : 1;
-  // 新邏輯若已存原始單價：qty×price×pct/100 ≈ amount
+  // 若 price 仍是原單價（舊資料）：qty×price×pct/100 ≈ amount
   if (
     Number.isFinite(price) &&
     Math.abs(price * safeQty * (pct / 100) - amount) < 0.05
   ) {
     return price;
   }
-  // 舊單 price 已調成轉出金額：反推原始單價
+  // price 已是轉出後單價：反推原單價
   return amount * 100 / (pct * safeQty);
 }
 

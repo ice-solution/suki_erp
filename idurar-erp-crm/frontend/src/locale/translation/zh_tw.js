@@ -82,6 +82,7 @@ const lang = {
   draft: '草稿',
   pending: '待處理',
   sent: '已發送',
+  cancelled: '已取消',
   accepted: '已接受',
   declined: '已拒絕',
   expired: '已過期',

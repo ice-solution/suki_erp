@@ -284,7 +284,16 @@ export default function InvoiceReadItem({ config, selectedItem }) {
         title={`發票 # ${displayNumber}`}
         ghost={false}
         tags={[
-          <Tag key="status" color={currentErp.status === 'paid' ? 'green' : 'blue'}>
+          <Tag
+            key="status"
+            color={
+              currentErp.status === 'paid'
+                ? 'green'
+                : currentErp.status === 'cancelled'
+                  ? 'default'
+                  : 'blue'
+            }
+          >
             {currentErp.status && translate(currentErp.status)}
           </Tag>,
           <Tag key="paymentStatus" color={currentErp.paymentStatus === 'paid' ? 'green' : 'red'}>
@@ -452,15 +461,6 @@ export default function InvoiceReadItem({ config, selectedItem }) {
             : '-'}
         </Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
-        <Descriptions.Item label={translate('Payment Due Date')}>{currentErp.paymentDueDate ? dayjs(currentErp.paymentDueDate).format('YYYY-MM-DD') : '-'}</Descriptions.Item>
-        <Descriptions.Item label={translate('paid_date')}>
-          {currentErp.paidDate ? dayjs(currentErp.paidDate).format('YYYY-MM-DD') : '-'}
-        </Descriptions.Item>
-        <Descriptions.Item label={translate('Payment Terms')}>
-          {displayInvoicePaymentTerms(currentErp.paymentTerms)}
-        </Descriptions.Item>
-        <Descriptions.Item label="部份付款 (Partially paid)">{currentErp.credit != null ? moneyFormatter({ amount: currentErp.credit, currency_code: currentErp.currency }) : '-'}</Descriptions.Item>
-        <Descriptions.Item label="Full paid">{currentErp.fullPaid === true ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label="跟單人">{followUpDisplayName(currentErp)}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
@@ -556,6 +556,55 @@ export default function InvoiceReadItem({ config, selectedItem }) {
           </Col>
         </Row>
       </div>
+      <div style={{ clear: 'both' }} />
+      <Divider orientation="left">付款信息</Divider>
+      {(() => {
+        const entries =
+          Array.isArray(currentErp.paymentEntries) && currentErp.paymentEntries.length
+            ? currentErp.paymentEntries
+            : [
+                {
+                  paymentStatus: currentErp.paymentStatus,
+                  paymentDueDate: currentErp.paymentDueDate,
+                  paymentTerms: currentErp.paymentTerms,
+                  credit: currentErp.credit,
+                  paidDate: currentErp.paidDate,
+                },
+              ];
+        return entries.map((entry, idx) => (
+          <Descriptions
+            key={entry._id || idx}
+            bordered
+            size="small"
+            column={{ xs: 1, sm: 2, md: 3 }}
+            style={{ marginBottom: 12 }}
+            title={entries.length > 1 ? `付款 ${idx + 1}` : undefined}
+          >
+            <Descriptions.Item label={translate('Payment Status')}>
+              {entry.paymentStatus ? translate(entry.paymentStatus) : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={translate('Payment Due Date')}>
+              {entry.paymentDueDate ? dayjs(entry.paymentDueDate).format('YYYY-MM-DD') : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={translate('Payment Terms')}>
+              {displayInvoicePaymentTerms(entry.paymentTerms)}
+            </Descriptions.Item>
+            <Descriptions.Item label="部份付款 (Partially paid)">
+              {entry.credit != null
+                ? moneyFormatter({ amount: entry.credit, currency_code: currentErp.currency })
+                : '-'}
+            </Descriptions.Item>
+            <Descriptions.Item label={translate('paid_date')}>
+              {entry.paidDate ? dayjs(entry.paidDate).format('YYYY-MM-DD') : '-'}
+            </Descriptions.Item>
+            {idx === 0 ? (
+              <Descriptions.Item label="Full paid">
+                {currentErp.fullPaid === true ? translate('Yes') : translate('No')}
+              </Descriptions.Item>
+            ) : null}
+          </Descriptions>
+        ));
+      })()}
     </>
   );
 }

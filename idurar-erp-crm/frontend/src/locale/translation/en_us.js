@@ -373,6 +373,7 @@ const lang = {
   won: 'Won',
   loose: 'Loose',
   canceled: 'Canceled',
+  cancelled: 'Cancelled',
   assigned: 'Assigned',
   on_hold: 'On Hold',
   waiting: 'Waiting',

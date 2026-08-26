@@ -140,6 +140,7 @@ function LoadInvoiceForm({ subTotal = 0, current = null }) {
               options={[
                 { value: 'sent', label: translate('Sent') },
                 { value: 'paid', label: translate('Paid') },
+                { value: 'cancelled', label: translate('cancelled') },
               ]}
             ></Select>
           </Form.Item>

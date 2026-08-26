@@ -181,6 +181,10 @@ const invoiceSchema = new mongoose.Schema({
       lineProjectPercentage: {
         type: Number,
       },
+      /** B 模式：報價原單價（PDF 百分比欄旁顯示）；price 為轉出後單價 */
+      originalUnitPrice: {
+        type: Number,
+      },
     },
   ],
 
@@ -305,7 +309,7 @@ const invoiceSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['sent', 'paid'],
+    enum: ['sent', 'paid', 'cancelled'],
     default: 'sent',
   },
   pdf: {

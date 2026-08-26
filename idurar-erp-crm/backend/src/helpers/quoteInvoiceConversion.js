@@ -17,12 +17,16 @@ function buildSourceInvoiceMatch(sourceQuoteId, sourceShipQuoteId) {
   if (sourceQuoteId) {
     const oid = new mongoose.Types.ObjectId(String(sourceQuoteId));
     return {
+      removed: { $ne: true },
+      status: { $ne: 'cancelled' },
       $or: [{ sourceQuote: oid }, { 'converted.quote': oid }],
     };
   }
   if (sourceShipQuoteId) {
     const oid = new mongoose.Types.ObjectId(String(sourceShipQuoteId));
     return {
+      removed: { $ne: true },
+      status: { $ne: 'cancelled' },
       $or: [{ sourceShipQuote: oid }, { 'converted.shipQuote': oid }],
     };
   }
@@ -192,16 +196,22 @@ function buildInvoiceItemsFromPercentageLines(items, resolvedLines) {
         : calculate.multiply(quantity, unitPrice);
     // 轉 10% → 發票該行金額 = 項目價值 × 10%（例：100 萬 × 10% = 10 萬）
     const lineTotal = roundMoney(calculate.multiply(itemValue, pct / 100));
+    // 單價改為轉出後單價，令 qty×price = 行金額（編輯頁一致）
+    const price =
+      quantity > 0 ? roundMoney(calculate.divide(lineTotal, quantity)) : lineTotal;
+    // PDF 單價欄用「項目價值÷數量」，保證 單價×數量×佔比 = 行金額
+    const originalUnitPrice =
+      quantity > 0 ? roundMoney(calculate.divide(itemValue, quantity)) : roundMoney(itemValue);
     return {
       itemName: item.itemName,
       description: item.description,
       quantity,
       unit: item.unit,
-      // 保留原始單價；PDF／畫面用 lineProjectPercentage 顯示佔比與轉出金額
-      price: unitPrice,
+      price,
       total: lineTotal,
       sourceItemIndex: itemIndex,
       lineProjectPercentage: pct,
+      originalUnitPrice,
     };
   });
 }

@@ -54,6 +54,7 @@ const schema = Joi.object({
         total: Joi.number().required(),
         sourceItemIndex: Joi.number().integer().min(0).allow(null).optional(),
         lineProjectPercentage: Joi.number().min(0).max(100).allow(null).optional(),
+        originalUnitPrice: Joi.number().allow(null).optional(),
         key: Joi.any().optional(),
       }).unknown(true).required()
     )
