@@ -168,7 +168,12 @@ html(class=isPuppeteer ? 'puppeteer-supplier-s' : '')
       .info-table-ship { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 6px; font-size: 10px; }
       .info-table-ship td { vertical-align: top; }
       .info-table-ship .info-left { width: 55%; padding: 0 12px 0 0; text-align: left; }
-      .info-table-ship .info-right { width: 45%; text-align: right; padding: 0 0 0 12px; }
+      .info-table-ship .info-right { width: 45%; text-align: left; padding: 0; }
+      .info-meta-table { width: 230px; margin-left: auto; margin-right: 0; border-collapse: collapse; table-layout: fixed; }
+      .info-meta-table td { vertical-align: top; padding: 0 0 2px 0; border: none; }
+      .info-meta-table .info-meta-label { width: 115px; text-align: right; padding-right: 6px; white-space: nowrap; }
+      .info-meta-table .info-meta-value { width: 115px; text-align: left; word-wrap: break-word; word-break: break-word; }
+      .info-invoice-blank { display: inline-block; min-width: 75px; }
       .info-row { margin-bottom: 2px; }
       .info-row-indent { margin-left: 20px; }
       .info-row-receiver-address { margin-left: 20px; white-space: pre-wrap; word-break: break-word; }
@@ -284,9 +289,20 @@ body
                 .info-row.info-row-indent #{clientAddressPdf || '-'}
                 
               td.info-right
-                .info-row 報價編號 : #{quoteNumber}
-                .info-row Supplier number: #{(model.numberPrefix || 'S')}-#{model.number || ''}
-                .info-row P.O No.: #{model.poNumber || model.poNo || model.po || ''}
+                table.info-meta-table
+                  tr
+                    td.info-meta-label 報價編號 :
+                    td.info-meta-value #{quoteNumber}
+                  tr
+                    td.info-meta-label Supplier number:
+                    td.info-meta-value #{(model.numberPrefix || 'S')}-#{model.number || ''}
+                  tr
+                    td.info-meta-label P.O No.:
+                    td.info-meta-value #{model.poNumber || model.poNo || model.po || ''}
+                  tr
+                    td.info-meta-label INVOICE:
+                    td.info-meta-value
+                      span.info-invoice-blank &nbsp;
           .doc-title 完工單
           .info-row 聯絡人：#{contactPersonPdf || '-'}
           .project-address-line(style='white-space:pre-wrap') 工程地址：#{projectAddressPdf || '-'}

@@ -41,6 +41,30 @@ import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 
 const { Title, Text } = Typography;
 
+function isInvoiceCancelled(record) {
+  return String(record?.status || '').toLowerCase() === 'cancelled';
+}
+
+function getInvoiceCreditSum(record) {
+  if (record?.paymentEntries && Array.isArray(record.paymentEntries) && record.paymentEntries.length) {
+    return record.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0);
+  }
+  return record?.credit != null ? Number(record.credit) || 0 : 0;
+}
+
+const INVOICE_DOC_STATUS_COLORS = {
+  sent: 'processing',
+  paid: 'success',
+  cancelled: 'default',
+};
+
+function renderInvoiceDocStatus(status, translate) {
+  const key = String(status || 'sent').toLowerCase();
+  return (
+    <Tag color={INVOICE_DOC_STATUS_COLORS[key] || 'default'}>{translate(key)}</Tag>
+  );
+}
+
 export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl }) {
   const showDelete = useCanDeleteRecords();
   const translate = useLanguage();
@@ -565,9 +589,41 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     },
     {
       title: translate('Status'),
+      dataIndex: 'status',
+      key: 'status',
+      render: (status, record) => renderInvoiceDocStatus(status, translate),
+    },
+    {
+      title: '內部通訊',
+      dataIndex: 'internalCommunication',
+      key: 'internalCommunication',
+      width: 160,
+      ellipsis: true,
+      onCell: () => ({
+        style: { verticalAlign: 'top', maxWidth: 160 },
+      }),
+      render: (text) => {
+        const value = text != null ? String(text).trim() : '';
+        if (!value) return '-';
+        return (
+          <Tooltip title={value}>
+            <Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{value}</Text>
+          </Tooltip>
+        );
+      },
+    },
+    {
+      title: translate('Payment'),
       dataIndex: 'paymentStatus',
       key: 'paymentStatus',
-      render: (status) => <Tag>{translate(status)}</Tag>,
+      render: (paymentStatus, record) =>
+        isInvoiceCancelled(record) ? (
+          <Text type="secondary">-</Text>
+        ) : (
+          <Tag color={paymentStatus === 'paid' ? 'success' : 'error'}>
+            {translate(paymentStatus)}
+          </Tag>
+        ),
     },
     {
       title: translate('Total'),
@@ -580,11 +636,10 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       dataIndex: 'credit',
       key: 'credit',
       render: (credit, record) => {
-        // 向後相容：若 invoice 有 paymentEntries，則以加總 credit 顯示（後端亦會同步到 credit）
-        const sum =
-          record?.paymentEntries && Array.isArray(record.paymentEntries) && record.paymentEntries.length
-            ? record.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0)
-            : (credit != null ? credit : 0);
+        if (isInvoiceCancelled(record)) {
+          return <Text type="secondary">-</Text>;
+        }
+        const sum = getInvoiceCreditSum(record);
         return moneyFormatter({ amount: sum, currency_code: record.currency || 'HKD' });
       },
     },
@@ -592,11 +647,11 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       title: '未付',
       key: 'unpaid',
       render: (_, record) => {
+        if (isInvoiceCancelled(record)) {
+          return <Text type="secondary">-</Text>;
+        }
         const total = Number(record.total) || 0;
-        const creditSum =
-          record?.paymentEntries && Array.isArray(record.paymentEntries) && record.paymentEntries.length
-            ? record.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0)
-            : (Number(record.credit) || 0);
+        const creditSum = getInvoiceCreditSum(record);
         const unpaid = total - creditSum;
         return moneyFormatter({ amount: unpaid, currency_code: record.currency || 'HKD' });
       },
@@ -607,6 +662,9 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       width: 120,
       align: 'center',
       render: (_, record) => {
+        if (isInvoiceCancelled(record)) {
+          return <Text type="secondary">-</Text>;
+        }
         const invoiceId = record._id;
         const displayValue =
           invoiceWholePctById[invoiceId] ??
@@ -631,6 +689,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
 
   const invoicePercentageTotal = roundHalfUp2(
     (currentProject.invoices || []).reduce((sum, inv) => {
+      if (isInvoiceCancelled(inv)) return sum;
       const pct =
         invoiceWholePctById[inv._id] ?? resolveWholeProjectPercentage(inv, projectTotalAmount);
       return sum + (pct ?? 0);
@@ -1140,10 +1199,8 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
               (() => {
                 const unpaidTotal = (currentProject.invoices || []).reduce(
                   (sum, inv) => {
-                    const creditSum =
-                      inv?.paymentEntries && Array.isArray(inv.paymentEntries) && inv.paymentEntries.length
-                        ? inv.paymentEntries.reduce((s, p) => s + Math.max(0, Number(p?.credit) || 0), 0)
-                        : (Number(inv.credit) || 0);
+                    if (isInvoiceCancelled(inv)) return sum;
+                    const creditSum = getInvoiceCreditSum(inv);
                     return sum + Math.max(0, (Number(inv.total) || 0) - creditSum);
                   },
                   0

@@ -503,6 +503,7 @@ const lang = {
   project_report: 'Project Report',
   ship_management: 'Ships',
   winch_management: 'Winches',
+  registrationnumber: 'Reg. No.',
   member_invoice_stats: 'Member Invoices',
 };
 

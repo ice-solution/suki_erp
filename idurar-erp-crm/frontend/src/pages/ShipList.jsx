@@ -105,13 +105,16 @@ export default function ShipList() {
   const getBaseColumns = () => {
     const baseColumns = [];
     
-    // 登記號碼列（唯一識別）
+    // 登記號列（唯一識別）
     baseColumns.push({
-      title: translate('registrationNumber') || '登記號碼',
+      title: '登記號',
       dataIndex: 'registrationNumber',
       key: 'registrationNumber',
-      width: 110,
+      width: 52,
+      align: 'center',
       ellipsis: true,
+      onHeaderCell: () => ({ style: { width: 52, minWidth: 52, maxWidth: 52, padding: '8px 4px' } }),
+      onCell: () => ({ style: { width: 52, minWidth: 52, maxWidth: 52, padding: '8px 4px' } }),
       render: (text, record) => (
         <span
           style={{ color: '#1890ff', cursor: 'pointer' }}
@@ -132,6 +135,8 @@ export default function ShipList() {
       title: translate('status') || '狀態',
       dataIndex: 'status',
       key: 'status',
+      width: 88,
+      align: 'center',
       render: (status) => {
         const statusOptions = fields.status.options;
         const selectedOption = statusOptions.find(opt => opt.value === status);

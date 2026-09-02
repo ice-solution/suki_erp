@@ -3,7 +3,7 @@ export const fields = {
     type: 'string',
     required: true,
     show: true,
-    label: '登記號碼',
+    label: '登記號',
   },
   status: {
     type: 'select',

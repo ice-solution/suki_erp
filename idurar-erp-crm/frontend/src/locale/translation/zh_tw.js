@@ -47,6 +47,7 @@ const lang = {
   project_report: '項目報告',
   ship_management: '船隻管理',
   winch_management: '爬纜器管理',
+  registrationnumber: '登記號',
   member_invoice_stats: '會員發票統計',
   profile_settings: '個人設定',
   app_settings: '應用設定',

@@ -301,15 +301,15 @@ export default function SalaryManagement({ projectId, workProgressList = [] }) {
 
   const handleDelete = async (salaryId) => {
     try {
-      const response = await request.delete({ 
-        entity: `project/${projectId}/salary/${salaryId}` 
-      });
-      if (response.success) {
+      const response = await axios.delete(`project/${projectId}/salary/${salaryId}`);
+      if (response.data?.success) {
         message.success('人工記錄刪除成功');
         fetchSalaries();
+      } else {
+        message.error(response.data?.message || '刪除失敗');
       }
     } catch (error) {
-      message.error('刪除失敗');
+      message.error(error?.response?.data?.message || '刪除失敗');
       console.error('Error deleting salary:', error);
     }
   };

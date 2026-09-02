@@ -372,13 +372,13 @@ function getPdfPaginationPugLocalsForTemplate(templateName, result, overrides = 
 }
 
 const DEFAULT_RENTAL_EXTRA_ITEMS = [
-  { description: '續租-導向吊船 (GSWP-P1)', unitPrice: null },
-  { description: '額外電源線(200米以外部份)', unitPrice: null },
-  { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unitPrice: null },
-  { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unitPrice: null },
-  { description: '吊船改吊點重新安排檢驗F2/F3證書', unitPrice: null },
-  { description: '三角足場續租(每14日)', unitPrice: null },
-  { description: '三角足場裝設及拆卸費用', unitPrice: null },
+  { description: '續租-導向吊船 (GSWP-P1)', unit: '日', unitPrice: 270 },
+  { description: '額外電源線(200米以外部份)', unit: '米', unitPrice: 18 },
+  { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unit: '套', unitPrice: 8000 },
+  { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unit: '部', unitPrice: 12000 },
+  { description: '吊船改吊點重新安排檢驗F2/F3證書', unit: '部', unitPrice: 2000 },
+  { description: '三角足場續租(每14日)', unit: '日', unitPrice: 1000 },
+  { description: '三角足場裝設及拆卸費用', unit: null, unitPrice: null },
 ];
 
 const DEFAULT_RENTAL_TERMS_LINES = [

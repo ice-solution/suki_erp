@@ -267,6 +267,7 @@ export default function DataTable({ config, extra = [] }) {
         : null}
 
       <Table
+        tableLayout="fixed"
         columns={dataTableColumns}
         rowKey={(item) => item._id}
         dataSource={dataSource}
