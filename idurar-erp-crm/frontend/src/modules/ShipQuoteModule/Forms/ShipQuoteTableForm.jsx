@@ -37,8 +37,8 @@ export const DEFAULT_SHIP_RENTAL_EXTRA_ITEMS = [
   { description: '因井道漏水落雨整壞爬纜器,需更換爬纜器', unit: '套', unitPrice: 8000 },
   { description: '因地盤非法使用嚴重超重,以導致爬纜器損壞需更換爬纜器', unit: '部', unitPrice: 12000 },
   { description: '吊船改吊點重新安排檢驗F2/F3證書', unit: '部', unitPrice: 2000 },
-  { description: '三角足場續租(每14日)', unit: '日', unitPrice: 1000 },
-  { description: '三角足場裝設及拆卸費用', unit: undefined, unitPrice: undefined },
+  { description: '三角足場續租(每14日)', unit: '部', unitPrice: 1000 },
+  { description: '三角足場裝設及拆卸費用', unit: '部', unitPrice: 5000 },
 ];
 
 export function parseRentalExtraItems(savedItems) {
