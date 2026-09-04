@@ -69,6 +69,8 @@ export function isRealWarehouseMaterial(material) {
 
 /**
  * 表單內單行：計算此存倉貨品尚可填寫的最大正數出庫量。
+ * stockOnHand 為目前倉庫剩餘（已扣本單原先出庫）；因此要加回本單「原本」佔用數量，
+ * 再減去表單上其他行，避免編輯時把已出庫數量再扣一次而顯示 0。
  */
 export function getMaxOutboundQuantityForLine({
   warehouseInventoryId,
@@ -97,21 +99,15 @@ export function getMaxOutboundQuantityForLine({
     if (Number.isFinite(q)) otherNet += q;
   }
 
-  let oldLineQty = 0;
-  if (editingMaterialKey) {
-    const orig = (originalMaterials || []).find((m) => {
-      const mKey = m.key || m._id;
-      return (
-        mKey === editingMaterialKey || String(mKey) === String(editingMaterialKey)
-      );
-    });
-    if (orig && normalizeInventoryId(orig.warehouseInventory) === invId) {
-      const q = Number(orig.quantity);
-      if (Number.isFinite(q)) oldLineQty = q;
-    }
+  // 加回本單原先已出庫、同存倉貨品的全部數量（唔只編輯中嗰一行）
+  let originalQtyForInv = 0;
+  for (const orig of originalMaterials || []) {
+    if (normalizeInventoryId(orig.warehouseInventory) !== invId) continue;
+    const q = Number(orig.quantity);
+    if (Number.isFinite(q)) originalQtyForInv += q;
   }
 
-  const maxAllowed = stock + oldLineQty - otherNet;
+  const maxAllowed = stock + originalQtyForInv - otherNet;
   return maxAllowed > 0 ? maxAllowed : 0;
 }
 
