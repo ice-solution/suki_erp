@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const Model = mongoose.model('Quote');
 const {
   buildQuoteNumberSearchMatch,
+  buildWithinPrefixSearchMatch,
   fetchPaginatedByQuoteNumberSort,
 } = require('../../../helpers/paginatedQuoteSort');
 
@@ -18,9 +19,29 @@ const search = async (req, res) => {
   }
 
   const searchTerm = req.query.q.trim();
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : ['address', 'invoiceNumber'];
+  const fieldsArray = req.query.fields
+    ? req.query.fields.split(',').map((f) => f.trim()).filter(Boolean)
+    : ['address', 'invoiceNumber', 'numberPrefix', 'number'];
 
-  const match = buildQuoteNumberSearchMatch(searchTerm, fieldsArray, { removed: false });
+  const hasPrefixFilter =
+    req.query.filter != null &&
+    String(req.query.filter).trim() === 'numberPrefix' &&
+    req.query.equal != null &&
+    String(req.query.equal) !== '';
+
+  const match = hasPrefixFilter
+    ? buildWithinPrefixSearchMatch(searchTerm, req.query.equal, fieldsArray, { removed: false })
+    : buildQuoteNumberSearchMatch(searchTerm, fieldsArray, { removed: false });
+
+  if (
+    !hasPrefixFilter &&
+    req.query.filter != null &&
+    String(req.query.filter).trim() !== '' &&
+    req.query.equal != null &&
+    String(req.query.equal) !== ''
+  ) {
+    match[req.query.filter] = req.query.equal;
+  }
 
   try {
     const results = await fetchPaginatedByQuoteNumberSort(Model, match, 0, 50, {

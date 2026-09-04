@@ -236,7 +236,12 @@ export default function UpdateItem({ config, UpdateForm }) {
       console.log('🔄 Using file upload API');
       dispatch(erp.updateWithFiles({ entity, id, jsonData: dataToUpdate }));
     } else {
-      // Use regular API for other entities or supplierquote without files
+      // Use regular API for other entities or supplierquote without new files
+      // 唔傳 dmFiles／invoiceFiles，避免用 Upload fileList 覆寫 DB 已存檔案
+      if (entity === 'supplierquote') {
+        delete dataToUpdate.dmFiles;
+        delete dataToUpdate.invoiceFiles;
+      }
       console.log('🔄 Using regular API');
       dispatch(erp.update({ entity, id, jsonData: dataToUpdate }));
     }

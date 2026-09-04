@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
-const { fetchPaginatedByQuoteNumberSort } = require('../../../helpers/paginatedQuoteSort');
+const {
+  buildQuoteNumberSearchMatch,
+  buildWithinPrefixSearchMatch,
+  fetchPaginatedByQuoteNumberSort,
+} = require('../../../helpers/paginatedQuoteSort');
 
 const Model = mongoose.model('Quote');
 
@@ -8,26 +12,36 @@ const paginatedList = async (req, res) => {
   const limit = parseInt(req.query.items) || 10;
   const skip = page * limit - limit;
 
-  //  Query the database for a list of all results
   const { sortBy, sortValue, filter, equal } = req.query;
+  const q = String(req.query.q || '').trim();
+  const fieldsArray = req.query.fields
+    ? String(req.query.fields)
+        .split(',')
+        .map((f) => String(f || '').trim())
+        .filter(Boolean)
+    : [];
 
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+  const hasPrefixFilter =
+    filter != null &&
+    String(filter).trim() === 'numberPrefix' &&
+    equal != null &&
+    String(equal) !== '';
 
-  let fields;
-
-  fields = fieldsArray.length === 0 ? {} : { $or: [] };
-
-  for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+  let matchQuery = { removed: false };
+  if (filter != null && String(filter).trim() !== '' && equal != null && String(equal) !== '') {
+    matchQuery[filter] = equal;
   }
 
-  const matchQuery = {
-    removed: false,
-    [filter]: equal,
-    ...fields,
-  };
+  if (q) {
+    const searchFields =
+      fieldsArray.length > 0 ? fieldsArray : ['address', 'invoiceNumber', 'numberPrefix', 'number'];
+    if (hasPrefixFilter) {
+      matchQuery = buildWithinPrefixSearchMatch(q, equal, searchFields, { removed: false });
+    } else {
+      matchQuery = buildQuoteNumberSearchMatch(q, searchFields, matchQuery);
+    }
+  }
 
-  // 默認排序：SML 先於 QU，單號數字由小到大
   let result;
   let count;
 
@@ -55,8 +69,6 @@ const paginatedList = async (req, res) => {
   }
 
   const pages = Math.ceil(count / limit);
-
-  // Getting Pagination Object
   const pagination = { page, pages, count };
   if (count > 0) {
     return res.status(200).json({
@@ -65,14 +77,13 @@ const paginatedList = async (req, res) => {
       pagination,
       message: 'Successfully found all documents',
     });
-  } else {
-    return res.status(203).json({
-      success: true,
-      result: [],
-      pagination,
-      message: 'Collection is Empty',
-    });
   }
+  return res.status(203).json({
+    success: true,
+    result: [],
+    pagination,
+    message: 'Collection is Empty',
+  });
 };
 
 module.exports = paginatedList;

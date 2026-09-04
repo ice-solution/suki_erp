@@ -1,4 +1,8 @@
 const mongoose = require('mongoose');
+const {
+  buildQuoteNumberSearchMatch,
+  buildWithinPrefixSearchMatch,
+} = require('../../../helpers/paginatedQuoteSort');
 
 const Model = mongoose.model('Invoice');
 
@@ -8,54 +12,56 @@ const paginatedList = async (req, res) => {
   const skip = page * limit - limit;
 
   const { sortBy, sortValue, filter, equal } = req.query;
+  const q = String(req.query.q || '').trim();
+  const fieldsArray = req.query.fields
+    ? String(req.query.fields)
+        .split(',')
+        .map((f) => String(f || '').trim())
+        .filter(Boolean)
+    : [];
 
-  const fieldsArray = req.query.fields ? req.query.fields.split(',') : [];
+  const hasPrefixFilter =
+    filter != null &&
+    String(filter).trim() === 'numberPrefix' &&
+    equal != null &&
+    String(equal) !== '';
 
-  let fields;
-
-  fields = fieldsArray.length === 0 ? {} : { $or: [] };
-
-  for (const field of fieldsArray) {
-    fields.$or.push({ [field]: { $regex: new RegExp(req.query.q, 'i') } });
+  let matchQuery = { removed: false };
+  if (filter != null && String(filter).trim() !== '' && equal != null && String(equal) !== '') {
+    matchQuery[filter] = equal;
   }
 
-  //  Query the database for a list of all results
-  // 默認按 year 降序，然後按 number 升序排序
+  if (q) {
+    const searchFields =
+      fieldsArray.length > 0
+        ? fieldsArray
+        : ['address', 'invoiceNumber', 'poNumber', 'contactPerson', 'numberPrefix', 'number'];
+    if (hasPrefixFilter) {
+      matchQuery = buildWithinPrefixSearchMatch(q, equal, searchFields, { removed: false });
+    } else {
+      matchQuery = buildQuoteNumberSearchMatch(q, searchFields, matchQuery);
+    }
+  }
+
   let sortObj = {};
   if (!sortBy) {
-    // 如果沒有指定排序，使用默認排序：先按 year 降序，再按 number 升序
     sortObj = { year: -1, number: 1 };
   } else {
     sortObj = { [sortBy]: sortValue || 1 };
   }
-  
-  const resultsPromise = Model.find({
-    removed: false,
 
-    [filter]: equal,
-    ...fields,
-  })
-    .skip(skip)
-    .limit(limit)
-    .sort(sortObj)
-    .populate('createdBy', 'name surname email')
-    .populate('followUpBy', 'name surname email')
-    .exec();
+  const [result, count] = await Promise.all([
+    Model.find(matchQuery)
+      .skip(skip)
+      .limit(limit)
+      .sort(sortObj)
+      .populate('createdBy', 'name surname email')
+      .populate('followUpBy', 'name surname email')
+      .exec(),
+    Model.countDocuments(matchQuery),
+  ]);
 
-  // Counting the total documents
-  const countPromise = Model.countDocuments({
-    removed: false,
-
-    [filter]: equal,
-    ...fields,
-  });
-
-  // Resolving both promises
-  const [result, count] = await Promise.all([resultsPromise, countPromise]);
-  // Calculating total pages
   const pages = Math.ceil(count / limit);
-
-  // Getting Pagination Object
   const pagination = { page, pages, count };
   if (count > 0) {
     return res.status(200).json({
@@ -64,14 +70,13 @@ const paginatedList = async (req, res) => {
       pagination,
       message: 'Successfully found all documents',
     });
-  } else {
-    return res.status(203).json({
-      success: true,
-      result: [],
-      pagination,
-      message: 'Collection is Empty',
-    });
   }
+  return res.status(203).json({
+    success: true,
+    result: [],
+    pagination,
+    message: 'Collection is Empty',
+  });
 };
 
 module.exports = paginatedList;

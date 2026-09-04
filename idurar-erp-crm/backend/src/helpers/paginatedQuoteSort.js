@@ -105,6 +105,59 @@ function buildQuoteNumberSearchMatch(searchTerm, fieldsArray = [], baseMatch = {
   return { ...baseMatch, ...fields };
 }
 
+/**
+ * 已選定 numberPrefix 時：喺該前綴內搜尋（支援 1–2 位短單號），唔再靠完整 PREFIX-number。
+ */
+function buildWithinPrefixSearchMatch(
+  searchTerm,
+  prefix,
+  fieldsArray = [],
+  baseMatch = { removed: false }
+) {
+  const q = String(searchTerm || '').trim();
+  const p = String(prefix || '').trim();
+  const match = { ...baseMatch };
+  if (p) {
+    match.numberPrefix = p;
+  }
+  if (!q) {
+    return match;
+  }
+
+  let numberQuery = q;
+  if (q.includes('-')) {
+    const dashIdx = q.indexOf('-');
+    const maybePrefix = q.slice(0, dashIdx).trim();
+    const numberPart = q.slice(dashIdx + 1).trim();
+    // 若輸入 IH-1 而 filter 已係 IH，只取後面嘅單號部分
+    if (numberPart && (!p || maybePrefix.toUpperCase() === p.toUpperCase())) {
+      numberQuery = numberPart;
+    }
+  }
+
+  const escaped = escapeRegex(numberQuery);
+  // 單號：以前綴開頭匹配（IH +「1」→ IH-1、IH-10…），短位數亦可
+  const or = [{ number: { $regex: new RegExp(`^${escaped}`, 'i') } }];
+
+  // 純數字時同時匹配數字／字串型 number（兼容舊 Number schema）
+  if (/^[0-9]+[A-Za-z]*$/.test(numberQuery)) {
+    const numOnly = parseInt(numberQuery, 10);
+    if (!Number.isNaN(numOnly)) {
+      or.push({ number: String(numOnly) });
+      or.push({ number: numOnly });
+      or.push({ number: { $regex: new RegExp(`^${escapeRegex(String(numOnly))}`, 'i') } });
+    }
+  }
+
+  for (const field of fieldsArray) {
+    if (!field || field === 'number' || field === 'numberPrefix' || field === 'status') continue;
+    or.push({ [field]: { $regex: new RegExp(escapeRegex(q), 'i') } });
+  }
+
+  match.$or = or;
+  return match;
+}
+
 const PREFIX_RANK_SWITCH = {
   $switch: {
     branches: [
@@ -255,6 +308,7 @@ module.exports = {
   sortAddFields,
   defaultSortObj,
   buildQuoteNumberSearchMatch,
+  buildWithinPrefixSearchMatch,
   fetchPaginatedByQuoteNumberSort,
   fetchPaginatedBySupplierQuoteNumberSort,
 };

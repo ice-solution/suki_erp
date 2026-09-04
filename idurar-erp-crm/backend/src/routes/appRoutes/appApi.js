@@ -5,6 +5,7 @@ const router = express.Router();
 const appControllers = require('@/controllers/appControllers');
 const { routesList } = require('@/models/utils');
 const deletedRecordsList = require('@/controllers/appControllers/deletedRecordsController/list');
+const deletedRecordsRestore = require('@/controllers/appControllers/deletedRecordsController/restore');
 
 const routerApp = (entity, controller) => {
   // 具體路由必須在參數路由之前
@@ -130,5 +131,6 @@ routesList.forEach(({ entity, controllerName }) => {
 });
 
 router.route('/deleted-records/list').get(catchErrors(deletedRecordsList));
+router.route('/deleted-records/restore').post(catchErrors(deletedRecordsRestore));
 
 module.exports = router;

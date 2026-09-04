@@ -8,6 +8,7 @@ import { useMoney, useDate } from '@/settings';
 import InvoiceDataTableModule from '@/modules/InvoiceModule/InvoiceDataTableModule';
 import { ErpLayout } from '@/layout';
 import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
+import { renderTruncatedText } from '@/utils/renderTruncatedText';
 
 export default function Invoice() {
   const translate = useLanguage();
@@ -21,6 +22,15 @@ export default function Invoice() {
     displayLabels: ['address', 'invoiceNumber', 'poNumber'],
     // 支援直接搜尋完整單號，例如 SMI-2508114R
     searchFields: 'address,invoiceNumber,poNumber,contactPerson,numberPrefix,number',
+    prefixFilter: {
+      field: 'numberPrefix',
+      placeholder: '編號前綴',
+      options: [
+        { value: 'SMI', label: 'SMI' },
+        { value: 'WSE', label: 'WSE' },
+        { value: 'SP', label: 'SP' },
+      ],
+    },
   };
   const deleteModalLabels = ['number', 'client.name'];
   const dataTableColumns = [
@@ -102,7 +112,7 @@ export default function Invoice() {
       dataIndex: 'address',
       width: 180,
       ellipsis: false,
-      render: (address) => address || '-',
+      render: (address) => renderTruncatedText(address, 24),
     },
     {
       title: translate('Contact Person'),

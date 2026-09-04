@@ -20,23 +20,18 @@ import { generate as uniqueId } from 'shortid';
 import { selectCurrentItem, selectListItems } from '@/redux/erp/selectors';
 import { selectWarehouseOptions } from '@/redux/settings/selectors';
 
-import { DOWNLOAD_BASE_URL, BASE_URL, FILE_BASE_URL } from '@/config/serverApiConfig';
+import { DOWNLOAD_BASE_URL } from '@/config/serverApiConfig';
 import PreviewPdfButton from '@/components/PreviewPdfButton';
 import { useCanDeleteRecords } from '@/hooks/useCanDeleteRecords';
 import { formatMaterialWarehouseLabel } from '@/utils/supplierQuoteMaterialWarehouse';
 import { calcRentalOverageLabel } from '@/utils/rentalOverageDays';
 import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
+import {
+  supplierQuoteUploadedFileHref,
+  decodeSupplierQuoteFileName,
+} from '@/utils/supplierQuoteUploadedFile';
 
 const FINISH_PDF_PREFIXES = new Set(['S', 'NO', 'SWP', 'Y', 'IP', 'IH']);
-
-/** S 單上傳檔（DN / Invoice）公開 URL：正式環境用 BASE_URL 或 FILE_BASE_URL，勿寫死 localhost */
-function supplierQuoteUploadedFileHref(file) {
-  const name = file?.fileName || (file?.path && String(file.path).split('/').pop());
-  if (!name) return '#';
-  const base = (FILE_BASE_URL && String(FILE_BASE_URL).trim()) || BASE_URL;
-  const root = String(base).endsWith('/') ? String(base) : `${String(base)}/`;
-  return `${root}uploads/supplierquote/${name}`;
-}
 import { useMoney, useDate } from '@/settings';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { request } from '@/request';
@@ -328,31 +323,7 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
   }, [currentErp]);
 
   // 處理文件名編碼
-  const decodeFileName = (fileName) => {
-    try {
-      // Try to decode if it's URL encoded
-      if (fileName.includes('%')) {
-        return decodeURIComponent(fileName);
-      }
-      
-      // Try to fix common encoding issues
-      if (fileName.includes('�')) {
-        // This indicates encoding issues, try to decode from latin1
-        const bytes = [];
-        for (let i = 0; i < fileName.length; i++) {
-          bytes.push(fileName.charCodeAt(i));
-        }
-        const buffer = new Uint8Array(bytes);
-        const decoder = new TextDecoder('utf-8');
-        return decoder.decode(buffer);
-      }
-      
-      return fileName;
-    } catch (error) {
-      console.log('Filename decoding error:', error);
-      return fileName;
-    }
-  };
+  const decodeFileName = decodeSupplierQuoteFileName;
 
   // 處理文件刪除
   const handleDeleteFile = (fileId, fileType, fileName) => {

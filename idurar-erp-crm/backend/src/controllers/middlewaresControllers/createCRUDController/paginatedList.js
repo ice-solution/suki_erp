@@ -30,13 +30,16 @@ const paginatedList = async (Model, req, res) => {
     fields = {};
   }
 
-  //  Query the database for a list of all results
-  const resultsPromise = Model.find({
+  const findQuery = {
     removed: false,
-
-    [filter]: equal,
     ...fields,
-  })
+  };
+  if (filter != null && String(filter).trim() !== '' && equal != null && String(equal) !== '') {
+    findQuery[filter] = equal;
+  }
+
+  //  Query the database for a list of all results
+  const resultsPromise = Model.find(findQuery)
     .skip(skip)
     .limit(limit)
     .sort({ [sortBy]: sortValue })
@@ -44,12 +47,7 @@ const paginatedList = async (Model, req, res) => {
     .exec();
 
   // Counting the total documents
-  const countPromise = Model.countDocuments({
-    removed: false,
-
-    [filter]: equal,
-    ...fields,
-  });
+  const countPromise = Model.countDocuments(findQuery);
   // Resolving both promises
   const [result, count] = await Promise.all([resultsPromise, countPromise]);
 

@@ -33,6 +33,7 @@ import {
   isRealWarehouseMaterial,
   validateSupplierQuoteMaterialsStock,
 } from '@/utils/validateSupplierQuoteMaterialsStock';
+import { mapSavedSupplierQuoteFilesToUploadList } from '@/utils/supplierQuoteUploadedFile';
 import {
   XINGCHENG_FACTORY_WAREHOUSE,
   isVirtualMaterialWarehouse,
@@ -855,6 +856,9 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
       setSourceItemMessage('');
       setSourceItemMessageType('info');
       originalMaterialsRef.current = currentMaterials.map((m) => ({ ...m }));
+
+      setDmFileList(mapSavedSupplierQuoteFilesToUploadList(current.dmFiles));
+      setInvoiceFileList(mapSavedSupplierQuoteFilesToUploadList(current.invoiceFiles));
 
       setMaterials(
         currentMaterials.map((material, index) => {
@@ -2131,11 +2135,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               onChange={handleDmFileChange}
               fileList={dmFileList}
               accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png"
+              showUploadList={{ showPreviewIcon: false, showRemoveIcon: true }}
+              onPreview={(file) => {
+                const href = file.url || file.thumbUrl;
+                if (href && href !== '#') {
+                  window.open(href, '_blank', 'noopener,noreferrer');
+                }
+              }}
             >
               <Button icon={<UploadOutlined />}>選擇DN文件</Button>
             </Upload>
             <div style={{ marginTop: 8, fontSize: '12px', color: '#666' }}>
-              支持 PDF、DOC、XLS、JPG、PNG 格式
+              支持 PDF、DOC、XLS、JPG、PNG 格式；已上傳文件可點擊檔名開啟
             </div>
           </Form.Item>
         </Col>
@@ -2152,11 +2163,18 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
               onChange={handleInvoiceFileChange}
               fileList={invoiceFileList}
               accept=".pdf,.jpg,.jpeg,.png"
+              showUploadList={{ showPreviewIcon: false, showRemoveIcon: true }}
+              onPreview={(file) => {
+                const href = file.url || file.thumbUrl;
+                if (href && href !== '#') {
+                  window.open(href, '_blank', 'noopener,noreferrer');
+                }
+              }}
             >
               <Button icon={<UploadOutlined />}>選擇Invoice文件</Button>
             </Upload>
             <div style={{ marginTop: 8, fontSize: '12px', color: '#666' }}>
-              只支持 PDF 或 JPG/PNG 格式，最大 10MB
+              只支持 PDF 或 JPG/PNG 格式，最大 10MB；已上傳文件可點擊檔名開啟
             </div>
           </Form.Item>
         </Col>

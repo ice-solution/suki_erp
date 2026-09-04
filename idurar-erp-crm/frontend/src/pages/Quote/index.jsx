@@ -5,6 +5,7 @@ import QuoteDataTableModule from '@/modules/QuoteModule/QuoteDataTableModule';
 import { useMoney, useDate } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
+import { renderTruncatedText } from '@/utils/renderTruncatedText';
 
 export default function Quote() {
   const translate = useLanguage();
@@ -18,6 +19,14 @@ export default function Quote() {
     displayLabels: ['address', 'invoiceNumber'],
     // 需要支援 %abc%：例如 SML-12345 可用 12345 / 1234 搜到
     searchFields: 'address,invoiceNumber,number,numberPrefix,contactPerson',
+    prefixFilter: {
+      field: 'numberPrefix',
+      placeholder: '編號前綴',
+      options: [
+        { value: 'SML', label: 'SML' },
+        { value: 'QU', label: 'QU' },
+      ],
+    },
   };
   const deleteModalLabels = ['number', 'client.name'];
   const dataTableColumns = [
@@ -88,7 +97,7 @@ export default function Quote() {
       dataIndex: 'address',
       width: 180,
       ellipsis: false,
-      render: (address) => address || '-',
+      render: (address) => renderTruncatedText(address, 24),
     },
     {
       title: translate('Contact Person'),

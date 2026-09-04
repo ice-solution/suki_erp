@@ -9,7 +9,7 @@ import {
   ArrowRightOutlined,
   ArrowLeftOutlined,
 } from '@ant-design/icons';
-import { Table, Button, Space, Input } from 'antd';
+import { Table, Button, Space, Input, Select } from 'antd';
 import { PageHeader } from '@ant-design/pro-layout';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -51,6 +51,30 @@ export default function DataTable({ config, extra = [] }) {
 
   const [searchValue, setSearchValue] = useState('');
   const [isSearchMode, setIsSearchMode] = useState(false);
+  const [prefixFilter, setPrefixFilter] = useState(undefined);
+
+  const PREFIX_FILTER_ALL = '__all__';
+  const prefixFilterConfig = searchConfig?.prefixFilter;
+  const prefixField = prefixFilterConfig?.field || 'numberPrefix';
+
+  const buildListOptions = (q, prefix, pagination = {}) => {
+    const options = {
+      page: pagination.current || pagination.page || 1,
+      items: pagination.pageSize || pagination.items || 10,
+    };
+    const trimmed = String(q || '').trim();
+    if (trimmed) {
+      options.q = trimmed;
+      options.fields =
+        searchConfig?.searchFields ||
+        'address,number,numberPrefix,invoiceNumber,poNumber,counterpartyInvoiceNumber';
+    }
+    if (prefix) {
+      options.filter = prefixField;
+      options.equal = prefix;
+    }
+    return options;
+  };
 
   const currentData = isSearchMode
     ? { pagination: {}, items: Array.isArray(searchResult) ? searchResult : [] }
@@ -172,13 +196,18 @@ export default function DataTable({ config, extra = [] }) {
     },
   ];
 
-  const handelDataTableLoad = (pagination) => {
-    const options = { page: pagination?.current || 1, items: pagination?.pageSize || 10 };
+  const handelDataTableLoad = (paginationArg) => {
+    const options = buildListOptions(searchValue, prefixFilter, {
+      current: paginationArg?.current,
+      pageSize: paginationArg?.pageSize,
+    });
+    setIsSearchMode(false);
     dispatch(erp.list({ entity, options }));
   };
 
   const dispatcher = () => {
-    dispatch(erp.list({ entity }));
+    const options = buildListOptions('', undefined);
+    dispatch(erp.list({ entity, options }));
   };
 
   useEffect(() => {
@@ -212,23 +241,65 @@ export default function DataTable({ config, extra = [] }) {
   };
 
   const handleSearchSubmit = (value) => {
-    if (value && value.trim()) {
+    const trimmed = value != null ? String(value).trim() : '';
+    // 已選前綴：用 list（前綴 + q），短單號亦可，唔走 search
+    if (prefixFilter) {
+      setIsSearchMode(false);
+      dispatch(erp.list({ entity, options: buildListOptions(trimmed, prefixFilter) }));
+      return;
+    }
+    if (trimmed) {
       setIsSearchMode(true);
-      const options = {
-        q: value.trim(),
-        fields: 'address,number,numberPrefix,invoiceNumber,poNumber,counterpartyInvoiceNumber',
-      };
-      dispatch(erp.search({ entity, options }));
+      dispatch(
+        erp.search({
+          entity,
+          options: {
+            q: trimmed,
+            fields:
+              searchConfig?.searchFields ||
+              'address,number,numberPrefix,invoiceNumber,poNumber,counterpartyInvoiceNumber',
+          },
+        })
+      );
     } else {
       setIsSearchMode(false);
-      dispatch(erp.list({ entity }));
+      dispatch(erp.list({ entity, options: buildListOptions('', undefined) }));
     }
   };
 
   const handleClearSearch = () => {
     setSearchValue('');
     setIsSearchMode(false);
-    dispatch(erp.list({ entity }));
+    const options = buildListOptions('', prefixFilter);
+    dispatch(erp.list({ entity, options }));
+  };
+
+  const handlePrefixFilterChange = (value) => {
+    const next = value && value !== PREFIX_FILTER_ALL ? value : undefined;
+    setPrefixFilter(next);
+    const trimmed = String(searchValue || '').trim();
+    if (next) {
+      setIsSearchMode(false);
+      dispatch(erp.list({ entity, options: buildListOptions(trimmed, next) }));
+      return;
+    }
+    if (trimmed) {
+      setIsSearchMode(true);
+      dispatch(
+        erp.search({
+          entity,
+          options: {
+            q: trimmed,
+            fields:
+              searchConfig?.searchFields ||
+              'address,number,numberPrefix,invoiceNumber,poNumber,counterpartyInvoiceNumber',
+          },
+        })
+      );
+    } else {
+      setIsSearchMode(false);
+      dispatch(erp.list({ entity, options: buildListOptions('', undefined) }));
+    }
   };
 
   return (
@@ -239,7 +310,11 @@ export default function DataTable({ config, extra = [] }) {
         onBack={() => window.history.back()}
         backIcon={<ArrowLeftOutlined />}
         extra={[
-          <Button onClick={handelDataTableLoad} key="refresh-button" icon={<RedoOutlined />}>
+          <Button
+            onClick={() => handelDataTableLoad(pagination)}
+            key="refresh-button"
+            icon={<RedoOutlined />}
+          >
             {translate('Refresh')}
           </Button>,
           !disableAdd && <AddNewItem config={config} key={`${uniqueId()}`} />,
@@ -249,9 +324,29 @@ export default function DataTable({ config, extra = [] }) {
         }}
       ></PageHeader>
 
-      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end' }}>
+      <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+        {prefixFilterConfig?.options?.length ? (
+          <Select
+            key="prefixFilter"
+            placeholder={prefixFilterConfig.placeholder || '編號前綴'}
+            value={prefixFilter ?? PREFIX_FILTER_ALL}
+            onChange={handlePrefixFilterChange}
+            style={{ width: 140 }}
+            options={[
+              { value: PREFIX_FILTER_ALL, label: '全部前綴' },
+              ...prefixFilterConfig.options.map((opt) => ({
+                value: opt.value,
+                label: opt.label,
+              })),
+            ]}
+          />
+        ) : null}
         <Input.Search
-          placeholder="搜索地址、S單號碼或P.O Number"
+          placeholder={
+            prefixFilter
+              ? `於 ${prefixFilter} 內搜尋單號／地址（可短數字，如 1）`
+              : '搜索地址、S單號碼或P.O Number'
+          }
           value={searchValue}
           onChange={handleSearchInput}
           onSearch={handleSearchSubmit}

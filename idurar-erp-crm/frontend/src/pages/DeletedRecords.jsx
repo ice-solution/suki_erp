@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Card, Input, Table, Tabs } from 'antd';
+import { Button, Card, Input, message, Popconfirm, Table, Tabs } from 'antd';
+import { UndoOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { ErpLayout } from '@/layout';
 import { request } from '@/request';
 import { useMoney, useDate } from '@/settings';
 import { useFollowUpDisplayName } from '@/hooks/useFollowUpDisplayName';
 import { adminDisplayName } from '@/utils/adminDisplayName';
+import { useCanRestoreDeletedRecords } from '@/hooks/useCanRestoreDeletedRecords';
 
 const TAB_ITEMS = [
   { key: 'quote', label: '報價單' },
@@ -42,7 +44,9 @@ function resolveDocNumber(record, entity) {
 function DeletedRecordsTable({ entity, followUpDisplayName }) {
   const { dateFormat } = useDate();
   const { moneyFormatter } = useMoney();
+  const canRestore = useCanRestoreDeletedRecords();
   const [loading, setLoading] = useState(false);
+  const [restoringId, setRestoringId] = useState(null);
   const [rows, setRows] = useState([]);
   const [pagination, setPagination] = useState({ current: 1, pageSize: 10, total: 0 });
   const [searchValue, setSearchValue] = useState('');
@@ -73,6 +77,27 @@ function DeletedRecordsTable({ entity, followUpDisplayName }) {
     fetchList(1, pagination.pageSize, searchValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entity]);
+
+  const handleRestore = async (record) => {
+    if (!record?._id) return;
+    setRestoringId(record._id);
+    try {
+      const data = await request.post({
+        entity: 'deleted-records/restore',
+        jsonData: { entity, id: record._id },
+      });
+      if (data?.success) {
+        message.success(data.message || '還原成功');
+        fetchList(pagination.current, pagination.pageSize, searchValue);
+      } else {
+        message.error(data?.message || '還原失敗');
+      }
+    } catch (err) {
+      message.error(err?.response?.data?.message || err?.message || '還原失敗');
+    } finally {
+      setRestoringId(null);
+    }
+  };
 
   const columns = [
     {
@@ -139,6 +164,34 @@ function DeletedRecordsTable({ entity, followUpDisplayName }) {
       ellipsis: true,
       render: (address) => address || '-',
     },
+    ...(canRestore
+      ? [
+          {
+            title: '操作',
+            key: 'action',
+            width: 100,
+            fixed: 'right',
+            render: (_, record) => (
+              <Popconfirm
+                title="確定還原此單？"
+                description={`${resolveDocNumber(record, entity)} 將重新出現在列表中`}
+                okText="還原"
+                cancelText="取消"
+                onConfirm={() => handleRestore(record)}
+              >
+                <Button
+                  type="link"
+                  size="small"
+                  icon={<UndoOutlined />}
+                  loading={restoringId === record._id}
+                >
+                  還原
+                </Button>
+              </Popconfirm>
+            ),
+          },
+        ]
+      : []),
   ];
 
   return (
@@ -160,7 +213,7 @@ function DeletedRecordsTable({ entity, followUpDisplayName }) {
         loading={loading}
         columns={columns}
         dataSource={rows}
-        scroll={{ x: 1250 }}
+        scroll={{ x: canRestore ? 1350 : 1250 }}
         pagination={{
           ...pagination,
           showSizeChanger: true,

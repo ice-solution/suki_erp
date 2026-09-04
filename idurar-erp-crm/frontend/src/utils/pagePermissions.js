@@ -67,3 +67,8 @@ export function canDeleteRecords(role) {
   return role === 'admin' || role === 'owner';
 }
 
+/** 僅 owner / admin 可還原已刪除記錄 */
+export function canRestoreDeletedRecords(role) {
+  return role === 'admin' || role === 'owner';
+}
+

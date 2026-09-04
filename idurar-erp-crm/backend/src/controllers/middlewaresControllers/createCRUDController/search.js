@@ -55,9 +55,19 @@ const search = async (Model, req, res) => {
 
   let results;
   try {
-    results = await Model.find({
+    const findQuery = {
       ...fields,
-    })
+    };
+    if (
+      req.query.filter != null &&
+      String(req.query.filter).trim() !== '' &&
+      req.query.equal != null &&
+      String(req.query.equal) !== ''
+    ) {
+      findQuery[req.query.filter] = req.query.equal;
+    }
+
+    results = await Model.find(findQuery)
       .where('removed', false)
       .limit(20)
       .exec();
