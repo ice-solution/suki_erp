@@ -8,6 +8,7 @@ const Invoice = mongoose.model('Invoice');
 
 const { calculate } = require('@/helpers');
 const { ensureContractorFeeLineIds } = require('@/helpers/projectContractorFees');
+const { normalizeCostBy } = require('@/helpers/projectCostBy');
 
 function escapeRegex(value) {
   return String(value || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -209,7 +210,7 @@ const create = async (req, res) => {
       customerQuoteNumber:
         customerQuoteNumber != null ? String(customerQuoteNumber).trim() : '',
       poNumber: poNumber || '',
-      costBy,
+      costBy: normalizeCostBy(costBy) || '其他公司代工',
       contractorFees: contractorFeesArray,
       description,
       address,

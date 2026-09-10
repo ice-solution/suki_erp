@@ -12,6 +12,7 @@ const {
   ensureContractorFeeLineIds,
   normalizeUsedContractorFees,
 } = require('@/helpers/projectContractorFees');
+const { normalizeCostBy } = require('@/helpers/projectCostBy');
 
 const update = async (req, res) => {
   try {
@@ -153,7 +154,7 @@ const update = async (req, res) => {
     if (req.body.name !== undefined) updateData.name = req.body.name;
     if (startDate !== undefined) updateData.startDate = startDate ? new Date(startDate) : null;
     if (endDate !== undefined) updateData.endDate = endDate ? new Date(endDate) : null;
-    if (costBy !== undefined) updateData.costBy = costBy;
+    if (costBy !== undefined) updateData.costBy = normalizeCostBy(costBy);
     if (status !== undefined) updateData.status = status;
     if (contractors !== undefined) updateData.contractors = contractors || [];
     if (invoiceNumber !== undefined) updateData.invoiceNumber = invoiceNumber;

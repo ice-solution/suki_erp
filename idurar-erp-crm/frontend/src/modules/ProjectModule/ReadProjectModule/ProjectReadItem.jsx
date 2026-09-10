@@ -81,7 +81,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     invoiceNumber: '',
     poNumber: '',
     status: 'draft',
-    costBy: '對方',
+    costBy: '其他公司代工',
     quotations: [],
     supplierQuotations: [],
     shipQuotations: [],
@@ -973,9 +973,24 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           <Tag key="status" color={currentProject.status === 'completed' ? 'success' : 'processing'}>
             {currentProject.status && translate(currentProject.status)}
           </Tag>,
-          <Tag key="costBy" color={currentProject.costBy === '我方' ? 'blue' : 'green'}>
-            {currentProject.costBy}
-          </Tag>,
+          ...(currentProject.costBy && currentProject.costBy !== '材料'
+            ? [
+                <Tag
+                  key="costBy"
+                  color={
+                    currentProject.costBy === '超越代工' || currentProject.costBy === '我方'
+                      ? 'blue'
+                      : 'green'
+                  }
+                >
+                  {currentProject.costBy === '我方'
+                    ? '超越代工'
+                    : currentProject.costBy === '對方'
+                      ? '其他公司代工'
+                      : currentProject.costBy}
+                </Tag>,
+              ]
+            : []),
         ]}
         extra={[
           <Button
@@ -1060,7 +1075,13 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         <Descriptions.Item label={translate('End Date')}>
           {currentProject.endDate ? dayjs(currentProject.endDate).format(dateFormat) : '-'}
         </Descriptions.Item>
-        <Descriptions.Item label={translate('Cost By')}>{currentProject.costBy}</Descriptions.Item>
+        <Descriptions.Item label={translate('Cost By')}>
+          {currentProject.costBy === '我方'
+            ? '超越代工'
+            : currentProject.costBy === '對方'
+              ? '其他公司代工'
+              : currentProject.costBy}
+        </Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentProject.modified_at ? dayjs(currentProject.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentProject.updatedBy ? (currentProject.updatedBy.name + (currentProject.updatedBy.surname ? ' ' + currentProject.updatedBy.surname : '') || currentProject.updatedBy.email || '-') : '-'}</Descriptions.Item>
         <Descriptions.Item label="判頭費總計" span={3}>

@@ -485,10 +485,16 @@ export default function ProjectForm({ current = null }) {
           const matched = clientRecords.find((c) => String(c.name).trim() === resolvedName);
           if (matched) clientId = matched._id;
         }
+        const normalizeCostBy = (v) => {
+          if (v === '對方') return '其他公司代工';
+          if (v === '我方') return '超越代工';
+          return v;
+        };
         const formData = {
           ...current,
           client: clientId || undefined,
           customerName: resolvedName || '',
+          costBy: normalizeCostBy(current.costBy) || '其他公司代工',
           contractors: contractorIds,
           contractorFees: contractorFees,
           startDate: current.startDate ? dayjs(current.startDate) : null,
@@ -701,12 +707,13 @@ export default function ProjectForm({ current = null }) {
                   label={translate('Cost By')}
                   name="costBy"
                   rules={[{ required: true }]}
-                  initialValue="對方"
+                  initialValue="其他公司代工"
                 >
                   <Select
                     options={[
-                      { value: '對方', label: '對方' },
-                      { value: '我方', label: '我方' },
+                      { value: '其他公司代工', label: '其他公司代工' },
+                      { value: '超越代工', label: '超越代工' },
+                      { value: '材料', label: '材料' },
                     ]}
                   />
                 </Form.Item>

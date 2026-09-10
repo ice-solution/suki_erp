@@ -86,11 +86,13 @@ export default function Project() {
       title: translate('Cost By'),
       dataIndex: 'costBy',
       key: 'costBy',
-      render: (costBy) => (
-        <Tag color={costBy === '我方' ? 'blue' : 'green'}>
-          {costBy}
-        </Tag>
-      ),
+      render: (costBy) => {
+        const label =
+          costBy === '我方' ? '超越代工' : costBy === '對方' ? '其他公司代工' : costBy;
+        const color =
+          label === '超越代工' ? 'blue' : label === '材料' ? 'orange' : 'green';
+        return <Tag color={color}>{label}</Tag>;
+      },
     },
     {
       title: translate('Status'),

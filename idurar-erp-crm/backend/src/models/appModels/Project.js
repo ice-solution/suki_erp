@@ -56,10 +56,10 @@ const projectSchema = new mongoose.Schema({
     default: 'in_progress',
   },
 
-  // 成本承擔方
+  // 成本承擔方（舊值「對方／我方」會由 normalize／migration 轉為新值）
   costBy: {
     type: String,
-    enum: ['對方', '我方'],
+    enum: ['其他公司代工', '超越代工', '材料'],
     required: true,
   },
 
