@@ -954,6 +954,13 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
           </Form.Item>
         </Col>
       </Row>
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
+          <Form.Item label="圖紙連結" name="drawingLink">
+            <Input placeholder="例如：https://drive.google.com/..." allowClear />
+          </Form.Item>
+        </Col>
+      </Row>
 
       <Divider dashed />
 

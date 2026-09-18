@@ -55,6 +55,11 @@ const quoteSchema = new mongoose.Schema({
   },
   /** 表單多個 P.O（與 items[].poNumber 並存；read / 報表用） */
   poNumbers: [{ type: String }],
+  /** 圖紙連結（外部 URL，Read 頁可開啟） */
+  drawingLink: {
+    type: String,
+    trim: true,
+  },
   contactPerson: {
     type: String,
   },
