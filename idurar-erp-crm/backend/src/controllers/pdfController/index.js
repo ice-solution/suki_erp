@@ -140,7 +140,7 @@ exports.generatePdf = async (
         'PO': 'po',
         'SWP': 'swp',
         'S': 's',
-        'E': 'e',
+        'E': 's', // 與 S 相同簽收單版面（s.pug）
         'Y': 's', // 與 S 相同版面
         'IP': 'ip',
         'IH': 's', // 與 S 相同版面
@@ -256,7 +256,7 @@ exports.generatePdfBuffer = async (
     else templateName = 'invoice';
   }
   if ((modelName.toLowerCase() === 'supplierquote' || modelName === 'SupplierQuote') && result.numberPrefix) {
-    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 'e', Y: 's', IP: 'ip', IH: 's' };
+    const prefixMap = { NO: 'no', PO: 'po', SWP: 'swp', S: 's', E: 's', Y: 's', IP: 'ip', IH: 's' };
     templateName = prefixMap[result.numberPrefix] || 's';
   }
   if (modelName.toLowerCase() === 'shipquote' || modelName === 'ShipQuote') {

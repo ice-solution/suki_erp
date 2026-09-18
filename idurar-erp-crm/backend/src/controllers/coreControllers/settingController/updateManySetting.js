@@ -27,7 +27,7 @@ const updateManySetting = async (req, res) => {
       setOnInsert.settingCategory = 'follow_up_settings';
       setOnInsert.valueType = 'array';
     }
-    if (settingKey === 'item_units' || settingKey === 'warehouse_item_categories') {
+    if (settingKey === 'item_units' || settingKey === 'warehouse_item_categories' || settingKey === 'supplier_other_material_options') {
       setOnInsert.settingCategory = 'app_settings';
       setOnInsert.valueType = 'array';
     }

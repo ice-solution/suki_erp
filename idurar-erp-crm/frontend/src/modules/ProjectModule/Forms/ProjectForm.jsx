@@ -342,8 +342,8 @@ export default function ProjectForm({ current = null }) {
     }
   };
 
-  // 計算毛利（支持 contractorFees 數組）
-  const calculateGrossProfit = (costPrice, sPrice, contractorFees) => {
+  // 計算毛利（支持 contractorFees 數組 + creditNotes）
+  const calculateGrossProfit = (costPrice, sPrice, contractorFees, creditNotes) => {
     let totalContractorFee = 0;
     if (Array.isArray(contractorFees)) {
       totalContractorFee = contractorFees.reduce((sum, fee) => {
@@ -353,7 +353,13 @@ export default function ProjectForm({ current = null }) {
       // 向後兼容：如果傳入的是數字
       totalContractorFee = contractorFees || 0;
     }
-    const profit = calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee);
+    const creditSum = Array.isArray(creditNotes)
+      ? creditNotes.reduce((sum, n) => calculate.add(sum, Number(n?.credit) || 0), 0)
+      : 0;
+    const profit = calculate.add(
+      calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee),
+      creditSum
+    );
     return Number.parseFloat(profit);
   };
 

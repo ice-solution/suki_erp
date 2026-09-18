@@ -17,6 +17,13 @@ function escapeCsvCell(val) {
   return s;
 }
 
+/** Xero 金額欄固定小數點後 2 位 */
+function formatXeroMoney(val) {
+  const n = Number(val);
+  if (val == null || Number.isNaN(n)) return '0.00';
+  return n.toFixed(2);
+}
+
 export default function XeroEOExport() {
   const [dateRange, setDateRange] = useState([dayjs().startOf('month'), dayjs().endOf('month')]);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -44,7 +51,7 @@ export default function XeroEOExport() {
         const description = fee.invoiceNo != null ? String(fee.invoiceNo).trim() : '';
 
         const quantity = 1;
-        const unitAmount = fee.amount != null ? fee.amount : 0;
+        const unitAmount = Number(Number(fee.amount != null ? fee.amount : 0).toFixed(2));
         const accountCode = fee.accountCode || '';
 
         feeRows.push({
@@ -83,7 +90,7 @@ export default function XeroEOExport() {
           '', // InventoryItemCode
           escapeCsvCell(fee.description),
           escapeCsvCell(fee.quantity),
-          escapeCsvCell(fee.unitAmount),
+          escapeCsvCell(formatXeroMoney(fee.unitAmount)),
           escapeCsvCell(fee.accountCode),
           'Tax Exempt (0%)', // TaxType
           '', // TaxAmount

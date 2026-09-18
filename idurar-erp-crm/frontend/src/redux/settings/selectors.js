@@ -56,6 +56,27 @@ export const selectWarehouseItemCategoryOptions = createSelector(
   (categories) => categories.map((c) => ({ label: c, value: c }))
 );
 
+const DEFAULT_SUPPLIER_OTHER_MATERIAL_OPTIONS = ['加工費', '運費', '保險', '雜項'];
+
+export const selectSupplierOtherMaterialOptions = createSelector(
+  [selectAppSettings],
+  (appSettings) => {
+    const list = appSettings?.supplier_other_material_options;
+    if (!list || !Array.isArray(list) || list.length === 0) {
+      return DEFAULT_SUPPLIER_OTHER_MATERIAL_OPTIONS;
+    }
+    const cleaned = list
+      .map((c) => (c == null ? '' : String(c).trim()))
+      .filter((c) => c);
+    return cleaned.length ? Array.from(new Set(cleaned)) : DEFAULT_SUPPLIER_OTHER_MATERIAL_OPTIONS;
+  }
+);
+
+export const selectSupplierOtherMaterialOptionItems = createSelector(
+  [selectSupplierOtherMaterialOptions],
+  (options) => options.map((c) => ({ label: c, value: c }))
+);
+
 export const selectFinanceSettings = createSelector(
   [selectCurrentSettings],
   (settings) => settings.finance_settings

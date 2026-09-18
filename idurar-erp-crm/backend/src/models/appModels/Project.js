@@ -280,6 +280,31 @@ const projectSchema = new mongoose.Schema({
     },
   }],
 
+  // Credit Note：可正負；會加減毛利（grossProfit += sum(credit)）
+  creditNotes: [{
+    remark: {
+      type: String,
+      required: false,
+      trim: true,
+    },
+    credit: {
+      type: Number,
+      required: true,
+    },
+    date: {
+      type: Date,
+      required: true,
+    },
+    created: {
+      type: Date,
+      default: Date.now,
+    },
+    updated: {
+      type: Date,
+      default: Date.now,
+    },
+  }],
+
   // 成本價 (quotations總額)
   costPrice: {
     type: Number,

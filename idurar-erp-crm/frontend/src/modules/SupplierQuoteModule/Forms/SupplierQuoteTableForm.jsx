@@ -10,7 +10,7 @@ import { DatePicker } from 'antd';
 
 import AutoCompleteAsync from '@/components/AutoCompleteAsync';
 import MoneyInputFormItem from '@/components/MoneyInputFormItem';
-import { selectDefaultQuoteSupplierSettings, selectLastNumberSettings, selectWarehouseOptions, selectItemUnitOptions } from '@/redux/settings/selectors';
+import { selectDefaultQuoteSupplierSettings, selectLastNumberSettings, selectWarehouseOptions, selectItemUnitOptions, selectSupplierOtherMaterialOptionItems } from '@/redux/settings/selectors';
 import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
@@ -67,6 +67,7 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
   const supplierQuoteSettings = useSelector((state) => state.settings?.result?.supplier_quote_settings ?? {});
   const warehouseOptions = useSelector(selectWarehouseOptions);
   const itemUnitOptions = useSelector(selectItemUnitOptions);
+  const otherMaterialOptions = useSelector(selectSupplierOtherMaterialOptionItems);
   const [lastNumber, setLastNumber] = useState(1);
   const navigate = useNavigate();
 
@@ -1372,13 +1373,16 @@ function LoadSupplierQuoteTableForm({ subTotal: propSubTotal = 0, current = null
     }));
   };
 
-  // 「其他」類別下的可選名稱（供輸入/選擇，加工費與會計計算有關）
-  const OTHER_MATERIAL_OPTIONS = [
-    { value: '加工費', label: '加工費' },
-    { value: '運費', label: '運費' },
-    { value: '保險', label: '保險' },
-    { value: '雜項', label: '雜項' },
-  ];
+  // 「其他」類別下的可選名稱（來自設定；加工費與會計計算有關）
+  const OTHER_MATERIAL_OPTIONS =
+    Array.isArray(otherMaterialOptions) && otherMaterialOptions.length > 0
+      ? otherMaterialOptions
+      : [
+          { value: '加工費', label: '加工費' },
+          { value: '運費', label: '運費' },
+          { value: '保險', label: '保險' },
+          { value: '雜項', label: '雜項' },
+        ];
 
   // 搜索倉庫項目（僅「與成廠房」「其他」用 AutoComplete 選項）
   const handleMaterialSearch = (searchText) => {

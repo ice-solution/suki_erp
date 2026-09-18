@@ -90,6 +90,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     costPrice: 0,
     sPrice: 0,
     contractorFee: 0,
+    creditNotes: [],
     grossProfit: 0,
   };
 
@@ -100,6 +101,9 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
   const [contractorFeesModalVisible, setContractorFeesModalVisible] = useState(false);
   const [editingUsedFeeIndex, setEditingUsedFeeIndex] = useState(null);
   const [contractorFeesForm] = Form.useForm();
+  const [creditNoteModalVisible, setCreditNoteModalVisible] = useState(false);
+  const [editingCreditNoteIndex, setEditingCreditNoteIndex] = useState(null);
+  const [creditNoteForm] = Form.useForm();
   const [nextEoPreview, setNextEoPreview] = useState('');
   const [nextEoLoading, setNextEoLoading] = useState(false);
   const [invoiceWholePctById, setInvoiceWholePctById] = useState({});
@@ -216,6 +220,91 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     setContractorFeesModalVisible(false);
     setEditingUsedFeeIndex(null);
     contractorFeesForm.resetFields();
+  };
+
+  const resetCreditNoteModal = () => {
+    setCreditNoteModalVisible(false);
+    setEditingCreditNoteIndex(null);
+    creditNoteForm.resetFields();
+  };
+
+  const handleEditCreditNote = (record, index) => {
+    setEditingCreditNoteIndex(index);
+    creditNoteForm.setFieldsValue({
+      remark: record.remark || '',
+      credit: record.credit ?? 0,
+      date: record.date ? dayjs(record.date) : null,
+    });
+    setCreditNoteModalVisible(true);
+  };
+
+  const handleAddCreditNote = async (values) => {
+    try {
+      const currentList = Array.isArray(currentProject.creditNotes) ? currentProject.creditNotes : [];
+      const entry = {
+        remark: values.remark != null ? String(values.remark).trim() : '',
+        credit: Number(values.credit) || 0,
+        date: values.date ? dayjs(values.date).toDate() : new Date(),
+      };
+      let updated = [];
+      if (editingCreditNoteIndex !== null && editingCreditNoteIndex >= 0) {
+        updated = [...currentList];
+        updated[editingCreditNoteIndex] = {
+          ...updated[editingCreditNoteIndex],
+          ...entry,
+        };
+      } else {
+        updated = [...currentList, entry];
+      }
+      const response = await request.update({
+        entity: 'project',
+        id: currentProject._id,
+        jsonData: { creditNotes: updated },
+      });
+      if (response.success) {
+        message.success(editingCreditNoteIndex !== null ? 'Credit Note 修改成功！' : 'Credit Note 添加成功！');
+        resetCreditNoteModal();
+        dispatch(erp.read({ entity: entity.toLowerCase(), id: currentProject._id }));
+      } else {
+        message.error((editingCreditNoteIndex !== null ? '修改失敗：' : '添加失敗：') + (response.message || '未知錯誤'));
+      }
+    } catch (error) {
+      console.error('Error saving credit note:', error);
+      message.error('儲存 Credit Note 時發生錯誤');
+    }
+  };
+
+  const handleDeleteCreditNote = (index) => {
+    const list = Array.isArray(currentProject.creditNotes) ? currentProject.creditNotes : [];
+    const row = list[index];
+    const label = row?.remark || `第 ${index + 1} 筆`;
+    Modal.confirm({
+      title: '刪除 Credit Note',
+      content: `確定要刪除「${label}」這筆記錄嗎？此操作無法復原。`,
+      okText: '刪除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        if (index < 0 || index >= list.length) return;
+        const updated = list.filter((_, i) => i !== index);
+        try {
+          const response = await request.update({
+            entity: 'project',
+            id: currentProject._id,
+            jsonData: { creditNotes: updated },
+          });
+          if (response.success) {
+            message.success('Credit Note 已刪除');
+            dispatch(erp.read({ entity: entity.toLowerCase(), id: currentProject._id }));
+          } else {
+            message.error('刪除失敗：' + (response.message || '未知錯誤'));
+          }
+        } catch (error) {
+          console.error('Error deleting credit note:', error);
+          message.error('刪除過程中發生錯誤');
+        }
+      },
+    });
   };
 
   const handleEditUsedContractorFee = (record, index) => {
@@ -834,6 +923,69 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
     },
   ];
 
+  const creditNoteColumns = [
+    {
+      title: 'Remark',
+      dataIndex: 'remark',
+      key: 'remark',
+      ellipsis: true,
+      render: (remark) => remark || '-',
+    },
+    {
+      title: 'Credit',
+      dataIndex: 'credit',
+      key: 'credit',
+      width: 140,
+      align: 'right',
+      render: (credit) => {
+        const n = Number(credit) || 0;
+        return (
+          <Text strong style={{ color: n >= 0 ? '#3f8600' : '#cf1322' }}>
+            {moneyFormatter({ amount: n })}
+          </Text>
+        );
+      },
+    },
+    {
+      title: 'Date',
+      dataIndex: 'date',
+      key: 'date',
+      width: 130,
+      render: (date) => (date ? dayjs(date).format(dateFormat) : '-'),
+    },
+    {
+      title: '操作',
+      key: 'action',
+      width: 152,
+      align: 'center',
+      render: (_, record, index) => (
+        <Space size={16} wrap align="center">
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined />}
+            onClick={() => handleEditCreditNote(record, index)}
+            style={{ paddingInline: 4 }}
+          >
+            Edit
+          </Button>
+          {showDelete ? (
+            <Button
+              type="link"
+              size="small"
+              danger
+              icon={<DeleteOutlined />}
+              onClick={() => handleDeleteCreditNote(index)}
+              style={{ paddingInline: 4 }}
+            >
+              刪除
+            </Button>
+          ) : null}
+        </Space>
+      ),
+    },
+  ];
+
   // WorkProgress表格列
   const workProgressColumns = [
     {
@@ -1048,6 +1200,25 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
                 ? currentProject.contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0)
                 : (currentProject.contractorFee || 0)
             })}
+            style={{ margin: '0 32px' }}
+          />
+          <Statistic
+            title="Credit Note"
+            value={moneyFormatter({
+              amount: (currentProject.creditNotes || []).reduce(
+                (sum, n) => sum + (Number(n?.credit) || 0),
+                0
+              ),
+            })}
+            valueStyle={{
+              color:
+                (currentProject.creditNotes || []).reduce(
+                  (sum, n) => sum + (Number(n?.credit) || 0),
+                  0
+                ) >= 0
+                  ? '#3f8600'
+                  : '#cf1322',
+            }}
             style={{ margin: '0 32px' }}
           />
           <Statistic 
@@ -1321,6 +1492,58 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         </Col>
 
         <Col span={24}>
+          <Card
+            title={`Credit Note (${currentProject.creditNotes?.length || 0})`}
+            size="small"
+            extra={
+              <Button
+                type="primary"
+                icon={<PlusOutlined />}
+                onClick={() => {
+                  setEditingCreditNoteIndex(null);
+                  creditNoteForm.resetFields();
+                  setCreditNoteModalVisible(true);
+                }}
+                size="small"
+              >
+                建立資料
+              </Button>
+            }
+          >
+            <Table
+              dataSource={currentProject.creditNotes || []}
+              columns={creditNoteColumns}
+              pagination={false}
+              size="small"
+              tableLayout="fixed"
+              rowKey={(record, index) => record._id || `cn-${index}`}
+              locale={{ emptyText: '沒有 Credit Note 記錄' }}
+              summary={(pageData) => {
+                const total = (pageData || []).reduce((sum, record) => {
+                  return sum + (Number(record.credit) || 0);
+                }, 0);
+                return (
+                  <Table.Summary fixed>
+                    <Table.Summary.Row>
+                      <Table.Summary.Cell index={0}>
+                        <Text strong>總計（加減毛利）</Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={1} align="right">
+                        <Text strong style={{ color: total >= 0 ? '#3f8600' : '#cf1322' }}>
+                          {moneyFormatter({ amount: total })}
+                        </Text>
+                      </Table.Summary.Cell>
+                      <Table.Summary.Cell index={2} />
+                      <Table.Summary.Cell index={3} />
+                    </Table.Summary.Row>
+                  </Table.Summary>
+                );
+              }}
+            />
+          </Card>
+        </Col>
+
+        <Col span={24}>
           <Card 
             title={`WorkProgress (${workProgressList.length})`}
             size="small"
@@ -1481,6 +1704,48 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             </Button>
             <Button type="primary" htmlType="submit">
               {editingUsedFeeIndex !== null ? '儲存修改' : '建立資料'}
+            </Button>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={editingCreditNoteIndex !== null ? '修改 Credit Note' : '建立 Credit Note'}
+        open={creditNoteModalVisible}
+        onCancel={resetCreditNoteModal}
+        footer={null}
+        width={480}
+      >
+        <Form form={creditNoteForm} layout="vertical" onFinish={handleAddCreditNote}>
+          <Form.Item label="Remark" name="remark">
+            <Input.TextArea rows={2} allowClear placeholder="備註" />
+          </Form.Item>
+          <Form.Item
+            label="Credit"
+            name="credit"
+            rules={[{ required: true, message: '請輸入 Credit（可為正或負）' }]}
+            extra="正數會增加毛利，負數會減少毛利"
+          >
+            <InputNumber
+              precision={2}
+              style={{ width: '100%' }}
+              addonBefore="$"
+              placeholder="可輸入正負數，例如 100 或 -50"
+            />
+          </Form.Item>
+          <Form.Item
+            label="Date"
+            name="date"
+            rules={[{ required: true, message: '請選擇日期' }]}
+          >
+            <DatePicker style={{ width: '100%' }} format={dateFormat} placeholder="選擇日期" />
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0, textAlign: 'right' }}>
+            <Button style={{ marginRight: 8 }} onClick={resetCreditNoteModal}>
+              取消
+            </Button>
+            <Button type="primary" htmlType="submit">
+              {editingCreditNoteIndex !== null ? '儲存修改' : '建立資料'}
             </Button>
           </Form.Item>
         </Form>

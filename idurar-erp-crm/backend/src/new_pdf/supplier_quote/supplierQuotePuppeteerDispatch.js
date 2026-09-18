@@ -1,5 +1,5 @@
 /**
- * SupplierQuote PDF：S／Y／IH／SWP 使用 Puppeteer + s.pug 簽收單版面；其餘回傳 null 改走 html-pdf。
+ * SupplierQuote PDF：S／E／Y／IH／SWP 使用 Puppeteer + s.pug 簽收單版面；其餘回傳 null 改走 html-pdf。
  */
 const { generateSupplierQuoteSPdfBuffer } = require('./generateSupplierQuoteSPdf');
 const { generateSupplierQuoteIPPdfBuffer } = require('./generateSupplierQuoteIPPdf');
@@ -11,9 +11,10 @@ const { generateWingShunNoPdfBuffer } = require('./generateWingShunNoPdf');
  */
 async function tryGenerateSupplierQuotePdfBufferWithPuppeteer(doc) {
   if (!doc) return null;
-  // Y／IH／SWP 與 S 相同簽收單版面（s.pug）
+  // E／Y／IH／SWP 與 S 相同簽收單版面（s.pug）
   if (
     doc.numberPrefix === 'S' ||
+    doc.numberPrefix === 'E' ||
     doc.numberPrefix === 'Y' ||
     doc.numberPrefix === 'IH' ||
     doc.numberPrefix === 'SWP'

@@ -21,6 +21,7 @@ import ProjectItemSettings from './ProjectItemSettings';
 import WarehouseSettings from './WarehouseSettings';
 import ItemUnitSettings from './ItemUnitSettings';
 import WarehouseItemCategorySettings from './WarehouseItemCategorySettings';
+import SupplierOtherMaterialSettings from './SupplierOtherMaterialSettings';
 import AccountSettings from './AccountSettings';
 import FollowUpPersonSettings from './FollowUpPersonSettings';
 
@@ -90,6 +91,12 @@ export default function Settings() {
       label: '倉存類別',
       icon: <InboxOutlined />,
       children: <WarehouseItemCategorySettings />,
+    },
+    {
+      key: 'supplier_other_material_settings',
+      label: 'S單「其他」材料',
+      icon: <BuildOutlined />,
+      children: <SupplierOtherMaterialSettings />,
     },
     {
       key: 'follow_up_person_settings',

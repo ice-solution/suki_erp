@@ -165,8 +165,15 @@ const create = async (req, res) => {
       }
     }
 
-    // 計算毛利 = 成本價 - S_price - 判頭費總額
-    const grossProfit = calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee);
+    // 計算毛利 = 成本價 - S_price - 判頭費總額 + Credit Note 合計（可正負）
+    const creditNotesSum = (Array.isArray(req.body.creditNotes) ? req.body.creditNotes : []).reduce(
+      (sum, n) => calculate.add(sum, Number(n?.credit) || 0),
+      0
+    );
+    const grossProfit = calculate.add(
+      calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee),
+      creditNotesSum
+    );
 
     // 收集所有相關的供應商（從quotations和supplier quotations）
     const supplierIds = new Set();

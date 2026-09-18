@@ -110,7 +110,14 @@ const sync = async (req, res) => {
       totalContractorFee = project.contractorFee || 0;
     }
     
-    const grossProfit = calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee);
+    const creditNotesSum = (Array.isArray(project.creditNotes) ? project.creditNotes : []).reduce(
+      (sum, n) => calculate.add(sum, Number(n?.credit) || 0),
+      0
+    );
+    const grossProfit = calculate.add(
+      calculate.sub(calculate.sub(costPrice, sPrice), totalContractorFee),
+      creditNotesSum
+    );
 
     // 更新項目
     const updatedProject = await Project.findByIdAndUpdate(

@@ -20,6 +20,7 @@ const update = async (req, res) => {
       contractorFees,
       contractorFee,
       usedContractorFees,
+      creditNotes,
       description,
       address,
       startDate,
@@ -97,10 +98,21 @@ const update = async (req, res) => {
       }
     }
     
-    // 毛利 = 成本價 - S_price - 判頭費總額
-    const grossProfit = calculate.sub(
-      calculate.sub(existingProject.costPrice || 0, existingProject.sPrice || 0), 
-      totalContractorFee
+    // 毛利 = 成本價 - S_price - 判頭費總額 + Credit Note 合計（可正負）
+    let creditNotesForGp = existingProject.creditNotes || [];
+    if (creditNotes !== undefined) {
+      creditNotesForGp = Array.isArray(creditNotes) ? creditNotes : [];
+    }
+    const creditNotesSum = creditNotesForGp.reduce(
+      (sum, n) => calculate.add(sum, Number(n?.credit) || 0),
+      0
+    );
+    const grossProfit = calculate.add(
+      calculate.sub(
+        calculate.sub(existingProject.costPrice || 0, existingProject.sPrice || 0),
+        totalContractorFee
+      ),
+      creditNotesSum
     );
 
     const now = new Date();
@@ -146,6 +158,18 @@ const update = async (req, res) => {
         });
       }
       updateData.usedContractorFees = fees;
+    }
+
+    if (creditNotes !== undefined) {
+      const nowCn = new Date();
+      updateData.creditNotes = (Array.isArray(creditNotes) ? creditNotes : []).map((n) => ({
+        remark: n?.remark != null ? String(n.remark).trim() : '',
+        credit: Number(n?.credit) || 0,
+        date: n?.date ? new Date(n.date) : nowCn,
+        created: n?.created ? new Date(n.created) : nowCn,
+        updated: nowCn,
+        ...(n?._id ? { _id: n._id } : {}),
+      }));
     }
 
     // 添加可選字段

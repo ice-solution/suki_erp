@@ -18,6 +18,13 @@ function escapeCsvCell(val) {
   return s;
 }
 
+/** Xero 金額欄固定小數點後 2 位 */
+function formatXeroMoney(val) {
+  const n = Number(val);
+  if (val == null || Number.isNaN(n)) return '0.00';
+  return n.toFixed(2);
+}
+
 function resolveXeroDueDate(inv) {
   // 新：paymentEntries 可多筆，Xero DueDate 取最後一個（以日期最大者為準）
   const entries = Array.isArray(inv?.paymentEntries) ? inv.paymentEntries : [];
@@ -119,7 +126,7 @@ export default function XeroExport() {
       const trackingOption1 = branchByInvoiceType[inv.numberPrefix] || '';
       const description = resolveProjectAddress(inv);
       const quantity = 1;
-      const unitAmount = resolveInvoiceTotal(inv);
+      const unitAmount = Number(Number(resolveInvoiceTotal(inv)).toFixed(2));
 
       rows.push(
         [
@@ -134,7 +141,7 @@ export default function XeroExport() {
           '', // InventoryItemCode
           escapeCsvCell(description),
           escapeCsvCell(quantity),
-          escapeCsvCell(unitAmount),
+          escapeCsvCell(formatXeroMoney(unitAmount)),
           '', // Discount
           escapeCsvCell(accountCode),
           'Tax Exempt (0%)', // TaxType

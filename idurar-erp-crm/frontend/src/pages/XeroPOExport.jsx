@@ -17,6 +17,13 @@ function escapeCsvCell(val) {
   return s;
 }
 
+/** Xero 金額欄固定小數點後 2 位 */
+function formatXeroMoney(val) {
+  const n = Number(val);
+  if (val == null || Number.isNaN(n)) return '0.00';
+  return n.toFixed(2);
+}
+
 /** 與表單一致：材料「減數」不列入 Xero 行（負總價／負數量／負單價） */
 function isNegativeMaterialRow(row) {
   if (!row || typeof row !== 'object') return true;
@@ -99,7 +106,7 @@ export default function XeroPOExport() {
       // Description：該 PO 的供應商 Invoice No.
       const description = supplierInvoice || '-';
       const quantity = 1;
-      const unitAmount = poTotal;
+      const unitAmount = Number(Number(poTotal).toFixed(2));
 
       rows.push(
         [
@@ -113,7 +120,7 @@ export default function XeroPOExport() {
           '', // InventoryItemCode
           escapeCsvCell(description),
           escapeCsvCell(quantity),
-          escapeCsvCell(unitAmount),
+          escapeCsvCell(formatXeroMoney(unitAmount)),
           escapeCsvCell(accountCode),
           'Tax Exempt (0%)', // TaxType
           '', // TaxAmount
