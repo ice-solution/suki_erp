@@ -5,8 +5,7 @@ import { Button, Drawer, Layout, Menu } from 'antd';
 import { useAppContext } from '@/context/appContext';
 
 import useLanguage from '@/locale/useLanguage';
-import logoIcon from '@/style/images/supermax-logo.svg';
-import logoText from '@/style/images/supermax-logo.svg';
+import logoIcon from '@/style/images/supermax-logo.png';
 
 import useResponsive from '@/hooks/useResponsive';
 import { useSelector } from 'react-redux';
@@ -271,7 +270,18 @@ function Sidebar({ collapsible, isMobile = false }) {
           cursor: 'pointer',
         }}
       >
-        <img src={logoIcon} alt="Logo" style={{ marginLeft: '-5px', height: '40px' }} />
+        <img
+          src={logoIcon}
+          alt="Supermax"
+          style={{
+            marginLeft: '-5px',
+            height: '44px',
+            width: 'auto',
+            display: 'block',
+            objectFit: 'contain',
+            borderRadius: 6,
+          }}
+        />
 
         
       </div>

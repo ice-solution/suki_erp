@@ -5,7 +5,7 @@ import { Layout, Col, Divider, Typography } from 'antd';
 import AuthLayout from '@/layout/AuthLayout';
 import SideContent from './SideContent';
 
-import logo from '@/style/images/supermax-logo.svg';
+import logo from '@/style/images/supermax-logo.png';
 
 const { Content } = Layout;
 const { Title } = Typography;
@@ -24,13 +24,15 @@ const AuthModule = ({ authContent, AUTH_TITLE, isForRegistre = false }) => {
         <Col xs={{ span: 24 }} sm={{ span: 24 }} md={{ span: 0 }} span={0}>
           <img
             src={logo}
-            alt="Logo"
+            alt="Supermax"
             style={{
               margin: '0px auto 20px',
               display: 'block',
+              height: 96,
+              width: 'auto',
+              objectFit: 'contain',
+              borderRadius: 8,
             }}
-            height={63}
-            width={220}
           />
           <div className="space10" />
         </Col>

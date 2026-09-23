@@ -1,14 +1,10 @@
-import { Space, Layout, Divider, Typography } from 'antd';
-import logo from '@/style/images/supermax-logo.svg';
-import useLanguage from '@/locale/useLanguage';
-import { useSelector } from 'react-redux';
+import { Layout, Typography } from 'antd';
+import logo from '@/style/images/supermax-logo.png';
 
 const { Content } = Layout;
 const { Title, Text } = Typography;
 
 export default function SideContent() {
-  const translate = useLanguage();
-
   return (
     <Content
       style={{
@@ -22,10 +18,15 @@ export default function SideContent() {
       <div style={{ width: '100%' }}>
         <img
           src={logo}
-          alt="IDURAR ERP CRM"
-          style={{ margin: '0 0 40px', display: 'block' }}
-          height={63}
-          width={220}
+          alt="Supermax"
+          style={{
+            margin: '0 0 40px',
+            display: 'block',
+            height: 120,
+            width: 'auto',
+            objectFit: 'contain',
+            borderRadius: 10,
+          }}
         />
 
         <Title level={1} style={{ fontSize: 28 }}>
