@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const {
   buildQuoteNumberSearchMatch,
   buildWithinPrefixSearchMatch,
+  fetchPaginatedByInvoiceNumberSort,
 } = require('../../../helpers/paginatedQuoteSort');
 
 const Model = mongoose.model('Invoice');
@@ -43,23 +44,31 @@ const paginatedList = async (req, res) => {
     }
   }
 
-  let sortObj = {};
-  if (!sortBy) {
-    sortObj = { year: -1, number: 1 };
-  } else {
-    sortObj = { [sortBy]: sortValue || 1 };
-  }
+  let result;
+  let count;
 
-  const [result, count] = await Promise.all([
-    Model.find(matchQuery)
-      .skip(skip)
-      .limit(limit)
-      .sort(sortObj)
-      .populate('createdBy', 'name surname email')
-      .populate('followUpBy', 'name surname email')
-      .exec(),
-    Model.countDocuments(matchQuery),
-  ]);
+  if (!sortBy) {
+    // 預設：SMI → WSE → SP；同前綴內 number（yymmxxx）由大到小
+    result = await fetchPaginatedByInvoiceNumberSort(Model, matchQuery, skip, limit, {
+      populate: [
+        { path: 'createdBy', select: 'name surname email' },
+        { path: 'followUpBy', select: 'name surname email' },
+      ],
+    });
+    count = await Model.countDocuments(matchQuery);
+  } else {
+    const sortObj = { [sortBy]: sortValue || 1 };
+    [result, count] = await Promise.all([
+      Model.find(matchQuery)
+        .skip(skip)
+        .limit(limit)
+        .sort(sortObj)
+        .populate('createdBy', 'name surname email')
+        .populate('followUpBy', 'name surname email')
+        .exec(),
+      Model.countDocuments(matchQuery),
+    ]);
+  }
 
   const pages = Math.ceil(count / limit);
   const pagination = { page, pages, count };

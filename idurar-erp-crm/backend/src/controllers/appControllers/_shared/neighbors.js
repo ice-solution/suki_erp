@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const {
   PREFIX_RANK_SWITCH,
+  INVOICE_PREFIX_RANK_SWITCH,
   NUMBER_NUM_FIELD,
   NUMBER_SUFFIX_FIELD,
   parseQuoteNumberForSort,
@@ -239,10 +240,89 @@ async function neighborsForQuoteDefault({ currentId, q }) {
   };
 }
 
+/**
+ * 發票列表：SMI → WSE → SP；同前綴內 number（yymmxxx）由大到小。
+ * prev = 列表上一筆（較上），next = 列表下一筆（較下）。
+ */
+async function neighborsForInvoiceDefault({ Model, baseMatch, currentId }) {
+  const cur = await Model.findOne({ _id: currentId, removed: false })
+    .select('_id numberPrefix number')
+    .lean();
+  if (!cur) return { prevId: null, nextId: null };
+
+  const prefixRank =
+    cur.numberPrefix === 'SMI' ? 0 : cur.numberPrefix === 'WSE' ? 1 : cur.numberPrefix === 'SP' ? 2 : 3;
+  const { num: numberNum, suffix: numberSuffix } = parseQuoteNumberForSort(cur.number);
+
+  const match = { ...(baseMatch || {}), removed: false };
+  const pipelineBase = [
+    { $match: match },
+    {
+      $addFields: {
+        _prefixRank: INVOICE_PREFIX_RANK_SWITCH,
+        _numberNum: NUMBER_NUM_FIELD,
+        _numberSuffix: NUMBER_SUFFIX_FIELD,
+      },
+    },
+  ];
+
+  // 列表較上：較細 prefixRank，或同 prefix 較大 number
+  const prevMatch = {
+    $or: [
+      { _prefixRank: { $lt: prefixRank } },
+      { $and: [{ _prefixRank: prefixRank }, { _numberNum: { $gt: numberNum } }] },
+      {
+        $and: [
+          { _prefixRank: prefixRank },
+          { _numberNum: numberNum },
+          { _numberSuffix: { $gt: numberSuffix } },
+        ],
+      },
+    ],
+  };
+  // 列表較下：較大 prefixRank，或同 prefix 較細 number
+  const nextMatch = {
+    $or: [
+      { _prefixRank: { $gt: prefixRank } },
+      { $and: [{ _prefixRank: prefixRank }, { _numberNum: { $lt: numberNum } }] },
+      {
+        $and: [
+          { _prefixRank: prefixRank },
+          { _numberNum: numberNum },
+          { _numberSuffix: { $lt: numberSuffix } },
+        ],
+      },
+    ],
+  };
+
+  const [prevAgg, nextAgg] = await Promise.all([
+    Model.aggregate([
+      ...pipelineBase,
+      { $match: prevMatch },
+      { $sort: { _prefixRank: -1, _numberNum: 1, _numberSuffix: 1 } },
+      { $limit: 1 },
+      { $project: { _id: 1 } },
+    ]),
+    Model.aggregate([
+      ...pipelineBase,
+      { $match: nextMatch },
+      { $sort: { _prefixRank: 1, _numberNum: -1, _numberSuffix: -1 } },
+      { $limit: 1 },
+      { $project: { _id: 1 } },
+    ]),
+  ]);
+
+  return {
+    prevId: prevAgg && prevAgg[0] ? String(prevAgg[0]._id) : null,
+    nextId: nextAgg && nextAgg[0] ? String(nextAgg[0]._id) : null,
+  };
+}
+
 module.exports = {
   neighborsByCreatedDesc,
   neighborsByYearDescNumberAsc,
   neighborsBySmlNumberAsc,
   neighborsForQuoteDefault,
+  neighborsForInvoiceDefault,
 };
 

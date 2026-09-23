@@ -3,6 +3,7 @@ const Model = mongoose.model('Invoice');
 const {
   buildQuoteNumberSearchMatch,
   buildWithinPrefixSearchMatch,
+  fetchPaginatedByInvoiceNumberSort,
 } = require('../../../helpers/paginatedQuoteSort');
 
 const search = async (req, res) => {
@@ -43,13 +44,14 @@ const search = async (req, res) => {
   }
 
   try {
-    const results = await Model.find(match)
-      .sort({ created: -1 })
-      .limit(50)
-      .populate('createdBy', 'name')
-      .populate('followUpBy', 'name surname email')
-      .populate('clients', 'name')
-      .populate('client', 'name');
+    const results = await fetchPaginatedByInvoiceNumberSort(Model, match, 0, 50, {
+      populate: [
+        { path: 'createdBy', select: 'name' },
+        { path: 'followUpBy', select: 'name surname email' },
+        { path: 'clients', select: 'name' },
+        { path: 'client', select: 'name' },
+      ],
+    });
 
     if (results.length >= 1) {
       return res.status(200).json({

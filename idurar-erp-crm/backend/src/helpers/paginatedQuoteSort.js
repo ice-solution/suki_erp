@@ -183,6 +183,18 @@ const SUPPLIER_QUOTE_PREFIX_RANK_SWITCH = {
   },
 };
 
+/** 發票列表：SMI → WSE → SP，其餘 prefix 排後 */
+const INVOICE_PREFIX_RANK_SWITCH = {
+  $switch: {
+    branches: [
+      { case: { $eq: ['$numberPrefix', 'SMI'] }, then: 0 },
+      { case: { $eq: ['$numberPrefix', 'WSE'] }, then: 1 },
+      { case: { $eq: ['$numberPrefix', 'SP'] }, then: 2 },
+    ],
+    default: 3,
+  },
+};
+
 const NUMBER_NUM_FIELD = {
   $let: {
     vars: {
@@ -254,8 +266,9 @@ function sortAddFields(options = {}) {
   return numberFields;
 }
 
-function defaultSortObj(includePrefixRank) {
-  const numberSort = { _numberNum: 1, _numberSuffix: 1, _numberRaw: 1 };
+function defaultSortObj(includePrefixRank, numberSortDir = 1) {
+  const dir = numberSortDir === -1 ? -1 : 1;
+  const numberSort = { _numberNum: dir, _numberSuffix: dir, _numberRaw: dir };
   return includePrefixRank ? { _prefixRank: 1, ...numberSort } : numberSort;
 }
 
@@ -264,12 +277,13 @@ async function fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, o
     includePrefixRank = true,
     prefixRankSwitch = PREFIX_RANK_SWITCH,
     populate = [],
+    numberSortDir = 1,
   } = options;
 
   const orderedIds = await Model.aggregate([
     { $match: matchQuery },
     { $addFields: sortAddFields({ includePrefixRank, prefixRankSwitch }) },
-    { $sort: defaultSortObj(includePrefixRank) },
+    { $sort: defaultSortObj(includePrefixRank, numberSortDir) },
     { $skip: skip },
     { $limit: limit },
     { $project: { _id: 1 } },
@@ -298,9 +312,20 @@ async function fetchPaginatedBySupplierQuoteNumberSort(Model, matchQuery, skip, 
   });
 }
 
+/** 發票：SMI → WSE → SP；同前綴內 yymmxxx（number）由大到小 */
+async function fetchPaginatedByInvoiceNumberSort(Model, matchQuery, skip, limit, options = {}) {
+  return fetchPaginatedByQuoteNumberSort(Model, matchQuery, skip, limit, {
+    ...options,
+    includePrefixRank: true,
+    prefixRankSwitch: INVOICE_PREFIX_RANK_SWITCH,
+    numberSortDir: -1,
+  });
+}
+
 module.exports = {
   PREFIX_RANK_SWITCH,
   SUPPLIER_QUOTE_PREFIX_RANK_SWITCH,
+  INVOICE_PREFIX_RANK_SWITCH,
   NUMBER_NUM_FIELD,
   NUMBER_SUFFIX_FIELD,
   NUMBER_RAW_FIELD,
@@ -311,4 +336,5 @@ module.exports = {
   buildWithinPrefixSearchMatch,
   fetchPaginatedByQuoteNumberSort,
   fetchPaginatedBySupplierQuoteNumberSort,
+  fetchPaginatedByInvoiceNumberSort,
 };

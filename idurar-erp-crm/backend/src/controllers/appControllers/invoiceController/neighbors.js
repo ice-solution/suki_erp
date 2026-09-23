@@ -1,15 +1,15 @@
 const mongoose = require('mongoose');
-const { neighborsByYearDescNumberAsc } = require('../_shared/neighbors');
+const { neighborsForInvoiceDefault } = require('../_shared/neighbors');
 
 /**
  * GET /invoice/neighbors/:id
- * 依 year desc、number asc。查詢參數 q 已忽略。
+ * 排序同列表：SMI → WSE → SP；同前綴內 number（yymmxxx）由大到小。
  */
 module.exports = async function neighbors(req, res) {
   const id = req.params.id;
   const Model = mongoose.model('Invoice');
 
-  const { prevId, nextId } = await neighborsByYearDescNumberAsc({
+  const { prevId, nextId } = await neighborsForInvoiceDefault({
     Model,
     baseMatch: { removed: false },
     currentId: id,
