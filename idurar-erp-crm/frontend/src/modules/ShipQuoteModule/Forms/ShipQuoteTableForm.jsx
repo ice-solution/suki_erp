@@ -976,6 +976,14 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           </Form.Item>
         </Col>
       </Row>
+
+      <Row gutter={[12, 0]}>
+        <Col className="gutter-row" span={24}>
+          <Form.Item label="圖紙連結" name="drawingLink">
+            <Input placeholder="例如：https://drive.google.com/..." allowClear style={{ width: '100%' }} />
+          </Form.Item>
+        </Col>
+      </Row>
       
       <Row gutter={[12, 0]}>
         <Col className="gutter-row" span={6}>
@@ -1270,7 +1278,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             notFoundContent="請到 Settings 新增單位"
           />
         </Col>
-        <Col span={2}>
+        <Col span={3}>
           <InputNumber 
             placeholder="價格"
             min={0}
@@ -1288,7 +1296,7 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             style={{ width: '100%' }}
           />
         </Col>
-        <Col span={2}>
+        <Col span={1}>
           <Button 
             type="primary" 
             icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
@@ -1296,9 +1304,8 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
             disabled={!currentItem.itemName || currentItem.quantity <= 0 || !currentItem.price || currentItem.price < 0}
             key={editingItemKey ? 'update-btn' : 'add-btn'}
             style={{ width: '100%' }}
-          >
-            {editingItemKey ? translate('Update') : translate('Add')}
-          </Button>
+            title={editingItemKey ? translate('Update') : translate('Add')}
+          />
         </Col>
       </Row>
 

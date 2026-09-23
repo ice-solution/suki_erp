@@ -1,11 +1,11 @@
 import { ErpContextProvider } from '@/context/erp';
 
 import { Layout } from 'antd';
-import { useSelector } from 'react-redux';
 
 const { Content } = Layout;
 
-export default function ErpLayout({ children }) {
+/** 預設 1100；報價／吊船報價可傳 maxWidth 加闊（唔影響其他模組） */
+export default function ErpLayout({ children, maxWidth = 1100 }) {
   return (
     <ErpContextProvider>
       <Content
@@ -13,7 +13,7 @@ export default function ErpLayout({ children }) {
         style={{
           margin: '30px auto',
           width: '100%',
-          maxWidth: '1100px',
+          maxWidth,
           minHeight: '600px',
         }}
       >

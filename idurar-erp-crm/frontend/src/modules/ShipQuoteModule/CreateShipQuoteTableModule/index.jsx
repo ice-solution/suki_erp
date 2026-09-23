@@ -4,7 +4,7 @@ import ShipQuoteTableForm from '@/modules/ShipQuoteModule/Forms/ShipQuoteTableFo
 
 export default function CreateShipQuoteTableModule({ config }) {
   return (
-    <ErpLayout>
+    <ErpLayout maxWidth={1280}>
       <CreateItem config={config} CreateForm={ShipQuoteTableForm} />
     </ErpLayout>
   );

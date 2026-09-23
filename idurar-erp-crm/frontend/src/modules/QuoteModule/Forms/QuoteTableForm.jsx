@@ -1037,7 +1037,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             notFoundContent="請到 Settings 新增單位"
           />
         </Col>
-        <Col span={3}>
+        <Col span={4}>
           <InputNumber 
             placeholder="價格（可輸入負數）"
             value={currentItem.price}
@@ -1047,7 +1047,7 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             controls={false}
           />
         </Col>
-        <Col span={2}>
+        <Col span={1}>
           <Button 
             type="primary" 
             icon={editingItemKey ? <EditOutlined /> : <PlusOutlined />} 
@@ -1055,9 +1055,8 @@ function LoadQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) {
             disabled={!currentItem.itemName || currentItem.quantity === null || currentItem.quantity === undefined || currentItem.quantity === 0}
             key={editingItemKey ? 'update-btn' : 'add-btn'}
             style={{ width: '100%' }}
-          >
-            {editingItemKey ? translate('Update') : translate('Add')}
-          </Button>
+            title={editingItemKey ? translate('Update') : translate('Add')}
+          />
         </Col>
       </Row>
 

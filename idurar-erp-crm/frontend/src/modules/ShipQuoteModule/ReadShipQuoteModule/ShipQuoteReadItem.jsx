@@ -11,6 +11,7 @@ import {
   RetweetOutlined,
   ArrowUpOutlined,
   SyncOutlined,
+  LinkOutlined,
 } from '@ant-design/icons';
 
 import { useSelector, useDispatch } from 'react-redux';
@@ -100,6 +101,15 @@ function collectShipQuotePoNumbers(erp) {
     erp.items.forEach((item) => push(item?.poNumber));
   }
   return out;
+}
+
+/** 圖紙連結：補上 https:// 以便新分頁開啟 */
+function resolveExternalHref(raw) {
+  const v = raw != null ? String(raw).trim() : '';
+  if (!v) return '';
+  if (/^https?:\/\//i.test(v)) return v;
+  if (v.startsWith('/')) return v;
+  return `https://${v}`;
 }
 
 export default function ShipQuoteReadItem({ config, selectedItem }) {
@@ -776,6 +786,20 @@ export default function ShipQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label="跟單人">{followUpDisplayName(currentErp)}</Descriptions.Item>
         <Descriptions.Item label="修改時間">{currentErp.modified_at ? dayjs(currentErp.modified_at).format('YYYY-MM-DD HH:mm') : '-'}</Descriptions.Item>
         <Descriptions.Item label="修改人">{currentErp.updatedBy ? (currentErp.updatedBy.name + (currentErp.updatedBy.surname ? ' ' + currentErp.updatedBy.surname : '') || currentErp.updatedBy.email || '-') : '-'}</Descriptions.Item>
+        <Descriptions.Item label="圖紙連結" span={3}>
+          {currentErp.drawingLink ? (
+            <a
+              href={resolveExternalHref(currentErp.drawingLink)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <LinkOutlined style={{ marginRight: 6 }} />
+              {String(currentErp.drawingLink).trim()}
+            </a>
+          ) : (
+            '-'
+          )}
+        </Descriptions.Item>
       </Descriptions>
       
       <Row gutter={[12, 0]} style={{ marginTop: 16, marginBottom: 16 }}>

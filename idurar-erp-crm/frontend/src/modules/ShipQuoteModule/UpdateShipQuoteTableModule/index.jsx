@@ -33,13 +33,13 @@ export default function UpdateShipQuoteTableModule({ config }) {
 
   if (isLoading) {
     return (
-      <ErpLayout>
+      <ErpLayout maxWidth={1280}>
         <PageLoader />
       </ErpLayout>
     );
   } else
     return (
-      <ErpLayout>
+      <ErpLayout maxWidth={1280}>
         {isSuccess ? (
           <UpdateItem config={config} UpdateForm={ShipQuoteTableForm} />
         ) : (

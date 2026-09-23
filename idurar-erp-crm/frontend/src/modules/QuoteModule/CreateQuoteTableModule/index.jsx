@@ -4,7 +4,7 @@ import QuoteTableForm from '@/modules/QuoteModule/Forms/QuoteTableForm';
 
 export default function CreateQuoteTableModule({ config }) {
   return (
-    <ErpLayout>
+    <ErpLayout maxWidth={1280}>
       <CreateItem config={config} CreateForm={QuoteTableForm} />
     </ErpLayout>
   );

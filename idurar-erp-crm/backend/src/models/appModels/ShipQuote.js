@@ -102,6 +102,11 @@ const shipQuoteSchema = new mongoose.Schema({
   address: {
     type: String,
   },
+  /** 圖紙連結（外部 URL，Read 頁可開啟） */
+  drawingLink: {
+    type: String,
+    trim: true,
+  },
 
   // 向後兼容：保留舊的client字段
   client: {

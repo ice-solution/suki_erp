@@ -22,13 +22,13 @@ export default function ReadShipQuoteModule({ config }) {
 
   if (isLoading) {
     return (
-      <ErpLayout>
+      <ErpLayout maxWidth={1280}>
         <PageLoader />
       </ErpLayout>
     );
   } else
     return (
-      <ErpLayout>
+      <ErpLayout maxWidth={1280}>
         {isSuccess ? (
           <ShipQuoteReadItem config={config} selectedItem={currentResult} />
         ) : (

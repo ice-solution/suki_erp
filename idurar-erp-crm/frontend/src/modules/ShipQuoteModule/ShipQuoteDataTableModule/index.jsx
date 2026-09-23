@@ -4,7 +4,7 @@ import DataTable from './DataTable';
 
 export default function ShipQuoteDataTableModule({ config }) {
   return (
-    <ErpLayout>
+    <ErpLayout maxWidth={1280}>
       <ErpPanel config={config} DataTableModule={DataTable}></ErpPanel>
     </ErpLayout>
   );
