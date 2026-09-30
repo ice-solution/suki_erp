@@ -11,11 +11,14 @@
 }
 
 .logo {
-  height: 45px;
-  margin: 15px 15px 30px 30px;
+  height: auto;
+  min-height: 80px;
+  margin: 16px 16px 24px 16px;
   display: flex;
-  justify-content: space-evenly;
-  width: 160px;
+  align-items: center;
+  justify-content: center;
+  width: calc(100% - 32px);
+  max-width: 224px;
 }
 
 .sidebar-wraper {

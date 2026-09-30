@@ -265,10 +265,10 @@ const projectSchema = new mongoose.Schema({
       type: Date,
       required: false,
     },
+    // 正數＝使用；負數＝退回（加返剩餘，並會出現於 Xero EO UnitAmount）
     amount: {
       type: Number,
       required: true,
-      min: 0,
     },
     created: {
       type: Date,

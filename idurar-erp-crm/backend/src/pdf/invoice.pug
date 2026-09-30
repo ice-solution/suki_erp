@@ -318,8 +318,6 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
             tr.tableHeader
               th.service #{translate('item')}
               th #{translate('Quantity')}
-              if showLineProjectPct
-                th 百分比
               th #{translate('PRICE')}
               th #{translate('TOTAL')}
           tbody
@@ -333,18 +331,16 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
                   if item.description
                     span.item-desc-preline #{item.description}
                 td.qty #{item.quantity}
-                if showLineProjectPct
-                  td.pct #{linePct != null && !isNaN(linePct) ? linePct + '%' : ''}
                 td.unit  #{moneyFormatter({amount: displayUnitPrice})}
                 td.total #{moneyFormatter({amount:lineAmount})}
             tr
-              td(colspan=showLineProjectPct ? '4' : '3') #{translate('SUB TOTAL')}
+              td(colspan='3') #{translate('SUB TOTAL')}
               td.total #{moneyFormatter({amount:rawSubTotal})}
             tr
-              td(colspan=showLineProjectPct ? '4' : '3') #{translate('TAX')} #{model.taxRate} %
+              td(colspan='3') #{translate('TAX')} #{model.taxRate} %
               td.total #{moneyFormatter({amount:model.taxTotal})}
             tr
-              td.grand.total(colspan=showLineProjectPct ? '4' : '3')  #{translate('TOTAL')} 
+              td.grand.total(colspan='3')  #{translate('TOTAL')} 
               td.grand.total #{moneyFormatter({amount:displayTotal})}
         
       .col.col-24

@@ -170,8 +170,10 @@ export default function QuoteReadItem({ config, selectedItem }) {
   const [availablePoNumbers, setAvailablePoNumbers] = useState([]);
   const [poPreviewLines, setPoPreviewLines] = useState([]);
   const [poPreviewLoading, setPoPreviewLoading] = useState(false);
-  /** itemIndex -> 本次數量 */
+  /** itemIndex -> 本次數量（上單：未填＝空白／不帶） */
   const [poOrderQtyByIndex, setPoOrderQtyByIndex] = useState({});
+  /** 上單：已勾選的 itemIndex（字串） */
+  const [selectedPoItemKeys, setSelectedPoItemKeys] = useState([]);
   /** 轉發票：A=按行數量 B=專案佔比 */
   const [invoiceConversionMode, setInvoiceConversionMode] = useState('A');
   const [poLinePctByIndex, setPoLinePctByIndex] = useState({});
@@ -300,11 +302,10 @@ export default function QuoteReadItem({ config, selectedItem }) {
         if (cancelled) return;
         if (data?.success && Array.isArray(data?.result?.lines)) {
           setPoPreviewLines(data.result.lines);
-          const init = {};
-          data.result.lines.forEach((row) => {
-            init[row.itemIndex] = row.remainingQty;
-          });
-          setPoOrderQtyByIndex(init);
+          // 上單／轉發票：不預填餘額／0，先勾選再填數量或 %
+          setPoOrderQtyByIndex({});
+          setPoLinePctByIndex({});
+          setSelectedPoItemKeys([]);
           if (poModalMode === 'invoice') {
             setPoInvoiceMeta({
               lockedConversionMode: data.result.lockedConversionMode || null,
@@ -317,6 +318,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
         } else {
           setPoPreviewLines([]);
           setPoOrderQtyByIndex({});
+          setSelectedPoItemKeys([]);
           setPoInvoiceMeta(null);
           if (data?.message) {
             message.error(data.message);
@@ -326,6 +328,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
         if (!cancelled) {
           setPoPreviewLines([]);
           setPoOrderQtyByIndex({});
+          setSelectedPoItemKeys([]);
         }
       } finally {
         if (!cancelled) setPoPreviewLoading(false);
@@ -353,6 +356,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
     setSelectedPoNumber(null);
     setPoPreviewLines([]);
     setPoOrderQtyByIndex({});
+    setSelectedPoItemKeys([]);
     setPoPreviewLoading(false);
     setInvoiceConversionMode('A');
     setPoLinePctByIndex({});
@@ -374,6 +378,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
     setSelectedPoNumber(null);
     setPoPreviewLines([]);
     setPoOrderQtyByIndex({});
+    setSelectedPoItemKeys([]);
   };
 
   // 轉發票：與上單相同，須先有 Project Management，再選 P.O、拆量
@@ -414,7 +419,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
     const payload = { poNumber, conversionMode: invoiceConversionMode };
 
     if (invoiceConversionMode === 'B') {
+      const selectedSet = new Set(selectedPoItemKeys.map(String));
       const lines = poPreviewLines
+        .filter((row) => selectedSet.has(String(row.itemIndex)))
         .map((row) => ({
           itemIndex: row.itemIndex,
           percentage: Number(poLinePctByIndex[row.itemIndex]) || 0,
@@ -422,7 +429,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
         .filter((l) => l.percentage > 0);
 
       if (lines.length === 0) {
-        message.warning('請至少一行填寫大於 0 的專案佔比 (%)');
+        message.warning('請先勾選項目，並填寫大於 0 的專案佔比 %（空白視為 0，不轉換）');
         return;
       }
 
@@ -436,7 +443,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
       }
       payload.lines = lines;
     } else {
+      const selectedSet = new Set(selectedPoItemKeys.map(String));
       const lines = poPreviewLines
+        .filter((row) => selectedSet.has(String(row.itemIndex)))
         .map((row) => ({
           itemIndex: row.itemIndex,
           quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
@@ -444,7 +453,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
         .filter((l) => l.quantity > 0);
 
       if (lines.length === 0) {
-        message.warning('請至少一行填寫大於 0 的本次轉發票數量');
+        message.warning('請先勾選項目，並填寫大於 0 的本次轉發票數量（空白視為 0，不轉換）');
         return;
       }
       payload.lines = lines;
@@ -516,7 +525,9 @@ export default function QuoteReadItem({ config, selectedItem }) {
       return;
     }
 
+    const selectedSet = new Set(selectedPoItemKeys.map(String));
     const lines = poPreviewLines
+      .filter((row) => selectedSet.has(String(row.itemIndex)))
       .map((row) => ({
         itemIndex: row.itemIndex,
         quantity: Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0),
@@ -524,7 +535,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
       .filter((l) => l.quantity > 0);
 
     if (lines.length === 0) {
-      message.warning('請至少一行填寫大於 0 的本次上單數量');
+      message.warning('請先勾選項目，並填寫大於 0 的本次上單數量（空白視為 0，不上單）');
       return;
     }
 
@@ -933,27 +944,39 @@ export default function QuoteReadItem({ config, selectedItem }) {
             (poModalMode === 'invoice' && !String(invoiceOrderNumber || '').trim()) ||
             (poModalMode === 'invoice'
               ? invoiceConversionMode === 'B'
-                ? !poPreviewLines.some((row) => {
-                    const pct = Number(poLinePctByIndex[row.itemIndex]) || 0;
-                    return pct > 0 && pct <= (row.remainingPercentage ?? 100);
+                ? !selectedPoItemKeys.some((key) => {
+                    const row = poPreviewLines.find((r) => String(r.itemIndex) === String(key));
+                    const pct = Number(poLinePctByIndex[row?.itemIndex]) || 0;
+                    return (
+                      row &&
+                      (row.remainingPercentage ?? 100) > 0 &&
+                      pct > 0 &&
+                      pct <= (row.remainingPercentage ?? 100)
+                    );
                   })
-                : !poPreviewLines.some(
-                    (row) =>
+                : !selectedPoItemKeys.some((key) => {
+                    const row = poPreviewLines.find((r) => String(r.itemIndex) === String(key));
+                    return (
+                      row &&
                       row.remainingQty > 0 &&
                       Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
-                  )
-              : !poPreviewLines.some(
-                  (row) =>
+                    );
+                  })
+              : !selectedPoItemKeys.some((key) => {
+                  const row = poPreviewLines.find((r) => String(r.itemIndex) === String(key));
+                  return (
+                    row &&
                     row.remainingQty > 0 &&
                     Math.floor(Number(poOrderQtyByIndex[row.itemIndex]) || 0) > 0
-                )),
+                  );
+                })),
         }}
       >
         <div style={{ marginBottom: 16 }}>
           <p>
             {poModalMode === 'invoice'
-              ? '請選擇 P.O Number，再選擇轉發票方式：A 按行數量拆量；B 逐項專案佔比（每行填 %；發票金額 = 項目金額 × %，例：100 萬轉 10% → 發票 10 萬）。Project 列表的整個佔比% 將依發票總額÷專案總額自動顯示。'
-              : '請選擇 P.O Number，將列出該 P.O 的項目、已上單量與餘額；請填寫「本次上單」數量（不可超過餘額）。'}
+              ? '請選擇 P.O Number 與轉發票方式（A 按行數量／B 專案佔比），勾選項目後再填寫數量或 %（預設空白；空白視為 0，不轉換）。'
+              : '請選擇 P.O Number，勾選要上單的項目，再填寫「本次上單」數量（預設空白；空白視為 0，不上單；不可超過餘額）。'}
           </p>
           {poModalMode === 'supplier' ? (
             <SupplierOrderNumberFields
@@ -981,6 +1004,7 @@ export default function QuoteReadItem({ config, selectedItem }) {
               setSelectedPoNumber(v);
               setPoPreviewLines([]);
               setPoOrderQtyByIndex({});
+              setSelectedPoItemKeys([]);
               setPoInvoiceMeta(null);
               setPoLinePctByIndex({});
             }}
@@ -1000,6 +1024,8 @@ export default function QuoteReadItem({ config, selectedItem }) {
               onChange={(e) => {
                 setInvoiceConversionMode(e.target.value);
                 setPoLinePctByIndex({});
+                setPoOrderQtyByIndex({});
+                setSelectedPoItemKeys([]);
               }}
             >
               <Radio value="A" disabled={poInvoiceMeta?.lockedConversionMode === 'B'}>
@@ -1025,6 +1051,26 @@ export default function QuoteReadItem({ config, selectedItem }) {
             pagination={false}
             rowKey={(r) => String(r.itemIndex)}
             dataSource={poPreviewLines}
+            rowSelection={{
+              selectedRowKeys: selectedPoItemKeys,
+              onChange: (keys) => {
+                const nextKeys = (keys || []).map(String);
+                setSelectedPoItemKeys(nextKeys);
+                setPoOrderQtyByIndex((prev) => {
+                  const kept = {};
+                  nextKeys.forEach((key) => {
+                    const idx = Number(key);
+                    if (prev[idx] != null && prev[idx] !== '') {
+                      kept[idx] = prev[idx];
+                    }
+                  });
+                  return kept;
+                });
+              },
+              getCheckboxProps: (row) => ({
+                disabled: !(row.remainingQty > 0),
+              }),
+            }}
             columns={[
               { title: '品名', dataIndex: 'itemName', key: 'itemName', width: 120, ellipsis: true },
               {
@@ -1046,21 +1092,35 @@ export default function QuoteReadItem({ config, selectedItem }) {
                 title: poModalMode === 'invoice' ? '本次轉發票' : '本次上單',
                 key: 'thisQty',
                 width: 120,
-                render: (_, row) => (
-                  <InputNumber
-                    min={0}
-                    max={row.remainingQty}
-                    precision={0}
-                    value={poOrderQtyByIndex[row.itemIndex]}
-                    onChange={(v) => {
-                      const n = Math.floor(Number(v) || 0);
-                      setPoOrderQtyByIndex((prev) => ({
-                        ...prev,
-                        [row.itemIndex]: Math.min(Math.max(0, n), row.remainingQty),
-                      }));
-                    }}
-                  />
-                ),
+                render: (_, row) => {
+                  const selected = selectedPoItemKeys.includes(String(row.itemIndex));
+                  const raw = poOrderQtyByIndex[row.itemIndex];
+                  return (
+                    <InputNumber
+                      min={0}
+                      max={row.remainingQty}
+                      precision={0}
+                      disabled={!selected}
+                      placeholder=""
+                      value={selected && raw != null && raw !== '' ? raw : null}
+                      onChange={(v) => {
+                        if (v === null || v === undefined || v === '') {
+                          setPoOrderQtyByIndex((prev) => {
+                            const next = { ...prev };
+                            delete next[row.itemIndex];
+                            return next;
+                          });
+                          return;
+                        }
+                        const n = Math.floor(Number(v) || 0);
+                        setPoOrderQtyByIndex((prev) => ({
+                          ...prev,
+                          [row.itemIndex]: Math.min(Math.max(0, n), row.remainingQty),
+                        }));
+                      }}
+                    />
+                  );
+                },
               },
             ]}
           />
@@ -1072,6 +1132,26 @@ export default function QuoteReadItem({ config, selectedItem }) {
             pagination={false}
             rowKey={(r) => String(r.itemIndex)}
             dataSource={poPreviewLines}
+            rowSelection={{
+              selectedRowKeys: selectedPoItemKeys,
+              onChange: (keys) => {
+                const nextKeys = (keys || []).map(String);
+                setSelectedPoItemKeys(nextKeys);
+                setPoLinePctByIndex((prev) => {
+                  const kept = {};
+                  nextKeys.forEach((key) => {
+                    const idx = Number(key);
+                    if (prev[idx] != null && prev[idx] !== '') {
+                      kept[idx] = prev[idx];
+                    }
+                  });
+                  return kept;
+                });
+              },
+              getCheckboxProps: (row) => ({
+                disabled: !((row.remainingPercentage ?? 100) > 0),
+              }),
+            }}
             columns={[
               { title: '品名', dataIndex: 'itemName', key: 'itemName', width: 120, ellipsis: true },
               {
@@ -1095,21 +1175,35 @@ export default function QuoteReadItem({ config, selectedItem }) {
                 title: '本次專案佔比 (%)',
                 key: 'thisPct',
                 width: 140,
-                render: (_, row) => (
-                  <InputNumber
-                    min={0}
-                    max={row.remainingPercentage ?? 100}
-                    precision={2}
-                    value={poLinePctByIndex[row.itemIndex]}
-                    onChange={(v) => {
-                      const n = Number(v) || 0;
-                      setPoLinePctByIndex((prev) => ({
-                        ...prev,
-                        [row.itemIndex]: Math.min(Math.max(0, n), row.remainingPercentage ?? 100),
-                      }));
-                    }}
-                  />
-                ),
+                render: (_, row) => {
+                  const selected = selectedPoItemKeys.includes(String(row.itemIndex));
+                  const raw = poLinePctByIndex[row.itemIndex];
+                  return (
+                    <InputNumber
+                      min={0}
+                      max={row.remainingPercentage ?? 100}
+                      precision={2}
+                      disabled={!selected}
+                      placeholder=""
+                      value={selected && raw != null && raw !== '' ? raw : null}
+                      onChange={(v) => {
+                        if (v === null || v === undefined || v === '') {
+                          setPoLinePctByIndex((prev) => {
+                            const next = { ...prev };
+                            delete next[row.itemIndex];
+                            return next;
+                          });
+                          return;
+                        }
+                        const n = Number(v) || 0;
+                        setPoLinePctByIndex((prev) => ({
+                          ...prev,
+                          [row.itemIndex]: Math.min(Math.max(0, n), row.remainingPercentage ?? 100),
+                        }));
+                      }}
+                    />
+                  );
+                },
               },
               {
                 title: '本次轉出發票金額',
@@ -1126,19 +1220,18 @@ export default function QuoteReadItem({ config, selectedItem }) {
         ) : null}
         {selectedPoNumber && poModalMode === 'invoice' && invoiceConversionMode === 'B' ? (
           <p style={{ marginTop: 8, color: '#666', fontSize: 12 }}>
-            B 模式（逐項專案佔比）：每行填寫本次轉出 %；發票該行金額 = <strong>項目金額 × 佔比%</strong>
-            （例：項目 1,000,000，轉 10% → 發票該行 100,000）。餘額 % = 100 − 已轉 %，不可超過餘額。
-            Project「整個佔比%」= 發票總額 ÷ 專案總額。
+            先勾選項目再填 %。空白＝0（不轉換）。B 模式：發票該行金額 = <strong>項目金額 × 佔比%</strong>
+            。餘額 % = 100 − 已轉 %。Project「整個佔比%」= 發票總額 ÷ 專案總額。
           </p>
         ) : null}
         {selectedPoNumber && poModalMode === 'invoice' && invoiceConversionMode === 'A' ? (
           <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
-            ℹ️ 餘額 = 報價數量 − 此 P.O 已開票數量總和。可多次轉發票。
+            ℹ️ 先勾選項目再填「本次轉發票」。空白＝0（不轉換）。餘額 = 報價數量 − 此 P.O 已開票數量總和。可多次轉發票。
           </p>
         ) : null}
         {selectedPoNumber && poModalMode === 'supplier' ? (
           <p style={{ color: '#1890ff', fontSize: '12px', marginTop: 12 }}>
-            ℹ️ 餘額 = 報價數量 − 此 P.O 已上單數量總和。可多次上單。
+            ℹ️ 先勾選項目再填「本次上單」。空白＝0（不上單）。餘額 = 報價數量 − 此 P.O 已上單數量總和。可多次上單。
           </p>
         ) : null}
       </Modal>

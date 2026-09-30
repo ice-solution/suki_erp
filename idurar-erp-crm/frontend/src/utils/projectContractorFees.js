@@ -83,14 +83,21 @@ export function allocateUsedByLineId(contractorFees, usedContractorFees) {
   const legacyUsed = [];
 
   (usedContractorFees || []).forEach((u) => {
-    const amt = Number(u?.amount) || 0;
-    if (amt <= 0) return;
+    const amt = Number(u?.amount);
+    if (!amt || Number.isNaN(amt)) return;
     const lineId =
       u?.contractorFeeLineId != null && String(u.contractorFeeLineId).trim()
         ? String(u.contractorFeeLineId).trim()
         : '';
     if (lineId && Object.prototype.hasOwnProperty.call(usedByLineId, lineId)) {
       usedByLineId[lineId] += amt;
+      return;
+    }
+    // 無 lineId 的舊資料：負數（退回）直接扣減同名預算行
+    if (amt < 0) {
+      const name = (u.projectName || '').trim();
+      const target = fees.find((f) => (f.projectName || '').trim() === name);
+      if (target) usedByLineId[target.lineId] = (usedByLineId[target.lineId] || 0) + amt;
       return;
     }
     legacyUsed.push({ ...u, remaining: amt });

@@ -343,7 +343,11 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         return;
       }
       const projectName = feeLine.projectName;
-      const newAmount = Number(values.amount) || 0;
+      const newAmount = Number(values.amount);
+      if (Number.isNaN(newAmount) || newAmount === 0) {
+        message.error('請輸入非零金額（正數＝使用；負數＝退回）');
+        return;
+      }
 
       const listForAlloc =
         editingUsedFeeIndex !== null
@@ -353,16 +357,25 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
       const allocated = Number(feeLine.amount) || 0;
       const usedSum = usedByLineId[lineId] || 0;
       const remaining = calculate.sub(allocated, usedSum);
+      const lineLabel = formatFeeLineLabel(
+        feeLine,
+        fees.findIndex((f) => f.lineId === lineId),
+        fees
+      );
 
-      if (calculate.sub(newAmount, remaining) > 0) {
-        const lineLabel = formatFeeLineLabel(
-          feeLine,
-          fees.findIndex((f) => f.lineId === lineId),
-          fees
-        );
+      // 正數：不可超過剩餘；負數（退回）：不可超過該行已用淨額
+      if (newAmount > 0 && calculate.sub(newAmount, remaining) > 0) {
         Modal.warning({
           title: '提示',
           content: `${lineLabel} 金額不足（剩餘 ${moneyFormatter({ amount: remaining })})`,
+          okText: '知道了',
+        });
+        return;
+      }
+      if (newAmount < 0 && calculate.add(usedSum, newAmount) < 0) {
+        Modal.warning({
+          title: '提示',
+          content: `${lineLabel} 退回金額不可超過已用淨額（已用 ${moneyFormatter({ amount: usedSum })}）`,
           okText: '知道了',
         });
         return;
@@ -376,7 +389,7 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         eoNumber: values.eoNumber || '',
         invoiceNo: values.invoiceNo != null ? String(values.invoiceNo).trim() : '',
         remark: values.remark != null ? String(values.remark).trim() : '',
-        amount: values.amount || 0,
+        amount: newAmount,
       };
       
       let updatedUsedContractorFees = [];
@@ -887,7 +900,12 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
         },
       }),
       render: (amount) => {
-        return <Text strong>{moneyFormatter({ amount: amount || 0 })}</Text>;
+        const n = Number(amount) || 0;
+        return (
+          <Text strong style={{ color: n < 0 ? '#3f8600' : undefined }}>
+            {moneyFormatter({ amount: n })}
+          </Text>
+        );
       },
     },
     {
@@ -1272,10 +1290,15 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
                   <div key={fee.lineId || index} style={{ marginBottom: 8 }}>
                     <Text strong>{lineTitle}: </Text>
                     <Text>{moneyFormatter({ amount: originalAmount })}</Text>
-                    {usedAmount > 0 && (
+                    {usedAmount !== 0 && (
                       <>
                         <Text type="secondary"> 已用 </Text>
-                        <Text type="secondary" style={{ color: '#ff4d4f' }}>-{moneyFormatter({ amount: usedAmount })}</Text>
+                        <Text
+                          type="secondary"
+                          style={{ color: usedAmount > 0 ? '#ff4d4f' : '#3f8600' }}
+                        >
+                          {moneyFormatter({ amount: -usedAmount })}
+                        </Text>
                         <Text strong> 剩餘 </Text>
                         <Text strong>{moneyFormatter({ amount: remaining })}</Text>
                       </>
@@ -1292,13 +1315,18 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
                 })}
               </Text>
               {(currentProject.usedContractorFees && currentProject.usedContractorFees.length > 0) && (() => {
-                const usedTotal = currentProject.usedContractorFees.reduce((sum, u) => sum + (u.amount || 0), 0);
+                const usedTotal = currentProject.usedContractorFees.reduce((sum, u) => sum + (Number(u.amount) || 0), 0);
                 const feeTotal = currentProject.contractorFees.reduce((sum, fee) => sum + (fee.amount || 0), 0);
                 const remainingTotal = feeTotal - usedTotal;
                 return (
                   <>
                     <Text type="secondary"> 已用 </Text>
-                    <Text type="secondary" style={{ color: '#ff4d4f' }}>-{moneyFormatter({ amount: usedTotal })}</Text>
+                    <Text
+                      type="secondary"
+                      style={{ color: usedTotal > 0 ? '#ff4d4f' : '#3f8600' }}
+                    >
+                      {moneyFormatter({ amount: -usedTotal })}
+                    </Text>
                     <Text strong> 剩餘 </Text>
                     <Text strong>{moneyFormatter({ amount: remainingTotal })}</Text>
                   </>
@@ -1309,13 +1337,18 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
             <div>
               <Text>{moneyFormatter({ amount: currentProject.contractorFee || 0 })}</Text>
               {(currentProject.usedContractorFees && currentProject.usedContractorFees.length > 0) && (() => {
-                const usedTotal = currentProject.usedContractorFees.reduce((sum, u) => sum + (u.amount || 0), 0);
+                const usedTotal = currentProject.usedContractorFees.reduce((sum, u) => sum + (Number(u.amount) || 0), 0);
                 const feeTotal = currentProject.contractorFee || 0;
                 const remaining = feeTotal - usedTotal;
                 return (
                   <>
                     <Text type="secondary"> 已用 </Text>
-                    <Text type="secondary" style={{ color: '#ff4d4f' }}>-{moneyFormatter({ amount: usedTotal })}</Text>
+                    <Text
+                      type="secondary"
+                      style={{ color: usedTotal > 0 ? '#ff4d4f' : '#3f8600' }}
+                    >
+                      {moneyFormatter({ amount: -usedTotal })}
+                    </Text>
                     <Text strong> 剩餘 </Text>
                     <Text strong>{moneyFormatter({ amount: remaining })}</Text>
                   </>
@@ -1684,14 +1717,28 @@ export default function ProjectReadItem({ config, selectedItem, projectIdFromUrl
           <Form.Item
             label="金額"
             name="amount"
-            rules={[{ required: true, message: '請輸入金額' }]}
+            extra="正數＝使用；負數＝退回（會加返剩餘，並出現於 Xero EO）"
+            rules={[
+              { required: true, message: '請輸入金額' },
+              {
+                validator: (_, value) => {
+                  const n = Number(value);
+                  if (value === null || value === undefined || value === '' || Number.isNaN(n)) {
+                    return Promise.reject(new Error('請輸入金額'));
+                  }
+                  if (n === 0) {
+                    return Promise.reject(new Error('金額不可為 0'));
+                  }
+                  return Promise.resolve();
+                },
+              },
+            ]}
           >
             <InputNumber
-              min={0}
               precision={2}
               style={{ width: '100%' }}
               addonBefore="$"
-              placeholder="0.00"
+              placeholder="例：3000 或 -1000（退回）"
             />
           </Form.Item>
 

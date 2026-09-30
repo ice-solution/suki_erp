@@ -7,6 +7,7 @@ const { RangePicker } = DatePicker;
 import { ErpLayout } from '@/layout';
 import { request } from '@/request';
 import { useMoney } from '@/settings';
+import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
 import * as XLSX from 'xlsx';
 
 const { Text } = Typography;
@@ -143,6 +144,21 @@ export default function ContractorEmployeeReport() {
         width: 130,
         ellipsis: false,
         onCell: wrapCell(),
+        render: (text, record) => {
+          const label = text || '-';
+          if (!record?.projectId || !text) return label;
+          return (
+            <a
+              href={`/project/read/${record.projectId}`}
+              onClick={(e) => {
+                e.preventDefault();
+                openSpaPathInNewTab(`/project/read/${record.projectId}`);
+              }}
+            >
+              {label}
+            </a>
+          );
+        },
       },
       {
         title: 'P.O Number',

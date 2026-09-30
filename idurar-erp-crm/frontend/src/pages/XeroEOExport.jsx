@@ -240,7 +240,7 @@ export default function XeroEOExport() {
         </div>
 
         <p style={{ marginTop: 16, color: '#666', fontSize: 12 }}>
-          ContactName 為承辦商名稱；Description 欄位輸出該筆判頭費之 Invoice No（Project › usedContractorFees.invoiceNo）。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）。整份列表依<strong>InvoiceDate（由新到舊）</strong>排序。
+          ContactName 為承辦商名稱；Description 欄位輸出該筆判頭費之 Invoice No（Project › usedContractorFees.invoiceNo）。每條判頭費 1 row（Quantity=1、UnitAmount、Currency=HKD，TaxType=0%）；退回為負 UnitAmount。整份列表依<strong>InvoiceDate（由新到舊）</strong>排序。
         </p>
 
         {previewRows.length > 0 && (

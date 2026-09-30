@@ -274,9 +274,9 @@ function Sidebar({ collapsible, isMobile = false }) {
           src={logoIcon}
           alt="Supermax"
           style={{
-            marginLeft: '-5px',
-            height: '44px',
+            height: '80px',
             width: 'auto',
+            maxWidth: '100%',
             display: 'block',
             objectFit: 'contain',
             borderRadius: 6,

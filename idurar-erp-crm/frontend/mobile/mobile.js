@@ -436,14 +436,14 @@ async function loadTodayAttendance() {
             ).join('');
         }
 
-        // 打咭記錄：人名 - 總人工，點擊顯示打咭日期
+        // 打咭記錄：人名 - X天，點擊顯示打咭日期
         if (attendanceSummaryData.length === 0) {
             recordsListEl.innerHTML = '<p style="color: #999;">暫無打咭記錄</p>';
         } else {
             recordsListEl.innerHTML = attendanceSummaryData.map((item, idx) => {
-                const amount = item.totalAmount != null ? '$' + Number(item.totalAmount).toLocaleString() : '$0';
+                const days = item.totalWorkDays != null ? Number(item.totalWorkDays) : 0;
                 return `<div class="attendance-record-item" onclick="showAttendanceDatesModal(${idx})">
-                    <strong>${item.name || '—'}</strong> - ${amount}
+                    <strong>${item.name || '—'}</strong> - ${days}天
                 </div>`;
             }).join('');
         }

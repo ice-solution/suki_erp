@@ -302,14 +302,12 @@ body
           .doc-title INVOICE
           if model.address
             .project-address-line 工程地址：#{model.address || ''}
-          table.quotation-table(class=showLineProjectPct ? 'has-line-pct' : '')
+          table.quotation-table
             thead
               tr
                 th.col-no
                 th.col-content 工程內容
                 th.col-qty 數量 / 單位
-                if showLineProjectPct
-                  th.col-pct 百分比
                 th.col-unit 單價 HKD$
                 th.col-amount 金額 HKD$
             tbody
@@ -323,13 +321,11 @@ body
                   td.col-no #{serialBase + idx + 1}
                   td.col-content #{contentText}
                   td.col-qty #{item.quantity != null ? item.quantity : ''} / #{unitLabel}
-                  if showLineProjectPct
-                    td.col-pct #{linePct != null && !isNaN(linePct) ? linePct + '%' : ''}
                   td.col-unit.num #{displayUnitPrice != null ? moneyFormatter({ amount: displayUnitPrice, currency_code: currency }) + ' / ' + unitLabel : ''}
                   td.col-amount.num #{moneyFormatter({ amount: lineAmount, currency_code: currency })}
               if chunk.length === 0
                 tr
-                  td(colspan=showLineProjectPct ? '6' : '5' style='text-align:center') 無項目
+                  td(colspan='5' style='text-align:center') 無項目
           - serialBase += chunk.length
           if pageIndex === itemChunks.length - 1
             .summary-wrap
