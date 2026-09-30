@@ -210,6 +210,13 @@ function logout() {
     showLoginSection();
 }
 
+function setLogoutButtonVisible(visible) {
+    const logoutBtn = document.getElementById('logoutBtn');
+    if (logoutBtn) {
+        logoutBtn.style.display = visible ? 'block' : 'none';
+    }
+}
+
 // 界面控制函數
 function showLoginSection() {
     document.getElementById('loginSection').classList.add('active');
@@ -218,6 +225,7 @@ function showLoginSection() {
     document.getElementById('headerTitle').textContent = '承辦商工程管理系統';
     document.getElementById('headerSubtitle').textContent = '請登入';
     document.getElementById('backBtn').style.display = 'none';
+    setLogoutButtonVisible(false);
 }
 
 function showMainSection() {
@@ -239,7 +247,8 @@ function showMainSection() {
     } else {
         console.error('Main section not found!');
     }
-    
+
+    setLogoutButtonVisible(true);
     showPage('projects');
 }
 
