@@ -188,10 +188,24 @@ export default function Warehouse() {
 
   const handleEdit = (record) => {
     setEditingItem(record);
+    // 必須先清空，否則上一筆有值、本筆無值的欄位會殘留顯示
+    form.resetFields();
     form.setFieldsValue({
-      ...record,
-      supplier: record.supplier?._id,
+      itemName: record.itemName,
+      sku: record.sku,
+      category: record.category,
+      quantity: record.quantity,
+      weight: record.weight,
+      warehouse: record.warehouse,
+      unitPrice: record.unitPrice,
+      status: record.status,
+      supplier: record.supplier?._id ?? record.supplier,
       projects: getProjectIdsFromRecord(record),
+      minStockLevel: record.minStockLevel,
+      location: record.location,
+      siteAddress: record.siteAddress,
+      description: record.description,
+      notes: record.notes,
     });
     setModalVisible(true);
   };
@@ -206,6 +220,8 @@ export default function Warehouse() {
         message.success('存倉記錄建立成功');
       }
       setModalVisible(false);
+      setEditingItem(null);
+      form.resetFields();
       fetchInventoryList();
     } catch (error) {
       message.error(editingItem ? '更新失敗' : '建立失敗');
@@ -679,7 +695,12 @@ export default function Warehouse() {
       <Modal
         title={editingItem ? '編輯存倉記錄' : '新增存倉記錄'}
         open={modalVisible}
-        onCancel={() => setModalVisible(false)}
+        onCancel={() => {
+          setModalVisible(false);
+          setEditingItem(null);
+          form.resetFields();
+        }}
+        destroyOnClose
         footer={null}
         width={800}
       >
@@ -935,7 +956,13 @@ export default function Warehouse() {
               <Button type="primary" htmlType="submit">
                 {editingItem ? '更新' : '建立'}
               </Button>
-              <Button onClick={() => setModalVisible(false)}>
+              <Button
+                onClick={() => {
+                  setModalVisible(false);
+                  setEditingItem(null);
+                  form.resetFields();
+                }}
+              >
                 取消
               </Button>
             </Space>

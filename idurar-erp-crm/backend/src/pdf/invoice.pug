@@ -268,12 +268,10 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
  
   body
     - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
-    - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage : 100
     - const rawSubTotal = model.subTotal != null ? model.subTotal : (model.items || []).reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const showLineProjectPct = typeof invoiceHasLineProjectPercentage === 'function' ? invoiceHasLineProjectPercentage(model.items) : (model.items || []).some(function (i) { var p = i.lineProjectPercentage != null && i.lineProjectPercentage !== '' ? Number(i.lineProjectPercentage) : null; return p != null && !isNaN(p); })
-    //- 小計／行金額用 items 總額；佔比只影響最終 total，且不四捨五入
-    - const chargedAfterPct = Number(rawSubTotal) * projectPctForCalc / 100
-    - const displayTotal = model.total != null ? model.total : chargedAfterPct
+    //- 總金額跟行金額小計；整個佔比% 只顯示，不再乘入總額
+    - const displayTotal = model.total != null ? model.total : rawSubTotal
     
       header.clearfix
         .top-area

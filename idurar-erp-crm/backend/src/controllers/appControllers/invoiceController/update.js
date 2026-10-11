@@ -45,7 +45,7 @@ const update = async (req, res) => {
 
   const previousCredit = Number(previousInvoice?.credit) || 0;
 
-  const { items = [], discount = 0, projectPercentage: rawProjectPct } = req.body;
+  const { items = [], discount = 0 } = req.body;
 
   if (items.length === 0) {
     return res.status(400).json({
@@ -60,13 +60,9 @@ const update = async (req, res) => {
   let discountTotal = 0;
   let total = 0;
 
-  const projectPct =
-    rawProjectPct != null && rawProjectPct !== ''
-      ? Math.min(100, Math.max(0, Number(rawProjectPct)))
-      : 100;
-
   //Calculate the items array with subTotal, total, discountTotal（允許負數影響總額）
   // B 模式：price 已是轉出後單價，行金額 = qty×price；lineProjectPercentage 只作顯示／餘額 metadata
+  // 整個佔比% 不乘入總額
   items.map((item) => {
     let total = calculate.multiply(item['quantity'], item['price']);
     item['total'] = total;
@@ -75,7 +71,6 @@ const update = async (req, res) => {
   const totals = computeInvoiceTotals({
     subTotal,
     discount,
-    projectPercentage: projectPct,
   });
   discountTotal = totals.discountTotal;
   total = totals.total;

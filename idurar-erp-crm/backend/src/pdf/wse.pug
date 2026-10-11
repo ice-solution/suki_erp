@@ -91,11 +91,9 @@ html(class=isPuppeteer ? 'puppeteer-invoice' : '')
     - const fullSubTotal = model.subTotal != null ? model.subTotal : itemsOnly.reduce((s, i) => s + (i.total != null ? i.total : (i.quantity || 0) * (i.price || 0)), 0)
     - const discount = model.discount != null ? model.discount : 0
     - const projectPercentage = model.projectPercentage != null && model.projectPercentage !== '' ? Number(model.projectPercentage) : null
-    - const projectPctForCalc = projectPercentage != null && !isNaN(projectPercentage) ? projectPercentage : 100
-    //- 合共港幣 = 小計（items 總額）；佔比只影響總金額，且不四捨五入
-    - const chargedAfterPct = Number(fullSubTotal) * projectPctForCalc / 100
-    - const discountTotal = model.discountTotal != null ? model.discountTotal : (chargedAfterPct * discount / 100)
-    - const total = model.total != null ? model.total : (chargedAfterPct - discountTotal)
+    //- 合共／總金額跟行金額小計；整個佔比% 只顯示，不再乘入總額
+    - const discountTotal = model.discountTotal != null ? model.discountTotal : (Number(fullSubTotal) * discount / 100)
+    - const total = model.total != null ? model.total : (Number(fullSubTotal) - discountTotal)
     - const currency = model.currency || 'HKD'
     - const showLineProjectPct = typeof invoiceHasLineProjectPercentage === 'function' ? invoiceHasLineProjectPercentage(itemsOnly) : (itemsOnly || []).some(function (i) { var p = i.lineProjectPercentage != null && i.lineProjectPercentage !== '' ? Number(i.lineProjectPercentage) : null; return p != null && !isNaN(p); })
 

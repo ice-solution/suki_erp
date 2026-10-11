@@ -12,14 +12,14 @@ function safeDiscountPct(raw) {
 }
 
 /**
- * 發票總計：先依專案佔比得出本單金額，再套用折扣。
- * 佔比後不四捨五入（用原生浮點運算，避免 currency.js 預設 2 位入數）。
+ * 發票總計：行金額加總（小計）再套用折扣。
+ * 整個佔比% 只作顯示，不再乘入總額（佔比已反映在行單價／金額）。
+ * projectPercentage 保留參數以免舊呼叫端報錯，計算時忽略。
  */
-function computeInvoiceTotals({ subTotal, discount = 0, projectPercentage = 100 }) {
-  const pct = safeProjectPct(projectPercentage);
+function computeInvoiceTotals({ subTotal, discount = 0 }) {
   const disc = safeDiscountPct(discount);
   const base = Number(subTotal) || 0;
-  const splitSubTotal = (base * pct) / 100;
+  const splitSubTotal = base;
   const discountTotal = (splitSubTotal * disc) / 100;
   const total = splitSubTotal - discountTotal;
   return { splitSubTotal, discountTotal, total };

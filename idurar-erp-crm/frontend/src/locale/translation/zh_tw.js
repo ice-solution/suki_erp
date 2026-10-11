@@ -134,7 +134,7 @@ const lang = {
   phone: '電話',
   project_percentage: '整個佔比 (%)',
   project_percentage_short: '整個佔比%',
-  project_percentage_hint: '自動計算：本張發票總額 ÷ Project 總額 × 100（小數點後 2 位，四捨五入）',
+  project_percentage_hint: '只作顯示，不影響本單總額（總額 = 行金額小計 − 折扣）',
   paid_date: '已付款日期',
   prepared_by: '跟單人',
   modified_by: '修改人',

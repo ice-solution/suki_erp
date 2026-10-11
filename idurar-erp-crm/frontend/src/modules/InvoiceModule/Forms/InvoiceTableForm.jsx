@@ -15,7 +15,7 @@ import { useDate, useMoney } from '@/settings';
 import useLanguage from '@/locale/useLanguage';
 
 import calculate from '@/utils/calculate';
-import { computeInvoiceTotals, safeProjectPct } from '@/utils/invoiceTotals';
+import { computeInvoiceTotals } from '@/utils/invoiceTotals';
 import { SERVICE_TYPE_OPTIONS } from '@/utils/serviceTypeAccountCode';
 import { useSelector } from 'react-redux';
 import { request } from '@/request';
@@ -170,7 +170,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   
   const form = Form.useFormInstance();
   const watchedClients = Form.useWatch('clients', form) || [];
-  const projectPercentageWatch = Form.useWatch('projectPercentage', form);
   const quoteTypeValue = Form.useWatch('numberPrefix', form);
   const numberValue = Form.useWatch('number', form);
   const [quoteOptions, setQuoteOptions] = useState([]);
@@ -390,7 +389,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
       const split = computeInvoiceTotals({
         subTotal,
         discount: 0,
-        projectPercentage: projectPercentageWatch,
       }).splitSubTotal;
       setTotal(Number.parseFloat(Number(split).toFixed(cent_precision ?? 2)));
       return;
@@ -399,7 +397,6 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     const split = computeInvoiceTotals({
       subTotal,
       discount: 0,
-      projectPercentage: projectPercentageWatch,
     }).splitSubTotal;
     const amount = Math.min(Math.max(0, Number(value) || 0), split > 0 ? split : Number.POSITIVE_INFINITY);
     setTotal(Number.parseFloat(Number(calculate.sub(split, amount)).toFixed(cent_precision ?? 2)));
@@ -408,8 +405,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
   const handleDiscountAmountBlur = () => {
     const raw = form.getFieldValue('discountTotal');
     const num = raw == null || raw === '' ? 0 : Number(raw);
-    const pct = safeProjectPct(projectPercentageWatch);
-    const splitSubTotal = calculate.multiply(subTotal, pct / 100);
+    const splitSubTotal = Number(subTotal) || 0;
     const cap = splitSubTotal > 0 ? Math.min(Math.max(0, num), splitSubTotal) : Math.max(0, num);
     const amountRounded = Number(cap.toFixed(cent_precision ?? 2));
     // 用金額反推 %（高精度），但之後以金額為準，避免 %→金額 出現 30000.02
@@ -804,14 +800,13 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     form.setFieldsValue({ items: items });
   }, [items, form]);
 
-  // 依小計、專案佔比、折扣% 更新折扣金額與總計（先佔比、後折扣）
+  // 依小計、折扣% 更新折扣金額與總計（整個佔比% 不乘入總額）
   useEffect(() => {
     if (discountAmountEditingRef.current) return;
 
     const splitSubTotal = computeInvoiceTotals({
       subTotal,
       discount: 0,
-      projectPercentage: projectPercentageWatch,
     }).splitSubTotal;
 
     // 以金額為準：保留你輸入嘅折扣金額，只更新總計；小計變動時封頂並回推 %
@@ -839,17 +834,15 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
     const { discountTotal: discountAmount, total: currentTotal } = computeInvoiceTotals({
       subTotal,
       discount,
-      projectPercentage: projectPercentageWatch,
     });
     const rounded = Number.parseFloat(Number(discountAmount).toFixed(cent_precision ?? 2));
     form.setFieldValue('discountTotal', rounded);
     setTotal(Number.parseFloat(Number(currentTotal).toFixed(cent_precision ?? 2)));
-  }, [subTotal, discount, projectPercentageWatch, form, cent_precision]);
+  }, [subTotal, discount, form, cent_precision]);
 
   const splitSubTotalForDiscount = computeInvoiceTotals({
     subTotal,
     discount: 0,
-    projectPercentage: projectPercentageWatch,
   }).splitSubTotal;
 
   // 處理項目選擇
@@ -1772,7 +1765,7 @@ function LoadInvoiceTableForm({ subTotal: propSubTotal = 0, current = null }) {
           <Col className="gutter-row" span={5}>
             <Form.Item
               name="projectPercentage"
-              tooltip={translate('project_percentage_hint')}
+              tooltip="只作顯示（例如 PDF 頁尾）；不影響本單總額。總額 = 行金額小計 − 折扣。"
               initialValue={100}
               style={{ marginBottom: 0 }}
             >
