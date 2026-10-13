@@ -1010,7 +1010,15 @@ function LoadShipQuoteTableForm({ subTotal: propSubTotal = 0, current = null }) 
           </Form.Item>
         </Col>
         <Col className="gutter-row" span={6}>
-          <Form.Item label={translate('P.O Number')} name="poNumbers">
+          <Form.Item
+            label={translate('P.O Number')}
+            name="poNumbers"
+            extra={
+              <span style={{ color: '#ff4d4f' }}>
+                直接改此處會斷開下游同步（S 單／發票／專案等）。請使用「同步 P.O Number」更新。
+              </span>
+            }
+          >
             <Select
               mode="tags"
               placeholder="輸入或選擇P.O Number（可多個）"

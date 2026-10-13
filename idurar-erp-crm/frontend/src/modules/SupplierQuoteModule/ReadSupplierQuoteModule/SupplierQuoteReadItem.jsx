@@ -591,7 +591,6 @@ export default function SupplierQuoteReadItem({ config, selectedItem }) {
         <Descriptions.Item label="簽收單顯示名稱">{currentErp.receiptDisplayName || '-'}</Descriptions.Item>
         <Descriptions.Item label="裝箱方式">{currentErp.packingMethod || '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Subcontractor Count')}>{currentErp.subcontractorCount || '-'}</Descriptions.Item>
-        <Descriptions.Item label={translate('Cost Price')}>{currentErp.costPrice != null && currentErp.costPrice !== '' ? moneyFormatter({ amount: currentErp.costPrice }) : '-'}</Descriptions.Item>
         <Descriptions.Item label={translate('Completed')}>{currentErp.isCompleted ? translate('Yes') : translate('No')}</Descriptions.Item>
         <Descriptions.Item label={translate('Warehouse')}>
           {currentErp.warehouse

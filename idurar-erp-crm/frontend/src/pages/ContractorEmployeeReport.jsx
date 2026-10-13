@@ -8,6 +8,7 @@ import { ErpLayout } from '@/layout';
 import { request } from '@/request';
 import { useMoney } from '@/settings';
 import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
+import { patchDetailDatesColumn } from '@/utils/xlsxDetailDates';
 import * as XLSX from 'xlsx';
 
 const { Text } = Typography;
@@ -107,10 +108,11 @@ export default function ContractorEmployeeReport() {
       日薪: project.dailySalary ?? 0,
       上班總天數: project.totalWorkDays ?? 0,
       總工資: project.totalSalary ?? 0,
-      詳細日期: (project.workDates || []).join(', '),
+      詳細日期: (project.workDates || []).join('\n'),
     }));
 
     const ws = XLSX.utils.json_to_sheet(rows);
+    patchDetailDatesColumn(ws, '詳細日期');
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, '承辦商員工報告');
     const filename = `承辦商員工報告_${emp?.name || 'report'}.xlsx`;

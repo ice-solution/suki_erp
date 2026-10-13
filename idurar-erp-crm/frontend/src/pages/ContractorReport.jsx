@@ -7,6 +7,7 @@ const { RangePicker } = DatePicker;
 import { ErpLayout } from '@/layout';
 import { request } from '@/request';
 import { useMoney } from '@/settings';
+import { openSpaPathInNewTab } from '@/utils/openSpaPathInNewTab';
 import * as XLSX from 'xlsx';
 
 const { Text } = Typography;
@@ -131,7 +132,26 @@ export default function ContractorReport() {
         width: 120,
         render: (d) => (d ? dayjs(d).format('YYYY-MM-DD') : '-'),
       },
-      { title: 'Quote Number', dataIndex: 'quoteNumber', key: 'quoteNumber' },
+      {
+        title: 'Quote Number',
+        dataIndex: 'quoteNumber',
+        key: 'quoteNumber',
+        render: (text, record) => {
+          const label = text || '-';
+          if (!record?.projectId || !text) return label;
+          return (
+            <a
+              href={`/project/read/${record.projectId}`}
+              onClick={(e) => {
+                e.preventDefault();
+                openSpaPathInNewTab(`/project/read/${record.projectId}`);
+              }}
+            >
+              {label}
+            </a>
+          );
+        },
+      },
       { title: 'P.O Number', dataIndex: 'poNumber', key: 'poNumber' },
       { title: '員工數', dataIndex: 'employeeCount', key: 'employeeCount', width: 100 },
       { title: '上班總天數', dataIndex: 'totalWorkDays', key: 'totalWorkDays', width: 120 },
